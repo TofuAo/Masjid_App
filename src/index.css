@@ -1,0 +1,378 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@400;500;600;700;800&family=Amiri:wght@400;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Base Colors */
+    --background: 0 0% 100%;
+    --foreground: 158 84% 16%;
+
+    /* Card Colors */
+    --card: 0 0% 100%;
+    --card-foreground: 158 84% 16%;
+
+    /* Popover Colors */
+    --popover: 0 0% 100%;
+    --popover-foreground: 158 84% 16%;
+
+    /* Primary Colors (Emerald) */
+    --primary: 158 64% 28%;
+    --primary-foreground: 0 0% 100%;
+
+    /* Secondary Colors */
+    --secondary: 158 34% 95%;
+    --secondary-foreground: 158 64% 28%;
+
+    /* Muted Colors */
+    --muted: 158 10% 95%;
+    --muted-foreground: 158 8% 45%;
+
+    /* Accent Colors (Gold) */
+    --accent: 48 96% 53%;
+    --accent-foreground: 48 100% 10%;
+
+    /* Destructive/Error Colors */
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 98%;
+
+    /* Border & Input */
+    --border: 158 30% 85%;
+    --input: 158 30% 85%;
+    --ring: 158 64% 28%;
+
+    /* Radius */
+    --radius: 0.75rem;
+
+    /* Mosque Specific Variables */
+    --mosque-primary: 158 64% 28%;
+    --mosque-primary-light: 158 54% 85%;
+    --mosque-primary-dark: 158 84% 16%;
+    --mosque-accent: 48 96% 53%;
+    --mosque-accent-light: 48 96% 90%;
+    --mosque-accent-dark: 48 96% 35%;
+  }
+
+  .dark {
+    --background: 158 50% 5%;
+    --foreground: 0 0% 98%;
+
+    --card: 158 50% 7%;
+    --card-foreground: 0 0% 98%;
+
+    --popover: 158 50% 7%;
+    --popover-foreground: 0 0% 98%;
+
+    --primary: 158 54% 65%;
+    --primary-foreground: 158 84% 16%;
+
+    --secondary: 158 30% 15%;
+    --secondary-foreground: 0 0% 98%;
+
+    --muted: 158 30% 15%;
+    --muted-foreground: 158 10% 65%;
+
+    --accent: 48 96% 53%;
+    --accent-foreground: 48 100% 10%;
+
+    --destructive: 0 62% 30%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 158 30% 20%;
+    --input: 158 30% 20%;
+    --ring: 158 54% 65%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+    font-synthesis: none;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Smooth scrolling */
+  html {
+    scroll-behavior: smooth;
+  }
+
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-mosque-neutral-100;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-mosque-primary-600 rounded-lg;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-mosque-primary-700;
+  }
+
+  /* Selection color */
+  ::selection {
+    @apply bg-mosque-primary-200 text-mosque-primary-900;
+  }
+
+  ::-moz-selection {
+    @apply bg-mosque-primary-200 text-mosque-primary-900;
+  }
+}
+
+@layer components {
+  /* Card Styles */
+  .mosque-card {
+    @apply bg-white border border-mosque-primary-100 rounded-xl shadow-mosque hover:shadow-mosque-lg transition-all duration-300;
+  }
+
+  .mosque-card-hover {
+    @apply hover:scale-[1.02] hover:border-mosque-primary-300;
+  }
+
+  /* Button Styles */
+  .btn-mosque-primary {
+    @apply bg-mosque-primary-600 hover:bg-mosque-primary-700 text-white font-semibold px-6 py-3 rounded-lg shadow-mosque transition-all duration-300 hover:shadow-mosque-lg;
+  }
+
+  .btn-mosque-secondary {
+    @apply bg-white hover:bg-mosque-primary-50 text-mosque-primary-700 border-2 border-mosque-primary-600 font-semibold px-6 py-3 rounded-lg transition-all duration-300;
+  }
+
+  .btn-mosque-accent {
+    @apply bg-mosque-accent-500 hover:bg-mosque-accent-600 text-white font-semibold px-6 py-3 rounded-lg shadow-gold transition-all duration-300 hover:shadow-gold-lg;
+  }
+
+  /* Badge Styles */
+  .badge-prayer {
+    @apply bg-mosque-primary-100 text-mosque-primary-800 border border-mosque-primary-200 px-3 py-1 rounded-full text-sm font-medium;
+  }
+
+  .badge-community {
+    @apply bg-blue-100 text-blue-800 border border-blue-200 px-3 py-1 rounded-full text-sm font-medium;
+  }
+
+  .badge-education {
+    @apply bg-purple-100 text-purple-800 border border-purple-200 px-3 py-1 rounded-full text-sm font-medium;
+  }
+
+  .badge-youth {
+    @apply bg-pink-100 text-pink-800 border border-pink-200 px-3 py-1 rounded-full text-sm font-medium;
+  }
+
+  .badge-family {
+    @apply bg-green-100 text-green-800 border border-green-200 px-3 py-1 rounded-full text-sm font-medium;
+  }
+
+  .badge-featured {
+    @apply bg-gradient-to-r from-mosque-accent-100 to-mosque-accent-200 text-mosque-accent-800 border border-mosque-accent-300 px-3 py-1 rounded-full text-sm font-semibold;
+  }
+
+  /* Input Styles */
+  .input-mosque {
+    @apply border-2 border-mosque-primary-200 focus:border-mosque-primary-500 focus:ring-2 focus:ring-mosque-primary-200 rounded-lg px-4 py-2 transition-all duration-200;
+  }
+
+  /* Gradient Backgrounds */
+  .bg-mosque-gradient {
+    @apply bg-gradient-to-br from-mosque-primary-600 to-mosque-primary-800;
+  }
+
+  .bg-mosque-gradient-light {
+    @apply bg-gradient-to-br from-mosque-primary-50 to-white;
+  }
+
+  .bg-gold-gradient {
+    @apply bg-gradient-to-r from-mosque-accent-400 to-mosque-accent-500;
+  }
+
+  /* Text Styles */
+  .text-mosque-heading {
+    @apply text-mosque-primary-800 font-bold;
+  }
+
+  .text-mosque-body {
+    @apply text-mosque-neutral-700;
+  }
+
+  /* Hero Section */
+  .hero-mosque {
+    @apply bg-mosque-gradient text-white relative overflow-hidden;
+  }
+
+  .hero-pattern {
+    @apply absolute inset-0 bg-islamic-pattern opacity-10;
+  }
+
+  /* Prayer Times Card */
+  .prayer-time-item {
+    @apply flex items-center justify-between p-4 rounded-xl transition-all duration-200;
+  }
+
+  .prayer-time-active {
+    @apply bg-gradient-to-r from-mosque-primary-50 to-mosque-accent-50 border-2 border-mosque-primary-200 shadow-md;
+  }
+
+  .prayer-time-inactive {
+    @apply bg-mosque-neutral-50 hover:bg-mosque-neutral-100;
+  }
+
+  /* Islamic Decorative Elements */
+  .islamic-pattern-bg {
+    background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23059669' fill-opacity='0.05'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+  }
+
+  .mosque-divider {
+    @apply h-1 w-24 bg-gradient-to-r from-mosque-primary-600 to-mosque-accent-500 rounded-full mx-auto;
+  }
+
+  /* Loading Shimmer Effect */
+  .shimmer {
+    background: linear-gradient(
+      90deg,
+      #f0f0f0 0%,
+      #e0e0e0 50%,
+      #f0f0f0 100%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 2s infinite linear;
+  }
+
+  /* Card Hover Effects */
+  .card-hover-lift {
+    @apply transition-all duration-300 hover:-translate-y-1 hover:shadow-mosque-lg;
+  }
+
+  /* Sidebar Navigation */
+  .nav-item {
+    @apply flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 font-medium;
+  }
+
+  .nav-item-active {
+    @apply bg-mosque-primary-50 text-mosque-primary-700 shadow-sm border border-mosque-primary-200;
+  }
+
+  .nav-item-inactive {
+    @apply text-mosque-neutral-700 hover:bg-mosque-primary-50 hover:text-mosque-primary-700;
+  }
+
+  /* Form Elements */
+  .form-label {
+    @apply block text-sm font-medium text-mosque-neutral-700 mb-2;
+  }
+
+  .form-error {
+    @apply text-red-600 text-sm mt-1;
+  }
+
+  .form-helper {
+    @apply text-mosque-neutral-500 text-sm mt-1;
+  }
+
+  /* Status Indicators */
+  .status-active {
+    @apply inline-flex items-center gap-1 text-green-700 text-sm;
+  }
+
+  .status-inactive {
+    @apply inline-flex items-center gap-1 text-mosque-neutral-500 text-sm;
+  }
+
+  /* Responsive Container */
+  .mosque-container {
+    @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
+  }
+
+  /* Section Spacing */
+  .section-spacing {
+    @apply py-12 md:py-16 lg:py-20;
+  }
+}
+
+@layer utilities {
+  /* Text Utilities */
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  /* Glass Morphism */
+  .glass {
+    @apply bg-white/80 backdrop-blur-sm border border-white/20;
+  }
+
+  .glass-dark {
+    @apply bg-mosque-primary-900/80 backdrop-blur-sm border border-white/10;
+  }
+
+  /* Gradient Text */
+  .text-gradient-mosque {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-mosque-primary-600 to-mosque-primary-800;
+  }
+
+  .text-gradient-gold {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-mosque-accent-400 to-mosque-accent-600;
+  }
+
+  /* Overlay */
+  .overlay-dark {
+    @apply absolute inset-0 bg-black/50;
+  }
+
+  .overlay-mosque {
+    @apply absolute inset-0 bg-mosque-primary-900/70;
+  }
+
+  /* Aspect Ratios */
+  .aspect-mosque-card {
+    aspect-ratio: 16 / 9;
+  }
+
+  /* Focus Styles */
+  .focus-mosque {
+    @apply focus:outline-none focus:ring-2 focus:ring-mosque-primary-500 focus:ring-offset-2;
+  }
+}
+
+/* Print Styles */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+
+  body {
+    @apply text-black bg-white;
+  }
+}
+
+/* Reduced Motion */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* High Contrast Mode */
+@media (prefers-contrast: high) {
+  .mosque-card {
+    @apply border-2;
+  }
+
+  .btn-mosque-primary {
+    @apply border-2 border-white;
+  }
+}

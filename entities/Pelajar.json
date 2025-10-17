@@ -1,0 +1,11 @@
+{
+  "id": "string",
+  "nama": "string",
+  "IC": "string",
+  "umur": "number",
+  "alamat": "string",
+  "telefon": "string",
+  "kelas_id": "string",
+  "status": "string",
+  "tarikh_daftar": "string"
+}

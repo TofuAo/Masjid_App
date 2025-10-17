@@ -1,0 +1,9 @@
+{
+  "id": "string",
+  "pelajar_id": "string",
+  "peperiksaan_id": "string",
+  "markah": "number",
+  "gred": "string",
+  "status": "string",
+  "catatan": "string"
+}

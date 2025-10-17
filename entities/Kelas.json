@@ -1,0 +1,86 @@
+[
+  {
+    "class": "Al-Quran",
+    "level": "Asas",
+    "sessions": [
+      {
+        "days": ["Monday", "Wednesday"],
+        "times": ["05:00 - 06:30", "21:00 - 22:30"]
+      },
+      {
+        "days": ["Tuesday", "Thursday"],
+        "times": ["05:00 - 06:30", "21:00 - 22:30"]
+      }
+    ]
+  },
+  {
+    "class": "Al-Quran",
+    "level": "Tahsin Asas",
+    "sessions": [
+      {
+        "days": ["Monday", "Wednesday"],
+        "times": ["05:00 - 06:30", "21:00 - 22:30"]
+      },
+      {
+        "days": ["Tuesday", "Thursday"],
+        "times": ["05:00 - 06:30", "21:00 - 22:30"]
+      }
+    ]
+  },
+  {
+    "class": "Al-Quran",
+    "level": "Pertengahan",
+    "sessions": [
+      {
+        "days": ["Monday", "Wednesday"],
+        "times": ["05:00 - 06:30", "21:00 - 22:30"]
+      },
+      {
+        "days": ["Tuesday", "Thursday"],
+        "times": ["05:00 - 06:30", "21:00 - 22:30"]
+      }
+    ]
+  },
+  {
+    "class": "Al-Quran",
+    "level": "Lanjutan",
+    "sessions": [
+      {
+        "days": ["Monday", "Wednesday"],
+        "times": ["05:00 - 06:30", "21:00 - 22:30"]
+      },
+      {
+        "days": ["Tuesday", "Thursday"],
+        "times": ["05:00 - 06:30", "21:00 - 22:30"]
+      }
+    ]
+  },
+  {
+    "class": "Al-Quran",
+    "level": "Tahsin Lanjutan",
+    "sessions": [
+      {
+        "days": ["Monday", "Wednesday"],
+        "times": ["05:00 - 06:30", "21:00 - 22:30"]
+      },
+      {
+        "days": ["Tuesday", "Thursday"],
+        "times": ["05:00 - 06:30", "21:00 - 22:30"]
+      }
+    ]
+  },
+  {
+    "class": "Al-Quran",
+    "level": "Talaqi",
+    "sessions": [
+      {
+        "days": ["Monday", "Wednesday"],
+        "times": ["05:00 - 06:30", "21:00 - 22:30"]
+      },
+      {
+        "days": ["Tuesday", "Thursday"],
+        "times": ["05:00 - 06:30", "21:00 - 22:30"]
+      }
+    ]
+  }
+]

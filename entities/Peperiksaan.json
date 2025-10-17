@@ -1,0 +1,8 @@
+{
+  "id": "string",
+  "nama_exam": "string",
+  "kelas_id": "string",
+  "tarikh": "string",
+  "jenis": "string",
+  "status": "string"
+}

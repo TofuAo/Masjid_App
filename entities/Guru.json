@@ -1,0 +1,8 @@
+{
+  "id": "string",
+  "nama": "string",
+  "IC": "string",
+  "telefon": "string",
+  "kepakaran": ["string"],
+  "status": "string"
+}
