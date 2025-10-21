@@ -7,17 +7,17 @@ const SESSION_TIMES_OPTIONS = ["05:00 - 06:30", "21:00 - 22:30"];
 
 const KelasForm = ({ kelas = null, onSubmit, onCancel, gurus = [] }) => {
   const [formData, setFormData] = useState({
-    class_name: '', level: '', sessions: [], yuran: '', guru_id: '', kapasiti: '', status: 'aktif'
+    nama_kelas: '', level: '', sessions: [], yuran: '', guru_ic: '', kapasiti: '', status: 'aktif'
   });
 
   useEffect(() => {
     if (kelas) {
       setFormData({
-        class_name: kelas.class_name || '',
+        nama_kelas: kelas.nama_kelas || '',
         level: kelas.level || '',
         sessions: kelas.sessions || [],
         yuran: kelas.yuran || '',
-        guru_id: kelas.guru_id || '',
+        guru_ic: kelas.guru_ic || '',
         kapasiti: kelas.kapasiti || '',
         status: kelas.status || 'aktif'
       });
@@ -73,7 +73,7 @@ const KelasForm = ({ kelas = null, onSubmit, onCancel, gurus = [] }) => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <label className="form-label">Nama Kelas *</label>
-              <input type="text" name="class_name" value={formData.class_name} onChange={handleChange} required className="input-mosque w-full" placeholder="Masukkan nama kelas" />
+              <input type="text" name="nama_kelas" value={formData.nama_kelas} onChange={handleChange} required className="input-mosque w-full" placeholder="Masukkan nama kelas" />
             </div>
             <div>
               <label className="form-label">Yuran (RM) *</label>
@@ -85,9 +85,9 @@ const KelasForm = ({ kelas = null, onSubmit, onCancel, gurus = [] }) => {
             </div>
             <div>
               <label className="form-label">Guru *</label>
-              <select name="guru_id" value={formData.guru_id} onChange={handleChange} required className="input-mosque w-full">
+              <select name="guru_ic" value={formData.guru_ic} onChange={handleChange} required className="input-mosque w-full">
                 <option value="">Pilih Guru</option>
-                {gurus.filter(g => g.status === 'aktif').map(g => <option key={g.id} value={g.id}>{g.nama}</option>)}
+                {gurus.filter(g => g.status === 'aktif').map(g => <option key={g.ic} value={g.ic}>{g.nama}</option>)}
               </select>
             </div>
             <div>

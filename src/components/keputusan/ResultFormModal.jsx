@@ -4,7 +4,7 @@ import { X } from 'lucide-react';
 
 const ResultFormModal = ({ isOpen, onClose, onSave, initialData }) => {
   const [formData, setFormData] = useState({
-    pelajar_id: '', peperiksaan_id: '', markah: '', gred: '', status: '', catatan: ''
+    student_ic: '', exam_id: '', markah: '', gred: '', status: '', catatan: ''
   });
   const [students, setStudents] = useState([]);
   const [exams, setExams] = useState([]);
@@ -15,7 +15,7 @@ const ResultFormModal = ({ isOpen, onClose, onSave, initialData }) => {
     if (isOpen) {
       fetchDependencies();
       setFormData(initialData || {
-        pelajar_id: '', peperiksaan_id: '', markah: '', gred: '', status: '', catatan: ''
+        student_ic: '', exam_id: '', markah: '', gred: '', status: '', catatan: ''
       });
     }
   }, [isOpen, initialData]);
@@ -79,16 +79,16 @@ const ResultFormModal = ({ isOpen, onClose, onSave, initialData }) => {
             <form onSubmit={handleSubmit} className="space-y-6">
               <div>
                 <label className="form-label">Pelajar</label>
-                <select name="pelajar_id" value={formData.pelajar_id} onChange={handleChange} required className="input-mosque w-full">
+                <select name="student_ic" value={formData.student_ic} onChange={handleChange} required className="input-mosque w-full">
                   <option value="">Pilih Pelajar</option>
-                  {students.map(s => <option key={s.id} value={s.id}>{s.nama} ({s.ic})</option>)}
+                  {students.map(s => <option key={s.ic} value={s.ic}>{s.nama} ({s.ic})</option>)}
                 </select>
               </div>
               <div>
                 <label className="form-label">Peperiksaan</label>
-                <select name="peperiksaan_id" value={formData.peperiksaan_id} onChange={handleChange} required className="input-mosque w-full">
+                <select name="exam_id" value={formData.exam_id} onChange={handleChange} required className="input-mosque w-full">
                   <option value="">Pilih Peperiksaan</option>
-                  {exams.map(e => <option key={e.id} value={e.id}>{e.nama_exam}</option>)}
+                  {exams.map(e => <option key={e.id} value={e.id}>{e.subject}</option>)}
                 </select>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">

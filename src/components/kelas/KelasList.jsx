@@ -7,8 +7,8 @@ const KelasList = ({ kelass = [], onEdit, onView, onDelete, onAdd, gurus = [] })
 
   const filteredKelass = kelass.filter(kelas => {
     const lowerSearchTerm = searchTerm.toLowerCase();
-    const matchesSearch = kelas.class_name.toLowerCase().includes(lowerSearchTerm) ||
-                         kelas.level.toLowerCase().includes(lowerSearchTerm);
+    const matchesSearch = (kelas.class_name || '').toLowerCase().includes(lowerSearchTerm) ||
+                         (kelas.level || '').toLowerCase().includes(lowerSearchTerm);
     const matchesStatus = statusFilter === 'semua' || kelas.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
@@ -22,7 +22,7 @@ const KelasList = ({ kelass = [], onEdit, onView, onDelete, onAdd, gurus = [] })
     const config = statusConfig[status] || 'bg-gray-100 text-gray-800';
     return (
       <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${config}`}>
-        {status.replace('_', ' ')}
+        {(status || '').replace('_', ' ')}
       </span>
     );
   };
@@ -88,24 +88,24 @@ const KelasList = ({ kelass = [], onEdit, onView, onDelete, onAdd, gurus = [] })
                         <BookOpen className="h-5 w-5 text-blue-600" />
                       </div>
                       <div className="ml-4">
-                        <div className="text-sm font-medium text-mosque-neutral-900">{kelas.class_name}</div>
+                        <div className="text-sm font-medium text-mosque-neutral-900">{kelas.class_name || ''}</div>
                         <div className="text-sm text-mosque-neutral-500 flex items-center">
                           <Users size={12} className="mr-1" />
-                          {kelas.kapasiti} tempat
+                          {Number(kelas.kapasiti) || 0} tempat
                         </div>
                       </div>
                     </div>
                   </td>
-                  <td className="px-6 py-4 text-sm text-mosque-neutral-700">{kelas.level}</td>
+                  <td className="px-6 py-4 text-sm text-mosque-neutral-700">{kelas.level || ''}</td>
                   <td className="px-6 py-4 text-sm text-mosque-neutral-700">
-                    {kelas.sessions.map((session, index) => (
+                    {(kelas.sessions || []).map((session, index) => (
                       <div key={index} className="text-xs">
-                        {session.days.join(', ')} ({session.times.join(', ')})
+                        {(session.days || []).join(', ')} ({(session.times || []).join(', ')})
                       </div>
                     ))}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-mosque-neutral-700">{getGuruName(kelas.guru_id)}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-mosque-neutral-700">RM {kelas.yuran}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-mosque-neutral-700">{getGuruName(kelas.guru_ic)}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-mosque-neutral-700">RM {Number(kelas.yuran) || 0}</td>
                   <td className="px-6 py-4 whitespace-nowrap">{getStatusBadge(kelas.status)}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                     <div className="flex space-x-3">

@@ -6,9 +6,9 @@ export const getAllTeachers = async (req, res) => {
     const { search, status, page = 1, limit = 10 } = req.query;
     
     let query = `
-      SELECT u.ic, u.full_name, u.email, u.is_active, t.kepakaran, COUNT(c.id) as total_classes
+      SELECT u.ic, u.nama, u.email, u.status, t.kepakaran, COUNT(c.id) as total_classes
       FROM users u
-      JOIN teachers t ON u.ic = t.ic
+      JOIN teachers t ON u.ic = t.user_ic
       LEFT JOIN classes c ON u.ic = c.guru_ic
       WHERE u.role = 'teacher'
     `;
@@ -16,13 +16,13 @@ export const getAllTeachers = async (req, res) => {
     const queryParams = [];
     
     if (search) {
-      query += ` AND (u.full_name LIKE ? OR u.ic LIKE ?)`;
+      query += ` AND (u.nama LIKE ? OR u.ic LIKE ?)`;
       const searchTerm = `%${search}%`;
       queryParams.push(searchTerm, searchTerm);
     }
     
     if (status) {
-      query += ` AND u.is_active = ?`;
+      query += ` AND u.status = ?`;
       queryParams.push(status);
     }
     
@@ -42,13 +42,13 @@ export const getAllTeachers = async (req, res) => {
     const countParams = [];
     
     if (search) {
-      countQuery += ` AND (u.full_name LIKE ? OR u.ic LIKE ?)`;
+      countQuery += ` AND (u.nama LIKE ? OR u.ic LIKE ?)`;
       const searchTerm = `%${search}%`;
       countParams.push(searchTerm, searchTerm);
     }
     
     if (status) {
-      countQuery += ` AND u.is_active = ?`;
+      countQuery += ` AND u.status = ?`;
       countParams.push(status);
     }
     
@@ -79,9 +79,9 @@ export const getTeacherById = async (req, res) => {
     const { ic } = req.params;
     
     const [teachers] = await pool.execute(`
-      SELECT u.ic, u.full_name, u.email, u.is_active, t.kepakaran
+      SELECT u.ic, u.nama, u.email, u.status, t.kepakaran
       FROM users u
-      JOIN teachers t ON u.ic = t.ic
+      JOIN teachers t ON u.ic = t.user_ic
       WHERE u.ic = ? AND u.role = 'teacher'
     `, [ic]);
     
@@ -94,10 +94,9 @@ export const getTeacherById = async (req, res) => {
     
     // Get teacher's classes
     const [classes] = await pool.execute(`
-      SELECT c.*, COUNT(s.ic) as student_count
+      SELECT c.*, COUNT(s.user_ic) as student_count
       FROM classes c
       LEFT JOIN students s ON c.id = s.kelas_id
-      JOIN users u ON s.ic = u.ic AND u.is_active = 'aktif'
       WHERE c.guru_ic = ?
       GROUP BY c.id
     `, [ic]);
@@ -137,14 +136,14 @@ export const createTeacher = async (req, res) => {
     try {
       // Insert into users table
       await connection.execute(
-        `INSERT INTO users (ic, full_name, telefon, email, password, role, is_active) 
+        `INSERT INTO users (ic, nama, telefon, email, password, role, status) 
          VALUES (?, ?, ?, ?, ?, 'teacher', ?)`,
         [ic, nama, telefon, email, password, status]
       );
 
       // Insert into teachers table
       await connection.execute(
-        `INSERT INTO teachers (ic, kepakaran) 
+        `INSERT INTO teachers (user_ic, kepakaran) 
          VALUES (?, ?)`,
         [ic, JSON.stringify(kepakaran)]
       );
@@ -152,9 +151,9 @@ export const createTeacher = async (req, res) => {
       await connection.commit();
 
       const [newTeacher] = await pool.execute(`
-        SELECT u.ic, u.full_name, u.email, u.is_active, u.telefon, t.kepakaran
+        SELECT u.ic, u.nama, u.email, u.status, u.telefon, t.kepakaran
         FROM users u
-        JOIN teachers t ON u.ic = t.ic
+        JOIN teachers t ON u.ic = t.user_ic
         WHERE u.ic = ?
       `, [ic]);
       
@@ -202,7 +201,7 @@ export const updateTeacher = async (req, res) => {
     try {
       // Update users table
       await connection.execute(
-        `UPDATE users SET full_name = ?, telefon = ?, email = ?, is_active = ?
+        `UPDATE users SET nama = ?, telefon = ?, email = ?, status = ?
          WHERE ic = ?`,
         [nama, telefon, email, status, ic]
       );
@@ -210,16 +209,16 @@ export const updateTeacher = async (req, res) => {
       // Update teachers table
       await connection.execute(
         `UPDATE teachers SET kepakaran = ?
-         WHERE ic = ?`,
+         WHERE user_ic = ?`,
         [JSON.stringify(kepakaran), ic]
       );
 
       await connection.commit();
 
       const [updatedTeacher] = await pool.execute(`
-        SELECT u.ic, u.full_name, u.email, u.is_active, u.telefon, t.kepakaran
+        SELECT u.ic, u.nama, u.email, u.status, u.telefon, t.kepakaran
         FROM users u
-        JOIN teachers t ON u.ic = t.ic
+        JOIN teachers t ON u.ic = t.user_ic
         WHERE u.ic = ?
       `, [ic]);
       
@@ -280,9 +279,9 @@ export const getTeacherStats = async (req, res) => {
     const [stats] = await pool.execute(`
       SELECT 
         COUNT(*) as total,
-        SUM(CASE WHEN is_active = 'aktif' THEN 1 ELSE 0 END) as aktif,
-        SUM(CASE WHEN is_active = 'tidak_aktif' THEN 1 ELSE 0 END) as tidak_aktif,
-        SUM(CASE WHEN is_active = 'cuti' THEN 1 ELSE 0 END) as cuti
+        SUM(CASE WHEN status = 'aktif' THEN 1 ELSE 0 END) as aktif,
+        SUM(CASE WHEN status = 'tidak_aktif' THEN 1 ELSE 0 END) as tidak_aktif,
+        SUM(CASE WHEN status = 'cuti' THEN 1 ELSE 0 END) as cuti
       FROM users
       WHERE role = 'teacher'
     `);

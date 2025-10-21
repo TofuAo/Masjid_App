@@ -49,8 +49,8 @@ const Kelas = () => {
   const aktifKelass = kelassArray.filter(k => k.status === 'aktif').length;
   const tidakAktifKelass = kelassArray.filter(k => k.status === 'tidak_aktif').length;
   const penuhKelass = kelassArray.filter(k => k.status === 'penuh').length;
-  const totalKapasiti = kelassArray.reduce((sum, k) => sum + k.kapasiti, 0);
-  const averageYuran = kelassArray.length > 0 ? (kelassArray.reduce((sum, k) => sum + k.yuran, 0) / kelassArray.length).toFixed(2) : 0;
+  const totalKapasiti = kelassArray.reduce((sum, k) => sum + (Number(k.kapasiti) || 0), 0);
+  const averageYuran = kelassArray.length > 0 ? (kelassArray.reduce((sum, k) => sum + (Number(k.yuran) || 0), 0) / kelassArray.length).toFixed(2) : 0;
 
   const renderContent = () => {
     if (loading) {

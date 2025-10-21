@@ -3,8 +3,7 @@
 -- 1. USERS (Master table: all people)
 -- =====================================
 CREATE TABLE users (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    ic VARCHAR(20) UNIQUE, -- Example: 051003060229
+    ic VARCHAR(20) PRIMARY KEY, -- Example: 051003060229
     nama VARCHAR(100) NOT NULL,
     umur INT,
     alamat VARCHAR(255),
@@ -21,8 +20,7 @@ CREATE TABLE users (
 -- 2. STUDENTS (extension of users)
 -- =====================================
 CREATE TABLE students (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    user_ic VARCHAR(20),
+    user_ic VARCHAR(20) PRIMARY KEY,
     kelas_id INT,
     tarikh_daftar DATE,
     FOREIGN KEY (user_ic) REFERENCES users(ic) ON DELETE CASCADE
@@ -32,8 +30,7 @@ CREATE TABLE students (
 -- 3. TEACHERS (extension of users)
 -- =====================================
 CREATE TABLE teachers (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    user_ic VARCHAR(20),
+    user_ic VARCHAR(20) PRIMARY KEY,
     kepakaran JSON, -- example: ["Al-Quran","Tajwid"]
     FOREIGN KEY (user_ic) REFERENCES users(ic) ON DELETE CASCADE
 );
@@ -46,6 +43,8 @@ CREATE TABLE classes (
     nama_kelas VARCHAR(100),
     jadual VARCHAR(100),
     guru_ic VARCHAR(20),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (guru_ic) REFERENCES users(ic) ON DELETE SET NULL
 );
 
@@ -58,6 +57,8 @@ CREATE TABLE attendance (
     class_id INT,
     tarikh DATE,
     status ENUM('Hadir','Tidak Hadir','Cuti') DEFAULT 'Hadir',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (student_ic) REFERENCES users(ic) ON DELETE CASCADE,
     FOREIGN KEY (class_id) REFERENCES classes(id) ON DELETE CASCADE
 );
@@ -70,6 +71,8 @@ CREATE TABLE exams (
     class_id INT,
     subject VARCHAR(100),
     tarikh_exam DATE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (class_id) REFERENCES classes(id) ON DELETE CASCADE
 );
 
@@ -83,6 +86,8 @@ CREATE TABLE results (
     markah INT,
     gred VARCHAR(5),
     slip_img VARCHAR(255),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (student_ic) REFERENCES users(ic) ON DELETE CASCADE,
     FOREIGN KEY (exam_id) REFERENCES exams(id) ON DELETE CASCADE
 );
@@ -97,6 +102,8 @@ CREATE TABLE fees (
     status ENUM('Bayar','Belum Bayar') DEFAULT 'Belum Bayar',
     tarikh DATE,
     resit_img VARCHAR(255),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (student_ic) REFERENCES users(ic) ON DELETE CASCADE
 );
 

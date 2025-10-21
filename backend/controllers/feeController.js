@@ -6,10 +6,10 @@ export const getAllFees = async (req, res) => {
     const { search, status, bulan, tahun, page = 1, limit = 10 } = req.query;
     
     let query = `
-      SELECT f.*, u.full_name as pelajar_nama, u.ic as pelajar_ic, c.class_name
+      SELECT f.*, u.nama as pelajar_nama, u.ic as pelajar_ic, c.nama_kelas
       FROM fees f
-      JOIN users u ON f.pelajar_ic = u.ic
-      LEFT JOIN students s ON u.ic = s.ic
+      JOIN users u ON f.student_ic = u.ic
+      LEFT JOIN students s ON u.ic = s.user_ic
       LEFT JOIN classes c ON s.kelas_id = c.id
       WHERE 1=1
     `;
@@ -17,7 +17,7 @@ export const getAllFees = async (req, res) => {
     const queryParams = [];
 
     if (search) {
-      query += ` AND (u.full_name LIKE ? OR u.ic LIKE ? OR f.resit_img LIKE ?)`;
+      query += ` AND (u.nama LIKE ? OR u.ic LIKE ? OR f.resit_img LIKE ?)`;
       const searchTerm = `%${search}%`;
       queryParams.push(searchTerm, searchTerm, searchTerm);
     }
@@ -48,13 +48,13 @@ export const getAllFees = async (req, res) => {
     let countQuery = `
       SELECT COUNT(*) as total
       FROM fees f
-      JOIN users u ON f.pelajar_ic = u.ic
+      JOIN users u ON f.student_ic = u.ic
       WHERE 1=1
     `;
     const countParams = [];
     
     if (search) {
-      countQuery += ` AND (u.full_name LIKE ? OR u.ic LIKE ? OR f.resit_img LIKE ?)`;
+      countQuery += ` AND (u.nama LIKE ? OR u.ic LIKE ? OR f.resit_img LIKE ?)`;
       const searchTerm = `%${search}%`;
       countParams.push(searchTerm, searchTerm, searchTerm);
     }
@@ -101,10 +101,10 @@ export const getFeeById = async (req, res) => {
     const { id } = req.params;
 
     let query = `
-      SELECT f.*, u.full_name as pelajar_nama, u.ic as pelajar_ic, c.class_name
+      SELECT f.*, u.nama as pelajar_nama, u.ic as pelajar_ic, c.nama_kelas
       FROM fees f
-      JOIN users u ON f.pelajar_ic = u.ic
-      LEFT JOIN students s ON u.ic = s.ic
+      JOIN users u ON f.student_ic = u.ic
+      LEFT JOIN students s ON u.ic = s.user_ic
       LEFT JOIN classes c ON s.kelas_id = c.id
       WHERE f.id = ?
     `;
@@ -164,10 +164,10 @@ export const createFee = async (req, res) => {
     `, [student_ic, jumlah, status, tarikh, resit_img]);
     
     const [newFee] = await pool.execute(`
-      SELECT f.*, u.full_name as pelajar_nama, u.ic as pelajar_ic, c.class_name
+      SELECT f.*, u.nama as pelajar_nama, u.ic as pelajar_ic, c.nama_kelas
       FROM fees f
-      JOIN users u ON f.pelajar_ic = u.ic
-      LEFT JOIN students s ON u.ic = s.ic
+      JOIN users u ON f.student_ic = u.ic
+      LEFT JOIN students s ON u.ic = s.user_ic
       LEFT JOIN classes c ON s.kelas_id = c.id
       WHERE f.id = ?
     `, [result.insertId]);

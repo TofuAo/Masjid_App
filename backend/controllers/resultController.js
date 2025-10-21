@@ -9,7 +9,7 @@ export const getAllResults = async (req, res) => {
       SELECT r.*, u.nama as pelajar_nama, u.ic as pelajar_ic, c.nama_kelas, e.subject as exam_subject, e.tarikh_exam as exam_date
       FROM results r
       JOIN users u ON r.student_ic = u.ic
-      LEFT JOIN students s ON u.ic = s.ic
+      LEFT JOIN students s ON u.ic = s.user_ic
       LEFT JOIN classes c ON s.kelas_id = c.id
       JOIN exams e ON r.exam_id = e.id
       WHERE 1=1
@@ -96,7 +96,7 @@ export const getResultById = async (req, res) => {
       SELECT r.*, u.nama as pelajar_nama, u.ic as pelajar_ic, c.nama_kelas, e.subject as exam_subject, e.tarikh_exam as exam_date
       FROM results r
       JOIN users u ON r.student_ic = u.ic
-      LEFT JOIN students s ON u.ic = s.ic
+      LEFT JOIN students s ON u.ic = s.user_ic
       LEFT JOIN classes c ON s.kelas_id = c.id
       JOIN exams e ON r.exam_id = e.id
       WHERE r.id = ?
@@ -186,7 +186,7 @@ export const createResult = async (req, res) => {
       SELECT r.*, u.nama as pelajar_nama, u.ic as pelajar_ic, c.nama_kelas, e.subject as exam_subject, e.tarikh_exam as exam_date
       FROM results r
       JOIN users u ON r.student_ic = u.ic
-      LEFT JOIN students s ON u.ic = s.ic
+      LEFT JOIN students s ON u.ic = s.user_ic
       LEFT JOIN classes c ON s.kelas_id = c.id
       JOIN exams e ON r.exam_id = e.id
       WHERE r.id = ?
@@ -256,7 +256,7 @@ export const updateResult = async (req, res) => {
       SELECT r.*, u.nama as pelajar_nama, u.ic as pelajar_ic, c.nama_kelas, e.subject as exam_subject, e.tarikh_exam as exam_date
       FROM results r
       JOIN users u ON r.student_ic = u.ic
-      LEFT JOIN students s ON u.ic = s.ic
+      LEFT JOIN students s ON u.ic = s.user_ic
       LEFT JOIN classes c ON s.kelas_id = c.id
       JOIN exams e ON r.exam_id = e.id
       WHERE r.id = ?
@@ -361,7 +361,7 @@ export const getTopPerformers = async (req, res) => {
       SELECT r.*, u.nama as pelajar_nama, u.ic as pelajar_ic, c.nama_kelas, e.subject as exam_subject
       FROM results r
       JOIN users u ON r.student_ic = u.ic
-      LEFT JOIN students s ON u.ic = s.ic
+      LEFT JOIN students s ON u.ic = s.user_ic
       LEFT JOIN classes c ON s.kelas_id = c.id
       JOIN exams e ON r.exam_id = e.id
       ${whereClause}

@@ -6,7 +6,7 @@ export const getAllClasses = async (req, res) => {
     const { search, status, guru_id, page = 1, limit = 10 } = req.query;
     
     let query = `
-      SELECT c.id, c.class_name, c.level, c.sessions, c.guru_ic, u.full_name as guru_nama, COUNT(s.ic) as student_count
+      SELECT c.id, c.nama_kelas, c.level, c.sessions, c.yuran, c.guru_ic, c.kapasiti, c.status, u.nama as guru_nama, COUNT(s.user_ic) as student_count
       FROM classes c
       LEFT JOIN users u ON c.guru_ic = u.ic
       LEFT JOIN students s ON c.id = s.kelas_id
@@ -16,7 +16,7 @@ export const getAllClasses = async (req, res) => {
     const queryParams = [];
     
     if (search) {
-      query += ` AND (c.class_name LIKE ? OR u.full_name LIKE ?)`;
+      query += ` AND (c.nama_kelas LIKE ? OR u.nama LIKE ?)`;
       const searchTerm = `%${search}%`;
       queryParams.push(searchTerm, searchTerm);
     }
@@ -38,7 +38,10 @@ export const getAllClasses = async (req, res) => {
     
     const [classes] = await pool.execute(query, queryParams);
 
-    const parsedClasses = classes;
+    const parsedClasses = classes.map(kelas => ({
+      ...kelas,
+      sessions: kelas.sessions ? JSON.parse(kelas.sessions) : []
+    }));
     
     // Get total count for pagination
     let countQuery = `
@@ -49,7 +52,7 @@ export const getAllClasses = async (req, res) => {
     const countParams = [];
     
     if (search) {
-      countQuery += ` AND (c.class_name LIKE ?)`;
+      countQuery += ` AND (c.nama_kelas LIKE ?)`;
       const searchTerm = `%${search}%`;
       countParams.push(searchTerm);
     }
@@ -91,7 +94,7 @@ export const getClassById = async (req, res) => {
     const { id } = req.params;
     
     const [classes] = await pool.execute(`
-      SELECT c.id, c.class_name, c.level, c.sessions, c.guru_ic, u.full_name as guru_nama, u.telefon as guru_telefon
+      SELECT c.id, c.nama_kelas, c.level, c.sessions, c.yuran, c.guru_ic, c.kapasiti, c.status, u.nama as guru_nama, u.telefon as guru_telefon
       FROM classes c
       LEFT JOIN users u ON c.guru_ic = u.ic
       WHERE c.id = ?
@@ -104,13 +107,16 @@ export const getClassById = async (req, res) => {
       });
     }
 
-    const classData = classes[0];
+    const classData = {
+      ...classes[0],
+      sessions: classes[0].sessions ? JSON.parse(classes[0].sessions) : []
+    };
     
     // Get students in this class
     const [students] = await pool.execute(`
-      SELECT u.ic, u.full_name, u.is_active
+      SELECT u.ic, u.nama, u.status
       FROM users u
-      JOIN students s ON u.ic = s.ic
+      JOIN students s ON u.ic = s.user_ic
       WHERE s.kelas_id = ?
     `, [id]);
     
@@ -141,11 +147,11 @@ export const createClass = async (req, res) => {
       });
     }
 
-    const { class_name, level, sessions, guru_ic } = req.body;
+    const { nama_kelas, level, sessions, yuran, guru_ic, kapasiti, status } = req.body;
     
     // Check if teacher exists and is active
     const [teachers] = await pool.execute(
-      "SELECT ic FROM users WHERE ic = ? AND role = 'teacher' AND is_active = 'aktif'",
+      "SELECT ic FROM users WHERE ic = ? AND role = 'teacher' AND status = 'aktif'",
       [guru_ic]
     );
     
@@ -156,19 +162,25 @@ export const createClass = async (req, res) => {
       });
     }
     
+    // Convert sessions array to JSON string for storage
+    const sessionsJson = JSON.stringify(sessions || []);
+    
     const [result] = await pool.execute(`
-      INSERT INTO classes (class_name, level, sessions, guru_ic)
-      VALUES (?, ?, ?, ?)
-    `, [class_name, level, sessions, guru_ic]);
+      INSERT INTO classes (nama_kelas, level, sessions, yuran, guru_ic, kapasiti, status)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `, [nama_kelas, level, sessionsJson, yuran, guru_ic, kapasiti, status]);
     
     const [newClass] = await pool.execute(`
-      SELECT c.id, c.class_name, c.level, c.sessions, c.guru_ic, u.full_name as guru_nama
+      SELECT c.id, c.nama_kelas, c.level, c.sessions, c.yuran, c.guru_ic, c.kapasiti, c.status, u.nama as guru_nama
       FROM classes c
       LEFT JOIN users u ON c.guru_ic = u.ic
       WHERE c.id = ?
     `, [result.insertId]);
 
-    const parsedNewClass = newClass[0];
+    const parsedNewClass = {
+      ...newClass[0],
+      sessions: newClass[0].sessions ? JSON.parse(newClass[0].sessions) : []
+    };
     
     res.status(201).json({
       success: true,
@@ -196,7 +208,7 @@ export const updateClass = async (req, res) => {
     }
 
     const { id } = req.params;
-    const { class_name, level, sessions, guru_ic } = req.body;
+    const { nama_kelas, level, sessions, yuran, guru_ic, kapasiti, status } = req.body;
     
     // Check if class exists
     const [existingClasses] = await pool.execute(
@@ -213,7 +225,7 @@ export const updateClass = async (req, res) => {
     
     // Check if teacher exists and is active
     const [teachers] = await pool.execute(
-      "SELECT ic FROM users WHERE ic = ? AND role = 'teacher' AND is_active = 'aktif'",
+      "SELECT ic FROM users WHERE ic = ? AND role = 'teacher' AND status = 'aktif'",
       [guru_ic]
     );
     
@@ -224,20 +236,26 @@ export const updateClass = async (req, res) => {
       });
     }
     
+    // Convert sessions array to JSON string for storage
+    const sessionsJson = JSON.stringify(sessions || []);
+    
     await pool.execute(`
       UPDATE classes 
-      SET class_name = ?, level = ?, sessions = ?, guru_ic = ?, updated_at = CURRENT_TIMESTAMP
+      SET nama_kelas = ?, level = ?, sessions = ?, yuran = ?, guru_ic = ?, kapasiti = ?, status = ?, updated_at = CURRENT_TIMESTAMP
       WHERE id = ?
-    `, [class_name, level, sessions, guru_ic, id]);
+    `, [nama_kelas, level, sessionsJson, yuran, guru_ic, kapasiti, status, id]);
     
     const [updatedClass] = await pool.execute(`
-      SELECT c.id, c.class_name, c.level, c.sessions, c.guru_ic, u.full_name as guru_nama
+      SELECT c.id, c.nama_kelas, c.level, c.sessions, c.yuran, c.guru_ic, c.kapasiti, c.status, u.nama as guru_nama
       FROM classes c
       LEFT JOIN users u ON c.guru_ic = u.ic
       WHERE c.id = ?
     `, [id]);
 
-    const parsedUpdatedClass = updatedClass[0];
+    const parsedUpdatedClass = {
+      ...updatedClass[0],
+      sessions: updatedClass[0].sessions ? JSON.parse(updatedClass[0].sessions) : []
+    };
     
     res.json({
       success: true,
@@ -272,7 +290,7 @@ export const deleteClass = async (req, res) => {
     
     // Check if class has active students
     const [activeStudents] = await pool.execute(
-      "SELECT COUNT(s.ic) as count FROM students s JOIN users u ON s.ic = u.ic WHERE s.kelas_id = ? AND u.is_active = 'aktif'",
+      "SELECT COUNT(s.user_ic) as count FROM students s JOIN users u ON s.user_ic = u.ic WHERE s.kelas_id = ? AND u.status = 'aktif'",
       [id]
     );
     
@@ -330,5 +348,59 @@ export const getClassStats = async (req, res) => {
       success: false,
       message: 'Internal server error'
     });
+  }
+};
+
+// Dashboard stats endpoint
+export const getDashboardStats = async (req, res) => {
+  try {
+    // Kehadiran Hari Ini (percentage hadir)
+    const [attendanceRows] = await pool.execute(`
+      SELECT 
+        COUNT(*) as total, 
+        SUM(status = 'Hadir') as hadir
+      FROM attendance
+      WHERE tarikh = CURDATE()
+    `);
+    const attendanceTotal = attendanceRows[0]?.total || 0;
+    const attendancePresent = attendanceRows[0]?.hadir || 0;
+    const attendanceToday = attendanceTotal ? Math.round((attendancePresent / attendanceTotal) * 100) : 0;
+
+    // Yuran Tertunggak (outstanding fees)
+    const [feesRows] = await pool.execute(`
+      SELECT COUNT(*) as count
+      FROM fees
+      WHERE status = 'Belum Bayar'
+    `);
+    const feesOutstanding = feesRows[0]?.count || 0;
+
+    // Kelas Aktif (active classes)
+    const [classRows] = await pool.execute(`
+      SELECT COUNT(*) as count
+      FROM classes
+      WHERE status = 'aktif'
+    `);
+    const classesActive = classRows[0]?.count || 0;
+
+    // Pelajar Baru Bulan Ini (new students this month)
+    const [studentsRows] = await pool.execute(`
+      SELECT COUNT(*) as count
+      FROM students
+      WHERE MONTH(tarikh_daftar) = MONTH(CURDATE()) AND YEAR(tarikh_daftar) = YEAR(CURDATE())
+    `);
+    const newStudents = studentsRows[0]?.count || 0;
+
+    res.json({
+      success: true,
+      data: {
+        attendanceToday,
+        feesOutstanding,
+        classesActive,
+        newStudents
+      }
+    });
+  } catch (error) {
+    console.error('Dashboard stats error:', error);
+    res.status(500).json({ success: false, message: 'Error fetching dashboard stats' });
   }
 };

@@ -4,7 +4,7 @@ import { validationResult } from 'express-validator';
 export const getAllExams = async (req, res) => {
   try {
     const { search, page = 1, limit = 10 } = req.query;
-    let query = `SELECT e.*, c.class_name FROM exams e JOIN classes c ON e.class_id = c.id WHERE 1=1`;
+    let query = `SELECT e.*, c.nama_kelas FROM exams e JOIN classes c ON e.class_id = c.id WHERE 1=1`;
     const queryParams = [];
 
     if (search) {
@@ -13,7 +13,7 @@ export const getAllExams = async (req, res) => {
     }
 
     const offset = (page - 1) * limit;
-    query += ` ORDER BY tarikh_exam DESC LIMIT ? OFFSET ?`;
+    query += ` ORDER BY e.created_at DESC LIMIT ? OFFSET ?`;
     queryParams.push(parseInt(limit), offset);
 
     const [exams] = await pool.execute(query, queryParams);

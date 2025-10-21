@@ -134,8 +134,52 @@ const Dashboard = () => {
   }, []);
 
   useEffect(() => {
-    fetchDashboardData();
-  }, [fetchDashboardData]);
+    const fetchStats = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const resp = await fetch('/api/classes/dashboard/stats');
+        const json = await resp.json();
+        if (!json.success) throw new Error(json.message || 'Unknown error');
+        const { attendanceToday, feesOutstanding, classesActive, newStudents } = json.data;
+        setMainStats([
+          {
+            title: 'Kehadiran Hari Ini',
+            value: attendanceToday + '%',
+            icon: <Users className="w-6 h-6 text-emerald-600" />, // Replace with desired icon
+            change: '',
+            changeType: 'neutral',
+          },
+          {
+            title: 'Yuran Tertunggak',
+            value: feesOutstanding,
+            icon: <CreditCard className="w-6 h-6 text-red-600" />, // Replace with desired icon
+            change: '',
+            changeType: 'neutral',
+          },
+          {
+            title: 'Kelas Aktif',
+            value: classesActive,
+            icon: <BookOpen className="w-6 h-6 text-purple-600" />, // Replace with desired icon
+            change: '',
+            changeType: 'neutral',
+          },
+          {
+            title: 'Pelajar Baru',
+            value: newStudents,
+            icon: <Users className="w-6 h-6 text-emerald-600" />, // Replace with desired icon
+            change: '',
+            changeType: 'neutral',
+          }
+        ]);
+      } catch (err) {
+        setError(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchStats();
+  }, []);
 
   if (loading) {
     return <div className="text-center py-8">Memuatkan papan pemuka...</div>;

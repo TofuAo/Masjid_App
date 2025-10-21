@@ -150,7 +150,7 @@ export const markAttendance = async (req, res) => {
 
     // Check if student exists and is in the class
     const [existingStudents] = await pool.execute(
-      'SELECT ic FROM students WHERE ic = ? AND kelas_id = ?',
+      'SELECT user_ic FROM students WHERE user_ic = ? AND kelas_id = ?',
       [student_ic, class_id]
     );
 

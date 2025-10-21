@@ -16,9 +16,9 @@ export const getAllStudents = async (req, res) => {
     }
 
     let query = `
-      SELECT u.ic, u.full_name, u.email, u.is_active, s.kelas_id, s.tarikh_daftar, c.class_name
+      SELECT u.ic, u.nama, u.email, u.status, s.kelas_id, s.tarikh_daftar, c.nama_kelas
       FROM users u
-      JOIN students s ON u.ic = s.ic
+      JOIN students s ON u.ic = s.user_ic
       LEFT JOIN classes c ON s.kelas_id = c.id
       WHERE u.role = 'student'
     `;
@@ -26,13 +26,13 @@ export const getAllStudents = async (req, res) => {
     const queryParams = [];
 
     if (search) {
-      query += ` AND (u.full_name LIKE ? OR u.ic LIKE ?)`;
+      query += ` AND (u.nama LIKE ? OR u.ic LIKE ?)`;
       const searchTerm = `%${search}%`;
       queryParams.push(searchTerm, searchTerm);
     }
 
     if (status) {
-      query += ` AND u.is_active = ?`;
+      query += ` AND u.status = ?`;
       queryParams.push(status);
     }
 
@@ -52,19 +52,19 @@ export const getAllStudents = async (req, res) => {
     let countQuery = `
       SELECT COUNT(*) as total
       FROM users u
-      JOIN students s ON u.ic = s.ic
+      JOIN students s ON u.ic = s.user_ic
       WHERE u.role = 'student'
     `;
     const countParams = [];
 
     if (search) {
-      countQuery += ` AND (u.full_name LIKE ? OR u.ic LIKE ?)`;
+      countQuery += ` AND (u.nama LIKE ? OR u.ic LIKE ?)`;
       const searchTerm = `%${search}%`;
       countParams.push(searchTerm, searchTerm);
     }
 
     if (status) {
-      countQuery += ` AND u.is_active = ?`;
+      countQuery += ` AND u.status = ?`;
       countParams.push(status);
     }
 
@@ -112,9 +112,9 @@ export const getStudentById = async (req, res) => {
     }
 
     const [students] = await pool.execute(`
-      SELECT u.ic, u.full_name, u.email, u.is_active, u.umur, u.alamat, s.kelas_id, s.tarikh_daftar, c.class_name
+      SELECT u.ic, u.nama, u.email, u.status, u.umur, u.alamat, s.kelas_id, s.tarikh_daftar, c.nama_kelas
       FROM users u
-      JOIN students s ON u.ic = s.ic
+      JOIN students s ON u.ic = s.user_ic
       LEFT JOIN classes c ON s.kelas_id = c.id
       WHERE u.ic = ? AND u.role = 'student'
     `, [ic]);
@@ -155,7 +155,7 @@ export const createStudent = async (req, res) => {
       });
     }
 
-    const { full_name, ic, umur, alamat, telefon, email, password, kelas_id, is_active, tarikh_daftar } = req.body;
+    const { nama, ic, umur, alamat, telefon, email, password, kelas_id, status, tarikh_daftar } = req.body;
 
     const connection = await pool.getConnection();
     await connection.beginTransaction();
@@ -163,14 +163,14 @@ export const createStudent = async (req, res) => {
     try {
       // Insert into users table
       await connection.execute(
-        `INSERT INTO users (ic, full_name, umur, alamat, telefon, email, password, role, is_active) 
+        `INSERT INTO users (ic, nama, umur, alamat, telefon, email, password, role, status) 
          VALUES (?, ?, ?, ?, ?, ?, ?, 'student', ?)`,
-        [ic, full_name, umur, alamat, telefon, email, password, is_active]
+        [ic, nama, umur, alamat, telefon, email, password, status]
       );
 
       // Insert into students table
       await connection.execute(
-        `INSERT INTO students (ic, kelas_id, tarikh_daftar) 
+        `INSERT INTO students (user_ic, kelas_id, tarikh_daftar) 
          VALUES (?, ?, ?)`,
         [ic, kelas_id, tarikh_daftar]
       );
@@ -178,9 +178,9 @@ export const createStudent = async (req, res) => {
       await connection.commit();
 
       const [newStudent] = await pool.execute(`
-        SELECT u.ic, u.full_name, u.email, u.is_active, u.telefon, s.kelas_id, s.tarikh_daftar, c.class_name
+        SELECT u.ic, u.nama, u.email, u.status, u.telefon, s.kelas_id, s.tarikh_daftar, c.nama_kelas
         FROM users u
-        JOIN students s ON u.ic = s.ic
+        JOIN students s ON u.ic = s.user_ic
         LEFT JOIN classes c ON s.kelas_id = c.id
         WHERE u.ic = ?
       `, [ic]);
@@ -222,7 +222,7 @@ export const updateStudent = async (req, res) => {
     }
 
     const { ic } = req.params;
-    const { full_name, umur, alamat, telefon, email, kelas_id, is_active, tarikh_daftar } = req.body;
+    const { nama, umur, alamat, telefon, email, kelas_id, status, tarikh_daftar } = req.body;
 
     const connection = await pool.getConnection();
     await connection.beginTransaction();
@@ -230,24 +230,24 @@ export const updateStudent = async (req, res) => {
     try {
       // Update users table
       await connection.execute(
-        `UPDATE users SET full_name = ?, umur = ?, alamat = ?, telefon = ?, email = ?, is_active = ?
+        `UPDATE users SET nama = ?, umur = ?, alamat = ?, telefon = ?, email = ?, status = ?
          WHERE ic = ?`,
-        [full_name, umur, alamat, telefon, email, is_active, ic]
+        [nama, umur, alamat, telefon, email, status, ic]
       );
 
       // Update students table
       await connection.execute(
         `UPDATE students SET kelas_id = ?, tarikh_daftar = ?
-         WHERE ic = ?`,
+         WHERE user_ic = ?`,
         [kelas_id, tarikh_daftar, ic]
       );
 
       await connection.commit();
 
       const [updatedStudent] = await pool.execute(`
-        SELECT u.ic, u.full_name, u.email, u.is_active, u.telefon, s.kelas_id, s.tarikh_daftar, c.class_name
+        SELECT u.ic, u.nama, u.email, u.status, u.telefon, s.kelas_id, s.tarikh_daftar, c.nama_kelas
         FROM users u
-        JOIN students s ON u.ic = s.ic
+        JOIN students s ON u.ic = s.user_ic
         LEFT JOIN classes c ON s.kelas_id = c.id
         WHERE u.ic = ?
       `, [ic]);
@@ -318,9 +318,9 @@ export const getStudentStats = async (req, res) => {
     const [stats] = await pool.execute(`
       SELECT 
         COUNT(*) as total,
-        SUM(CASE WHEN is_active = 'aktif' THEN 1 ELSE 0 END) as active,
-        SUM(CASE WHEN is_active = 'tidak_aktif' THEN 1 ELSE 0 END) as inactive,
-        SUM(CASE WHEN is_active = 'cuti' THEN 1 ELSE 0 END) as on_leave,
+        SUM(CASE WHEN status = 'aktif' THEN 1 ELSE 0 END) as active,
+        SUM(CASE WHEN status = 'tidak_aktif' THEN 1 ELSE 0 END) as inactive,
+        SUM(CASE WHEN status = 'cuti' THEN 1 ELSE 0 END) as on_leave,
         SUM(CASE WHEN DATE(created_at) >= DATE_SUB(CURDATE(), INTERVAL 1 MONTH) THEN 1 ELSE 0 END) as new_this_month
       FROM users
       WHERE role = 'student'

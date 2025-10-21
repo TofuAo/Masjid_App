@@ -17,7 +17,7 @@ export const authenticateToken = async (req, res, next) => {
     
     // Verify user still exists and is active
     const [users] = await pool.execute(
-      'SELECT ic, full_name, email, role, is_active FROM users WHERE ic = ? AND is_active = 1',
+      'SELECT ic, nama, email, role, status FROM users WHERE ic = ? AND status = "aktif"',
       [decoded.userId]
     );
 
@@ -39,26 +39,26 @@ export const authenticateToken = async (req, res, next) => {
       user.classes = classes;
     } else if (user.role === 'student') {
       const [student] = await pool.execute(
-        'SELECT * FROM students WHERE ic = ?',
+        'SELECT * FROM students WHERE user_ic = ?', // Corrected to match schema
         [user.ic]
       );
       user.student = student[0];
 
       if (user.student) { // Only fetch if student profile exists
         const [attendance] = await pool.execute(
-          'SELECT * FROM attendance WHERE pelajar_ic = ?',
+          'SELECT * FROM attendance WHERE student_ic = ?',
           [user.ic]
         );
         user.attendance = attendance;
 
         const [fees] = await pool.execute(
-          'SELECT * FROM fees WHERE pelajar_ic = ?',
+          'SELECT * FROM fees WHERE student_ic = ?',
           [user.ic]
         );
         user.fees = fees;
 
         const [results] = await pool.execute(
-          'SELECT * FROM results WHERE pelajar_ic = ?',
+          'SELECT * FROM results WHERE student_ic = ?',
           [user.ic]
         );
         user.results = results;
