@@ -14,6 +14,7 @@ const Dashboard = () => {
   const [newStudentsCount, setNewStudentsCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [activityFeed, setActivityFeed] = useState([]); // Add this near other useState calls
 
   const fetchDashboardData = useCallback(async () => {
     setLoading(true);
@@ -138,7 +139,9 @@ const Dashboard = () => {
       setLoading(true);
       setError(null);
       try {
-        const resp = await fetch('/api/classes/dashboard/stats');
+        const resp = await fetch('/api/classes/dashboard/stats', {
+          credentials: 'include',
+        });
         const json = await resp.json();
         if (!json.success) throw new Error(json.message || 'Unknown error');
         const { attendanceToday, feesOutstanding, classesActive, newStudents } = json.data;
@@ -181,6 +184,25 @@ const Dashboard = () => {
     fetchStats();
   }, []);
 
+  useEffect(() => {
+    if (!loading && !error) {
+      // Synthesize activities from available live data, e.g. pelajar baru, kelas dimulakan, kehadiran, yuran
+      const activities = [];
+      if (mainStats && mainStats.length > 0) {
+        // Example: Just use stats to show summary as a mock, you can expand with real fetched logs/APIs later
+        activities.push({
+          id: 1,
+          type: 'stat',
+          message: mainStats[0]?.title + ': ' + mainStats[0]?.value,
+          time: 'Kini',
+          icon: <Users size={16} />,
+          badgeClass: 'badge-community'
+        });
+      }
+      setActivityFeed(activities);
+    }
+  }, [mainStats, loading, error]);
+
   if (loading) {
     return <div className="text-center py-8">Memuatkan papan pemuka...</div>;
   }
@@ -192,26 +214,15 @@ const Dashboard = () => {
   return (
     <div className="space-y-6">
       {/* Main Statistics */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {mainStats.map((stat, index) => (
-          <StatCard
-            key={index}
-            title={stat.title}
-            value={stat.value}
-            icon={stat.icon}
-            change={stat.change}
-            changeType={stat.changeType}
-          />
-        ))}
-      </div>
+      <QuickStats stats={mainStats} />
 
       {/* Quick Stats and Recent Activity */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2">
-          <QuickStats />
+          <QuickStats stats={mainStats} />
         </div>
         <div>
-          <RecentActivity />
+          <RecentActivity activities={activityFeed} />
         </div>
       </div>
 

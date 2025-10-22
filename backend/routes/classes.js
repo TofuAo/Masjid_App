@@ -13,6 +13,12 @@ import { authenticateToken, requireRole } from '../middleware/auth.js';
 
 const router = express.Router();
 
+// Public route: Dashboard stats only
+router.get('/dashboard/stats', getDashboardStats);
+
+// All routes below require authentication
+router.use(authenticateToken);
+
 // Validation rules
 const classValidation = [
   body('nama_kelas')
@@ -52,13 +58,9 @@ const idValidation = [
     .withMessage('ID must be a valid integer')
 ];
 
-// Apply authentication to all routes
-router.use(authenticateToken);
-
-// Routes
+// Protected routes
 router.get('/', getAllClasses);
 router.get('/stats', getClassStats);
-router.get('/dashboard/stats', getDashboardStats);
 router.get('/:id', idValidation, getClassById);
 router.post('/', requireRole(['admin', 'staff']), classValidation, createClass);
 router.put('/:id', requireRole(['admin', 'staff']), idValidation, classValidation, updateClass);

@@ -103,8 +103,7 @@ const LayoutContent = ({ children, user, onLogout }) => {
         {isOpen && (
           <div className="p-4 border-t border-emerald-600">
             <div className="text-xs text-emerald-200 text-center">
-              <p>© 2024 Masjid App</p>
-              <p>Versi 1.0.0</p>
+              <p>© 2025 Masjid Negeri Sultan Ahmad 1</p>
             </div>
           </div>
         )}
@@ -152,7 +151,7 @@ const LayoutContent = ({ children, user, onLogout }) => {
 
         {/* Page Content */}
         <main className="flex-1 overflow-auto p-4">
-          <div className="container mx-auto px-4 py-8">
+          <div className="max-w-screen-lg mx-auto p-4 bg-white/80 rounded-lg shadow-lg border border-white/30">
             {children}
           </div>
         </main>
