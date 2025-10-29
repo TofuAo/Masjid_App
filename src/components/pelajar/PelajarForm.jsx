@@ -8,10 +8,10 @@ const PelajarForm = ({ pelajar = null, onSubmit, onCancel }) => {
   const [formData, setFormData] = useState({
     nama: pelajar?.nama || '',
     ic: pelajar?.ic || '',
-    umur: pelajar?.umur || '',
+    umur: pelajar?.umur || 5,
     alamat: pelajar?.alamat || '',
     telefon: pelajar?.telefon || '',
-    kelas_id: pelajar?.kelas_id || '',
+    kelas_id: pelajar?.kelas_id || null,
     status: pelajar?.status || 'aktif',
     tarikh_daftar: pelajar?.tarikh_daftar || new Date().toISOString().split('T')[0],
     email: pelajar?.email || '',
@@ -29,14 +29,24 @@ const PelajarForm = ({ pelajar = null, onSubmit, onCancel }) => {
     setLoadingClasses(true);
     setErrorClasses(null);
     try {
-      const response = await classesAPI.getAll({ status: 'aktif' });
-      if (response.success) {
-        setClasses(response.data);
-      } else {
-        setErrorClasses(response.message || 'Failed to fetch classes');
+      // Check if user is authenticated
+      const token = localStorage.getItem('authToken');
+      if (!token) {
+        throw new Error('User not authenticated. Please log in.');
       }
+      
+      console.log('Fetching classes...');
+      const response = await classesAPI.getAll({ status: 'aktif' });
+      console.log('Classes response:', response);
+      const list = Array.isArray(response) ? response : (response?.data || []);
+      setClasses(list);
     } catch (err) {
-      setErrorClasses(err.message || 'Failed to fetch classes');
+      console.error('Error fetching classes:', err);
+      if (err.message.includes('not authenticated')) {
+        setErrorClasses('Sila log masuk terlebih dahulu.');
+      } else {
+        setErrorClasses(err.message || 'Failed to fetch classes');
+      }
     } finally {
       setLoadingClasses(false);
     }
@@ -46,12 +56,15 @@ const PelajarForm = ({ pelajar = null, onSubmit, onCancel }) => {
     const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
-      [name]: value
+      [name]: name === 'umur' ? parseInt(value) || 5 : 
+              name === 'kelas_id' ? (value === '' ? null : parseInt(value)) : 
+              value
     }));
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    console.log('Submitting student data:', formData);
     onSubmit(formData);
   };
 
@@ -81,6 +94,8 @@ const PelajarForm = ({ pelajar = null, onSubmit, onCancel }) => {
                 value={formData.nama}
                 onChange={handleChange}
                 required
+                minLength={2}
+                autoComplete="name"
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                 placeholder="Masukkan nama penuh"
               />
@@ -96,6 +111,8 @@ const PelajarForm = ({ pelajar = null, onSubmit, onCancel }) => {
                 value={formData.ic}
                 onChange={handleChange}
                 required
+                pattern="^\\d{6}-\\d{2}-\\d{4}$"
+                autoComplete="off"
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                 placeholder="Contoh: 123456-78-9012"
               />
@@ -128,6 +145,8 @@ const PelajarForm = ({ pelajar = null, onSubmit, onCancel }) => {
                 value={formData.telefon}
                 onChange={handleChange}
                 required
+                pattern="^01[0-9]-\\d{7,8}$"
+                autoComplete="tel"
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                 placeholder="Contoh: 012-3456789"
               />
@@ -143,6 +162,7 @@ const PelajarForm = ({ pelajar = null, onSubmit, onCancel }) => {
               value={formData.alamat}
               onChange={handleChange}
               required
+              minLength={10}
               rows="3"
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
               placeholder="Masukkan alamat penuh"
@@ -218,6 +238,7 @@ const PelajarForm = ({ pelajar = null, onSubmit, onCancel }) => {
                 value={formData.email}
                 onChange={handleChange}
                 required
+                autoComplete="email"
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                 placeholder="Masukkan email"
               />
@@ -233,6 +254,8 @@ const PelajarForm = ({ pelajar = null, onSubmit, onCancel }) => {
                 value={formData.password}
                 onChange={handleChange}
                 required
+                minLength={5}
+                autoComplete="new-password"
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                 placeholder="Masukkan password"
               />

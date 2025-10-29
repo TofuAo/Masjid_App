@@ -32,7 +32,8 @@ const Kelas = () => {
   const fetchGurus = useCallback(async () => {
     try {
       const teachersResponse = await teachersAPI.getAll();
-      setGurus(teachersResponse);
+      const teachers = Array.isArray(teachersResponse) ? teachersResponse : (teachersResponse.data || []);
+      setGurus(teachers);
     } catch (err) {
       console.error('Failed to fetch teachers:', err);
       toast.error('Gagal memuatkan data guru.');

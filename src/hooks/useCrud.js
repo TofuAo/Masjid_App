@@ -12,12 +12,25 @@ const useCrud = (api, itemName) => {
     setLoading(true);
     setError(null);
     try {
-      const data = await api.getAll(params);
-      setItems(data);
+      // Check if user is authenticated
+      const token = localStorage.getItem('authToken');
+      if (!token) {
+        throw new Error('User not authenticated. Please log in.');
+      }
+      
+      const response = await api.getAll(params);
+      console.log(`Fetched ${itemName}s:`, response);
+      // Handle both array responses and object responses with data property
+      const items = Array.isArray(response) ? response : (response.data || []);
+      setItems(items);
     } catch (err) {
       console.error(`Failed to fetch ${itemName}s:`, err);
       setError(err);
-      toast.error(`Gagal memuatkan data ${itemName}.`);
+      if (err.message.includes('not authenticated')) {
+        toast.error('Sila log masuk terlebih dahulu.');
+      } else {
+        toast.error(`Gagal memuatkan data ${itemName}.`);
+      }
     } finally {
       setLoading(false);
     }
@@ -68,7 +81,11 @@ const useCrud = (api, itemName) => {
       fetchItems(); // Refetch data after submission
     } catch (err) {
       console.error(`Failed to save ${itemName}:`, err);
-      toast.error(`Gagal menyimpan maklumat ${itemName}.`);
+      console.error('Full error object:', JSON.stringify(err, null, 2));
+      const details = Array.isArray(err?.errors)
+        ? err.errors.map(e => e.msg || e.message).join(', ')
+        : (err?.message || err);
+      toast.error(`Gagal menyimpan maklumat ${itemName}. ${details ? `Butiran: ${details}` : ''}`);
     }
   };
 

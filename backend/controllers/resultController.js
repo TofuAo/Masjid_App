@@ -33,10 +33,10 @@ export const getAllResults = async (req, res) => {
       queryParams.push(gred);
     }
     
-    // Add pagination
-    const offset = (page - 1) * limit;
-    query += ` ORDER BY r.created_at DESC LIMIT ? OFFSET ?`;
-    queryParams.push(parseInt(limit), offset);
+    // Add pagination (inline to avoid ER_WRONG_ARGUMENTS on LIMIT/OFFSET)
+    const safeLimit = Math.max(1, parseInt(limit));
+    const offset = (Math.max(1, parseInt(page)) - 1) * safeLimit;
+    query += ` ORDER BY r.created_at DESC LIMIT ${safeLimit} OFFSET ${offset}`;
     
     const [results] = await pool.execute(query, queryParams);
     

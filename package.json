@@ -6,14 +6,17 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "build:prod": "NODE_ENV=production vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "start": "vite preview --port 3000 --host 0.0.0.0"
   },
   "dependencies": {
     "@tailwindcss/forms": "^0.5.10",
     "axios": "^1.12.2",
     "lucide-react": "^0.544.0",
     "node-cache": "^5.1.2",
+    "node-fetch": "^3.3.2",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
     "react-router-dom": "^7.9.1",

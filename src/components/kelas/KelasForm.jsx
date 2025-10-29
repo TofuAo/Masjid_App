@@ -7,7 +7,7 @@ const SESSION_TIMES_OPTIONS = ["05:00 - 06:30", "21:00 - 22:30"];
 
 const KelasForm = ({ kelas = null, onSubmit, onCancel, gurus = [] }) => {
   const [formData, setFormData] = useState({
-    nama_kelas: '', level: '', sessions: [], yuran: '', guru_ic: '', kapasiti: '', status: 'aktif'
+    nama_kelas: '', level: '', sessions: [{ days: [], times: [] }], yuran: 0, guru_ic: '', kapasiti: 1, status: 'aktif'
   });
 
   useEffect(() => {
@@ -15,10 +15,10 @@ const KelasForm = ({ kelas = null, onSubmit, onCancel, gurus = [] }) => {
       setFormData({
         nama_kelas: kelas.nama_kelas || '',
         level: kelas.level || '',
-        sessions: kelas.sessions || [],
-        yuran: kelas.yuran || '',
+        sessions: kelas.sessions || [{ days: [], times: [] }],
+        yuran: parseFloat(kelas.yuran) || 0,
         guru_ic: kelas.guru_ic || '',
-        kapasiti: kelas.kapasiti || '',
+        kapasiti: parseInt(kelas.kapasiti) || 1,
         status: kelas.status || 'aktif'
       });
     }
@@ -26,7 +26,12 @@ const KelasForm = ({ kelas = null, onSubmit, onCancel, gurus = [] }) => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    setFormData(prev => ({ 
+      ...prev, 
+      [name]: name === 'yuran' ? parseFloat(value) || 0 : 
+              name === 'kapasiti' ? parseInt(value) || 1 : 
+              value 
+    }));
   };
 
   const handleAddSession = () => {
@@ -52,6 +57,24 @@ const KelasForm = ({ kelas = null, onSubmit, onCancel, gurus = [] }) => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    console.log('Submitting class data:', formData);
+    console.log('Sessions validation:', {
+      sessionsLength: formData.sessions.length,
+      sessionsValid: formData.sessions.every(s => s.days.length > 0 && s.times.length > 0)
+    });
+    
+    // Client-side validation
+    if (formData.sessions.length === 0) {
+      alert('Sila tambah sekurang-kurangnya satu sesi.');
+      return;
+    }
+    
+    const invalidSessions = formData.sessions.filter(s => s.days.length === 0 || s.times.length === 0);
+    if (invalidSessions.length > 0) {
+      alert('Sila pastikan setiap sesi mempunyai sekurang-kurangnya satu hari dan satu masa.');
+      return;
+    }
+    
     onSubmit(formData);
   };
 

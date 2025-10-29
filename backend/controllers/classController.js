@@ -31,10 +31,10 @@ export const getAllClasses = async (req, res) => {
       queryParams.push(guru_id);
     }
     
-    // Add pagination
-    const offset = (page - 1) * limit;
-    query += ` GROUP BY c.id ORDER BY c.created_at DESC LIMIT ? OFFSET ?`;
-    queryParams.push(parseInt(limit), offset);
+    // Add pagination (inline to avoid ER_WRONG_ARGUMENTS on LIMIT/OFFSET)
+    const safeLimit = Math.max(1, parseInt(limit));
+    const offset = (Math.max(1, parseInt(page)) - 1) * safeLimit;
+    query += ` GROUP BY c.id ORDER BY c.created_at DESC LIMIT ${safeLimit} OFFSET ${offset}`;
     
     const [classes] = await pool.execute(query, queryParams);
 
@@ -138,8 +138,10 @@ export const getClassById = async (req, res) => {
 
 export const createClass = async (req, res) => {
   try {
+    console.log('Creating class with data:', req.body);
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
+      console.log('Validation errors:', errors.array());
       return res.status(400).json({
         success: false,
         message: 'Validation failed',

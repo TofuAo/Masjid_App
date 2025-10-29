@@ -28,11 +28,11 @@ const Dashboard = () => {
         examsAPI.getAll(),
       ]);
 
-      const students = studentsResponse.data || [];
-      const teachers = teachersResponse.data || [];
-      const classes = classesResponse.data || [];
-      const fees = feesResponse.data || [];
-      const exams = examsResponse.data || [];
+      const students = Array.isArray(studentsResponse) ? studentsResponse : (studentsResponse.data || []);
+      const teachers = Array.isArray(teachersResponse) ? teachersResponse : (teachersResponse.data || []);
+      const classes = Array.isArray(classesResponse) ? classesResponse : (classesResponse.data || []);
+      const fees = Array.isArray(feesResponse) ? feesResponse : (feesResponse.data || []);
+      const exams = Array.isArray(examsResponse) ? examsResponse : (examsResponse.data || []);
 
       // Main Stats
       const totalActiveStudents = students.filter(s => s.status === 'aktif').length;
@@ -139,7 +139,8 @@ const Dashboard = () => {
       setLoading(true);
       setError(null);
       try {
-        const resp = await fetch('/api/classes/dashboard/stats', {
+        const apiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
+        const resp = await fetch(`${apiBase}/classes/dashboard/stats`, {
           credentials: 'include',
         });
         const json = await resp.json();
@@ -216,115 +217,112 @@ const Dashboard = () => {
       {/* Main Statistics */}
       <QuickStats stats={mainStats} />
 
-      {/* Quick Stats and Recent Activity */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2">
-          <QuickStats stats={mainStats} />
-        </div>
-        <div>
-          <RecentActivity activities={activityFeed} />
-        </div>
+      {/* Recent Activity - full width */}
+      <div>
+        <RecentActivity activities={activityFeed} />
       </div>
 
-      {/* Today's Schedule */}
-      <div className="bg-white/80 backdrop-blur-sm border border-white/20 rounded-xl shadow-lg p-6">
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-xl font-bold text-gray-900 flex items-center">
-            <Calendar className="w-5 h-5 mr-2 text-emerald-600" />
-            Jadual Hari Ini
-          </h2>
-          <span className="text-sm text-gray-600">
-            {new Date().toLocaleDateString('ms-MY', { 
-              weekday: 'long', 
-              day: 'numeric', 
-              month: 'long' 
-            })}
-          </span>
-        </div>
-        
-        <div className="space-y-4">
-          {todaySchedule.length > 0 ? (
-            todaySchedule.map((schedule, index) => (
-              <div key={index} className="flex items-center justify-between p-4 bg-white/50 rounded-lg border border-white/20">
-                <div className="flex items-center space-x-4">
-                  <div className="w-12 h-12 bg-emerald-100 rounded-lg flex items-center justify-center">
-                    <span className="text-emerald-700 font-bold text-sm">{schedule.time}</span>
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-gray-900">{schedule.class}</h3>
-                    <p className="text-sm text-gray-600">{schedule.teacher}</p>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <p className="text-sm font-medium text-gray-900">{schedule.students} pelajar</p>
-                  <div className="flex items-center mt-1">
-                    <div className={`w-2 h-2 ${schedule.isUpcoming ? 'bg-blue-500' : 'bg-emerald-500'} rounded-full mr-2`}></div>
-                    <span className="text-xs text-gray-600">{schedule.isUpcoming ? 'Akan Datang' : 'Aktif'}</span>
-                  </div>
-                </div>
-              </div>
-            ))
-          ) : (
-            <div className="text-center py-4 text-gray-500">Tiada jadual kelas untuk hari ini.</div>
-          )}
-        </div>
-      </div>
-
-      {/* Alerts and Notifications */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      {/* Two-column grid for:  left: Schedule, right: Alerts/Tasks */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Today's Schedule (left column) */}
         <div className="bg-white/80 backdrop-blur-sm border border-white/20 rounded-xl shadow-lg p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-            <AlertCircle className="w-5 h-5 mr-2 text-amber-600" />
-            Notis Penting
-          </h3>
-          <div className="space-y-3">
-            {outstandingFeesCount > 0 && (
-              <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
-                <p className="text-sm text-amber-800">
-                  <strong>Peringatan:</strong> {outstandingFeesCount} pelajar belum membayar yuran bulan ini
-                </p>
-              </div>
-            )}
-            {upcomingExamsCount > 0 && (
-              <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                <p className="text-sm text-blue-800">
-                  <strong>Makluman:</strong> {upcomingExamsCount} peperiksaan akan datang
-                </p>
-              </div>
-            )}
-            {newStudentsCount > 0 && (
-              <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-lg">
-                <p className="text-sm text-emerald-800">
-                  <strong>Berita Baik:</strong> {newStudentsCount} pelajar baru mendaftar bulan ini
-                </p>
-              </div>
-            )}
-            {outstandingFeesCount === 0 && upcomingExamsCount === 0 && newStudentsCount === 0 && (
-              <div className="p-3 bg-gray-50 border border-gray-200 rounded-lg">
-                <p className="text-sm text-gray-700">Tiada notis penting buat masa ini.</p>
-              </div>
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-xl font-bold text-gray-900 flex items-center">
+              <Calendar className="w-5 h-5 mr-2 text-emerald-600" />
+              Jadual Hari Ini
+            </h2>
+            <span className="text-sm text-gray-600">
+              {new Date().toLocaleDateString('ms-MY', { 
+                weekday: 'long', 
+                day: 'numeric', 
+                month: 'long' 
+              })}
+            </span>
+          </div>
+          <div className="space-y-4">
+            {todaySchedule.length > 0 ? (
+              todaySchedule.map((schedule, index) => (
+                <div key={index} className="flex items-center justify-between p-4 bg-white/50 rounded-lg border border-white/20">
+                  <div className="flex items-center space-x-4">
+                    <div className="w-12 h-12 bg-emerald-100 rounded-lg flex items-center justify-center">
+                      <span className="text-emerald-700 font-bold text-sm">{schedule.time}</span>
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-gray-900">{schedule.class}</h3>
+                      <p className="text-sm text-gray-600">{schedule.teacher}</p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm font-medium text-gray-900">{schedule.students} pelajar</p>
+                    <div className="flex items-center mt-1">
+                      <div className={`w-2 h-2 ${schedule.isUpcoming ? 'bg-blue-500' : 'bg-emerald-500'} rounded-full mr-2`}></div>
+                      <span className="text-xs text-gray-600">{schedule.isUpcoming ? 'Akan Datang' : 'Aktif'}</span>
+                    </div>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="text-center py-4 text-gray-500">Tiada jadual kelas untuk hari ini.</div>
             )}
           </div>
         </div>
 
-        <div className="bg-white/80 backdrop-blur-sm border border-white/20 rounded-xl shadow-lg p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Tugas Hari Ini</h3>
-          <div className="space-y-3">
-            <div className="flex items-center space-x-3">
-              <input type="checkbox" className="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500" />
-              <span className="text-sm text-gray-700">Semak kehadiran kelas pagi</span>
+        {/* Alerts and Tasks (right column) */}
+        <div className="space-y-6">
+          <div className="bg-white/80 backdrop-blur-sm border border-white/20 rounded-xl shadow-lg p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+              <AlertCircle className="w-5 h-5 mr-2 text-amber-600" />
+              Notis Penting
+            </h3>
+            <div className="space-y-3">
+              {outstandingFeesCount > 0 && (
+                <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                  <p className="text-sm text-amber-800">
+                    <strong>Peringatan:</strong> {outstandingFeesCount} pelajar belum membayar yuran bulan ini
+                  </p>
+                </div>
+              )}
+              {upcomingExamsCount > 0 && (
+                <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                  <p className="text-sm text-blue-800">
+                    <strong>Makluman:</strong> {upcomingExamsCount} peperiksaan akan datang
+                  </p>
+                </div>
+              )}
+              {newStudentsCount > 0 && (
+                <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-lg">
+                  <p className="text-sm text-emerald-800">
+                    <strong>Berita Baik:</strong> {newStudentsCount} pelajar baru mendaftar bulan ini
+                  </p>
+                </div>
+              )}
+              {outstandingFeesCount === 0 && upcomingExamsCount === 0 && newStudentsCount === 0 && (
+                <div className="p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                  <p className="text-sm text-gray-700">Tiada notis penting buat masa ini.</p>
+                </div>
+              )}
             </div>
-            <div className="flex items-center space-x-3">
-              <input type="checkbox" className="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500" />
-              <span className="text-sm text-gray-700">Kemas kini rekod yuran</span>
-            </div>
-            <div className="flex items-center space-x-3">
-              <input type="checkbox" className="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500" />
-              <span className="text-sm text-gray-700">Sediakan bahan untuk kelas petang</span>
-            </div>
-            <div className="flex items-center space-x-3">
-              <input type="checkbox" className="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500" />
-              <span className="text-sm text-gray-700">Hubungi ibu bapa pelajar yang tidak hadir</span>
+          </div>
+
+          <div className="bg-white/80 backdrop-blur-sm border border-white/20 rounded-xl shadow-lg p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Tugas Hari Ini</h3>
+            <div className="space-y-3">
+              <div className="flex items-center space-x-3">
+                <input type="checkbox" className="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500" />
+                <span className="text-sm text-gray-700">Semak kehadiran kelas pagi</span>
+              </div>
+              <div className="flex items-center space-x-3">
+                <input type="checkbox" className="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500" />
+                <span className="text-sm text-gray-700">Kemas kini rekod yuran</span>
+              </div>
+              <div className="flex items-center space-x-3">
+                <input type="checkbox" className="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500" />
+                <span className="text-sm text-gray-700">Sediakan bahan untuk kelas petang</span>
+              </div>
+              <div className="flex items-center space-x-3">
+                <input type="checkbox" className="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500" />
+                <span className="text-sm text-gray-700">Hubungi ibu bapa pelajar yang tidak hadir</span>
+              </div>
             </div>
           </div>
         </div>

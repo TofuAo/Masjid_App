@@ -12,9 +12,9 @@ export const getAllExams = async (req, res) => {
       queryParams.push(`%${search}%`);
     }
 
-    const offset = (page - 1) * limit;
-    query += ` ORDER BY e.created_at DESC LIMIT ? OFFSET ?`;
-    queryParams.push(parseInt(limit), offset);
+    const safeLimit = Math.max(1, parseInt(limit));
+    const offset = (Math.max(1, parseInt(page)) - 1) * safeLimit;
+    query += ` ORDER BY e.created_at DESC LIMIT ${safeLimit} OFFSET ${offset}`;
 
     const [exams] = await pool.execute(query, queryParams);
 

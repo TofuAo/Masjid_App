@@ -30,10 +30,10 @@ export const getAttendance = async (req, res) => {
       queryParams.push(pelajar_id);
     }
 
-    // Add pagination
-    const offset = (page - 1) * limit;
-    query += ` ORDER BY a.tarikh DESC, u.nama ASC LIMIT ? OFFSET ?`;
-    queryParams.push(parseInt(limit), offset);
+    // Add pagination (inline to avoid ER_WRONG_ARGUMENTS on LIMIT/OFFSET)
+    const safeLimit = Math.max(1, parseInt(limit));
+    const offset = (Math.max(1, parseInt(page)) - 1) * safeLimit;
+    query += ` ORDER BY a.tarikh DESC, u.nama ASC LIMIT ${safeLimit} OFFSET ${offset}`;
 
     const [attendance] = await pool.execute(query, queryParams);
 

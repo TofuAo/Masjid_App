@@ -2,7 +2,7 @@ import React from 'react';
 
 const Card = ({ children, className = '', ...props }) => {
   return (
-    <div className={`glass-card p-6 ${className}`} {...props}>
+    <div className={`glass-card p-6 overflow-hidden ${className}`} {...props}>
       {children}
     </div>
   );
@@ -26,7 +26,7 @@ const CardTitle = ({ children, className = '' }) => {
 
 const CardContent = ({ children, className = '' }) => {
   return (
-    <div className={className}>
+    <div className={`overflow-x-auto ${className}`}>
       {children}
     </div>
   );

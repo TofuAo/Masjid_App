@@ -2,7 +2,7 @@ import axios from 'axios';
 
 // Create axios instance with base configuration
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || "http://localhost:5001/api",
+  baseURL: import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api",
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
@@ -13,6 +13,8 @@ const api = axios.create({
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('authToken');
+    console.log('API Request:', config.url, 'Token:', token ? 'Present' : 'Missing');
+    console.log('Token value:', token);
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -26,9 +28,11 @@ api.interceptors.request.use(
 // Response interceptor to handle errors
 api.interceptors.response.use(
   (response) => {
+    console.log('API Response:', response.config.url, 'Status:', response.status, 'Data:', response.data);
     return response.data;
   },
   (error) => {
+    console.error('API Error:', error.config?.url, 'Status:', error.response?.status, 'Message:', error.message);
     if (error.response?.status === 401) {
       // Token expired or invalid
       localStorage.removeItem('authToken');

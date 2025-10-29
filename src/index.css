@@ -58,65 +58,19 @@
   .dark {
     --background: 158 50% 5%;
     --foreground: 0 0% 98%;
-
-    --card: 158 50% 7%;
-    --card-foreground: 0 0% 98%;
-
-    --popover: 158 50% 7%;
-    --popover-foreground: 0 0% 98%;
-
-    --primary: 158 54% 65%;
-    --primary-foreground: 158 84% 16%;
-
-    --secondary: 158 30% 15%;
-    --secondary-foreground: 0 0% 98%;
-
-    --muted: 158 30% 15%;
-    --muted-foreground: 158 10% 65%;
-
-    --accent: 48 96% 53%;
-    --accent-foreground: 48 100% 10%;
-
-    --destructive: 0 62% 30%;
-    --destructive-foreground: 0 0% 98%;
-
-    --border: 158 30% 20%;
-    --input: 158 30% 20%;
-    --ring: 158 54% 65%;
-  }
-}
-
-@layer base {
-  * {
-    @apply border-border;
-  }
-  
-  body {
-    @apply bg-background text-foreground;
-    font-feature-settings: "rlig" 1, "calt" 1;
-    font-synthesis: none;
-    text-rendering: optimizeLegibility;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
   }
 
-  /* Smooth scrolling */
-  html {
-    scroll-behavior: smooth;
-  }
-
-  /* Custom scrollbar */
+  /* Scrollbar styles */
   ::-webkit-scrollbar {
-    width: 10px;
-    height: 10px;
+    @apply w-2 h-2;
   }
 
   ::-webkit-scrollbar-track {
-    @apply bg-mosque-neutral-100;
+    @apply bg-emerald-50 rounded-full;
   }
 
   ::-webkit-scrollbar-thumb {
-    @apply bg-mosque-primary-600 rounded-lg;
+    @apply bg-emerald-300 rounded-full;
   }
 
   ::-webkit-scrollbar-thumb:hover {
@@ -137,6 +91,11 @@
   /* Card Styles */
   .mosque-card {
     @apply bg-white border border-mosque-primary-100 rounded-xl shadow-mosque hover:shadow-mosque-lg transition-all duration-300;
+  }
+
+  /* Alias used by Card component; ensure overflow is contained */
+  .glass-card {
+    @apply mosque-card overflow-hidden;
   }
 
   .mosque-card-hover {
@@ -308,6 +267,11 @@
     text-wrap: balance;
   }
 
+  /* Keep flex children from overflowing */
+  .min-w-0 {
+    min-width: 0;
+  }
+
   /* Glass Morphism */
   .glass {
     @apply bg-white/80 backdrop-blur-sm border border-white/20;
@@ -324,6 +288,19 @@
 
   .text-gradient-gold {
     @apply bg-clip-text text-transparent bg-gradient-to-r from-mosque-accent-400 to-mosque-accent-600;
+  }
+
+  /* Media fluid inside containers */
+  .media-fluid img, .media-fluid video, .media-fluid canvas {
+    max-width: 100%;
+    height: auto;
+    display: block;
+  }
+
+  /* Wrap long words/URLs */
+  .break-words {
+    overflow-wrap: anywhere;
+    word-break: break-word;
   }
 
   /* Overlay */

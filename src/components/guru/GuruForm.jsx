@@ -38,6 +38,18 @@ const GuruForm = ({ guru = null, onSubmit, onCancel }) => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    console.log('Submitting teacher data:', formData);
+    console.log('Kepakaran validation:', {
+      kepakaranLength: formData.kepakaran.length,
+      kepakaranValid: formData.kepakaran.length > 0
+    });
+    
+    // Client-side validation
+    if (formData.kepakaran.length === 0) {
+      alert('Sila pilih sekurang-kurangnya satu kepakaran.');
+      return;
+    }
+    
     onSubmit(formData);
   };
 
@@ -71,6 +83,8 @@ const GuruForm = ({ guru = null, onSubmit, onCancel }) => {
                 value={formData.ic}
                 onChange={handleChange}
                 required
+                pattern="^\\d{6}-\\d{2}-\\d{4}$"
+                autoComplete="off"
                 className="input-mosque w-full"
                 placeholder="Contoh: 123456-78-9012"
               />
@@ -83,6 +97,8 @@ const GuruForm = ({ guru = null, onSubmit, onCancel }) => {
                 value={formData.telefon}
                 onChange={handleChange}
                 required
+                pattern="^01[0-9]-\\d{7,8}$"
+                autoComplete="tel"
                 className="input-mosque w-full"
                 placeholder="Contoh: 012-3456789"
               />
@@ -141,6 +157,7 @@ const GuruForm = ({ guru = null, onSubmit, onCancel }) => {
                 value={formData.email}
                 onChange={handleChange}
                 required
+                autoComplete="email"
                 className="input-mosque w-full"
                 placeholder="Masukkan email"
               />
@@ -153,6 +170,8 @@ const GuruForm = ({ guru = null, onSubmit, onCancel }) => {
                 value={formData.password}
                 onChange={handleChange}
                 required
+                minLength={5}
+                autoComplete="new-password"
                 className="input-mosque w-full"
                 placeholder="Masukkan password"
               />

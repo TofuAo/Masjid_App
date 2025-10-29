@@ -13,6 +13,7 @@ const Laporan = () => {
     start: '2024-01-01', // Default to start of year
     end: new Date().toISOString().split('T')[0] // Default to current date
   });
+  const [format, setFormat] = useState('csv'); // xlsx | csv | json (csv works without deps)
 
   const { items: students, loading: loadingStudents, error: errorStudents, fetchItems: fetchStudents } = useCrud(studentsAPI, 'pelajar');
   const { items: teachers, loading: loadingTeachers, error: errorTeachers, fetchItems: fetchTeachers } = useCrud(teachersAPI, 'guru');
@@ -98,9 +99,105 @@ const Laporan = () => {
 
   const reportData = getReportData();
 
-  const generateReport = () => {
-    // In a real app, this would generate and download a PDF/Excel report
-    alert(`Laporan ${selectedReport} untuk tempoh ${dateRange.start} hingga ${dateRange.end} sedang dijana...`);
+  const buildRows = () => {
+    // Flatten report data into rows based on selected report
+    switch (selectedReport) {
+      case 'pelajars': {
+        const arr = Array.isArray(students) ? students : [];
+        return arr.map(s => ({
+          IC: s.ic,
+          Nama: s.nama,
+          Telefon: s.telefon,
+          Status: s.status,
+          Kelas: s.kelas_nama || s.nama_kelas || '',
+          Tarikh_Daftar: s.tarikh_daftar || ''
+        }));
+      }
+      case 'yuran': {
+        const arr = Array.isArray(fees) ? fees : [];
+        return arr.map(f => ({
+          Pelajar: f.pelajar_nama || f.nama,
+          Bulan: f.bulan || '',
+          Tahun: f.tahun || '',
+          Jumlah: f.jumlah,
+          Status: f.status,
+          Tarikh_Bayar: f.tarikh_bayar || ''
+        }));
+      }
+      case 'kehadiran': {
+        const arr = Array.isArray(attendance) ? attendance : [];
+        return arr.map(a => ({
+          Pelajar: a.pelajar_nama || a.nama,
+          Kelas: a.kelas_nama || a.nama_kelas || '',
+          Tarikh: a.tarikh || '',
+          Status: a.status
+        }));
+      }
+      case 'overview':
+      default: {
+        const r = reportData.overview || {};
+        return [
+          { Metrik: 'Jumlah Pelajar', Nilai: r.totalPelajars || 0 },
+          { Metrik: 'Jumlah Guru', Nilai: r.totalGurus || 0 },
+          { Metrik: 'Jumlah Kelas', Nilai: r.totalKelass || 0 },
+          { Metrik: 'Kutipan Terkini', Nilai: r.feesCollected || 0 },
+        ];
+      }
+    }
+  };
+
+  const generateReport = async () => {
+    try {
+      const rows = buildRows();
+      if (!rows || rows.length === 0) {
+        toast.error('Tiada data untuk dijana.');
+        return;
+      }
+      const filenameBase = `laporan_${selectedReport}_${dateRange.start}_${dateRange.end}`;
+
+      if (format === 'xlsx') {
+        try {
+          const XLSX = await import('xlsx');
+          const wb = XLSX.utils.book_new();
+          const ws = XLSX.utils.json_to_sheet(rows);
+          XLSX.utils.book_append_sheet(wb, ws, 'Laporan');
+          XLSX.writeFile(wb, `${filenameBase}.xlsx`);
+          return;
+        } catch (e) {
+          console.warn('xlsx not available, falling back to CSV:', e);
+          // fall through to CSV
+        }
+      }
+
+      if (format === 'csv') {
+        const header = Object.keys(rows[0]);
+        const csv = [header.join(',')].concat(rows.map(r => header.map(h => `${String(r[h] ?? '').replace(/"/g, '""')}`).join(','))).join('\n');
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${filenameBase}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        return;
+      }
+
+      // Default fallback: JSON
+      const blob = new Blob([JSON.stringify(rows, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${filenameBase}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Generate report error:', err);
+      toast.error('Gagal menjana laporan.');
+    }
   };
 
   const renderOverviewReport = () => (
@@ -456,7 +553,7 @@ const Laporan = () => {
           </Card.Title>
         </Card.Header>
         <Card.Content>
-          <div className="flex flex-col sm:flex-row gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="flex-1">
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Jenis Laporan
@@ -494,8 +591,18 @@ const Laporan = () => {
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
               />
             </div>
-            <div className="flex items-end">
-              <Button onClick={generateReport} className="flex items-center">
+            <div className="flex items-end space-x-2 sm:space-x-2">
+              <select
+                value={format}
+                onChange={(e) => setFormat(e.target.value)}
+                className="w-full sm:w-auto px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                title="Pilih format fail"
+              >
+                <option value="xlsx">Excel (.xlsx)</option>
+                <option value="csv">CSV (.csv)</option>
+                <option value="json">JSON (.json)</option>
+              </select>
+              <Button onClick={generateReport} className="flex items-center w-full sm:w-auto">
                 <Download className="w-4 h-4 mr-2" />
                 Jana Laporan
               </Button>

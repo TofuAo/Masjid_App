@@ -41,10 +41,10 @@ export const getAllStudents = async (req, res) => {
       queryParams.push(kelas_id);
     }
 
-    // Add pagination
-    const offset = (page - 1) * limit;
-    query += ` ORDER BY u.created_at DESC LIMIT ? OFFSET ?`;
-    queryParams.push(parseInt(limit), offset);
+    // Add pagination (inline to avoid ER_WRONG_ARGUMENTS on LIMIT/OFFSET)
+    const safeLimit = Math.max(1, parseInt(limit));
+    const offset = (Math.max(1, parseInt(page)) - 1) * safeLimit;
+    query += ` ORDER BY u.created_at DESC LIMIT ${safeLimit} OFFSET ${offset}`;
 
     const [students] = await pool.execute(query, queryParams);
 
@@ -146,12 +146,18 @@ export const getStudentById = async (req, res) => {
 
 export const createStudent = async (req, res) => {
   try {
+    console.log('Creating student with data:', req.body);
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
+      const errs = errors.array();
+      console.log('Validation errors:', errs);
+      // Surface the first error clearly in message for clients
+      const first = errs[0] || {};
+      const friendly = first.msg ? `${first.param ? `${first.param}: ` : ''}${first.msg}` : 'Validation failed';
       return res.status(400).json({
         success: false,
-        message: 'Validation failed',
-        errors: errors.array()
+        message: friendly,
+        errors: errs
       });
     }
 

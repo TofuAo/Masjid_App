@@ -26,10 +26,10 @@ export const getAllTeachers = async (req, res) => {
       queryParams.push(status);
     }
     
-    // Add pagination
-    const offset = (page - 1) * limit;
-    query += ` GROUP BY u.ic ORDER BY u.created_at DESC LIMIT ? OFFSET ?`;
-    queryParams.push(parseInt(limit), offset);
+    // Add pagination (inline to avoid ER_WRONG_ARGUMENTS on LIMIT/OFFSET)
+    const safeLimit = Math.max(1, parseInt(limit));
+    const offset = (Math.max(1, parseInt(page)) - 1) * safeLimit;
+    query += ` GROUP BY u.ic ORDER BY u.created_at DESC LIMIT ${safeLimit} OFFSET ${offset}`;
     
     const [teachers] = await pool.execute(query, queryParams);
     
@@ -119,8 +119,10 @@ export const getTeacherById = async (req, res) => {
 
 export const createTeacher = async (req, res) => {
   try {
+    console.log('Creating teacher with data:', req.body);
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
+      console.log('Validation errors:', errors.array());
       return res.status(400).json({
         success: false,
         message: 'Validation failed',
