@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, X } from 'lucide-react';
+import BackButton from '../ui/BackButton';
 
 const LEVEL_OPTIONS = ["Asas", "Tahsin Asas", "Pertengahan", "Lanjutan", "Tahsin Lanjutan", "Talaqi"];
 const SESSION_DAYS_OPTIONS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
@@ -9,6 +10,7 @@ const KelasForm = ({ kelas = null, onSubmit, onCancel, gurus = [] }) => {
   const [formData, setFormData] = useState({
     nama_kelas: '', level: '', sessions: [{ days: [], times: [] }], yuran: 0, guru_ic: '', kapasiti: 1, status: 'aktif'
   });
+  const [validationErrors, setValidationErrors] = useState({});
 
   useEffect(() => {
     if (kelas) {
@@ -32,6 +34,14 @@ const KelasForm = ({ kelas = null, onSubmit, onCancel, gurus = [] }) => {
               name === 'kapasiti' ? parseInt(value) || 1 : 
               value 
     }));
+    // Clear validation error for this field when user types
+    if (validationErrors[name]) {
+      setValidationErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors[name];
+        return newErrors;
+      });
+    }
   };
 
   const handleAddSession = () => {
@@ -58,23 +68,59 @@ const KelasForm = ({ kelas = null, onSubmit, onCancel, gurus = [] }) => {
   const handleSubmit = (e) => {
     e.preventDefault();
     console.log('Submitting class data:', formData);
-    console.log('Sessions validation:', {
-      sessionsLength: formData.sessions.length,
-      sessionsValid: formData.sessions.every(s => s.days.length > 0 && s.times.length > 0)
-    });
     
-    // Client-side validation
+    // Client-side validation - check all required fields
+    const errors = [];
+    
+    if (!formData.nama_kelas || formData.nama_kelas.trim() === '') {
+      errors.push('Nama Kelas diperlukan');
+    }
+    
+    if (!formData.level || formData.level === '') {
+      errors.push('Level diperlukan. Sila pilih level.');
+    }
+    
+    if (!formData.guru_ic || formData.guru_ic === '') {
+      errors.push('Guru diperlukan. Sila pilih guru.');
+    }
+    
     if (formData.sessions.length === 0) {
-      alert('Sila tambah sekurang-kurangnya satu sesi.');
-      return;
+      errors.push('Sila tambah sekurang-kurangnya satu sesi.');
     }
     
     const invalidSessions = formData.sessions.filter(s => s.days.length === 0 || s.times.length === 0);
     if (invalidSessions.length > 0) {
-      alert('Sila pastikan setiap sesi mempunyai sekurang-kurangnya satu hari dan satu masa.');
+      errors.push('Sila pastikan setiap sesi mempunyai sekurang-kurangnya satu hari dan satu masa.');
+    }
+    
+    if (errors.length > 0) {
+      // Set validation errors for display
+      const errorObj = {};
+      if (!formData.nama_kelas || formData.nama_kelas.trim() === '') {
+        errorObj.nama_kelas = 'Nama Kelas diperlukan';
+      }
+      if (!formData.level || formData.level === '') {
+        errorObj.level = 'Level diperlukan';
+      }
+      if (!formData.guru_ic || formData.guru_ic === '') {
+        errorObj.guru_ic = 'Guru diperlukan';
+      }
+      if (formData.sessions.length === 0) {
+        errorObj.sessions = 'Sekurang-kurangnya satu sesi diperlukan';
+      } else {
+        const invalidSessions = formData.sessions.filter(s => s.days.length === 0 || s.times.length === 0);
+        if (invalidSessions.length > 0) {
+          errorObj.sessions = 'Setiap sesi mesti mempunyai hari dan masa';
+        }
+      }
+      setValidationErrors(errorObj);
+      alert('Sila semak maklumat berikut:\n\n' + errors.join('\n'));
       return;
     }
     
+    // Clear validation errors if validation passes
+    setValidationErrors({});
+    console.log('Form validation passed. Submitting...');
     onSubmit(formData);
   };
 
@@ -87,16 +133,20 @@ const KelasForm = ({ kelas = null, onSubmit, onCancel, gurus = [] }) => {
   return (
     <div className="mosque-card">
       <div className="p-6 border-b border-mosque-primary-100">
-        <h3 className="text-xl font-bold text-mosque-primary-800">
-          {kelas ? 'Kemaskini Maklumat Kelas' : 'Tambah Kelas Baru'}
-        </h3>
+        <div className="flex items-center space-x-3">
+          <BackButton onClick={onCancel} />
+          <h3 className="text-xl font-bold text-mosque-primary-800">
+            {kelas ? 'Kemaskini Maklumat Kelas' : 'Tambah Kelas Baru'}
+          </h3>
+        </div>
       </div>
       <form onSubmit={handleSubmit}>
         <div className="p-6 space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <label className="form-label">Nama Kelas *</label>
-              <input type="text" name="nama_kelas" value={formData.nama_kelas} onChange={handleChange} required className="input-mosque w-full" placeholder="Masukkan nama kelas" />
+              <input type="text" name="nama_kelas" value={formData.nama_kelas} onChange={handleChange} required className={`input-mosque w-full ${validationErrors.nama_kelas ? 'border-red-500' : ''}`} placeholder="Masukkan nama kelas" />
+              {validationErrors.nama_kelas && <p className="text-red-500 text-xs mt-1">{validationErrors.nama_kelas}</p>}
             </div>
             <div>
               <label className="form-label">Yuran (RM) *</label>
@@ -108,10 +158,11 @@ const KelasForm = ({ kelas = null, onSubmit, onCancel, gurus = [] }) => {
             </div>
             <div>
               <label className="form-label">Guru *</label>
-              <select name="guru_ic" value={formData.guru_ic} onChange={handleChange} required className="input-mosque w-full">
+              <select name="guru_ic" value={formData.guru_ic} onChange={handleChange} required className={`input-mosque w-full ${validationErrors.guru_ic ? 'border-red-500' : ''}`}>
                 <option value="">Pilih Guru</option>
                 {gurus.filter(g => g.status === 'aktif').map(g => <option key={g.ic} value={g.ic}>{g.nama}</option>)}
               </select>
+              {validationErrors.guru_ic && <p className="text-red-500 text-xs mt-1">{validationErrors.guru_ic}</p>}
             </div>
             <div>
               <label className="form-label">Status *</label>
@@ -121,10 +172,11 @@ const KelasForm = ({ kelas = null, onSubmit, onCancel, gurus = [] }) => {
             </div>
             <div>
               <label className="form-label">Level *</label>
-              <select name="level" value={formData.level} onChange={handleChange} required className="input-mosque w-full">
+              <select name="level" value={formData.level} onChange={handleChange} required className={`input-mosque w-full ${validationErrors.level ? 'border-red-500' : ''}`}>
                 <option value="">Pilih Level</option>
                 {LEVEL_OPTIONS.map(level => <option key={level} value={level}>{level}</option>)}
               </select>
+              {validationErrors.level && <p className="text-red-500 text-xs mt-1">{validationErrors.level}</p>}
             </div>
           </div>
 
@@ -135,7 +187,9 @@ const KelasForm = ({ kelas = null, onSubmit, onCancel, gurus = [] }) => {
                 <Plus size={16} className="mr-1" /> Tambah Sesi
               </button>
             </div>
-            {formData.sessions.length === 0 && <p className="form-error">Sila tambah sekurang-kurangnya satu sesi.</p>}
+            {(formData.sessions.length === 0 || validationErrors.sessions) && (
+              <p className="form-error">{validationErrors.sessions || 'Sila tambah sekurang-kurangnya satu sesi.'}</p>
+            )}
             <div className="space-y-4">
               {formData.sessions.map((session, index) => (
                 <div key={index} className="p-4 border border-mosque-primary-100 rounded-lg bg-mosque-primary-50/50">

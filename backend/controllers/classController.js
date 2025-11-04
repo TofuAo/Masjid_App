@@ -1,5 +1,6 @@
 import { pool, testConnection } from '../config/database.js';
 import { validationResult } from 'express-validator';
+import { safeParseJSON } from '../utils/jsonParser.js';
 
 export const getAllClasses = async (req, res) => {
   try {
@@ -14,6 +15,12 @@ export const getAllClasses = async (req, res) => {
     `;
     
     const queryParams = [];
+    
+    // If user is a teacher, only show their classes
+    if (req.user && req.user.role === 'teacher') {
+      query += ` AND c.guru_ic = ?`;
+      queryParams.push(req.user.ic);
+    }
     
     if (search) {
       query += ` AND (c.nama_kelas LIKE ? OR u.nama LIKE ?)`;
@@ -34,13 +41,13 @@ export const getAllClasses = async (req, res) => {
     // Add pagination (inline to avoid ER_WRONG_ARGUMENTS on LIMIT/OFFSET)
     const safeLimit = Math.max(1, parseInt(limit));
     const offset = (Math.max(1, parseInt(page)) - 1) * safeLimit;
-    query += ` GROUP BY c.id ORDER BY c.created_at DESC LIMIT ${safeLimit} OFFSET ${offset}`;
+    query += ` GROUP BY c.id, c.nama_kelas, c.level, c.sessions, c.yuran, c.guru_ic, c.kapasiti, c.status, u.nama ORDER BY c.created_at DESC LIMIT ${safeLimit} OFFSET ${offset}`;
     
     const [classes] = await pool.execute(query, queryParams);
 
     const parsedClasses = classes.map(kelas => ({
       ...kelas,
-      sessions: kelas.sessions ? JSON.parse(kelas.sessions) : []
+      sessions: safeParseJSON(kelas.sessions, [])
     }));
     
     // Get total count for pagination
@@ -50,6 +57,12 @@ export const getAllClasses = async (req, res) => {
       WHERE 1=1
     `;
     const countParams = [];
+    
+    // If user is a teacher, only count their classes
+    if (req.user && req.user.role === 'teacher') {
+      countQuery += ` AND c.guru_ic = ?`;
+      countParams.push(req.user.ic);
+    }
     
     if (search) {
       countQuery += ` AND (c.nama_kelas LIKE ?)`;
@@ -82,9 +95,12 @@ export const getAllClasses = async (req, res) => {
     });
   } catch (error) {
     console.error('Get classes error:', error);
+    console.error('Error stack:', error.stack);
+    console.error('Error message:', error.message);
     res.status(500).json({
       success: false,
-      message: 'Internal server error'
+      message: 'Internal server error',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 };
@@ -93,23 +109,32 @@ export const getClassById = async (req, res) => {
   try {
     const { id } = req.params;
     
-    const [classes] = await pool.execute(`
+    let query = `
       SELECT c.id, c.nama_kelas, c.level, c.sessions, c.yuran, c.guru_ic, c.kapasiti, c.status, u.nama as guru_nama, u.telefon as guru_telefon
       FROM classes c
       LEFT JOIN users u ON c.guru_ic = u.ic
       WHERE c.id = ?
-    `, [id]);
+    `;
+    const queryParams = [id];
+    
+    // If user is a teacher, only allow access to their classes
+    if (req.user && req.user.role === 'teacher') {
+      query += ` AND c.guru_ic = ?`;
+      queryParams.push(req.user.ic);
+    }
+    
+    const [classes] = await pool.execute(query, queryParams);
     
     if (classes.length === 0) {
       return res.status(404).json({
         success: false,
-        message: 'Class not found'
+        message: 'Class not found or you do not have access to this class'
       });
     }
 
     const classData = {
       ...classes[0],
-      sessions: classes[0].sessions ? JSON.parse(classes[0].sessions) : []
+      sessions: safeParseJSON(classes[0].sessions, [])
     };
     
     // Get students in this class
@@ -181,7 +206,7 @@ export const createClass = async (req, res) => {
 
     const parsedNewClass = {
       ...newClass[0],
-      sessions: newClass[0].sessions ? JSON.parse(newClass[0].sessions) : []
+      sessions: safeParseJSON(newClass[0].sessions, [])
     };
     
     res.status(201).json({
@@ -256,7 +281,7 @@ export const updateClass = async (req, res) => {
 
     const parsedUpdatedClass = {
       ...updatedClass[0],
-      sessions: updatedClass[0].sessions ? JSON.parse(updatedClass[0].sessions) : []
+      sessions: safeParseJSON(updatedClass[0].sessions, [])
     };
     
     res.json({

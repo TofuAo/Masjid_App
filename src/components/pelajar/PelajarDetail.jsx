@@ -2,6 +2,7 @@ import React from 'react';
 import Card from '../ui/Card';
 import Button from '../ui/Button';
 import Badge from '../ui/Badge';
+import BackButton from '../ui/BackButton';
 import { User, Phone, MapPin, Calendar, BookOpen, Edit } from 'lucide-react';
 
 const PelajarDetail = ({ pelajar, onEdit, onClose }) => {
@@ -33,8 +34,11 @@ const PelajarDetail = ({ pelajar, onEdit, onClose }) => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-gray-900">Maklumat Pelajar</h2>
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div className="flex items-center space-x-3">
+          <BackButton onClick={onClose} />
+          <h2 className="text-2xl font-bold text-gray-900">Maklumat Pelajar</h2>
+        </div>
         <div className="flex space-x-3">
           <Button variant="secondary" onClick={onClose}>
             Tutup

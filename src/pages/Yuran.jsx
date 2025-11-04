@@ -1,17 +1,28 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import useCrud from '../hooks/useCrud';
-import { feesAPI } from '../services/api';
+import { feesAPI, settingsAPI } from '../services/api';
 import { toast } from 'react-toastify';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import Badge from '../components/ui/Badge';
-import { CreditCard, DollarSign, CheckCircle, XCircle, Clock, Plus, Search, Filter } from 'lucide-react';
+import { CreditCard, DollarSign, CheckCircle, XCircle, Clock, Plus, Search, Filter, QrCode, Settings, Upload, Link as LinkIcon, Save, ChevronDown, ChevronUp } from 'lucide-react';
 
 const Yuran = () => {
+  const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('semua');
   const [monthFilter, setMonthFilter] = useState('semua');
   const [userRole, setUserRole] = useState('');
+  const [showQRConfig, setShowQRConfig] = useState(false);
+  const [qrSettings, setQrSettings] = useState({
+    qr_code_image: '',
+    qr_code_link: '',
+    qr_code_enabled: '1'
+  });
+  const [qrImageFile, setQrImageFile] = useState(null);
+  const [qrImagePreview, setQrImagePreview] = useState(null);
+  const [savingQR, setSavingQR] = useState(false);
 
   const {
     items: yuran,
@@ -24,6 +35,9 @@ const Yuran = () => {
     const user = JSON.parse(localStorage.getItem('user'));
     if (user && user.role) {
       setUserRole(user.role);
+      if (user.role === 'admin') {
+        fetchQRSettings();
+      }
     }
     fetchFees({
       search: searchTerm,
@@ -31,6 +45,80 @@ const Yuran = () => {
       bulan: monthFilter === 'semua' ? '' : monthFilter,
     });
   }, [fetchFees, searchTerm, statusFilter, monthFilter]);
+
+  const fetchQRSettings = async () => {
+    try {
+      const response = await settingsAPI.getQRCode();
+      if (response?.success && response?.data) {
+        setQrSettings(response.data);
+        if (response.data.qr_code_image) {
+          setQrImagePreview(response.data.qr_code_image);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to fetch QR settings:', error);
+    }
+  };
+
+  const handleImageChange = (e) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setQrImageFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setQrImagePreview(reader.result);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleSaveQRSettings = async () => {
+    try {
+      setSavingQR(true);
+      
+      if (qrImageFile) {
+        const reader = new FileReader();
+        reader.onloadend = async () => {
+          const base64Image = reader.result;
+          await settingsAPI.update('qr_code_image', { 
+            value: base64Image, 
+            type: 'image',
+            description: 'QR Code image for payment page'
+          });
+        };
+        reader.readAsDataURL(qrImageFile);
+      } else if (qrSettings.qr_code_image) {
+        await settingsAPI.update('qr_code_image', { 
+          value: qrSettings.qr_code_image, 
+          type: 'image',
+          description: 'QR Code image URL for payment page'
+        });
+      }
+
+      if (qrSettings.qr_code_link) {
+        await settingsAPI.update('qr_code_link', { 
+          value: qrSettings.qr_code_link, 
+          type: 'link',
+          description: 'QR Code link/URL for payment page'
+        });
+      }
+
+      await settingsAPI.update('qr_code_enabled', { 
+        value: qrSettings.qr_code_enabled, 
+        type: 'text',
+        description: 'Enable custom QR code'
+      });
+
+      toast.success('Tetapan QR code berjaya disimpan!');
+      fetchQRSettings();
+      setShowQRConfig(false);
+    } catch (error) {
+      console.error('Failed to save QR settings:', error);
+      toast.error('Gagal menyimpan tetapan QR code.');
+    } finally {
+      setSavingQR(false);
+    }
+  };
 
   const getStatusBadge = (status) => {
     const statusConfig = {
@@ -52,16 +140,20 @@ const Yuran = () => {
       // This action should only be available to admin/teacher
       if (userRole === 'student') return; 
 
-      await feesAPI.markAsPaid(id, {
-        cara_bayar: 'Tunai', // Or prompt for input
-        no_resit: `R${String(id).padStart(3, '0')}` // Generate or prompt for input
-      });
-      toast.success('Status yuran berjaya dikemaskini!');
+      const payload = {
+        cara_bayar: 'Tunai',
+        no_resit: `R${String(id).padStart(3, '0')}`
+      };
+      
+      // Only include resit_img if we have a value
+      // For now, we'll leave it empty and admin can add it later if needed
+      
+      await feesAPI.markAsPaid(id, payload);
+      toast.success('Status yuran berjaya ditandakan sebagai terbayar!');
       fetchFees(); // Re-fetch to update the list
     } catch (err) {
       console.error('Failed to update fee status:', err);
-      setError(err);
-      toast.error('Gagal mengemaskini status yuran.');
+      toast.error(err?.message || 'Gagal mengemaskini status yuran.');
     }
   };
 
@@ -81,9 +173,118 @@ const Yuran = () => {
       {/* Header with Filters */}
       <Card>
         <Card.Header>
-          <Card.Title>Pengurusan Yuran</Card.Title>
+          <div className="flex items-center justify-between">
+            <Card.Title>Pengurusan Yuran</Card.Title>
+            {userRole === 'admin' && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowQRConfig(!showQRConfig)}
+                className="flex items-center"
+              >
+                <QrCode className="w-4 h-4 mr-2" />
+                {showQRConfig ? (
+                  <>
+                    <ChevronUp className="w-4 h-4 mr-1" />
+                    Sembunyikan QR Settings
+                  </>
+                ) : (
+                  <>
+                    <ChevronDown className="w-4 h-4 mr-1" />
+                    Tetapan QR Code
+                  </>
+                )}
+              </Button>
+            )}
+          </div>
         </Card.Header>
         <Card.Content>
+          {userRole === 'admin' && showQRConfig && (
+            <div className="mb-6 p-4 bg-emerald-50 border border-emerald-200 rounded-lg">
+              <div className="flex items-center mb-4">
+                <Settings className="w-5 h-5 text-emerald-700 mr-2" />
+                <h3 className="text-lg font-semibold text-emerald-900">Tetapan QR Code Bayaran</h3>
+              </div>
+              <div className="space-y-4">
+                {/* Enable/Disable */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Gunakan QR Code Kustom
+                  </label>
+                  <select
+                    value={qrSettings.qr_code_enabled}
+                    onChange={(e) => setQrSettings({ ...qrSettings, qr_code_enabled: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  >
+                    <option value="1">Ya (Guna QR Code Kustom)</option>
+                    <option value="0">Tidak (Guna QR Code Auto-Generated)</option>
+                  </select>
+                </div>
+
+                {/* QR Code Image */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    URL Gambar QR Code
+                  </label>
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="text"
+                      value={qrSettings.qr_code_image}
+                      onChange={(e) => setQrSettings({ ...qrSettings, qr_code_image: e.target.value })}
+                      placeholder="https://example.com/qr-code.png atau muat naik gambar"
+                      className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    />
+                    <label className="px-4 py-2 bg-emerald-100 text-emerald-700 rounded-md hover:bg-emerald-200 cursor-pointer text-sm flex items-center">
+                      <Upload className="w-4 h-4 mr-2" />
+                      Muat Naik
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleImageChange}
+                        className="hidden"
+                      />
+                    </label>
+                  </div>
+                  {qrImagePreview && (
+                    <div className="mt-3">
+                      <img 
+                        src={qrImagePreview} 
+                        alt="QR Code Preview" 
+                        className="w-32 h-32 border border-gray-300 rounded-lg object-contain bg-white p-2"
+                      />
+                    </div>
+                  )}
+                </div>
+
+                {/* QR Code Link */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Pautan QR Code (Alternatif)
+                  </label>
+                  <div className="flex items-center space-x-2">
+                    <LinkIcon className="w-5 h-5 text-gray-400" />
+                    <input
+                      type="text"
+                      value={qrSettings.qr_code_link}
+                      onChange={(e) => setQrSettings({ ...qrSettings, qr_code_link: e.target.value })}
+                      placeholder="https://example.com/payment-link"
+                      className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    />
+                  </div>
+                </div>
+
+                <Button
+                  onClick={handleSaveQRSettings}
+                  disabled={savingQR}
+                  className="w-full"
+                >
+                  <Save className="w-4 h-4 mr-2" />
+                  {savingQR ? 'Menyimpan...' : 'Simpan Tetapan QR Code'}
+                </Button>
+              </div>
+            </div>
+          )}
+
           {userRole !== 'student' && (
             <div className="flex flex-col sm:flex-row gap-4">
               <div className="flex-1">
@@ -244,11 +445,9 @@ const Yuran = () => {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Tarikh Bayar
                     </th>
-                    {userRole !== 'student' && (
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Tindakan
-                      </th>
-                    )}
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Tindakan
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
@@ -274,23 +473,41 @@ const Yuran = () => {
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         {y.tarikh_bayar ? new Date(y.tarikh_bayar).toLocaleDateString('ms-MY') : '-'}
                       </td>
-                      {userRole !== 'student' && (
+                      {userRole !== 'student' ? (
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                           <div className="flex space-x-2">
-                            {y.status === 'tunggak' && (
+                            {(y.status === 'tunggak' || y.status === 'pending' || y.status === 'Belum Bayar') && (
                               <button
                                 onClick={() => updateYuranStatus(y.id, 'terbayar')}
-                                className="px-3 py-1 text-xs bg-green-100 text-green-800 rounded hover:bg-green-200"
+                                className="px-3 py-1 text-xs bg-green-100 text-green-800 rounded hover:bg-green-200 font-medium"
+                                title="Tandakan sebagai terbayar"
                               >
-                                Mark as Paid
+                                Tandakan Terbayar
                               </button>
                             )}
-                            {y.status === 'terbayar' && (
-                              <div className="text-xs text-gray-500">
-                                Resit: {y.no_resit}
+                            {(y.status === 'terbayar' || y.status === 'Bayar') && (
+                              <div className="text-xs text-gray-500 flex items-center">
+                                <CheckCircle className="w-3 h-3 mr-1 text-green-600" />
+                                {y.no_resit ? `Resit: ${y.no_resit}` : 'Terbayar'}
                               </div>
                             )}
                           </div>
+                        </td>
+                      ) : (
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                          {y.status === 'tunggak' || y.status === 'pending' || y.status === 'Belum Bayar' ? (
+                            <button
+                              onClick={() => navigate(`/pay-yuran/${y.id}`)}
+                              className="px-3 py-1 text-xs bg-emerald-100 text-emerald-800 rounded hover:bg-emerald-200 flex items-center space-x-1"
+                            >
+                              <QrCode className="w-3 h-3" />
+                              <span>Bayar Yuran</span>
+                            </button>
+                          ) : (
+                            <div className="text-xs text-gray-500">
+                              {y.no_resit && `Resit: ${y.no_resit}`}
+                            </div>
+                          )}
                         </td>
                       )}
                     </tr>

@@ -2,7 +2,10 @@ import React, { useState, useEffect } from 'react';
 import Card from '../ui/Card';
 import Button from '../ui/Button';
 import Badge from '../ui/Badge';
+import BackButton from '../ui/BackButton';
 import { classesAPI } from '../../services/api';
+import { formatIC } from '../../utils/icUtils';
+import { formatPhone } from '../../utils/phoneUtils';
 
 const PelajarForm = ({ pelajar = null, onSubmit, onCancel }) => {
   const [formData, setFormData] = useState({
@@ -36,17 +39,71 @@ const PelajarForm = ({ pelajar = null, onSubmit, onCancel }) => {
       }
       
       console.log('Fetching classes...');
-      const response = await classesAPI.getAll({ status: 'aktif' });
-      console.log('Classes response:', response);
-      const list = Array.isArray(response) ? response : (response?.data || []);
-      setClasses(list);
+      console.log('Auth token exists:', !!localStorage.getItem('authToken'));
+      
+      // Try fetching active classes first
+      let response = await classesAPI.getAll({ status: 'aktif', limit: 999 });
+      console.log('Initial response:', response);
+      console.log('Response type:', typeof response);
+      console.log('Is array:', Array.isArray(response));
+      
+      // Handle response structure - could be { success: true, data: [...] } or array directly
+      let classesList = [];
+      if (Array.isArray(response)) {
+        classesList = response;
+      } else if (response && response.data && Array.isArray(response.data)) {
+        classesList = response.data;
+      } else if (response && response.success && Array.isArray(response.data)) {
+        classesList = response.data;
+      }
+      
+      console.log('Extracted classes list:', classesList);
+      
+      // If no active classes, try fetching all classes
+      if (classesList.length === 0) {
+        console.log('No active classes found, fetching all classes...');
+        response = await classesAPI.getAll({ limit: 999 });
+        console.log('All classes response:', response);
+        
+        // Re-extract classes list
+        if (Array.isArray(response)) {
+          classesList = response;
+        } else if (response && response.data && Array.isArray(response.data)) {
+          classesList = response.data;
+        } else if (response && response.success && Array.isArray(response.data)) {
+          classesList = response.data;
+        }
+        console.log('Extracted all classes list:', classesList);
+      }
+      
+      if (classesList.length === 0) {
+        setErrorClasses('Tiada kelas tersedia. Sila tambah kelas terlebih dahulu.');
+      } else {
+        setClasses(classesList);
+      }
     } catch (err) {
       console.error('Error fetching classes:', err);
-      if (err.message.includes('not authenticated')) {
-        setErrorClasses('Sila log masuk terlebih dahulu.');
-      } else {
-        setErrorClasses(err.message || 'Failed to fetch classes');
+      console.error('Error details:', JSON.stringify(err, null, 2));
+      
+      // Extract error message from various possible error formats
+      let errorMessage = 'Gagal memuatkan senarai kelas.';
+      
+      if (err.message && err.message.includes('not authenticated')) {
+        errorMessage = 'Sila log masuk terlebih dahulu.';
+      } else if (err.message && err.message.includes('Access token required')) {
+        errorMessage = 'Sesi anda telah tamat. Sila log masuk semula.';
+      } else if (typeof err === 'object' && err !== null) {
+        // Check for error message in various places
+        errorMessage = err.message || err.error || err.errorMessage || 
+                       (err.response?.data?.message) || 
+                       (err.response?.data?.error) ||
+                       (err.data?.message) ||
+                       'Gagal memuatkan senarai kelas. Sila cuba lagi atau hubungi pentadbir sistem.';
+      } else if (typeof err === 'string') {
+        errorMessage = err;
       }
+      
+      setErrorClasses(errorMessage);
     } finally {
       setLoadingClasses(false);
     }
@@ -56,7 +113,9 @@ const PelajarForm = ({ pelajar = null, onSubmit, onCancel }) => {
     const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
-      [name]: name === 'umur' ? parseInt(value) || 5 : 
+      [name]: name === 'ic' ? formatIC(value, true) : // Auto-format IC with hyphens
+              name === 'telefon' ? formatPhone(value, true) : // Auto-format phone with hyphen
+              name === 'umur' ? parseInt(value) || 5 : 
               name === 'kelas_id' ? (value === '' ? null : parseInt(value)) : 
               value
     }));
@@ -64,8 +123,13 @@ const PelajarForm = ({ pelajar = null, onSubmit, onCancel }) => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    console.log('Submitting student data:', formData);
-    onSubmit(formData);
+    // Ensure kelas_id is null if empty string
+    const submitData = {
+      ...formData,
+      kelas_id: formData.kelas_id === '' || formData.kelas_id === null ? null : formData.kelas_id
+    };
+    console.log('Submitting student data:', submitData);
+    onSubmit(submitData);
   };
 
   const statusOptions = [
@@ -77,9 +141,12 @@ const PelajarForm = ({ pelajar = null, onSubmit, onCancel }) => {
   return (
     <Card>
       <Card.Header>
-        <Card.Title>
-          {pelajar ? 'Kemaskini Maklumat Pelajar' : 'Tambah Pelajar Baru'}
-        </Card.Title>
+        <div className="flex items-center space-x-3">
+          <BackButton onClick={onCancel} />
+          <Card.Title>
+            {pelajar ? 'Kemaskini Maklumat Pelajar' : 'Tambah Pelajar Baru'}
+          </Card.Title>
+        </div>
       </Card.Header>
       <Card.Content>
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -111,11 +178,12 @@ const PelajarForm = ({ pelajar = null, onSubmit, onCancel }) => {
                 value={formData.ic}
                 onChange={handleChange}
                 required
-                pattern="^\\d{6}-\\d{2}-\\d{4}$"
+                maxLength={14}
                 autoComplete="off"
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                placeholder="Contoh: 123456-78-9012"
+                placeholder="Contoh: 123456-78-9012 atau 123456789012"
               />
+              <p className="text-xs text-gray-500 mt-1">Format: 12 digit (dengan atau tanpa sempang)</p>
             </div>
 
             <div>
@@ -145,11 +213,12 @@ const PelajarForm = ({ pelajar = null, onSubmit, onCancel }) => {
                 value={formData.telefon}
                 onChange={handleChange}
                 required
-                pattern="^01[0-9]-\\d{7,8}$"
+                maxLength={12}
                 autoComplete="tel"
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                placeholder="Contoh: 012-3456789"
+                placeholder="Contoh: 012-3456789 atau 0123456789"
               />
+              <p className="text-xs text-gray-500 mt-1">Format: 01X diikuti 7-8 digit (dengan atau tanpa sempang)</p>
             </div>
           </div>
 
@@ -175,20 +244,53 @@ const PelajarForm = ({ pelajar = null, onSubmit, onCancel }) => {
                 Kelas
               </label>
               {loadingClasses ? (
-                <p className="text-sm text-gray-500">Memuatkan kelas...</p>
+                <div className="flex items-center space-x-2">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-emerald-500"></div>
+                  <p className="text-sm text-gray-500">Memuatkan kelas...</p>
+                </div>
               ) : errorClasses ? (
-                <p className="text-sm text-red-500">Ralat: {errorClasses}</p>
+                <div className="space-y-2">
+                  <p className="text-sm text-red-500">Ralat: {errorClasses}</p>
+                  <button
+                    type="button"
+                    onClick={fetchClasses}
+                    className="text-xs text-emerald-600 hover:text-emerald-800 underline"
+                  >
+                    Cuba lagi
+                  </button>
+                  {/* Still show dropdown with empty state if error, but allow manual entry */}
+                  <select
+                    name="kelas_id"
+                    value={formData.kelas_id || ''}
+                    onChange={handleChange}
+                    disabled={classes.length === 0}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                  >
+                    <option value="">{classes.length === 0 ? 'Tiada kelas tersedia' : 'Pilih Kelas'}</option>
+                    {classes.map(kelas => (
+                      <option key={kelas.id} value={kelas.id}>
+                        {kelas.nama_kelas} {kelas.status && `(${kelas.status})`}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               ) : (
                 <select
                   name="kelas_id"
-                  value={formData.kelas_id}
+                  value={formData.kelas_id || ''}
                   onChange={handleChange}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                 >
-                  <option value="">Pilih Kelas</option>
-                  {classes.map(kelas => (
-                    <option key={kelas.id} value={kelas.id}>{kelas.nama_kelas}</option>
-                  ))}
+                  <option value="">Pilih Kelas (Pilihan)</option>
+                  {classes.length === 0 ? (
+                    <option value="" disabled>Tiada kelas tersedia</option>
+                  ) : (
+                    classes.map(kelas => (
+                      <option key={kelas.id} value={kelas.id}>
+                        {kelas.nama_kelas} {kelas.level && `- ${kelas.level}`} {kelas.status && kelas.status !== 'aktif' && `(${kelas.status})`}
+                      </option>
+                    ))
+                  )}
                 </select>
               )}
             </div>

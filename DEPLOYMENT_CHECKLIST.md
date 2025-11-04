@@ -1,210 +1,169 @@
 # MyMasjidApp Deployment Checklist
 
-## ✅ Completed Tasks
+This checklist ensures a complete and secure deployment of the MyMasjidApp.
 
-### 1. Environment Variables Setup
-- [x] Created `backend/env.production` with all required environment variables
-- [x] Created `env.production` for frontend configuration
-- [x] Fixed database configuration variable mismatch (`DB_PASS` → `DB_PASSWORD`)
+## ✅ Pre-Deployment Setup
 
-### 2. Database Configuration
-- [x] Updated `backend/config/database.js` to use correct environment variable names
-- [x] Database schema is ready in `database/masjid_app_schema.sql`
-- [x] Database will be automatically initialized via Docker Compose
+### Environment Configuration
+- [ ] Run `./setup-env.sh` (Linux/macOS) or `setup-env.bat` (Windows) to create .env files
+- [ ] Edit `backend/.env` with production values:
+  - [ ] Database credentials (DB_HOST, DB_USER, DB_PASSWORD, DB_NAME)
+  - [ ] Strong JWT_SECRET (minimum 32 characters)
+  - [ ] Production FRONTEND_URL
+  - [ ] NODE_ENV=production
+- [ ] Edit `.env` (root) with production frontend settings:
+  - [ ] VITE_API_BASE_URL (your production API URL)
+  - [ ] VITE_APP_NAME
+  - [ ] VITE_APP_VERSION
 
-### 3. Frontend Build
-- [x] Added production build script (`build:prod`)
-- [x] Successfully tested build process
-- [x] Created optimized Dockerfile for frontend
+### Database Setup
+- [ ] Database server is accessible
+- [ ] Database user has proper permissions
+- [ ] Database credentials are correct in `backend/.env`
 
-### 4. Dockerization
-- [x] Created `backend/Dockerfile` with security best practices
-- [x] Created `Dockerfile` for frontend with multi-stage build
-- [x] Created `docker-compose.yml` with all services (MySQL, Backend, Frontend, Nginx)
-- [x] Added `.dockerignore` files for both frontend and backend
+## ✅ Deployment Steps
+
+### 1. Initial Setup
+- [ ] Clone repository to production server
+- [ ] Ensure Docker and Docker Compose are installed
+- [ ] Run environment setup script: `./setup-env.sh` or `setup-env.bat`
+- [ ] Configure environment variables in `.env` files
+
+### 2. Database Migration
+- [ ] Option A (Docker): Run `./deploy.sh` - migrations run automatically
+- [ ] Option B (Manual): Run `./scripts/init-db.sh` to initialize database
+- [ ] Verify database tables were created successfully
+- [ ] Check database connection from backend
+
+### 3. Build and Deploy
+- [ ] Run `./deploy.sh` (Linux/macOS) or `deploy.bat` (Windows)
+- [ ] Wait for all containers to start
+- [ ] Verify all services are running: `docker-compose ps`
+- [ ] Check service logs for errors: `docker-compose logs`
+
+### 4. SSL Certificate Setup
+- [ ] Update domain name in `nginx/nginx.conf`
+- [ ] Run `sudo ./setup-ssl.sh yourdomain.com your-email@example.com`
+- [ ] Verify SSL certificates are created
+- [ ] Test HTTPS connection
 
 ### 5. Nginx Configuration
-- [x] Created comprehensive `nginx/nginx.conf` with:
-  - SSL/TLS configuration
-  - Security headers
-  - Rate limiting
-  - Gzip compression
-  - Reverse proxy setup
-- [x] Created `nginx.conf` for frontend container
+- [ ] Update `nginx/nginx.conf` with your domain name
+- [ ] Verify SSL certificate paths are correct
+- [ ] Test nginx configuration: `docker-compose exec nginx nginx -t`
+- [ ] Restart nginx if needed: `docker-compose restart nginx`
 
-### 6. Deployment Scripts
-- [x] Created `deploy.sh` for Linux/macOS
-- [x] Created `deploy.bat` for Windows
-- [x] Created `monitor.sh` for health monitoring
-- [x] Created `backup.sh` for automated backups
+## ✅ Post-Deployment Verification
 
-### 7. Security Implementation
-- [x] Added health check endpoint (`/health`)
-- [x] Implemented rate limiting in Nginx
-- [x] Added security headers
-- [x] Configured non-root user in Docker containers
-- [x] Set up proper CORS configuration
+### Health Checks
+- [ ] Run `./scripts/monitor.sh` to check all services
+- [ ] Verify backend health endpoint: `http://yourdomain.com/api/health`
+- [ ] Verify frontend is accessible: `http://yourdomain.com`
+- [ ] Test API endpoints are working
+- [ ] Verify database connection from application
 
-### 8. Documentation
-- [x] Created comprehensive `DEPLOYMENT_GUIDE.md`
-- [x] Created `DEPLOYMENT_CHECKLIST.md`
-- [x] Added troubleshooting section
-- [x] Included monitoring and maintenance instructions
+### Security Verification
+- [ ] HTTPS is working (redirects HTTP to HTTPS)
+- [ ] SSL certificate is valid and not expired
+- [ ] Firewall is configured (ports 80, 443, 22 only)
+- [ ] Strong passwords are set for database and JWT
+- [ ] Rate limiting is active
+- [ ] Security headers are present in responses
 
-## 🔄 Remaining Tasks
+### Functionality Testing
+- [ ] User registration works
+- [ ] User login works
+- [ ] JWT authentication is working
+- [ ] CRUD operations work for all modules
+- [ ] File uploads work (if applicable)
+- [ ] Database queries are executing correctly
 
-### 1. Database Migrations
-- [ ] **Action Required**: Run the deployment script to initialize database
-- [ ] **Command**: `./deploy.sh` or `deploy.bat`
+## ✅ Monitoring and Maintenance
 
-### 2. SSL Certificates
-- [ ] **Action Required**: Obtain SSL certificates for production
-- [ ] **Steps**:
-  1. Update domain name in `nginx/nginx.conf`
-  2. Install Certbot: `sudo apt install certbot python3-certbot-nginx`
-  3. Obtain certificate: `sudo certbot --nginx -d yourdomain.com`
-  4. Update certificate paths in nginx configuration
+### Logging
+- [ ] Application logs are accessible: `docker-compose logs`
+- [ ] Nginx logs are being written: `nginx/logs/`
+- [ ] Error logs are monitored
+- [ ] Log rotation is configured
 
-## 🚀 Quick Start Commands
-
-### For Development
-```bash
-# Start all services
-docker-compose up -d
-
-# View logs
-docker-compose logs -f
-
-# Stop services
-docker-compose down
-```
-
-### For Production
-```bash
-# Deploy with script
-./deploy.sh
-
-# Or manually
-docker-compose -f docker-compose.yml up -d
-```
+### Backup Strategy
+- [ ] Database backup script is working: `./scripts/backup-db.sh`
+- [ ] Automated daily backups are scheduled (cron job)
+- [ ] Backup retention policy is set (7 days minimum)
+- [ ] Backup restoration has been tested
 
 ### Monitoring
-```bash
-# Check health
-./monitor.sh
+- [ ] Set up uptime monitoring (UptimeRobot, Pingdom, etc.)
+- [ ] Configure alerting for service failures
+- [ ] Monitor disk space usage
+- [ ] Monitor database size and growth
 
-# View logs
-docker-compose logs
+### Maintenance Tasks
+- [ ] SSL certificate auto-renewal is configured
+- [ ] System updates are scheduled
+- [ ] Docker images are updated regularly
+- [ ] Dependencies are kept up to date
 
-# Check status
-docker-compose ps
-```
+## ✅ Security Best Practices
 
-### Backup
-```bash
-# Create backup
-./backup.sh
+### Application Security
+- [ ] Passwords are hashed using bcrypt (already implemented)
+- [ ] SQL injection protection via parameterized queries (already implemented)
+- [ ] CORS is properly configured
+- [ ] JWT tokens have proper expiration
+- [ ] Rate limiting is active
+- [ ] Input validation is working
 
-# Restore from backup
-# (Instructions in DEPLOYMENT_GUIDE.md)
-```
+### Infrastructure Security
+- [ ] SSH key authentication is enabled
+- [ ] Root login is disabled
+- [ ] Firewall (UFW/iptables) is configured
+- [ ] Fail2ban is installed and configured (recommended)
+- [ ] Regular security updates are applied
+- [ ] Non-root user for application (Docker handles this)
 
-## 🔧 Configuration Files Created
+### Database Security
+- [ ] Database user has minimal required permissions
+- [ ] Root database password is strong
+- [ ] Database is not exposed to public internet
+- [ ] SSL/TLS for database connections (if external)
 
-1. **Environment Files**:
-   - `backend/env.production` - Backend environment variables
-   - `env.production` - Frontend environment variables
+## ✅ Documentation
 
-2. **Docker Files**:
-   - `Dockerfile` - Frontend container
-   - `backend/Dockerfile` - Backend container
-   - `docker-compose.yml` - Multi-service orchestration
-   - `.dockerignore` files
+- [ ] Deployment guide is reviewed: `DEPLOYMENT_GUIDE.md`
+- [ ] Environment variables are documented
+- [ ] API endpoints are documented
+- [ ] Troubleshooting guide is available
 
-3. **Nginx Configuration**:
-   - `nginx/nginx.conf` - Main reverse proxy configuration
-   - `nginx.conf` - Frontend container configuration
+## 🚨 Emergency Procedures
 
-4. **Scripts**:
-   - `deploy.sh` / `deploy.bat` - Deployment automation
-   - `monitor.sh` - Health monitoring
-   - `backup.sh` - Backup automation
+### If Application is Down
+1. Check container status: `docker-compose ps`
+2. Check logs: `docker-compose logs [service]`
+3. Check database connection
+4. Restart services: `docker-compose restart`
+5. Check disk space: `df -h`
 
-5. **Documentation**:
-   - `DEPLOYMENT_GUIDE.md` - Comprehensive deployment guide
-   - `DEPLOYMENT_CHECKLIST.md` - This checklist
+### If Database is Corrupted
+1. Stop application: `docker-compose stop backend`
+2. Restore from latest backup
+3. Verify data integrity
+4. Restart application
 
-## 🌐 Production URLs
+### If SSL Certificate Expired
+1. Renew certificate: `sudo certbot renew`
+2. Restart nginx: `docker-compose restart nginx`
+3. Verify HTTPS is working
 
-After deployment, your application will be available at:
-- **Frontend**: `http://localhost:3000` (or your domain)
-- **Backend API**: `http://localhost:5000` (or your domain/api)
-- **Health Check**: `http://localhost:5000/health`
-- **Database**: `localhost:3306`
+## 📝 Notes
 
-## 🔒 Security Checklist
-
-- [x] Non-root Docker containers
-- [x] Rate limiting implemented
-- [x] Security headers configured
-- [x] CORS properly configured
-- [x] Input validation (already in controllers)
-- [x] SQL injection prevention (parameterized queries)
-- [x] Password hashing (bcryptjs)
-- [ ] SSL certificates (pending domain setup)
-- [ ] Firewall configuration (server-specific)
-- [ ] Regular security updates
-
-## 📊 Monitoring Checklist
-
-- [x] Health check endpoints
-- [x] Container status monitoring
-- [x] Database connection monitoring
-- [x] Disk space monitoring
-- [x] Memory usage monitoring
-- [x] Application logs
-- [ ] Uptime monitoring (external service)
-- [ ] Error tracking (Sentry, etc.)
-
-## 🎯 Next Steps
-
-1. **Deploy to your server**:
-   ```bash
-   # Copy files to your server
-   scp -r . user@your-server:/path/to/app
-   
-   # SSH to server and run
-   ssh user@your-server
-   cd /path/to/app
-   ./deploy.sh
-   ```
-
-2. **Configure domain and SSL**:
-   - Update DNS records
-   - Obtain SSL certificates
-   - Update nginx configuration
-
-3. **Set up monitoring**:
-   - Configure external monitoring service
-   - Set up log aggregation
-   - Create alerting rules
-
-4. **Test thoroughly**:
-   - Test all API endpoints
-   - Test file uploads
-   - Test authentication
-   - Test database operations
-
-## 📞 Support
-
-If you encounter any issues:
-1. Check the logs: `docker-compose logs`
-2. Run health check: `./monitor.sh`
-3. Review the deployment guide
-4. Check container status: `docker-compose ps`
+- Keep backups of `.env` files in a secure location
+- Document any custom configurations
+- Keep deployment logs for troubleshooting
+- Test disaster recovery procedures regularly
 
 ---
 
-**Status**: ✅ Ready for deployment
 **Last Updated**: $(date)
-**Version**: 1.0.0
+**Deployed By**: [Your Name]
+**Environment**: Production

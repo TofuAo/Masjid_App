@@ -15,6 +15,12 @@ export const getAttendance = async (req, res) => {
 
     const queryParams = [];
 
+    // If user is a student, only show their own attendance
+    if (req.user && req.user.role === 'student') {
+      query += ` AND a.student_ic = ?`;
+      queryParams.push(req.user.ic);
+    }
+
     if (date) {
       query += ` AND a.tarikh = ?`;
       queryParams.push(date);
@@ -44,6 +50,12 @@ export const getAttendance = async (req, res) => {
       WHERE 1=1
     `;
     const countParams = [];
+
+    // If user is a student, only count their own attendance
+    if (req.user && req.user.role === 'student') {
+      countQuery += ` AND a.student_ic = ?`;
+      countParams.push(req.user.ic);
+    }
 
     if (date) {
       countQuery += ` AND a.tarikh = ?`;

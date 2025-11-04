@@ -5,6 +5,7 @@ import GuruList from '../components/guru/GuruList';
 import GuruForm from '../components/guru/GuruForm';
 import Card from '../components/ui/Card';
 import Badge from '../components/ui/Badge';
+import BackButton from '../components/ui/BackButton';
 import { GraduationCap, UserCheck, UserX, UserPlus } from 'lucide-react';
 
 const Guru = () => {
@@ -55,8 +56,11 @@ const Guru = () => {
         return (
           <div className="space-y-6">
             {/* Header */}
-            <div className="flex items-center justify-between">
-              <h2 className="text-2xl font-bold text-gray-900">Maklumat Guru</h2>
+            <div className="flex items-center justify-between flex-wrap gap-3">
+              <div className="flex items-center space-x-3">
+                <BackButton onClick={handleCancel} />
+                <h2 className="text-2xl font-bold text-gray-900">Maklumat Guru</h2>
+              </div>
               <div className="flex space-x-3">
                 <button
                   onClick={handleCancel}

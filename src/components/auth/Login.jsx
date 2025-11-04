@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import api from '../../services/api';
 import { Eye, EyeOff, Lock, User, AlertCircle } from 'lucide-react';
+import { formatIC } from '../../utils/icUtils';
 
 const Login = ({ onLogin }) => {
   const [formData, setFormData] = useState({ icNumber: '', password: '' });
@@ -10,7 +11,11 @@ const Login = ({ onLogin }) => {
   const navigate = useNavigate();
 
   const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    setFormData({
+      ...formData,
+      [name]: name === 'icNumber' ? formatIC(value, true) : value // Auto-format IC with hyphens
+    });
   };
 
   const handleSubmit = async (e) => {
@@ -25,22 +30,24 @@ const Login = ({ onLogin }) => {
       
       // Handle different response structures
       if (response.success && response.data) {
-        // Standard API response structure
+        // Standard API response structure: {success: true, data: {user: {}, token: ""}}
         token = response.data.token;
         user = response.data.user;
       } else if (response.token && response.user) {
-        // Direct response structure
+        // Direct response structure: {token: "", user: {}}
         token = response.token;
         user = response.user;
       } else if (response.data && response.data.token) {
-        // Alternative structure
+        // Alternative structure: {data: {token: "", user: {}}}
         token = response.data.token;
         user = response.data.user;
       } else {
         throw new Error(response.message || 'Login failed - invalid response structure');
       }
       
-      if (!token) throw new Error('No token returned');
+      if (!token || !user) {
+        throw new Error('Invalid response from server');
+      }
       
       localStorage.setItem('authToken', token);
       localStorage.setItem('user', JSON.stringify(user));
@@ -56,7 +63,9 @@ const Login = ({ onLogin }) => {
       }
     } catch (err) {
       console.error('Login error:', err);
-      setError(err.message || 'Nama pengguna atau kata laluan salah.');
+      // Extract error message from various error structures
+      const errorMessage = err.message || err.response?.data?.message || 'Nama pengguna atau kata laluan salah.';
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -66,11 +75,15 @@ const Login = ({ onLogin }) => {
     <div className="min-h-screen flex items-center justify-center bg-mosque-gradient-light islamic-pattern-bg py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8">
         <div className="text-center">
-          <div className="mx-auto h-16 w-16 bg-mosque-primary-600 rounded-full flex items-center justify-center shadow-mosque">
-            <Lock className="h-8 w-8 text-white" />
+          <div className="mx-auto mb-4">
+            <img 
+              src="/logomnsa1.jpeg" 
+              alt="Masjid Negeri Sultan Ahmad 1" 
+              className="mx-auto h-24 w-auto object-contain"
+            />
           </div>
-          <h2 className="mt-6 text-3xl font-display font-bold text-mosque-primary-800">Masjid App</h2>
-          <p className="mt-2 text-sm text-mosque-neutral-600">Sistem Pengurusan Kelas Pengajian</p>
+          <h2 className="mt-2 text-2xl font-display font-bold text-mosque-primary-800">Sistem Kelas Pengajian</h2>
+          <p className="mt-2 text-sm text-mosque-neutral-600">Masjid Negeri Sultan Ahmad 1</p>
         </div>
         <div className="mosque-card p-8 space-y-6">
           <form onSubmit={handleSubmit} className="space-y-6">
@@ -100,11 +113,12 @@ const Login = ({ onLogin }) => {
     autoComplete="username"
     value={formData.icNumber}
     onChange={handleChange}
+    maxLength={14}
     className="input-mosque block w-full pl-10"
     placeholder="Masukkan IC Number"
   />
   <div className="text-xs text-gray-500 pl-10 pt-1">
-    Masukkan Nombor IC (contoh: 990101010101 untuk admin, 051003060229 untuk pelajar)
+    Masukkan Nombor IC (contoh: 990101-01-0101 atau 990101010101)
   </div>
 </div>
             </div>
@@ -143,6 +157,11 @@ const Login = ({ onLogin }) => {
                   'Masuk'
                 )}
               </button>
+            </div>
+            <div className="text-center">
+              <Link to="/forgot-password" className="text-sm text-mosque-primary-600 hover:text-mosque-primary-800">
+                Lupa kata laluan?
+              </Link>
             </div>
           </form>
         </div>

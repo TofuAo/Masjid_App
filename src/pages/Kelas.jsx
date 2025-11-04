@@ -4,11 +4,25 @@ import KelasList from '../components/kelas/KelasList';
 import KelasForm from '../components/kelas/KelasForm';
 import Card from '../components/ui/Card';
 import Badge from '../components/ui/Badge';
+import BackButton from '../components/ui/BackButton';
 import { BookOpen, Users, Clock, DollarSign, AlertCircle } from 'lucide-react';
 import { classesAPI, teachersAPI } from '../services/api';
 import { toast } from 'react-toastify';
 
 const Kelas = () => {
+  const [user, setUser] = React.useState(null);
+  
+  React.useEffect(() => {
+    const storedUser = localStorage.getItem('user');
+    if (storedUser) {
+      try {
+        setUser(JSON.parse(storedUser));
+      } catch (e) {
+        console.error('Error parsing user:', e);
+      }
+    }
+  }, []);
+
   const {
     items: kelass,
     currentItem: selectedKelas,
@@ -76,8 +90,11 @@ const Kelas = () => {
         return (
           <div className="space-y-6">
             {/* Header */}
-            <div className="flex items-center justify-between">
-              <h2 className="text-2xl font-bold text-gray-900">Maklumat Kelas</h2>
+            <div className="flex items-center justify-between flex-wrap gap-3">
+              <div className="flex items-center space-x-3">
+                <BackButton onClick={handleCancel} />
+                <h2 className="text-2xl font-bold text-gray-900">Maklumat Kelas</h2>
+              </div>
               <div className="flex space-x-3">
                 <button
                   onClick={handleCancel}
@@ -85,12 +102,14 @@ const Kelas = () => {
                 >
                   Tutup
                 </button>
-                <button
-                  onClick={() => handleEdit(selectedKelas)}
-                  className="btn-primary"
-                >
-                  Edit
-                </button>
+                {user?.role !== 'teacher' && (
+                  <button
+                    onClick={() => handleEdit(selectedKelas)}
+                    className="btn-primary"
+                  >
+                    Edit
+                  </button>
+                )}
               </div>
             </div>
 
@@ -289,6 +308,7 @@ const Kelas = () => {
               onDelete={handleDelete}
               onAdd={handleAdd}
               gurus={gurus}
+              user={user}
             />
           </div>
         );

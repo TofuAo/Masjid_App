@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { 
   Users, 
@@ -10,13 +10,45 @@ import {
   BarChart3,
   Home,
   Menu,
-  X
+  X,
+  Settings,
+  User,
+  LogOut
 } from 'lucide-react';
 import { SidebarProvider, useSidebar } from './components/ui/SidebarProvider';
 
 const LayoutContent = ({ children, user, onLogout }) => {
   const location = useLocation();
   const { isOpen, toggleSidebar } = useSidebar();
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const userMenuRef = useRef(null);
+
+  // Close user menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(event.target)) {
+        setUserMenuOpen(false);
+      }
+    };
+
+    if (userMenuOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [userMenuOpen]);
+
+  // Get role label in Bahasa Malaysia
+  const getRoleLabel = (role) => {
+    const roleLabels = {
+      'admin': 'Admin Sistem',
+      'teacher': 'Guru',
+      'student': 'Pelajar'
+    };
+    return roleLabels[role] || role;
+  };
 
   let menuItems = [
     { icon: <Home className="w-5 h-5" />, label: 'Dashboard', link: '/' },
@@ -32,6 +64,7 @@ const LayoutContent = ({ children, user, onLogout }) => {
       { icon: <CreditCard className="w-5 h-5" />, label: 'Yuran', link: '/yuran' },
       { icon: <FileText className="w-5 h-5" />, label: 'Keputusan', link: '/keputusan' },
       { icon: <BarChart3 className="w-5 h-5" />, label: 'Laporan', link: '/laporan' },
+      { icon: <Settings className="w-5 h-5" />, label: 'Tetapan', link: '/settings' },
     ];
   } else if (user?.role === 'teacher') {
     menuItems = [
@@ -51,26 +84,51 @@ const LayoutContent = ({ children, user, onLogout }) => {
   }
 
   return (
-    <div className="flex h-screen bg-gradient-to-br from-emerald-50 to-teal-100">
+    <div className="flex h-screen bg-gradient-to-br from-emerald-50 to-teal-100 overflow-hidden">
+      {/* Mobile Overlay */}
+      {isOpen && (
+        <div 
+          className="fixed inset-0 bg-black/50 z-40 md:hidden"
+          onClick={toggleSidebar}
+        />
+      )}
+      
       {/* Sidebar */}
-      <div className={`${isOpen ? 'w-64' : 'w-16'} bg-emerald-700 text-white flex flex-col shadow-lg transition-all duration-300`}>
-        {/* Header */}
-        <div className="p-4 border-b border-emerald-600">
-          <div className="flex items-center justify-between">
+      <div className={`
+        ${isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'} 
+        ${isOpen ? 'w-96' : 'w-0 md:w-16'} 
+        fixed md:static
+        h-full
+        bg-emerald-700 text-white flex flex-col shadow-lg transition-all duration-300 z-50 overflow-hidden
+      `}>
+        {/* Sidebar Header */}
+        <div className={`border-b border-emerald-600 flex-shrink-0 ${isOpen ? 'p-4' : 'p-2'}`}>
+          <div className={`flex items-center ${isOpen ? 'justify-between gap-2' : 'justify-center flex-col gap-2'}`}>
             {isOpen && (
-              <div className="flex items-center space-x-2">
-                <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center">
-                  <span className="text-emerald-700 font-bold text-sm">M</span>
-                </div>
-                <div>
-                  <h1 className="text-lg font-bold">Masjid App</h1>
-                  <p className="text-xs text-emerald-200">Sistem Pengurusan Kelas</p>
+              <div className="flex items-center space-x-3 flex-1 min-w-0">
+                <img 
+                  src="/logomnsa1.jpeg" 
+                  alt="Masjid Negeri Sultan Ahmad 1" 
+                  className="h-12 w-auto object-contain flex-shrink-0"
+                />
+                <div className="flex-1 min-w-0">
+                  <h1 className="text-sm font-bold truncate">Sistem Kelas Pengajian</h1>
+                  <p className="text-xs text-emerald-200 truncate">Masjid Negeri Sultan Ahmad 1</p>
                 </div>
               </div>
             )}
+            {!isOpen && (
+              <img 
+                src="/logomnsa1.jpeg" 
+                alt="MNSA1" 
+                className="h-10 w-10 object-contain flex-shrink-0 rounded"
+              />
+            )}
             <button
               onClick={toggleSidebar}
-              className="p-1 rounded-md hover:bg-emerald-600 transition-colors"
+              className={`rounded-md hover:bg-emerald-600 transition-colors flex-shrink-0 ${isOpen ? 'p-1' : 'p-1.5 w-full flex justify-center'}`}
+              aria-label="Toggle sidebar"
+              title={!isOpen ? 'Expand sidebar' : 'Collapse sidebar'}
             >
               {isOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </button>
@@ -78,21 +136,29 @@ const LayoutContent = ({ children, user, onLogout }) => {
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 p-4">
-          <ul className="space-y-2">
+        <nav className="flex-1 overflow-y-auto">
+          <ul className={`space-y-2 ${isOpen ? 'p-4' : 'p-2'}`}>
             {menuItems.map((item) => (
               <li key={item.label}>
                 <Link
                   to={item.link}
-                  className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 font-medium ${
+                  className={`flex items-center rounded-xl transition-all duration-200 font-medium ${
+                    isOpen 
+                      ? 'gap-3 px-4 py-3' 
+                      : 'justify-center px-2 py-3'
+                  } ${
                     location.pathname === item.link 
                       ? 'bg-emerald-50 text-emerald-700 shadow-sm border border-emerald-200' 
                       : 'text-white hover:bg-emerald-600'
                   }`}
                   title={!isOpen ? item.label : ''}
                 >
-                  <span className="mr-3">{item.icon}</span>
-                  {isOpen && <span>{item.label}</span>}
+                  <span className={`flex-shrink-0 flex items-center justify-center ${
+                    isOpen ? 'w-5 h-5' : 'w-6 h-6'
+                  }`}>
+                    {item.icon}
+                  </span>
+                  {isOpen && <span className="truncate ml-2">{item.label}</span>}
                 </Link>
               </li>
             ))}
@@ -100,58 +166,131 @@ const LayoutContent = ({ children, user, onLogout }) => {
         </nav>
 
         {/* Footer */}
-        {isOpen && (
-          <div className="p-4 border-t border-emerald-600">
+        <div className={`border-t border-emerald-600 flex-shrink-0 ${isOpen ? 'p-4' : 'p-2'}`}>
+          {isOpen ? (
             <div className="text-xs text-emerald-200 text-center">
-              <p>© 2025 Masjid Negeri Sultan Ahmad 1</p>
+              <p className="truncate">© 2025 Masjid Negeri Sultan Ahmad 1</p>
             </div>
-          </div>
-        )}
+          ) : (
+            <div className="w-full flex justify-center">
+              <div className="w-8 h-8 flex items-center justify-center">
+                <span className="text-emerald-200 text-xs">©</span>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Top Header */}
-        <header className="bg-white/80 backdrop-blur-sm border border-white/20 rounded-xl shadow-lg m-4 p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">
-                {menuItems.find(item => item.link === location.pathname)?.label || 'Dashboard'}
+        {/* Top Header - idMe Style */}
+        <header className="bg-white border-b border-gray-200 shadow-sm">
+          <div className="flex items-center justify-between px-4 md:px-6 py-3">
+            {/* Left Section: Text Instead of Logo */}
+            <div className="flex items-center gap-3 md:gap-4">
+              <h1 className="text-lg md:text-xl lg:text-2xl font-semibold text-gray-800">
+                Sistem Kelas Pengajian
               </h1>
-              <p className="text-gray-600 text-sm">
-                {new Date().toLocaleDateString('ms-MY', { 
-                  weekday: 'long', 
-                  year: 'numeric', 
-                  month: 'long', 
-                  day: 'numeric' 
-                })}
-              </p>
             </div>
-            <div className="flex items-center space-x-4">
-              <div className="text-right">
-                <p className="text-sm font-medium text-gray-900">Selamat Datang</p>
-                <p className="text-xs text-gray-600">{user?.nama || 'Admin Masjid'}</p>
-              </div>
-              <div className="flex items-center space-x-2">
-                <div className="w-10 h-10 bg-emerald-500 rounded-full flex items-center justify-center">
-                  <span className="text-white font-bold">
-                    {user?.nama?.charAt(0) || 'A'}
-                  </span>
-                </div>
+
+            {/* Right Section: Menu, User */}
+            <div className="flex items-center gap-4 md:gap-6 flex-shrink-0">
+              {/* Hamburger Menu */}
+              <button
+                onClick={toggleSidebar}
+                className="p-2 rounded-md hover:bg-gray-100 transition-colors"
+                aria-label="Toggle menu"
+              >
+                <Menu className="w-5 h-5 text-gray-700" />
+              </button>
+
+              {/* User Info with Dropdown */}
+              <div className="flex items-center gap-3 md:gap-4 relative" ref={userMenuRef}>
                 <button
-                  onClick={onLogout}
-                  className="px-3 py-1 text-sm bg-red-100 text-red-700 rounded-md hover:bg-red-200 transition-colors"
+                  onClick={() => setUserMenuOpen(!userMenuOpen)}
+                  className="flex items-center gap-3 md:gap-4 hover:opacity-80 transition-opacity"
                 >
-                  Logout
+                  <div className="hidden lg:block text-right">
+                    <p className="text-sm font-medium text-gray-800">
+                      {getRoleLabel(user?.role) || 'Admin Masjid'}
+                    </p>
+                  </div>
+                  <div className="relative">
+                    <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-emerald-500 flex items-center justify-center flex-shrink-0 border-2 border-white shadow-md cursor-pointer">
+                      <span className="text-white font-bold text-sm md:text-base">
+                        {user?.nama?.charAt(0) || 'A'}
+                      </span>
+                    </div>
+                    {/* Online Status Dot */}
+                    <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white rounded-full"></div>
+                  </div>
                 </button>
+
+                {/* User Dropdown Menu */}
+                {userMenuOpen && (
+                  <div className="absolute top-full right-0 mt-2 w-72 bg-white rounded-lg shadow-xl border border-gray-200 z-50 overflow-hidden">
+                    {/* User Info Section */}
+                    <div className="p-4 bg-gray-50 border-b border-gray-200">
+                      <div className="flex justify-center mb-3">
+                        <div className="w-20 h-20 rounded-full bg-gray-200 flex items-center justify-center border-4 border-white shadow-md">
+                          <img 
+                            src="/logomnsa1.jpeg" 
+                            alt={user?.nama || 'User'} 
+                            className="w-full h-full rounded-full object-cover"
+                            onError={(e) => {
+                              e.target.style.display = 'none';
+                              e.target.nextSibling.style.display = 'flex';
+                            }}
+                          />
+                          <span 
+                            className="text-emerald-600 font-bold text-2xl absolute inset-0 flex items-center justify-center"
+                            style={{ display: 'none' }}
+                          >
+                            {user?.nama?.charAt(0) || 'A'}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="text-center">
+                        <p className="font-bold text-gray-900 text-sm">
+                          {user?.nama || 'Admin Masjid'}
+                        </p>
+                        <p className="text-xs text-gray-500 mt-1">
+                          {user?.email || 'admin@masjid.com'}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Menu Items */}
+                    <div className="py-2">
+                      <Link
+                        to="/settings"
+                        onClick={() => setUserMenuOpen(false)}
+                        className="flex items-center gap-3 px-4 py-3 text-gray-700 hover:bg-gray-100 transition-colors"
+                      >
+                        <User className="w-5 h-5 text-blue-500" />
+                        <span className="text-sm">Profil</span>
+                      </Link>
+                      <button
+                        onClick={() => {
+                          setUserMenuOpen(false);
+                          onLogout();
+                        }}
+                        className="w-full flex items-center gap-3 px-4 py-3 text-gray-700 hover:bg-gray-100 transition-colors"
+                      >
+                        <LogOut className="w-5 h-5 text-blue-500" />
+                        <span className="text-sm">Log Keluar</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>
         </header>
 
         {/* Page Content */}
-        <main className="flex-1 overflow-auto p-4">
-          <div className="max-w-screen-lg mx-auto p-4 bg-white/80 rounded-lg shadow-lg border border-white/30">
+        <main className="flex-1 overflow-auto p-2 md:p-4">
+          <div className="max-w-screen-lg mx-auto p-3 md:p-4 lg:p-6 bg-white/80 rounded-lg shadow-lg border border-white/30">
             {children}
           </div>
         </main>

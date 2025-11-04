@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Search, Plus, Edit, Eye, Trash2, Filter, BookOpen, Users } from 'lucide-react';
 
-const KelasList = ({ kelass = [], onEdit, onView, onDelete, onAdd, gurus = [] }) => {
+const KelasList = ({ kelass = [], onEdit, onView, onDelete, onAdd, gurus = [], user }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('semua');
 
@@ -36,10 +36,12 @@ const KelasList = ({ kelass = [], onEdit, onView, onDelete, onAdd, gurus = [] })
     <div className="mosque-card">
       <div className="p-6 border-b border-mosque-primary-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <h3 className="text-xl font-bold text-mosque-primary-800">Senarai Kelas ({filteredKelass.length})</h3>
-        <button onClick={onAdd} className="btn-mosque-primary flex items-center gap-2">
-          <Plus size={16} />
-          Tambah Kelas
-        </button>
+        {user?.role !== 'teacher' && (
+          <button onClick={onAdd} className="btn-mosque-primary flex items-center gap-2">
+            <Plus size={16} />
+            Tambah Kelas
+          </button>
+        )}
       </div>
       <div className="p-6">
         <div className="flex flex-col sm:flex-row gap-4 mb-6">
@@ -68,12 +70,14 @@ const KelasList = ({ kelass = [], onEdit, onView, onDelete, onAdd, gurus = [] })
           </div>
         </div>
 
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto -mx-4 sm:mx-0">
           <table className="min-w-full divide-y divide-mosque-primary-100">
             <thead className="bg-mosque-primary-50">
               <tr>
                 {['Kelas', 'Level', 'Sesi', 'Guru', 'Yuran', 'Status', 'Tindakan'].map(header => (
-                  <th key={header} className="px-6 py-3 text-left text-xs font-bold text-mosque-primary-700 uppercase tracking-wider">
+                  <th key={header} className={`px-3 sm:px-6 py-2 sm:py-3 text-left text-xs font-bold text-mosque-primary-700 uppercase tracking-wider ${
+                    header === 'Sesi' || header === 'Guru' ? 'hidden md:table-cell' : ''
+                  }`}>
                     {header}
                   </th>
                 ))}
@@ -82,7 +86,7 @@ const KelasList = ({ kelass = [], onEdit, onView, onDelete, onAdd, gurus = [] })
             <tbody className="bg-white divide-y divide-mosque-primary-100">
               {filteredKelass.map((kelas) => (
                 <tr key={kelas.id} className="hover:bg-mosque-primary-50 transition-colors duration-200">
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td className="px-3 sm:px-6 py-3 sm:py-4">
                     <div className="flex items-center">
                       <div className="flex-shrink-0 h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
                         <BookOpen className="h-5 w-5 text-blue-600" />
@@ -96,28 +100,32 @@ const KelasList = ({ kelass = [], onEdit, onView, onDelete, onAdd, gurus = [] })
                       </div>
                     </div>
                   </td>
-                  <td className="px-6 py-4 text-sm text-mosque-neutral-700">{kelas.level || ''}</td>
-                  <td className="px-6 py-4 text-sm text-mosque-neutral-700">
+                  <td className="px-3 sm:px-6 py-3 sm:py-4 text-sm text-mosque-neutral-700">{kelas.level || ''}</td>
+                  <td className="px-3 sm:px-6 py-3 sm:py-4 text-sm text-mosque-neutral-700 hidden md:table-cell">
                     {(kelas.sessions || []).map((session, index) => (
                       <div key={index} className="text-xs">
                         {(session.days || []).join(', ')} ({(session.times || []).join(', ')})
                       </div>
                     ))}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-mosque-neutral-700">{getGuruName(kelas.guru_ic)}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-mosque-neutral-700">RM {Number(kelas.yuran) || 0}</td>
-                  <td className="px-6 py-4 whitespace-nowrap">{getStatusBadge(kelas.status)}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                  <td className="px-3 sm:px-6 py-3 sm:py-4 text-sm text-mosque-neutral-700 hidden md:table-cell">{getGuruName(kelas.guru_ic)}</td>
+                  <td className="px-3 sm:px-6 py-3 sm:py-4 text-sm text-mosque-neutral-700">RM {Number(kelas.yuran) || 0}</td>
+                  <td className="px-3 sm:px-6 py-3 sm:py-4">{getStatusBadge(kelas.status)}</td>
+                  <td className="px-3 sm:px-6 py-3 sm:py-4 text-sm font-medium">
                     <div className="flex space-x-3">
                       <button onClick={() => onView(kelas)} className="text-mosque-primary-600 hover:text-mosque-primary-800" title="Lihat Detail">
                         <Eye size={16} />
                       </button>
-                      <button onClick={() => onEdit(kelas)} className="text-blue-600 hover:text-blue-800" title="Edit">
-                        <Edit size={16} />
-                      </button>
-                      <button onClick={() => onDelete(kelas.id)} className="text-red-600 hover:text-red-800" title="Padam">
-                        <Trash2 size={16} />
-                      </button>
+                      {user?.role !== 'teacher' && (
+                        <>
+                          <button onClick={() => onEdit(kelas)} className="text-blue-600 hover:text-blue-800" title="Edit">
+                            <Edit size={16} />
+                          </button>
+                          <button onClick={() => onDelete(kelas.id)} className="text-red-600 hover:text-red-800" title="Padam">
+                            <Trash2 size={16} />
+                          </button>
+                        </>
+                      )}
                     </div>
                   </td>
                 </tr>

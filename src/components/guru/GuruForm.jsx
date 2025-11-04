@@ -1,4 +1,7 @@
 import React, { useState } from 'react';
+import BackButton from '../ui/BackButton';
+import { formatIC } from '../../utils/icUtils';
+import { formatPhone } from '../../utils/phoneUtils';
 
 const GuruForm = ({ guru = null, onSubmit, onCancel }) => {
   const [formData, setFormData] = useState({
@@ -24,7 +27,12 @@ const GuruForm = ({ guru = null, onSubmit, onCancel }) => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    setFormData(prev => ({
+      ...prev,
+      [name]: name === 'ic' ? formatIC(value, true) : // Auto-format IC with hyphens
+              name === 'telefon' ? formatPhone(value, true) : // Auto-format phone with hyphen
+              value
+    }));
   };
 
   const handleKepakaranChange = (kepakaran) => {
@@ -56,9 +64,12 @@ const GuruForm = ({ guru = null, onSubmit, onCancel }) => {
   return (
     <div className="mosque-card">
       <div className="p-6 border-b border-mosque-primary-100">
-        <h3 className="text-xl font-bold text-mosque-primary-800">
-          {guru ? 'Kemaskini Maklumat Guru' : 'Tambah Guru Baru'}
-        </h3>
+        <div className="flex items-center space-x-3">
+          <BackButton onClick={onCancel} />
+          <h3 className="text-xl font-bold text-mosque-primary-800">
+            {guru ? 'Kemaskini Maklumat Guru' : 'Tambah Guru Baru'}
+          </h3>
+        </div>
       </div>
       <form onSubmit={handleSubmit}>
         <div className="p-6 space-y-6">
@@ -83,11 +94,12 @@ const GuruForm = ({ guru = null, onSubmit, onCancel }) => {
                 value={formData.ic}
                 onChange={handleChange}
                 required
-                pattern="^\\d{6}-\\d{2}-\\d{4}$"
+                maxLength={14}
                 autoComplete="off"
                 className="input-mosque w-full"
-                placeholder="Contoh: 123456-78-9012"
+                placeholder="Contoh: 123456-78-9012 atau 123456789012"
               />
+              <p className="text-xs text-gray-500 mt-1">Format: 12 digit (dengan atau tanpa sempang)</p>
             </div>
             <div>
               <label className="form-label">Nombor Telefon *</label>
@@ -97,11 +109,12 @@ const GuruForm = ({ guru = null, onSubmit, onCancel }) => {
                 value={formData.telefon}
                 onChange={handleChange}
                 required
-                pattern="^01[0-9]-\\d{7,8}$"
+                maxLength={12}
                 autoComplete="tel"
                 className="input-mosque w-full"
-                placeholder="Contoh: 012-3456789"
+                placeholder="Contoh: 012-3456789 atau 0123456789"
               />
+              <p className="text-xs text-gray-500 mt-1">Format: 01X diikuti 7-8 digit (dengan atau tanpa sempang)</p>
             </div>
             <div>
               <label className="form-label">Status *</label>

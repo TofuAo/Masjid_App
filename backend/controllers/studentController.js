@@ -7,12 +7,16 @@ const studentCache = new NodeCache({ stdTTL: 600 }); // 10 minutes
 export const getAllStudents = async (req, res) => {
   try {
     const { search, status, kelas_id, page = 1, limit = 10 } = req.query;
-    const cacheKey = `students:${search}:${status}:${kelas_id}:${page}:${limit}`;
+    
+    // Include user role in cache key to prevent teachers seeing admin cache
+    const cacheKey = `students:${req.user?.role || 'guest'}:${search}:${status}:${kelas_id}:${page}:${limit}`;
 
-    // Check if data is in cache
-    if (studentCache.has(cacheKey)) {
-      console.log("Data retrieved from cache");
-      return res.json(studentCache.get(cacheKey));
+    // Check if data is in cache (but skip cache for teachers to ensure filtered results)
+    if (!req.user || req.user.role !== 'teacher') {
+      if (studentCache.has(cacheKey)) {
+        console.log("Data retrieved from cache");
+        return res.json(studentCache.get(cacheKey));
+      }
     }
 
     let query = `
@@ -24,6 +28,12 @@ export const getAllStudents = async (req, res) => {
     `;
 
     const queryParams = [];
+
+    // If user is a teacher, only show students in their classes
+    if (req.user && req.user.role === 'teacher') {
+      query += ` AND c.guru_ic = ?`;
+      queryParams.push(req.user.ic);
+    }
 
     if (search) {
       query += ` AND (u.nama LIKE ? OR u.ic LIKE ?)`;
@@ -53,9 +63,16 @@ export const getAllStudents = async (req, res) => {
       SELECT COUNT(*) as total
       FROM users u
       JOIN students s ON u.ic = s.user_ic
+      LEFT JOIN classes c ON s.kelas_id = c.id
       WHERE u.role = 'student'
     `;
     const countParams = [];
+
+    // If user is a teacher, only count students in their classes
+    if (req.user && req.user.role === 'teacher') {
+      countQuery += ` AND c.guru_ic = ?`;
+      countParams.push(req.user.ic);
+    }
 
     if (search) {
       countQuery += ` AND (u.nama LIKE ? OR u.ic LIKE ?)`;
@@ -162,6 +179,9 @@ export const createStudent = async (req, res) => {
     }
 
     const { nama, ic, umur, alamat, telefon, email, password, kelas_id, status, tarikh_daftar } = req.body;
+    
+    // Convert empty string or undefined to null for kelas_id
+    const finalKelasId = kelas_id === '' || kelas_id === undefined ? null : kelas_id;
 
     const connection = await pool.getConnection();
     await connection.beginTransaction();
@@ -178,7 +198,7 @@ export const createStudent = async (req, res) => {
       await connection.execute(
         `INSERT INTO students (user_ic, kelas_id, tarikh_daftar) 
          VALUES (?, ?, ?)`,
-        [ic, kelas_id, tarikh_daftar]
+        [ic, finalKelasId, tarikh_daftar]
       );
 
       await connection.commit();
@@ -229,6 +249,9 @@ export const updateStudent = async (req, res) => {
 
     const { ic } = req.params;
     const { nama, umur, alamat, telefon, email, kelas_id, status, tarikh_daftar } = req.body;
+    
+    // Convert empty string or undefined to null for kelas_id
+    const finalKelasId = kelas_id === '' || kelas_id === undefined ? null : kelas_id;
 
     const connection = await pool.getConnection();
     await connection.beginTransaction();
@@ -245,7 +268,7 @@ export const updateStudent = async (req, res) => {
       await connection.execute(
         `UPDATE students SET kelas_id = ?, tarikh_daftar = ?
          WHERE user_ic = ?`,
-        [kelas_id, tarikh_daftar, ic]
+        [finalKelasId, tarikh_daftar, ic]
       );
 
       await connection.commit();

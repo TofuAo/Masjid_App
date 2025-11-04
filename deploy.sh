@@ -71,20 +71,18 @@ sleep 30
 print_status "Checking service status..."
 docker-compose ps
 
+# Wait for MySQL to be ready
+print_status "Waiting for MySQL to be ready..."
+until docker-compose exec -T mysql mysqladmin ping -h localhost --silent; do
+    sleep 2
+done
+print_status "MySQL is ready!"
+
 # Run database migrations
 print_status "Running database migrations..."
-docker-compose exec backend node -e "
-const { pool } = require('./config/database.js');
-const fs = require('fs');
-const sql = fs.readFileSync('/app/database/masjid_app_schema.sql', 'utf8');
-pool.execute(sql).then(() => {
-    console.log('Database schema created successfully');
-    process.exit(0);
-}).catch(err => {
-    console.error('Database migration failed:', err);
-    process.exit(1);
-});
-"
+docker-compose exec -T backend npm run migrate || {
+    print_warning "Migration may have already been run. Continuing..."
+}
 
 print_status "Deployment completed successfully!"
 print_status "Frontend: http://localhost:3000"

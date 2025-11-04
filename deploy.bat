@@ -51,6 +51,12 @@ REM Check if services are running
 echo [INFO] Checking service status...
 docker-compose ps
 
+REM Run database migrations
+echo [INFO] Running database migrations...
+docker-compose exec backend npm run migrate || (
+    echo [WARNING] Migration may have already been run. Continuing...
+)
+
 echo [INFO] Deployment completed successfully!
 echo [INFO] Frontend: http://localhost:3000
 echo [INFO] Backend API: http://localhost:5000

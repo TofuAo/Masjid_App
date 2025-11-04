@@ -5,7 +5,9 @@ import { toast } from 'react-toastify';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import Badge from '../components/ui/Badge';
-import { BarChart3, Download, FileText, Users, GraduationCap, BookOpen, CreditCard, Calendar, TrendingUp, TrendingDown, AlertCircle } from 'lucide-react';
+import { BarChart3, Download, FileText, Users, GraduationCap, BookOpen, CreditCard, Calendar, TrendingUp, TrendingDown, AlertCircle, Award } from 'lucide-react';
+import { Document, Packer, Paragraph, TextRun, HeadingLevel, Table, TableRow, TableCell, WidthType, AlignmentType } from 'docx';
+import { saveAs } from 'file-saver';
 
 const Laporan = () => {
   const [selectedReport, setSelectedReport] = useState('overview');
@@ -13,7 +15,7 @@ const Laporan = () => {
     start: '2024-01-01', // Default to start of year
     end: new Date().toISOString().split('T')[0] // Default to current date
   });
-  const [format, setFormat] = useState('csv'); // xlsx | csv | json (csv works without deps)
+  const [format, setFormat] = useState('xlsx'); // xlsx | docx | csv | json
 
   const { items: students, loading: loadingStudents, error: errorStudents, fetchItems: fetchStudents } = useCrud(studentsAPI, 'pelajar');
   const { items: teachers, loading: loadingTeachers, error: errorTeachers, fetchItems: fetchTeachers } = useCrud(teachersAPI, 'guru');
@@ -67,7 +69,7 @@ const Laporan = () => {
         aktif: aktifPelajars,
         newThisMonth: studentsArray.filter(s => new Date(s.tarikh_daftar).getMonth() === new Date().getMonth() && new Date(s.tarikh_daftar).getFullYear() === new Date().getFullYear()).length,
         byKelas: classesArray.map(c => ({
-          kelas: c.class_name,
+          kelas: c.nama_kelas || c.class_name || '',
           count: studentsArray.filter(s => s.kelas_id === c.id).length,
         })),
       },
@@ -84,7 +86,7 @@ const Laporan = () => {
           const classAttendance = attendanceArray.filter(a => a.kelas_id === c.id);
           const classPresent = classAttendance.filter(a => a.status === 'hadir' || a.status === 'lewat').length;
           const rate = classAttendance.length > 0 ? (classPresent / classAttendance.length * 100).toFixed(1) : 0;
-          return { kelas: c.class_name, rate };
+          return { kelas: c.nama_kelas || c.class_name || '', rate };
         }),
         trends: [], // This would require more complex aggregation on the backend or frontend
       },
@@ -133,21 +135,181 @@ const Laporan = () => {
           Status: a.status
         }));
       }
+      case 'keputusan': {
+        const arr = Array.isArray(results) ? results : [];
+        return arr.map(r => ({
+          Pelajar: r.pelajar_nama || r.nama || '',
+          Kelas: r.kelas_nama || r.nama_kelas || '',
+          Peperiksaan: r.peperiksaan_nama || r.exam_subject || r.subject || '',
+          Markah: r.markah || 0,
+          Gred: r.gred || '',
+          Status: r.status || (r.gred && ['A+', 'A', 'A-', 'B+', 'B', 'B-', 'C+', 'C', 'C-', 'D'].includes(r.gred) ? 'lulus' : 'gagal')
+        }));
+      }
       case 'overview':
       default: {
         const r = reportData.overview || {};
         return [
           { Metrik: 'Jumlah Pelajar', Nilai: r.totalPelajars || 0 },
+          { Metrik: 'Pelajar Aktif', Nilai: reportData.pelajars?.aktif || 0 },
           { Metrik: 'Jumlah Guru', Nilai: r.totalGurus || 0 },
           { Metrik: 'Jumlah Kelas', Nilai: r.totalKelass || 0 },
-          { Metrik: 'Kutipan Terkini', Nilai: r.feesCollected || 0 },
+          { Metrik: 'Kutipan Yuran (RM)', Nilai: r.totalYuran || 0 },
+          { Metrik: 'Kadar Kehadiran (%)', Nilai: r.kehadiranRate || 0 },
+          { Metrik: 'Kadar Lulus (%)', Nilai: r.lulusRate || 0 },
         ];
       }
     }
   };
 
+  const generateWordReport = async (rows, reportData) => {
+    const reportTitle = {
+      'overview': 'Ringkasan Keseluruhan',
+      'pelajars': 'Laporan Pelajar',
+      'yuran': 'Laporan Yuran',
+      'kehadiran': 'Laporan Kehadiran',
+      'keputusan': 'Laporan Keputusan'
+    }[selectedReport] || 'Laporan';
+
+    const children = [
+      new Paragraph({
+        text: 'MASJID APP - SISTEM PENGURUSAN KELAS',
+        heading: HeadingLevel.HEADING_1,
+        alignment: AlignmentType.CENTER,
+        spacing: { after: 200 }
+      }),
+      new Paragraph({
+        text: reportTitle,
+        heading: HeadingLevel.HEADING_2,
+        alignment: AlignmentType.CENTER,
+        spacing: { after: 300 }
+      }),
+      new Paragraph({
+        text: `Tarikh Mula: ${new Date(dateRange.start).toLocaleDateString('ms-MY')}`,
+        spacing: { after: 100 }
+      }),
+      new Paragraph({
+        text: `Tarikh Akhir: ${new Date(dateRange.end).toLocaleDateString('ms-MY')}`,
+        spacing: { after: 300 }
+      }),
+    ];
+
+    // Add summary data for overview report
+    if (selectedReport === 'overview') {
+      children.push(
+        new Paragraph({
+          text: 'STATISTIK KESELURUHAN',
+          heading: HeadingLevel.HEADING_2,
+          spacing: { before: 200, after: 200 }
+        })
+      );
+      
+      const summaryRows = [
+        ['Metrik', 'Nilai'],
+        ['Jumlah Pelajar', String(reportData.overview?.totalPelajars || 0)],
+        ['Pelajar Aktif', String(reportData.pelajars?.aktif || 0)],
+        ['Pelajar Baru (Bulan Ini)', String(reportData.pelajars?.newThisMonth || 0)],
+        ['Jumlah Guru', String(reportData.overview?.totalGurus || 0)],
+        ['Jumlah Kelas', String(reportData.overview?.totalKelass || 0)],
+        ['Kutipan Yuran (RM)', String(reportData.overview?.totalYuran || 0)],
+        ['Yuran Tertunggak (RM)', String(reportData.yuran?.totalTunggak || 0)],
+        ['Kadar Kehadiran (%)', `${reportData.overview?.kehadiranRate || 0}%`],
+        ['Kadar Lulus (%)', `${reportData.overview?.lulusRate || 0}%`],
+        ['Purata Markah', String(reportData.keputusan?.averageMarkah || 0)]
+      ];
+
+      const tableRows = summaryRows.map((row, index) => 
+        new TableRow({
+          children: row.map(cell => 
+            new TableCell({
+              children: [new Paragraph(cell)],
+              width: { size: 50, type: WidthType.PERCENTAGE }
+            })
+          )
+        })
+      );
+
+      children.push(
+        new Table({
+          rows: tableRows,
+          width: { size: 100, type: WidthType.PERCENTAGE }
+        })
+      );
+    }
+
+    // Add data table
+    if (rows && rows.length > 0) {
+      children.push(
+        new Paragraph({
+          text: 'DATA TERPERINCI',
+          heading: HeadingLevel.HEADING_2,
+          spacing: { before: 400, after: 200 }
+        })
+      );
+
+      const headers = Object.keys(rows[0]);
+      const tableRows = [
+        new TableRow({
+          children: headers.map(header => 
+            new TableCell({
+              children: [new Paragraph({
+                text: header,
+                bold: true
+              })],
+              shading: { fill: 'D3D3D3' }
+            })
+          )
+        }),
+        ...rows.slice(0, 100).map(row => // Limit to 100 rows for Word document
+          new TableRow({
+            children: headers.map(header => 
+              new TableCell({
+                children: [new Paragraph(String(row[header] || ''))]
+              })
+            )
+          })
+        )
+      ];
+
+      children.push(
+        new Table({
+          rows: tableRows,
+          width: { size: 100, type: WidthType.PERCENTAGE }
+        })
+      );
+
+      if (rows.length > 100) {
+        children.push(
+          new Paragraph({
+            text: `*Nota: Paparan terhad kepada 100 rekod pertama daripada ${rows.length} rekod.`,
+            italics: true,
+            spacing: { before: 200 }
+          })
+        );
+      }
+    }
+
+    // Add footer
+    children.push(
+      new Paragraph({
+        text: `\nDijana pada: ${new Date().toLocaleString('ms-MY')}`,
+        spacing: { before: 400 }
+      })
+    );
+
+    const doc = new Document({
+      sections: [{
+        children: children
+      }]
+    });
+
+    const blob = await Packer.toBlob(doc);
+    saveAs(blob, `laporan_${selectedReport}_${dateRange.start}_${dateRange.end}.docx`);
+  };
+
   const generateReport = async () => {
     try {
+      toast.info('Menjana laporan...', { autoClose: 1000 });
       const rows = buildRows();
       if (!rows || rows.length === 0) {
         toast.error('Tiada data untuk dijana.');
@@ -155,24 +317,95 @@ const Laporan = () => {
       }
       const filenameBase = `laporan_${selectedReport}_${dateRange.start}_${dateRange.end}`;
 
+      // Word Document Generation
+      if (format === 'docx') {
+        try {
+          await generateWordReport(rows, reportData);
+          toast.success('Laporan Word berjaya dijana!');
+          return;
+        } catch (e) {
+          console.error('Word generation error:', e);
+          toast.error('Gagal menjana laporan Word. Cuba format lain.');
+          return;
+        }
+      }
+
+      // Excel Generation with enhanced formatting
       if (format === 'xlsx') {
         try {
           const XLSX = await import('xlsx');
           const wb = XLSX.utils.book_new();
+
+          // Main data sheet
           const ws = XLSX.utils.json_to_sheet(rows);
-          XLSX.utils.book_append_sheet(wb, ws, 'Laporan');
+          
+          // Set column widths
+          const colWidths = Object.keys(rows[0] || {}).map(() => ({ wch: 20 }));
+          ws['!cols'] = colWidths;
+
+          XLSX.utils.book_append_sheet(wb, ws, 'Data');
+
+          // Add summary sheet for overview
+          if (selectedReport === 'overview') {
+            const summaryData = [
+              ['STATISTIK KESELURUHAN', ''],
+              ['Jumlah Pelajar', reportData.overview?.totalPelajars || 0],
+              ['Pelajar Aktif', reportData.pelajars?.aktif || 0],
+              ['Pelajar Baru (Bulan Ini)', reportData.pelajars?.newThisMonth || 0],
+              ['Jumlah Guru', reportData.overview?.totalGurus || 0],
+              ['Jumlah Kelas', reportData.overview?.totalKelass || 0],
+              ['Kutipan Yuran (RM)', reportData.overview?.totalYuran || 0],
+              ['Yuran Tertunggak (RM)', reportData.yuran?.totalTunggak || 0],
+              ['Yuran Terbayar', reportData.yuran?.terbayar || 0],
+              ['Yuran Tertunggak', reportData.yuran?.tunggak || 0],
+              ['Kadar Kehadiran (%)', `${reportData.overview?.kehadiranRate || 0}%`],
+              ['Kadar Lulus (%)', `${reportData.overview?.lulusRate || 0}%`],
+              ['Purata Markah', reportData.keputusan?.averageMarkah || 0],
+              ['Lulus', reportData.keputusan?.lulus || 0],
+              ['Gagal', reportData.keputusan?.gagal || 0]
+            ];
+            const summaryWs = XLSX.utils.aoa_to_sheet(summaryData);
+            summaryWs['!cols'] = [{ wch: 25 }, { wch: 15 }];
+            XLSX.utils.book_append_sheet(wb, summaryWs, 'Ringkasan');
+          }
+          
+          // Add class distribution sheet for pelajars report
+          if (selectedReport === 'pelajars' && reportData.pelajars?.byKelas?.length > 0) {
+            const classData = [
+              ['Kelas', 'Bilangan Pelajar'],
+              ...reportData.pelajars.byKelas.map(item => [item.kelas || '', item.count || 0])
+            ];
+            const classWs = XLSX.utils.aoa_to_sheet(classData);
+            classWs['!cols'] = [{ wch: 30 }, { wch: 15 }];
+            XLSX.utils.book_append_sheet(wb, classWs, 'Taburan Kelas');
+          }
+          
+          // Add attendance by class sheet for kehadiran report
+          if (selectedReport === 'kehadiran' && reportData.kehadiran?.byKelas?.length > 0) {
+            const attendanceData = [
+              ['Kelas', 'Kadar Kehadiran (%)'],
+              ...reportData.kehadiran.byKelas.map(item => [item.kelas || '', `${item.rate || 0}%`])
+            ];
+            const attendanceWs = XLSX.utils.aoa_to_sheet(attendanceData);
+            attendanceWs['!cols'] = [{ wch: 30 }, { wch: 20 }];
+            XLSX.utils.book_append_sheet(wb, attendanceWs, 'Kehadiran Kelas');
+          }
+
           XLSX.writeFile(wb, `${filenameBase}.xlsx`);
+          toast.success('Laporan Excel berjaya dijana!');
           return;
         } catch (e) {
-          console.warn('xlsx not available, falling back to CSV:', e);
+          console.error('Excel generation error:', e);
+          toast.error('Gagal menjana laporan Excel. Cuba format lain.');
           // fall through to CSV
         }
       }
 
+      // CSV Generation
       if (format === 'csv') {
         const header = Object.keys(rows[0]);
-        const csv = [header.join(',')].concat(rows.map(r => header.map(h => `${String(r[h] ?? '').replace(/"/g, '""')}`).join(','))).join('\n');
-        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const csv = [header.join(',')].concat(rows.map(r => header.map(h => `"${String(r[h] ?? '').replace(/"/g, '""')}"`).join(','))).join('\n');
+        const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' }); // BOM for Excel compatibility
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
@@ -181,10 +414,11 @@ const Laporan = () => {
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
+        toast.success('Laporan CSV berjaya dijana!');
         return;
       }
 
-      // Default fallback: JSON
+      // JSON fallback
       const blob = new Blob([JSON.stringify(rows, null, 2)], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -194,9 +428,10 @@ const Laporan = () => {
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
+      toast.success('Laporan JSON berjaya dijana!');
     } catch (err) {
       console.error('Generate report error:', err);
-      toast.error('Gagal menjana laporan.');
+      toast.error('Gagal menjana laporan. Sila cuba lagi.');
     }
   };
 
@@ -567,6 +802,7 @@ const Laporan = () => {
                 <option value="pelajars">Laporan Pelajar</option>
                 <option value="yuran">Laporan Yuran</option>
                 <option value="kehadiran">Laporan Kehadiran</option>
+                <option value="keputusan">Laporan Keputusan</option>
               </select>
             </div>
             <div className="flex-1">
@@ -599,6 +835,7 @@ const Laporan = () => {
                 title="Pilih format fail"
               >
                 <option value="xlsx">Excel (.xlsx)</option>
+                <option value="docx">Word (.docx)</option>
                 <option value="csv">CSV (.csv)</option>
                 <option value="json">JSON (.json)</option>
               </select>

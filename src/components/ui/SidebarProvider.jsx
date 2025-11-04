@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 
 const SidebarContext = createContext();
 
@@ -11,9 +11,30 @@ export const useSidebar = () => {
 };
 
 export const SidebarProvider = ({ children }) => {
-  const [isOpen, setIsOpen] = useState(true);
+  // On mobile, sidebar starts closed; on desktop, it starts open
+  const [isOpen, setIsOpen] = useState(() => {
+    // Check if we're on mobile (width < 768px)
+    if (typeof window !== 'undefined') {
+      return window.innerWidth >= 768;
+    }
+    return true;
+  });
 
   const toggleSidebar = () => setIsOpen(!isOpen);
+
+  // Close sidebar when clicking outside on mobile
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth >= 768) {
+        setIsOpen(true);
+      } else {
+        setIsOpen(false);
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   return (
     <SidebarContext.Provider value={{ isOpen, toggleSidebar }}>

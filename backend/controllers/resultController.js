@@ -136,7 +136,7 @@ export const createResult = async (req, res) => {
       });
     }
 
-    const { student_ic, exam_id, markah, gred, slip_img } = req.body;
+    const { student_ic, exam_id, markah, gred, slip_img, catatan = null } = req.body;
     
     // Check if student exists
     const [students] = await pool.execute(
@@ -178,9 +178,9 @@ export const createResult = async (req, res) => {
     }
     
     const [result] = await pool.execute(`
-      INSERT INTO results (student_ic, exam_id, markah, gred, slip_img)
-      VALUES (?, ?, ?, ?, ?)
-    `, [student_ic, exam_id, markah, gred, slip_img]);
+      INSERT INTO results (student_ic, exam_id, markah, gred, slip_img, catatan)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `, [student_ic, exam_id, markah, gred, slip_img, catatan || null]);
     
     const [newResult] = await pool.execute(`
       SELECT r.*, u.nama as pelajar_nama, u.ic as pelajar_ic, c.nama_kelas, e.subject as exam_subject, e.tarikh_exam as exam_date
@@ -218,7 +218,7 @@ export const updateResult = async (req, res) => {
     }
 
     const { id } = req.params;
-    const { student_ic, exam_id, markah, gred, slip_img } = req.body;
+    const { student_ic, exam_id, markah, gred, slip_img, catatan = null } = req.body;
     
     // Check if result exists
     const [existingResults] = await pool.execute(
@@ -248,9 +248,9 @@ export const updateResult = async (req, res) => {
     
     await pool.execute(`
       UPDATE results 
-      SET student_ic = ?, exam_id = ?, markah = ?, gred = ?, slip_img = ?, updated_at = CURRENT_TIMESTAMP
+      SET student_ic = ?, exam_id = ?, markah = ?, gred = ?, slip_img = ?, catatan = ?, updated_at = CURRENT_TIMESTAMP
       WHERE id = ?
-    `, [student_ic, exam_id, markah, gred, slip_img, id]);
+    `, [student_ic, exam_id, markah, gred, slip_img, catatan || null, id]);
     
     const [updatedResult] = await pool.execute(`
       SELECT r.*, u.nama as pelajar_nama, u.ic as pelajar_ic, c.nama_kelas, e.subject as exam_subject, e.tarikh_exam as exam_date

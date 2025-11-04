@@ -34,9 +34,16 @@ const feeValidation = [
 ];
 
 const markPaidValidation = [
+  body('cara_bayar')
+    .optional()
+    .isString()
+    .withMessage('Payment method must be a string'),
+  body('no_resit')
+    .optional()
+    .isString()
+    .withMessage('Receipt number must be a string'),
   body('resit_img')
-    .notEmpty()
-    .withMessage('Receipt image is required')
+    .optional()
     .isString()
     .withMessage('Receipt image must be a string')
 ];

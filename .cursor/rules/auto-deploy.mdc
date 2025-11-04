@@ -1,0 +1,61 @@
+---
+alwaysApply: true
+---
+
+# Auto-Deploy Rule
+
+**CRITICAL**: After making ANY changes to the codebase (frontend or backend), you MUST automatically update the deployed version.
+
+## Deployment Process
+
+1. **Build the frontend for production:**
+   ```bash
+   npm run build
+   ```
+
+2. **Rebuild the frontend Docker container:**
+   ```bash
+   docker-compose build frontend
+   ```
+
+3. **Restart the frontend container:**
+   ```bash
+   docker-compose up -d frontend
+   ```
+
+4. **Verify deployment:**
+   ```bash
+   docker-compose ps frontend
+   ```
+
+## When to Deploy
+
+- **ALWAYS deploy after:**
+  - Making changes to any React components (src/components/)
+  - Modifying pages (src/pages/)
+  - Updating services or utilities (src/services/, src/utils/)
+  - Changing API routes (backend/routes/)
+  - Modifying controllers (backend/controllers/)
+  - Updating middleware (backend/middleware/)
+  - Changing database schema or migrations
+  - Any configuration changes
+
+- **Backend changes** (controllers, routes, middleware):
+  - Restart backend container: `docker-compose restart backend`
+
+- **Database changes** (schema, migrations):
+  - Run migrations: `docker-compose exec backend npm run migrate`
+
+## Quick Deployment Command
+
+For quick frontend-only updates:
+```bash
+npm run build && docker-compose build frontend && docker-compose up -d frontend
+```
+
+## Important Notes
+
+- Always verify services are running after deployment
+- Check logs if deployment fails: `docker-compose logs frontend`
+- Never skip deployment - it's a required step after code changes
+- Inform the user when deployment is complete

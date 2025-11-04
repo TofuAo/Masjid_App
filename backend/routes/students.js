@@ -9,6 +9,10 @@ import {
   getStudentStats
 } from '../controllers/studentController.js';
 import { authenticateToken, requireRole } from '../middleware/auth.js';
+import { isValidICFormat } from '../utils/icNormalizer.js';
+import { normalizeICMiddleware } from '../middleware/normalizeIC.js';
+import { isValidPhoneFormat } from '../utils/phoneNormalizer.js';
+import { normalizePhoneMiddleware } from '../middleware/normalizePhone.js';
 
 const router = express.Router();
 
@@ -22,8 +26,12 @@ const studentValidation = [
   body('ic')
     .notEmpty()
     .withMessage('IC number is required')
-    .matches(/^\d{6}-\d{2}-\d{4}$/)
-    .withMessage('IC must be in format: 123456-78-9012'),
+    .custom((value) => {
+      if (!isValidICFormat(value)) {
+        throw new Error('IC must be 12 digits (format: 123456-78-9012 or 123456789012)');
+      }
+      return true;
+    }),
   body('umur')
     .isInt({ min: 5, max: 100 })
     .withMessage('Age must be between 5 and 100'),
@@ -35,12 +43,22 @@ const studentValidation = [
   body('telefon')
     .notEmpty()
     .withMessage('Phone number is required')
-    .matches(/^01[0-9]-\d{7,8}$/)
-    .withMessage('Phone must be in format: 012-3456789'),
+    .custom((value) => {
+      if (!isValidPhoneFormat(value)) {
+        throw new Error('Phone must be a valid Malaysian mobile number (format: 012-3456789 or 0123456789)');
+      }
+      return true;
+    }),
   body('kelas_id')
-    .optional({ nullable: true })
-    .isInt()
-    .withMessage('Class ID must be a valid integer'),
+    .optional({ nullable: true, checkFalsy: true })
+    .custom((value) => {
+      // Allow null, undefined, empty string, or valid integer
+      if (value === null || value === undefined || value === '') {
+        return true;
+      }
+      return Number.isInteger(Number(value));
+    })
+    .withMessage('Class ID must be a valid integer or empty'),
   body('status')
     .isIn(['aktif', 'tidak_aktif', 'cuti'])
     .withMessage('Status must be one of: aktif, tidak_aktif, cuti'),
@@ -53,8 +71,12 @@ const studentValidation = [
 
 const icValidation = [
   param('ic')
-    .matches(/^\d{6}-\d{2}-\d{4}$/)
-    .withMessage('IC must be in format: 123456-78-9012')
+    .custom((value) => {
+      if (!isValidICFormat(value)) {
+        throw new Error('IC must be 12 digits (format: 123456-78-9012 or 123456789012)');
+      }
+      return true;
+    })
 ];
 
 // Apply authentication to all routes
@@ -63,9 +85,9 @@ router.use(authenticateToken);
 // Routes
 router.get('/', getAllStudents);
 router.get('/stats', getStudentStats);
-router.get('/:ic', icValidation, getStudentById);
-router.post('/', requireRole(['admin', 'staff']), studentValidation, createStudent);
-router.put('/:ic', requireRole(['admin', 'staff']), icValidation, studentValidation, updateStudent);
-router.delete('/:ic', requireRole(['admin']), icValidation, deleteStudent);
+router.get('/:ic', icValidation, normalizeICMiddleware, getStudentById);
+router.post('/', requireRole(['admin', 'staff']), studentValidation, normalizeICMiddleware, normalizePhoneMiddleware, createStudent);
+router.put('/:ic', requireRole(['admin', 'staff']), icValidation, studentValidation, normalizeICMiddleware, normalizePhoneMiddleware, updateStudent);
+router.delete('/:ic', requireRole(['admin']), icValidation, normalizeICMiddleware, deleteStudent);
 
 export default router;

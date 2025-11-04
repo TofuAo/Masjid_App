@@ -10,6 +10,8 @@ import {
   getDashboardStats
 } from '../controllers/classController.js';
 import { authenticateToken, requireRole } from '../middleware/auth.js';
+import { isValidICFormat } from '../utils/icNormalizer.js';
+import { normalizeICMiddleware } from '../middleware/normalizeIC.js';
 
 const router = express.Router();
 
@@ -45,8 +47,12 @@ const classValidation = [
   body('guru_ic')
     .notEmpty()
     .withMessage('Teacher IC is required')
-    .matches(/^\d{6}-\d{2}-\d{4}$/)
-    .withMessage('Teacher IC must be in format: 123456-78-9012'),
+    .custom((value) => {
+      if (!isValidICFormat(value)) {
+        throw new Error('Teacher IC must be 12 digits (format: 123456-78-9012 or 123456789012)');
+      }
+      return true;
+    }),
   body('sessions')
     .isArray({ min: 1 })
     .withMessage('At least one session is required'),
@@ -62,8 +68,8 @@ const idValidation = [
 router.get('/', getAllClasses);
 router.get('/stats', getClassStats);
 router.get('/:id', idValidation, getClassById);
-router.post('/', requireRole(['admin', 'staff']), classValidation, createClass);
-router.put('/:id', requireRole(['admin', 'staff']), idValidation, classValidation, updateClass);
+router.post('/', requireRole(['admin', 'staff']), classValidation, normalizeICMiddleware, createClass);
+router.put('/:id', requireRole(['admin', 'staff']), idValidation, classValidation, normalizeICMiddleware, updateClass);
 router.delete('/:id', requireRole(['admin']), idValidation, deleteClass);
 
 export default router;

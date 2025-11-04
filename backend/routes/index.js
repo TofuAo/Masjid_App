@@ -8,6 +8,7 @@ import examRoutes from './exams.js';
 import feeRoutes from './fees.js';
 import resultRoutes from './results.js';
 import migrationRoutes from './migration.js';
+import settingsRoutes from './settings.js';
 
 const router = Router();
 
@@ -20,5 +21,6 @@ router.use('/exams', examRoutes);
 router.use('/fees', feeRoutes);
 router.use('/results', resultRoutes);
 router.use('/migration', migrationRoutes);
+router.use('/settings', settingsRoutes);
 
 export default router;

@@ -13,7 +13,7 @@ services:
       MYSQL_PASSWORD: ${DB_PASSWORD:-masjid_password}
     volumes:
       - mysql_data:/var/lib/mysql
-      - ./database/masjid_app_schema.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./database/masjid_app_schema.sql:/docker-entrypoint-initdb.d/init.sql:ro
     ports:
       - "3307:3306"
     networks:
@@ -65,13 +65,15 @@ services:
       - "80:80"
       - "443:443"
     volumes:
-      - ./nginx/nginx-dev.conf:/etc/nginx/nginx.conf
+      - ./nginx/nginx-dev.conf:/etc/nginx/nginx.conf:ro
       - ./nginx/logs:/var/log/nginx
     depends_on:
       - frontend
       - backend
     networks:
       - masjid_network
+    environment:
+      - DOMAIN=${DOMAIN:-localhost}
 
 volumes:
   mysql_data:

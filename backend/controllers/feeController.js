@@ -1,5 +1,6 @@
 import { pool, testConnection } from '../config/database.js';
 import { validationResult } from 'express-validator';
+import { sendFeePaymentConfirmation } from '../utils/emailService.js';
 
 export const getAllFees = async (req, res) => {
   try {
@@ -16,6 +17,12 @@ export const getAllFees = async (req, res) => {
     
     const queryParams = [];
 
+    // If user is a student, only show their own fees
+    if (req.user && req.user.role === 'student') {
+      query += ` AND f.student_ic = ?`;
+      queryParams.push(req.user.ic);
+    }
+
     if (search) {
       query += ` AND (u.nama LIKE ? OR u.ic LIKE ? OR f.resit_img LIKE ?)`;
       const searchTerm = `%${search}%`;
@@ -28,13 +35,19 @@ export const getAllFees = async (req, res) => {
     }
     
     if (bulan) {
-      query += ` AND MONTH(f.tarikh) = ?`;
+      // Support both month name and number
+      if (isNaN(bulan)) {
+        query += ` AND f.bulan = ?`;
+      } else {
+        query += ` AND (f.bulan = ? OR MONTH(f.tarikh) = ?)`;
+        queryParams.push(bulan);
+      }
       queryParams.push(bulan);
     }
     
     if (tahun) {
-      query += ` AND YEAR(f.tarikh) = ?`;
-      queryParams.push(tahun);
+      query += ` AND (f.tahun = ? OR YEAR(f.tarikh) = ?)`;
+      queryParams.push(tahun, tahun);
     }
     
     // Add pagination (inline to avoid ER_WRONG_ARGUMENTS on LIMIT/OFFSET)
@@ -52,6 +65,12 @@ export const getAllFees = async (req, res) => {
       WHERE 1=1
     `;
     const countParams = [];
+
+    // If user is a student, only count their own fees
+    if (req.user && req.user.role === 'student') {
+      countQuery += ` AND f.student_ic = ?`;
+      countParams.push(req.user.ic);
+    }
     
     if (search) {
       countQuery += ` AND (u.nama LIKE ? OR u.ic LIKE ? OR f.resit_img LIKE ?)`;
@@ -65,13 +84,19 @@ export const getAllFees = async (req, res) => {
     }
     
     if (bulan) {
-      countQuery += ` AND MONTH(f.tarikh) = ?`;
+      // Support both month name and number
+      if (isNaN(bulan)) {
+        countQuery += ` AND f.bulan = ?`;
+      } else {
+        countQuery += ` AND (f.bulan = ? OR MONTH(f.tarikh) = ?)`;
+        countParams.push(bulan);
+      }
       countParams.push(bulan);
     }
     
     if (tahun) {
-      countQuery += ` AND YEAR(f.tarikh) = ?`;
-      countParams.push(tahun);
+      countQuery += ` AND (f.tahun = ? OR YEAR(f.tarikh) = ?)`;
+      countParams.push(tahun, tahun);
     }
     
     const [countResult] = await pool.execute(countQuery, countParams);
@@ -143,7 +168,7 @@ export const createFee = async (req, res) => {
       });
     }
 
-    const { student_ic, jumlah, status, tarikh, resit_img } = req.body;
+    const { student_ic, jumlah, status, tarikh, bulan, tahun, cara_bayar, no_resit, resit_img } = req.body;
     
     // Check if student exists
     const [students] = await pool.execute(
@@ -158,10 +183,18 @@ export const createFee = async (req, res) => {
       });
     }
     
+    // Map frontend status to backend if needed
+    const backendStatus = status === 'terbayar' ? 'Bayar' : 
+                         status === 'tunggak' ? 'Belum Bayar' : 
+                         status || 'Belum Bayar';
+    
+    // Set tarikh_bayar if status is paid
+    const tarikh_bayar = (backendStatus === 'Bayar' || backendStatus === 'terbayar') ? tarikh : null;
+    
     const [result] = await pool.execute(`
-      INSERT INTO fees (student_ic, jumlah, status, tarikh, resit_img)
-      VALUES (?, ?, ?, ?, ?)
-    `, [student_ic, jumlah, status, tarikh, resit_img]);
+      INSERT INTO fees (student_ic, jumlah, status, tarikh, tarikh_bayar, bulan, tahun, cara_bayar, no_resit, resit_img)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `, [student_ic, jumlah, backendStatus, tarikh, tarikh_bayar, bulan, tahun, cara_bayar, no_resit, resit_img]);
     
     const [newFee] = await pool.execute(`
       SELECT f.*, u.nama as pelajar_nama, u.ic as pelajar_ic, c.nama_kelas
@@ -198,7 +231,7 @@ export const updateFee = async (req, res) => {
     }
 
     const { id } = req.params;
-    const { student_ic, jumlah, status, tarikh, resit_img } = req.body;
+    const { student_ic, jumlah, status, tarikh, bulan, tahun, cara_bayar, no_resit, resit_img } = req.body;
     
     // Check if fee exists
     const [existingFees] = await pool.execute(
@@ -213,17 +246,25 @@ export const updateFee = async (req, res) => {
       });
     }
     
+    // Map frontend status to backend if needed
+    const backendStatus = status === 'terbayar' ? 'Bayar' : 
+                         status === 'tunggak' ? 'Belum Bayar' : 
+                         status || 'Belum Bayar';
+    
+    // Set tarikh_bayar if status is paid
+    const tarikh_bayar = (backendStatus === 'Bayar' || backendStatus === 'terbayar') ? tarikh : null;
+    
     await pool.execute(`
       UPDATE fees 
-      SET student_ic = ?, jumlah = ?, status = ?, tarikh = ?, resit_img = ?, updated_at = CURRENT_TIMESTAMP
+      SET student_ic = ?, jumlah = ?, status = ?, tarikh = ?, tarikh_bayar = ?, bulan = ?, tahun = ?, cara_bayar = ?, no_resit = ?, resit_img = ?, updated_at = CURRENT_TIMESTAMP
       WHERE id = ?
-    `, [student_ic, jumlah, status, tarikh, resit_img, id]);
+    `, [student_ic, jumlah, backendStatus, tarikh, tarikh_bayar, bulan, tahun, cara_bayar, no_resit, resit_img, id]);
     
     const [updatedFee] = await pool.execute(`
-      SELECT f.*, u.full_name as pelajar_nama, u.ic as pelajar_ic, c.class_name
+      SELECT f.*, u.nama as pelajar_nama, u.ic as pelajar_ic, c.nama_kelas
       FROM fees f
-      JOIN users u ON f.pelajar_ic = u.ic
-      LEFT JOIN students s ON u.ic = s.ic
+      JOIN users u ON f.student_ic = u.ic
+      LEFT JOIN students s ON u.ic = s.user_ic
       LEFT JOIN classes c ON s.kelas_id = c.id
       WHERE f.id = ?
     `, [id]);
@@ -245,11 +286,11 @@ export const updateFee = async (req, res) => {
 export const markAsPaid = async (req, res) => {
   try {
     const { id } = req.params;
-    const { resit_img } = req.body;
+    const { cara_bayar, no_resit, resit_img } = req.body;
     
     // Check if fee exists
     const [existingFees] = await pool.execute(
-      'SELECT id, status FROM fees WHERE id = ?',
+      'SELECT id, status, bulan, tahun FROM fees WHERE id = ?',
       [id]
     );
     
@@ -260,18 +301,60 @@ export const markAsPaid = async (req, res) => {
       });
     }
     
-    if (existingFees[0].status === 'Bayar') {
+    const currentStatus = existingFees[0].status;
+    if (currentStatus === 'Bayar' || currentStatus === 'terbayar') {
       return res.status(400).json({
         success: false,
         message: 'Fee is already marked as paid'
       });
     }
     
+    // Get existing bulan/tahun from fee record, or use current date
+    const fee = existingFees[0];
+    let bulan = fee.bulan;
+    let tahun = fee.tahun;
+    
+    // If bulan/tahun not set, use current date
+    if (!bulan || !tahun) {
+      const now = new Date();
+      const monthNames = ['Januari', 'Februari', 'Mac', 'April', 'Mei', 'Jun', 'Julai', 'Ogos', 'September', 'Oktober', 'November', 'Disember'];
+      bulan = monthNames[now.getMonth()];
+      tahun = now.getFullYear();
+    }
+    
+    // Generate receipt number if not provided
+    const receiptNumber = no_resit || `R${String(id).padStart(3, '0')}`;
+    const paymentMethod = cara_bayar || 'Tunai';
+    
     await pool.execute(`
       UPDATE fees 
-      SET status = 'Bayar', tarikh = CURDATE(), resit_img = ?, updated_at = CURRENT_TIMESTAMP
+      SET status = 'terbayar', tarikh = CURDATE(), tarikh_bayar = CURDATE(), bulan = ?, tahun = ?, cara_bayar = ?, no_resit = ?, resit_img = ?, updated_at = CURRENT_TIMESTAMP
       WHERE id = ?
-    `, [resit_img, id]);
+    `, [bulan, tahun, paymentMethod, receiptNumber, resit_img || null, id]);
+    
+    // Send confirmation email to student
+    try {
+      const [updatedFee] = await pool.execute(`
+        SELECT f.*, u.email, u.nama as pelajar_nama
+        FROM fees f
+        JOIN users u ON f.student_ic = u.ic
+        WHERE f.id = ?
+      `, [id]);
+      
+      if (updatedFee.length > 0 && updatedFee[0].email) {
+        await sendFeePaymentConfirmation(
+          updatedFee[0].email,
+          updatedFee[0].pelajar_nama,
+          bulan,
+          tahun,
+          updatedFee[0].jumlah,
+          receiptNumber
+        );
+      }
+    } catch (emailError) {
+      console.error('Error sending payment confirmation email:', emailError);
+      // Don't fail the request if email fails
+    }
     
     res.json({
       success: true,
@@ -338,10 +421,10 @@ export const getFeeStats = async (req, res) => {
     const [stats] = await pool.execute(`
       SELECT 
         COUNT(*) as total,
-        SUM(CASE WHEN f.status = 'Bayar' THEN 1 ELSE 0 END) as terbayar,
-        SUM(CASE WHEN f.status = 'Belum Bayar' THEN 1 ELSE 0 END) as tunggak,
-        SUM(CASE WHEN f.status = 'Bayar' THEN f.jumlah ELSE 0 END) as total_kutipan,
-        SUM(CASE WHEN f.status = 'Belum Bayar' THEN f.jumlah ELSE 0 END) as total_tunggak
+        SUM(CASE WHEN f.status IN ('Bayar', 'terbayar') THEN 1 ELSE 0 END) as terbayar,
+        SUM(CASE WHEN f.status IN ('Belum Bayar', 'tunggak') THEN 1 ELSE 0 END) as tunggak,
+        SUM(CASE WHEN f.status IN ('Bayar', 'terbayar') THEN f.jumlah ELSE 0 END) as total_kutipan,
+        SUM(CASE WHEN f.status IN ('Belum Bayar', 'tunggak') THEN f.jumlah ELSE 0 END) as total_tunggak
       FROM fees f
       ${whereClause}
     `, queryParams);

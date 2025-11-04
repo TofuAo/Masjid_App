@@ -1,6 +1,78 @@
-# React + Vite
+# MyMasjidApp - Masjid Management System
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A comprehensive full-stack application for managing masjid/madrasah operations including student management, attendance tracking, fee management, exam results, and more.
+
+## 🚀 Quick Start
+
+**For Development:**
+```bash
+git clone <repo-url>
+cd MyMasjidApp
+./setup-env.sh    # or setup-env.bat on Windows
+./deploy.sh       # or deploy.bat on Windows
+```
+
+**For Production Deployment:**
+See [QUICK_START.md](./QUICK_START.md) for step-by-step instructions.
+
+## 📚 Documentation
+
+- **[QUICK_START.md](./QUICK_START.md)** - Get started in 5 minutes
+- **[DEPLOYMENT_README.md](./DEPLOYMENT_README.md)** - Complete deployment guide
+- **[DEPLOYMENT_CHECKLIST.md](./DEPLOYMENT_CHECKLIST.md)** - Deployment checklist
+- **[SECURITY_GUIDE.md](./SECURITY_GUIDE.md)** - Security best practices
+- **[DEPLOYMENT_GUIDE.md](./DEPLOYMENT_GUIDE.md)** - Original deployment guide
+
+## 🛠️ Tech Stack
+
+**Frontend:**
+- React 19
+- Vite
+- TailwindCSS
+- React Router
+- Axios
+
+**Backend:**
+- Node.js
+- Express.js
+- MySQL 8.0
+- JWT Authentication
+- Bcrypt for password hashing
+
+**DevOps:**
+- Docker & Docker Compose
+- Nginx reverse proxy
+- SSL/TLS with Let's Encrypt
+
+## 📋 Features
+
+- Student Management
+- Teacher Management
+- Class Management
+- Attendance Tracking
+- Exam Management
+- Results Management
+- Fee Management
+- User Authentication & Authorization
+- Yearly Database System
+
+## 🏗️ Project Structure
+
+```
+MyMasjidApp/
+├── backend/              # Express.js API
+│   ├── config/          # Configuration files
+│   ├── controllers/     # Request handlers
+│   ├── middleware/      # Auth middleware
+│   ├── routes/          # API routes
+│   ├── scripts/        # Database scripts
+│   └── server.js        # Entry point
+├── src/                 # React frontend
+├── database/           # SQL schema files
+├── nginx/              # Nginx configuration
+├── scripts/            # Deployment scripts
+└── docker-compose.yml  # Docker orchestration
+```
 
 Currently, two official plugins are available:
 

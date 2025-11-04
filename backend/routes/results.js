@@ -28,6 +28,7 @@ const resultValidation = [
     .isIn(['A+', 'A', 'A-', 'B+', 'B', 'B-', 'C+', 'C', 'C-', 'D', 'F'])
     .withMessage('Grade must be one of: A+, A, A-, B+, B, B-, C+, C, C-', 'D', 'F'),
   body('status')
+    .optional()
     .isIn(['lulus', 'gagal'])
     .withMessage('Status must be one of: lulus, gagal'),
 ];

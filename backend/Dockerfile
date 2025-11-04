@@ -17,6 +17,9 @@ COPY . .
 RUN addgroup -g 1001 -S nodejs
 RUN adduser -S nodejs -u 1001
 
+# Ensure uploads directory exists with correct permissions
+RUN mkdir -p uploads && chown -R nodejs:nodejs uploads
+
 # Change ownership of the app directory
 RUN chown -R nodejs:nodejs /app
 USER nodejs

@@ -41,7 +41,7 @@ const Keputusan = () => {
     }
     fetchResults({
       search: searchTerm,
-      peperiksaan_id: examFilter === 'semua' ? undefined : examFilter,
+      exam_id: examFilter === 'semua' ? undefined : examFilter,
       gred: gradeFilter === 'semua' ? undefined : gradeFilter,
     });
     fetchExams();
@@ -59,6 +59,7 @@ const Keputusan = () => {
 
   const handleSaveResult = async (resultData) => {
     try {
+      console.log('handleSaveResult called with:', resultData);
       if (editingResult) {
         await resultsAPI.update(editingResult.id, resultData);
         toast.success('Keputusan berjaya dikemaskini!');
@@ -66,11 +67,15 @@ const Keputusan = () => {
         await resultsAPI.create(resultData);
         toast.success('Keputusan baru berjaya ditambah!');
       }
+      setEditingResult(null);
+      setIsModalOpen(false);
       fetchResults(); // Refresh the list
     } catch (err) {
       console.error('Failed to save result:', err);
+      console.error('Error details:', JSON.stringify(err, null, 2));
       setError(err);
-      toast.error('Gagal menyimpan keputusan.');
+      // Re-throw the error so the modal can catch it
+      throw err;
     }
   };
 
@@ -124,13 +129,25 @@ const Keputusan = () => {
     );
   };
 
+  // Calculate status from gred if not provided
+  const calculateStatus = (gred) => {
+    if (!gred) return 'gagal';
+    const passingGrades = ['A+', 'A', 'A-', 'B+', 'B', 'B-', 'C+', 'C', 'C-', 'D'];
+    return passingGrades.includes(gred) ? 'lulus' : 'gagal';
+  };
+
   // Calculate statistics
   const keputusanArray = Array.isArray(keputusan) ? keputusan : [];
-  const totalKeputusan = keputusanArray.length;
-  const lulusCount = keputusanArray.filter(k => k.status === 'lulus').length;
-  const gagalCount = keputusanArray.filter(k => k.status === 'gagal').length;
-  const averageMarkah = totalKeputusan > 0 ? (keputusanArray.reduce((sum, k) => sum + k.markah, 0) / totalKeputusan).toFixed(1) : 0;
-  const topPerformer = keputusanArray.reduce((top, k) => k.markah > (top?.markah || 0) ? k : top, null);
+  // Calculate status for each result if not present
+  const keputusanWithStatus = keputusanArray.map(k => ({
+    ...k,
+    status: k.status || calculateStatus(k.gred)
+  }));
+  const totalKeputusan = keputusanWithStatus.length;
+  const lulusCount = keputusanWithStatus.filter(k => k.status === 'lulus').length;
+  const gagalCount = keputusanWithStatus.filter(k => k.status === 'gagal').length;
+  const averageMarkah = totalKeputusan > 0 ? (keputusanWithStatus.reduce((sum, k) => sum + (Number(k.markah) || 0), 0) / totalKeputusan).toFixed(1) : 0;
+  const topPerformer = keputusanWithStatus.reduce((top, k) => (Number(k.markah) || 0) > (Number(top?.markah) || 0) ? k : top, null);
 
   const grades = ['A+', 'A', 'A-', 'B+', 'B', 'B-', 'C+', 'C', 'C-', 'D', 'F'];
 
@@ -165,7 +182,7 @@ const Keputusan = () => {
                 >
                   <option value="semua">Semua Peperiksaan</option>
                   {(Array.isArray(exams) ? exams : []).map(exam => (
-                    <option key={exam.id} value={exam.id}>{exam.nama_exam}</option>
+                    <option key={exam.id} value={exam.id}>{exam.subject || exam.nama_exam || `Exam ${exam.id}`}</option>
                   ))}
                 </select>
               </div>
@@ -320,7 +337,7 @@ const Keputusan = () => {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {keputusanArray.map((k) => (
+                  {keputusanWithStatus.map((k) => (
                     <tr key={k.id} className="hover:bg-gray-50">
                       {userRole !== 'student' && (
                         <td className="px-6 py-4 whitespace-nowrap">
@@ -331,7 +348,7 @@ const Keputusan = () => {
                         {k.kelas_nama}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {k.peperiksaan_nama}
+                        {k.peperiksaan_nama || k.exam_subject || k.subject || '-'}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         {k.markah}

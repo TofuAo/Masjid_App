@@ -66,12 +66,14 @@ const GuruList = ({ gurus = [], onEdit, onView, onDelete, onAdd }) => {
           </div>
         </div>
 
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto -mx-4 sm:mx-0">
           <table className="min-w-full divide-y divide-mosque-primary-100">
             <thead className="bg-mosque-primary-50">
               <tr>
                 {['Guru', 'IC', 'Telefon', 'Kepakaran', 'Status', 'Tindakan'].map(header => (
-                  <th key={header} className="px-6 py-3 text-left text-xs font-bold text-mosque-primary-700 uppercase tracking-wider">
+                  <th key={header} className={`px-3 sm:px-6 py-2 sm:py-3 text-left text-xs font-bold text-mosque-primary-700 uppercase tracking-wider ${
+                    header === 'IC' || header === 'Telefon' || header === 'Kepakaran' ? 'hidden md:table-cell' : ''
+                  }`}>
                     {header}
                   </th>
                 ))}
@@ -80,7 +82,7 @@ const GuruList = ({ gurus = [], onEdit, onView, onDelete, onAdd }) => {
             <tbody className="bg-white divide-y divide-mosque-primary-100">
               {filteredGurus.map((guru) => (
                 <tr key={guru.ic} className="hover:bg-mosque-primary-50 transition-colors duration-200">
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td className="px-3 sm:px-6 py-3 sm:py-4">
                     <div className="flex items-center">
                       <div className="flex-shrink-0 h-10 w-10">
                         <div className="h-10 w-10 rounded-full bg-mosque-primary-100 flex items-center justify-center">
@@ -92,9 +94,9 @@ const GuruList = ({ gurus = [], onEdit, onView, onDelete, onAdd }) => {
                       </div>
                     </div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-mosque-neutral-700">{guru.IC}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-mosque-neutral-700">{guru.telefon}</td>
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td className="px-3 sm:px-6 py-3 sm:py-4 text-sm text-mosque-neutral-700 hidden md:table-cell">{guru.IC}</td>
+                  <td className="px-3 sm:px-6 py-3 sm:py-4 text-sm text-mosque-neutral-700 hidden md:table-cell">{guru.telefon}</td>
+                  <td className="px-3 sm:px-6 py-3 sm:py-4 hidden md:table-cell">
                     <div className="flex flex-wrap gap-1">
                       {(Array.isArray(guru.kepakaran) ? guru.kepakaran : (guru.kepakaran ? [guru.kepakaran] : [])).slice(0, 2).map((kepakaran) => (
                         <span key={kepakaran} className="badge-education text-xs">
@@ -108,8 +110,8 @@ const GuruList = ({ gurus = [], onEdit, onView, onDelete, onAdd }) => {
                       )}
                     </div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">{getStatusBadge(guru.status)}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                  <td className="px-3 sm:px-6 py-3 sm:py-4">{getStatusBadge(guru.status)}</td>
+                  <td className="px-3 sm:px-6 py-3 sm:py-4 text-sm font-medium">
                     <div className="flex space-x-3">
                       <button onClick={() => onView(guru)} className="text-mosque-primary-600 hover:text-mosque-primary-800" title="Lihat Detail">
                         <Eye size={16} />

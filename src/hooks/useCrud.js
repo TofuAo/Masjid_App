@@ -82,10 +82,28 @@ const useCrud = (api, itemName) => {
     } catch (err) {
       console.error(`Failed to save ${itemName}:`, err);
       console.error('Full error object:', JSON.stringify(err, null, 2));
-      const details = Array.isArray(err?.errors)
-        ? err.errors.map(e => e.msg || e.message).join(', ')
-        : (err?.message || err);
-      toast.error(`Gagal menyimpan maklumat ${itemName}. ${details ? `Butiran: ${details}` : ''}`);
+      
+      // Extract detailed error messages
+      let errorMessage = `Gagal menyimpan maklumat ${itemName}.`;
+      
+      if (err?.errors && Array.isArray(err.errors) && err.errors.length > 0) {
+        // Format validation errors nicely
+        const errorDetails = err.errors.map(e => {
+          const field = e.param || e.field || '';
+          const message = e.msg || e.message || 'Invalid';
+          return field ? `${field}: ${message}` : message;
+        }).join('\n');
+        errorMessage += `\n\nRalat validasi:\n${errorDetails}`;
+      } else if (err?.message) {
+        errorMessage += `\n\n${err.message}`;
+      } else if (typeof err === 'string') {
+        errorMessage += `\n\n${err}`;
+      }
+      
+      toast.error(errorMessage, {
+        autoClose: 5000,
+        style: { whiteSpace: 'pre-line' }
+      });
     }
   };
 

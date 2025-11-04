@@ -40,7 +40,20 @@ api.interceptors.response.use(
       // window.location.href = '/login'; // <-- REMOVE THIS to prevent auto reload
     }
     
-    return Promise.reject(error.response?.data || error.message);
+    // Return error with proper message structure
+    const errorData = error.response?.data || { message: error.message || 'An error occurred' };
+    
+    // If errorData is a string, wrap it in an object
+    if (typeof errorData === 'string') {
+      return Promise.reject({ message: errorData });
+    }
+    
+    // If errorData doesn't have message, try to extract it
+    if (!errorData.message && errorData.error) {
+      errorData.message = errorData.error;
+    }
+    
+    return Promise.reject(errorData);
   }
 );
 
@@ -52,13 +65,22 @@ export const authAPI = {
   register: (data) => api.post('/auth/register', data),
   getProfile: () => api.get('/auth/profile'),
   changePassword: (data) => api.put('/auth/change-password', data),
+  adminChangePassword: (data) => api.put('/auth/admin/change-password', data),
+  forgotPassword: (data) => api.post('/auth/forgot-password', data),
+  resetPassword: (data) => api.post('/auth/reset-password', data),
 };
 
 // Students API
 export const studentsAPI = {
   getAll: async (params) => {
-    const response = await api.get('/students', { params });
-    return response.data;
+    try {
+      const response = await api.get('/students', { params });
+      // Handle both array responses and object responses with data property
+      return Array.isArray(response) ? response : (response?.data || []);
+    } catch (error) {
+      console.error('Error fetching students:', error);
+      throw error;
+    }
   },
   getById: (id) => api.get(`/students/${id}`),
   create: (data) => api.post('/students', data),
@@ -72,8 +94,14 @@ export const studentsAPI = {
 // Teachers API
 export const teachersAPI = {
   getAll: async (params) => {
-    const response = await api.get('/teachers', { params });
-    return response.data;
+    try {
+      const response = await api.get('/teachers', { params });
+      // Handle both array responses and object responses with data property
+      return Array.isArray(response) ? response : (response?.data || []);
+    } catch (error) {
+      console.error('Error fetching teachers:', error);
+      throw error;
+    }
   },
   getById: (id) => api.get(`/teachers/${id}`),
   create: (data) => api.post('/teachers', data),
@@ -85,8 +113,35 @@ export const teachersAPI = {
 // Classes API
 export const classesAPI = {
   getAll: async (params) => {
-    const response = await api.get('/classes', { params });
-    return response.data;
+    try {
+      console.log('classesAPI.getAll - params:', params);
+      const response = await api.get('/classes', { params });
+      console.log('classesAPI.getAll - raw response:', response);
+      console.log('classesAPI.getAll - response type:', typeof response);
+      console.log('classesAPI.getAll - is array:', Array.isArray(response));
+      
+      // Handle different response structures:
+      // 1. Direct array: [...]
+      // 2. Object with data: { success: true, data: [...] }
+      // 3. Object with nested data: { data: [...] }
+      if (Array.isArray(response)) {
+        console.log('Returning array directly, length:', response.length);
+        return response;
+      } else if (response?.data && Array.isArray(response.data)) {
+        console.log('Returning response.data, length:', response.data.length);
+        return response.data;
+      } else if (response?.success && Array.isArray(response.data)) {
+        console.log('Returning response.data (with success flag), length:', response.data.length);
+        return response.data;
+      } else {
+        console.warn('Unexpected response format, returning empty array');
+        return [];
+      }
+    } catch (error) {
+      console.error('Error fetching classes:', error);
+      console.error('Error details:', JSON.stringify(error, null, 2));
+      throw error;
+    }
   },
   getById: (id) => api.get(`/classes/${id}`),
   create: (data) => api.post('/classes', data),
@@ -97,7 +152,16 @@ export const classesAPI = {
 
 // Attendance API
 export const attendanceAPI = {
-  getAll: (params) => api.get('/attendance', { params }),
+  getAll: async (params) => {
+    try {
+      const response = await api.get('/attendance', { params });
+      // Handle both array responses and object responses with data property
+      return Array.isArray(response) ? response : (response?.data || []);
+    } catch (error) {
+      console.error('Error fetching attendance:', error);
+      throw error;
+    }
+  },
   mark: (data) => api.post('/attendance', data),
   bulkMark: (data) => api.post('/attendance/bulk', data),
   getStats: (params) => api.get('/attendance/stats', { params }),
@@ -106,7 +170,16 @@ export const attendanceAPI = {
 
 // Fees API
 export const feesAPI = {
-  getAll: (params) => api.get('/fees', { params }),
+  getAll: async (params) => {
+    try {
+      const response = await api.get('/fees', { params });
+      // Handle both array responses and object responses with data property
+      return Array.isArray(response) ? response : (response?.data || []);
+    } catch (error) {
+      console.error('Error fetching fees:', error);
+      throw error;
+    }
+  },
   getById: (id) => api.get(`/fees/${id}`),
   create: (data) => api.post('/fees', data),
   update: (id, data) => api.put(`/fees/${id}`, data),
@@ -117,7 +190,16 @@ export const feesAPI = {
 
 // Results API
 export const resultsAPI = {
-  getAll: (params) => api.get('/results', { params }),
+  getAll: async (params) => {
+    try {
+      const response = await api.get('/results', { params });
+      // Handle both array responses and object responses with data property
+      return Array.isArray(response) ? response : (response?.data || []);
+    } catch (error) {
+      console.error('Error fetching results:', error);
+      throw error;
+    }
+  },
   getById: (id) => api.get(`/results/${id}`),
   create: (data) => api.post('/results', data),
   update: (id, data) => api.put(`/results/${id}`, data),
@@ -128,7 +210,16 @@ export const resultsAPI = {
 
 // Exams API
 export const examsAPI = {
-  getAll: (params) => api.get('/exams', { params }),
+  getAll: async (params) => {
+    try {
+      const response = await api.get('/exams', { params });
+      // Handle both array responses and object responses with data property
+      return Array.isArray(response) ? response : (response?.data || []);
+    } catch (error) {
+      console.error('Error fetching exams:', error);
+      throw error;
+    }
+  },
   getById: (id) => api.get(`/exams/${id}`),
   create: (data) => api.post('/exams', data),
   update: (id, data) => api.put(`/exams/${id}`, data),
@@ -151,6 +242,14 @@ export const getAuthToken = () => {
 export const clearAuth = () => {
   localStorage.removeItem('authToken');
   localStorage.removeItem('user');
+};
+
+// Settings API
+export const settingsAPI = {
+  getAll: () => api.get('/settings'),
+  getByKey: (key) => api.get(`/settings?key=${key}`),
+  getQRCode: () => api.get('/settings/qr-code'),
+  update: (key, data) => api.put(`/settings/${key}`, data),
 };
 
 export default api;

@@ -11,8 +11,12 @@ import Guru from './pages/Guru';
 import Kelas from './pages/Kelas';
 import Kehadiran from './pages/Kehadiran';
 import Yuran from './pages/Yuran';
+import PayYuran from './pages/PayYuran';
 import Keputusan from './pages/Keputusan';
 import Laporan from './pages/Laporan';
+import Settings from './pages/Settings';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
 
 function App() {
   const [user, setUser] = useState(null);
@@ -58,7 +62,11 @@ function App() {
     <>
       {!user ? (
         <>
-          <Login onLogin={handleLogin} />
+          <Routes>
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
+            <Route path="*" element={<Login onLogin={handleLogin} />} />
+          </Routes>
           <ToastContainer position="top-right" />
         </>
       ) : (
@@ -71,8 +79,10 @@ function App() {
               <Route path="/kelas/*" element={<Kelas />} />
               <Route path="/kehadiran" element={<Kehadiran />} />
               <Route path="/yuran" element={<Yuran />} />
+              <Route path="/pay-yuran/:id" element={<PayYuran />} />
               <Route path="/keputusan" element={<Keputusan />} />
               <Route path="/laporan" element={<Laporan />} />
+              <Route path="/settings" element={<Settings />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </Layout>

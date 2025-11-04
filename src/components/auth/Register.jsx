@@ -64,11 +64,15 @@ const [formData, setFormData] = useState({
     <div className="min-h-screen flex items-center justify-center bg-mosque-gradient-light islamic-pattern-bg py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8">
         <div className="text-center">
-          <div className="mx-auto h-16 w-16 bg-mosque-primary-600 rounded-full flex items-center justify-center shadow-mosque">
-            <Lock className="h-8 w-8 text-white" />
+          <div className="mx-auto mb-4">
+            <img 
+              src="/logomnsa1.jpeg" 
+              alt="Masjid Negeri Sultan Ahmad 1" 
+              className="mx-auto h-24 w-auto object-contain"
+            />
           </div>
-          <h2 className="mt-6 text-3xl font-display font-bold text-mosque-primary-800">Masjid App</h2>
-          <p className="mt-2 text-sm text-mosque-neutral-600">Sistem Pengurusan Kelas Pengajian</p>
+          <h2 className="mt-2 text-2xl font-display font-bold text-mosque-primary-800">Sistem Kelas Pengajian</h2>
+          <p className="mt-2 text-sm text-mosque-neutral-600">Masjid Negeri Sultan Ahmad 1</p>
         </div>
         <div className="mosque-card p-8 space-y-6">
           <form onSubmit={handleSubmit} className="space-y-6">
