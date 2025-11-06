@@ -3,12 +3,14 @@ import { validationResult } from 'express-validator';
 
 export const getAllTeachers = async (req, res) => {
   try {
-    const { search, status, page = 1, limit = 10 } = req.query;
+    const { search, status, page = 1, limit } = req.query;
+    // Default to a large limit to show all teachers, or use pagination if specified
+    const defaultLimit = limit ? parseInt(limit) : 1000;
     
     let query = `
-      SELECT u.ic, u.nama, u.email, u.status, t.kepakaran, COUNT(c.id) as total_classes
+      SELECT u.ic, u.nama, u.email, u.telefon, u.status, COALESCE(t.kepakaran, '[]') as kepakaran, COUNT(DISTINCT c.id) as total_classes
       FROM users u
-      JOIN teachers t ON u.ic = t.user_ic
+      LEFT JOIN teachers t ON u.ic = t.user_ic
       LEFT JOIN classes c ON u.ic = c.guru_ic
       WHERE u.role = 'teacher'
     `;
@@ -27,7 +29,7 @@ export const getAllTeachers = async (req, res) => {
     }
     
     // Add pagination (inline to avoid ER_WRONG_ARGUMENTS on LIMIT/OFFSET)
-    const safeLimit = Math.max(1, parseInt(limit));
+    const safeLimit = Math.max(1, defaultLimit);
     const offset = (Math.max(1, parseInt(page)) - 1) * safeLimit;
     query += ` GROUP BY u.ic ORDER BY u.created_at DESC LIMIT ${safeLimit} OFFSET ${offset}`;
     
@@ -55,14 +57,21 @@ export const getAllTeachers = async (req, res) => {
     const [countResult] = await pool.execute(countQuery, countParams);
     const total = countResult[0].total;
     
+    // Format teachers data
+    const formattedTeachers = teachers.map(teacher => ({
+      ...teacher,
+      IC: teacher.ic, // Add uppercase IC for frontend compatibility
+      kepakaran: teacher.kepakaran ? (typeof teacher.kepakaran === 'string' ? JSON.parse(teacher.kepakaran) : teacher.kepakaran) : []
+    }));
+
     res.json({
       success: true,
-      data: teachers,
+      data: formattedTeachers,
       pagination: {
         page: parseInt(page),
-        limit: parseInt(limit),
+        limit: safeLimit,
         total,
-        pages: Math.ceil(total / limit)
+        pages: Math.ceil(total / safeLimit)
       }
     });
   } catch (error) {
@@ -79,9 +88,9 @@ export const getTeacherById = async (req, res) => {
     const { ic } = req.params;
     
     const [teachers] = await pool.execute(`
-      SELECT u.ic, u.nama, u.email, u.status, t.kepakaran
+      SELECT u.ic, u.nama, u.email, u.telefon, u.status, COALESCE(t.kepakaran, '[]') as kepakaran
       FROM users u
-      JOIN teachers t ON u.ic = t.user_ic
+      LEFT JOIN teachers t ON u.ic = t.user_ic
       WHERE u.ic = ? AND u.role = 'teacher'
     `, [ic]);
     
@@ -101,12 +110,19 @@ export const getTeacherById = async (req, res) => {
       GROUP BY c.id
     `, [ic]);
     
+    const teacherData = {
+      ...teachers[0],
+      IC: teachers[0].ic,
+      kepakaran: teachers[0].kepakaran ? (typeof teachers[0].kepakaran === 'string' ? JSON.parse(teachers[0].kepakaran) : teachers[0].kepakaran) : [],
+      classes: classes.map(c => ({
+        ...c,
+        sessions: typeof c.sessions === 'string' ? JSON.parse(c.sessions) : c.sessions
+      }))
+    };
+
     res.json({
       success: true,
-      data: {
-        ...teachers[0],
-        classes
-      }
+      data: teacherData
     });
   } catch (error) {
     console.error('Get teacher error:', error);

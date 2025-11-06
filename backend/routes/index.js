@@ -9,6 +9,9 @@ import feeRoutes from './fees.js';
 import resultRoutes from './results.js';
 import migrationRoutes from './migration.js';
 import settingsRoutes from './settings.js';
+import announcementRoutes from './announcements.js';
+import googleFormRoutes from './googleForm.js';
+import staffCheckInRoutes from './staffCheckIn.js';
 
 const router = Router();
 
@@ -22,5 +25,8 @@ router.use('/fees', feeRoutes);
 router.use('/results', resultRoutes);
 router.use('/migration', migrationRoutes);
 router.use('/settings', settingsRoutes);
+router.use('/announcements', announcementRoutes);
+router.use('/google-form', googleFormRoutes);
+router.use('/staff-checkin', staffCheckInRoutes);
 
 export default router;

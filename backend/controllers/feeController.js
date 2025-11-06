@@ -4,34 +4,66 @@ import { sendFeePaymentConfirmation } from '../utils/emailService.js';
 
 export const getAllFees = async (req, res) => {
   try {
-    const { search, status, bulan, tahun, page = 1, limit = 10 } = req.query;
+    const { search, status, bulan, tahun, page = 1, limit = 1000 } = req.query;
     
+    // Use LEFT JOIN to show all students, even those without fees
+    // Get the most recent fee for each student, or NULL if no fee exists
     let query = `
-      SELECT f.*, u.nama as pelajar_nama, u.ic as pelajar_ic, c.nama_kelas
-      FROM fees f
-      JOIN users u ON f.student_ic = u.ic
+      SELECT 
+        COALESCE(f.id, 0) as id,
+        u.ic as student_ic,
+        u.nama as pelajar_nama,
+        u.ic as pelajar_ic,
+        c.nama_kelas,
+        COALESCE(f.jumlah, COALESCE(c.yuran, 150.00)) as jumlah,
+        COALESCE(f.status, 'Belum Bayar') as status,
+        f.tarikh,
+        f.tarikh_bayar,
+        COALESCE(f.bulan, '') as bulan,
+        COALESCE(f.tahun, YEAR(CURDATE())) as tahun,
+        f.cara_bayar,
+        f.no_resit,
+        f.resit_img,
+        f.created_at,
+        f.updated_at
+      FROM users u
       LEFT JOIN students s ON u.ic = s.user_ic
       LEFT JOIN classes c ON s.kelas_id = c.id
-      WHERE 1=1
+      LEFT JOIN (
+        SELECT f1.*
+        FROM fees f1
+        INNER JOIN (
+          SELECT student_ic, MAX(created_at) as max_created
+          FROM fees
+          GROUP BY student_ic
+        ) f2 ON f1.student_ic = f2.student_ic AND f1.created_at = f2.max_created
+      ) f ON u.ic = f.student_ic
+      WHERE u.role = 'student' AND u.status = 'aktif'
     `;
     
     const queryParams = [];
 
     // If user is a student, only show their own fees
     if (req.user && req.user.role === 'student') {
-      query += ` AND f.student_ic = ?`;
+      query += ` AND u.ic = ?`;
       queryParams.push(req.user.ic);
     }
 
     if (search) {
-      query += ` AND (u.nama LIKE ? OR u.ic LIKE ? OR f.resit_img LIKE ?)`;
+      query += ` AND (u.nama LIKE ? OR u.ic LIKE ?)`;
       const searchTerm = `%${search}%`;
-      queryParams.push(searchTerm, searchTerm, searchTerm);
+      queryParams.push(searchTerm, searchTerm);
     }
     
     if (status) {
-      query += ` AND f.status = ?`;
-      queryParams.push(status);
+      if (status === 'tunggak' || status === 'Belum Bayar') {
+        query += ` AND (f.status IS NULL OR f.status = 'Belum Bayar' OR f.status = 'tunggak' OR f.status = '')`;
+      } else if (status === 'terbayar' || status === 'Bayar') {
+        query += ` AND f.status IN ('terbayar', 'Bayar')`;
+      } else {
+        query += ` AND f.status = ?`;
+        queryParams.push(status);
+      }
     }
     
     if (bulan) {
@@ -53,49 +85,55 @@ export const getAllFees = async (req, res) => {
     // Add pagination (inline to avoid ER_WRONG_ARGUMENTS on LIMIT/OFFSET)
     const safeLimit = Math.max(1, parseInt(limit));
     const offset = (Math.max(1, parseInt(page)) - 1) * safeLimit;
-    query += ` ORDER BY f.created_at DESC LIMIT ${safeLimit} OFFSET ${offset}`;
+    query += ` ORDER BY u.nama ASC LIMIT ${safeLimit} OFFSET ${offset}`;
     
     const [fees] = await pool.execute(query, queryParams);
     
     // Get total count for pagination
     let countQuery = `
       SELECT COUNT(*) as total
-      FROM fees f
-      JOIN users u ON f.student_ic = u.ic
-      WHERE 1=1
+      FROM users u
+      LEFT JOIN students s ON u.ic = s.user_ic
+      WHERE u.role = 'student' AND u.status = 'aktif'
     `;
     const countParams = [];
 
     // If user is a student, only count their own fees
     if (req.user && req.user.role === 'student') {
-      countQuery += ` AND f.student_ic = ?`;
+      countQuery += ` AND u.ic = ?`;
       countParams.push(req.user.ic);
     }
     
     if (search) {
-      countQuery += ` AND (u.nama LIKE ? OR u.ic LIKE ? OR f.resit_img LIKE ?)`;
+      countQuery += ` AND (u.nama LIKE ? OR u.ic LIKE ?)`;
       const searchTerm = `%${search}%`;
-      countParams.push(searchTerm, searchTerm, searchTerm);
+      countParams.push(searchTerm, searchTerm);
     }
     
     if (status) {
-      countQuery += ` AND f.status = ?`;
+      countQuery += ` AND EXISTS (
+        SELECT 1 FROM fees f2 
+        WHERE f2.student_ic = u.ic 
+        AND f2.status = ?
+      )`;
       countParams.push(status);
     }
     
     if (bulan) {
-      // Support both month name and number
-      if (isNaN(bulan)) {
-        countQuery += ` AND f.bulan = ?`;
-      } else {
-        countQuery += ` AND (f.bulan = ? OR MONTH(f.tarikh) = ?)`;
-        countParams.push(bulan);
-      }
-      countParams.push(bulan);
+      countQuery += ` AND EXISTS (
+        SELECT 1 FROM fees f2 
+        WHERE f2.student_ic = u.ic 
+        AND (f2.bulan = ? OR MONTH(f2.tarikh) = ?)
+      )`;
+      countParams.push(bulan, bulan);
     }
     
     if (tahun) {
-      countQuery += ` AND (f.tahun = ? OR YEAR(f.tarikh) = ?)`;
+      countQuery += ` AND EXISTS (
+        SELECT 1 FROM fees f2 
+        WHERE f2.student_ic = u.ic 
+        AND (f2.tahun = ? OR YEAR(f2.tarikh) = ?)
+      )`;
       countParams.push(tahun, tahun);
     }
     
@@ -183,18 +221,25 @@ export const createFee = async (req, res) => {
       });
     }
     
+    // Use current date/time if not provided
+    const now = new Date();
+    const monthNames = ['Januari', 'Februari', 'Mac', 'April', 'Mei', 'Jun', 'Julai', 'Ogos', 'September', 'Oktober', 'November', 'Disember'];
+    const feeDate = tarikh || now.toISOString().split('T')[0];
+    const feeBulan = bulan || monthNames[now.getMonth()];
+    const feeTahun = tahun || now.getFullYear();
+    
     // Map frontend status to backend if needed
     const backendStatus = status === 'terbayar' ? 'Bayar' : 
                          status === 'tunggak' ? 'Belum Bayar' : 
                          status || 'Belum Bayar';
     
     // Set tarikh_bayar if status is paid
-    const tarikh_bayar = (backendStatus === 'Bayar' || backendStatus === 'terbayar') ? tarikh : null;
+    const tarikh_bayar = (backendStatus === 'Bayar' || backendStatus === 'terbayar') ? feeDate : null;
     
     const [result] = await pool.execute(`
       INSERT INTO fees (student_ic, jumlah, status, tarikh, tarikh_bayar, bulan, tahun, cara_bayar, no_resit, resit_img)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `, [student_ic, jumlah, backendStatus, tarikh, tarikh_bayar, bulan, tahun, cara_bayar, no_resit, resit_img]);
+    `, [student_ic, jumlah, backendStatus, feeDate, tarikh_bayar, feeBulan, feeTahun, cara_bayar, no_resit, resit_img]);
     
     const [newFee] = await pool.execute(`
       SELECT f.*, u.nama as pelajar_nama, u.ic as pelajar_ic, c.nama_kelas

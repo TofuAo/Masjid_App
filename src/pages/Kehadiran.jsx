@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import useCrud from '../hooks/useCrud';
-import { attendanceAPI, classesAPI } from '../services/api';
+import { attendanceAPI, classesAPI, googleFormAPI } from '../services/api';
 import { toast } from 'react-toastify';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import Badge from '../components/ui/Badge';
+import GoogleFormModal from '../components/kehadiran/GoogleFormModal';
 import { Calendar, Users, CheckCircle, XCircle, Clock, AlertCircle, Plus } from 'lucide-react';
 
 const Kehadiran = () => {
@@ -12,6 +13,8 @@ const Kehadiran = () => {
   const [selectedKelas, setSelectedKelas] = useState('semua');
   const [kelass, setKelass] = useState([]);
   const [userRole, setUserRole] = useState('');
+  const [showGoogleFormModal, setShowGoogleFormModal] = useState(false);
+  const [googleFormUrl, setGoogleFormUrl] = useState(null);
 
   const {
     items: kehadiran,
@@ -125,6 +128,57 @@ const Kehadiran = () => {
   const cutiCount = filteredKehadiran.filter(k => normalizeStatus(k.status) === 'cuti' || k.status === 'Cuti').length;
   const kehadiranRate = totalPelajar > 0 ? ((hadirCount + lewatCount) / totalPelajar * 100).toFixed(1) : 0;
 
+  // Handle Google Form button click
+  const handleAmbilKehadiran = async () => {
+    if (selectedKelas === 'semua') {
+      toast.error('Sila pilih kelas terlebih dahulu');
+      return;
+    }
+
+    try {
+      // Fetch Google Form URL for the selected class
+      const response = await googleFormAPI.getClassFormUrl(selectedKelas);
+      const formUrl = response?.data?.google_form_url || response?.google_form_url;
+      
+      if (formUrl) {
+        setGoogleFormUrl(formUrl);
+        setShowGoogleFormModal(true);
+      } else {
+        toast.warning('Google Form belum dikonfigurasi untuk kelas ini. Sila hubungi pentadbir.');
+      }
+    } catch (error) {
+      console.error('Error fetching Google Form URL:', error);
+      toast.error('Gagal memuatkan pautan Google Form');
+    }
+  };
+
+  // Handle form submission from Google Form
+  const handleFormSubmit = async (formData) => {
+    try {
+      // Process the form data and send to backend
+      // The formData should contain attendance_data array
+      const attendanceData = {
+        class_id: parseInt(selectedKelas),
+        tarikh: selectedDate,
+        attendance_data: formData.attendance_data || []
+      };
+
+      await attendanceAPI.bulkMark(attendanceData);
+      toast.success('Kehadiran berjaya direkodkan!');
+      setShowGoogleFormModal(false);
+      // Refresh attendance data
+      fetchAttendanceData({ date: selectedDate, class_id: selectedKelas === 'semua' ? undefined : selectedKelas });
+    } catch (error) {
+      console.error('Error submitting attendance:', error);
+      toast.error('Gagal menyimpan data kehadiran');
+    }
+  };
+
+  // Get selected class name
+  const selectedClassName = kelass.find(k => k.id === parseInt(selectedKelas))?.nama_kelas || 
+                           kelass.find(k => k.id === parseInt(selectedKelas))?.class_name || 
+                           'Kelas';
+
   if (loading) {
     return <div className="text-center py-8">Memuatkan data kehadiran...</div>;
   }
@@ -171,7 +225,11 @@ const Kehadiran = () => {
                   </select>
                 </div>
                 <div className="flex items-end">
-                  <Button className="flex items-center">
+                  <Button 
+                    onClick={handleAmbilKehadiran}
+                    className="flex items-center"
+                    disabled={selectedKelas === 'semua'}
+                  >
                     <Plus className="w-4 h-4 mr-2" />
                     Ambil Kehadiran
                   </Button>
@@ -374,6 +432,20 @@ const Kehadiran = () => {
           )}
         </Card.Content>
       </Card>
+
+      {/* Google Form Modal */}
+      <GoogleFormModal
+        isOpen={showGoogleFormModal}
+        onClose={() => {
+          setShowGoogleFormModal(false);
+          setGoogleFormUrl(null);
+        }}
+        formUrl={googleFormUrl}
+        classId={selectedKelas}
+        className={selectedClassName}
+        selectedDate={selectedDate}
+        onFormSubmit={handleFormSubmit}
+      />
     </div>
   );
 };

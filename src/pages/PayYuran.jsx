@@ -61,9 +61,23 @@ const PayYuran = () => {
   const generateQRData = () => {
     if (!fee) return '';
     
-    // Format: MASJID_PAYMENT|{fee_id}|{amount}|{student_ic}|{month_year}
-    const monthYear = `${fee.bulan}_${fee.tahun}`;
-    return `MASJID_PAYMENT|${fee.id}|${fee.jumlah}|${fee.pelajar_ic}|${monthYear}`;
+    // Get account number from settings
+    const accountNumber = qrSettings?.payment_account_number || '111026425788';
+    const feeId = fee.id || '0';
+    const amount = fee.jumlah || '0.00';
+    const studentIc = fee.pelajar_ic || fee.student_ic || 'N/A';
+    const bulan = fee.bulan || new Date().toLocaleString('ms-MY', { month: 'long' });
+    const tahun = fee.tahun || new Date().getFullYear();
+    
+    // Format for Malaysian payment systems (DuitNow/DuitNow QR compatible)
+    // Format: Account|Amount|Reference|Description
+    const reference = `FEE${String(feeId).padStart(6, '0')}`;
+    const description = `Yuran ${bulan} ${tahun} - ${studentIc}`;
+    
+    // Malaysian DuitNow QR format
+    const qrData = `${accountNumber}|${amount}|${reference}|${description}`;
+    console.log('Generated QR Data:', qrData);
+    return qrData;
   };
 
   if (loading) {
@@ -173,29 +187,66 @@ const PayYuran = () => {
                       src={qrSettings.qr_code_image} 
                       alt="QR Code Payment" 
                       className="w-64 h-64 mx-auto object-contain"
+                      onError={(e) => {
+                        console.error('QR image failed to load:', qrSettings.qr_code_image);
+                        e.target.style.display = 'none';
+                      }}
                     />
                   ) : qrSettings.qr_code_link ? (
-                    <div className="w-64 h-64 mx-auto flex items-center justify-center bg-gray-100 rounded-lg">
+                    <div className="flex flex-col items-center space-y-4">
+                      {/* Generate QR code containing the link */}
+                      <QRCodeSVG
+                        value={qrSettings.qr_code_link}
+                        size={256}
+                        level="H"
+                        includeMargin={true}
+                        style={{ 
+                          display: 'block',
+                          width: '256px',
+                          height: '256px'
+                        }}
+                      />
+                      {/* Button to open link directly */}
                       <a 
                         href={qrSettings.qr_code_link} 
                         target="_blank" 
                         rel="noopener noreferrer"
-                        className="text-emerald-600 hover:text-emerald-700 underline"
+                        className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors flex items-center space-x-2"
                       >
-                        Klik untuk Bayar: {qrSettings.qr_code_link}
+                        <QrCode className="w-4 h-4" />
+                        <span>Buka Pautan Bayaran</span>
                       </a>
                     </div>
                   ) : null}
                 </div>
               ) : (
-                <div className="bg-white p-6 rounded-lg border-2 border-emerald-200 shadow-lg">
-                  <QRCodeSVG
-                    value={generateQRData()}
-                    size={256}
-                    level="H"
-                    includeMargin={true}
-                    className="mx-auto"
-                  />
+                <div className="bg-white p-6 rounded-lg border-2 border-emerald-200 shadow-lg flex items-center justify-center min-h-[300px]">
+                  {fee && generateQRData() ? (
+                    <div className="flex flex-col items-center space-y-4">
+                      <QRCodeSVG
+                        value={generateQRData()}
+                        size={256}
+                        level="H"
+                        includeMargin={true}
+                        style={{ 
+                          display: 'block',
+                          width: '256px',
+                          height: '256px'
+                        }}
+                      />
+                      {qrSettings?.payment_account_number && (
+                        <div className="text-center text-xs text-gray-600 bg-gray-50 px-3 py-2 rounded">
+                          <p className="font-semibold">Akaun Bank:</p>
+                          <p className="font-mono">{qrSettings.payment_account_number}</p>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="text-center text-gray-500">
+                      <QrCode className="w-16 h-16 mx-auto mb-2 text-gray-400" />
+                      <p>Sedang memuatkan QR code...</p>
+                    </div>
+                  )}
                 </div>
               )}
               

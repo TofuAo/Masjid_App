@@ -4,10 +4,23 @@ import { safeParseJSON } from '../utils/jsonParser.js';
 
 export const getAllClasses = async (req, res) => {
   try {
-    const { search, status, guru_id, page = 1, limit = 10 } = req.query;
+    const { search, status, guru_id, page = 1, limit } = req.query;
+    // Default to a large limit to show all classes, or use pagination if specified
+    const defaultLimit = limit ? parseInt(limit) : 1000;
     
     let query = `
-      SELECT c.id, c.nama_kelas, c.level, c.sessions, c.yuran, c.guru_ic, c.kapasiti, c.status, u.nama as guru_nama, COUNT(s.user_ic) as student_count
+      SELECT 
+        c.id, 
+        c.nama_kelas, 
+        c.level, 
+        c.sessions, 
+        c.yuran, 
+        c.guru_ic, 
+        c.kapasiti, 
+        c.status, 
+        c.jadual, 
+        u.nama as guru_nama,
+        COUNT(DISTINCT s.user_ic) as student_count
       FROM classes c
       LEFT JOIN users u ON c.guru_ic = u.ic
       LEFT JOIN students s ON c.id = s.kelas_id
@@ -39,7 +52,7 @@ export const getAllClasses = async (req, res) => {
     }
     
     // Add pagination (inline to avoid ER_WRONG_ARGUMENTS on LIMIT/OFFSET)
-    const safeLimit = Math.max(1, parseInt(limit));
+    const safeLimit = Math.max(1, defaultLimit);
     const offset = (Math.max(1, parseInt(page)) - 1) * safeLimit;
     query += ` GROUP BY c.id, c.nama_kelas, c.level, c.sessions, c.yuran, c.guru_ic, c.kapasiti, c.status, u.nama ORDER BY c.created_at DESC LIMIT ${safeLimit} OFFSET ${offset}`;
     
@@ -88,9 +101,9 @@ export const getAllClasses = async (req, res) => {
       data: parsedClasses,
       pagination: {
         page: parseInt(page),
-        limit: parseInt(limit),
+        limit: safeLimit,
         total,
-        pages: Math.ceil(total / limit)
+        pages: Math.ceil(total / safeLimit)
       }
     });
   } catch (error) {
@@ -139,10 +152,11 @@ export const getClassById = async (req, res) => {
     
     // Get students in this class
     const [students] = await pool.execute(`
-      SELECT u.ic, u.nama, u.status
+      SELECT u.ic, u.nama, u.telefon, u.status, s.tarikh_daftar
       FROM users u
       JOIN students s ON u.ic = s.user_ic
       WHERE s.kelas_id = ?
+      ORDER BY u.nama
     `, [id]);
     
     res.json({
@@ -360,14 +374,19 @@ export const getClassStats = async (req, res) => {
         SUM(CASE WHEN status = 'aktif' THEN 1 ELSE 0 END) as aktif,
         SUM(CASE WHEN status = 'tidak_aktif' THEN 1 ELSE 0 END) as tidak_aktif,
         SUM(CASE WHEN status = 'penuh' THEN 1 ELSE 0 END) as penuh,
-        SUM(kapasiti) as total_kapasiti,
-        AVG(yuran) as average_yuran
+        COALESCE(SUM(kapasiti), 0) as total_kapasiti,
+        COALESCE(AVG(yuran), 0) as average_yuran
       FROM classes
     `);
     
+    const statsData = stats[0];
+    // Ensure average_yuran is a number
+    statsData.average_yuran = statsData.average_yuran ? Number(statsData.average_yuran) : 0;
+    statsData.total_kapasiti = statsData.total_kapasiti ? Number(statsData.total_kapasiti) : 0;
+    
     res.json({
       success: true,
-      data: stats[0]
+      data: statsData
     });
   } catch (error) {
     console.error('Get class stats error:', error);

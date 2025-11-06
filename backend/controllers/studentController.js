@@ -6,7 +6,9 @@ const studentCache = new NodeCache({ stdTTL: 600 }); // 10 minutes
 
 export const getAllStudents = async (req, res) => {
   try {
-    const { search, status, kelas_id, page = 1, limit = 10 } = req.query;
+    const { search, status, kelas_id, page = 1, limit } = req.query;
+    // Default to a large limit to show all students, or use pagination if specified
+    const defaultLimit = limit ? parseInt(limit) : 1000;
     
     // Include user role in cache key to prevent teachers seeing admin cache
     const cacheKey = `students:${req.user?.role || 'guest'}:${search}:${status}:${kelas_id}:${page}:${limit}`;
@@ -20,9 +22,9 @@ export const getAllStudents = async (req, res) => {
     }
 
     let query = `
-      SELECT u.ic, u.nama, u.email, u.status, s.kelas_id, s.tarikh_daftar, c.nama_kelas
+      SELECT u.ic, u.nama, u.email, u.telefon, u.umur, u.status, s.kelas_id, s.tarikh_daftar, c.nama_kelas
       FROM users u
-      JOIN students s ON u.ic = s.user_ic
+      LEFT JOIN students s ON u.ic = s.user_ic
       LEFT JOIN classes c ON s.kelas_id = c.id
       WHERE u.role = 'student'
     `;
@@ -52,17 +54,26 @@ export const getAllStudents = async (req, res) => {
     }
 
     // Add pagination (inline to avoid ER_WRONG_ARGUMENTS on LIMIT/OFFSET)
-    const safeLimit = Math.max(1, parseInt(limit));
+    const safeLimit = Math.max(1, defaultLimit);
     const offset = (Math.max(1, parseInt(page)) - 1) * safeLimit;
     query += ` ORDER BY u.created_at DESC LIMIT ${safeLimit} OFFSET ${offset}`;
 
     const [students] = await pool.execute(query, queryParams);
 
+    // Format students data to match frontend expectations
+    const formattedStudents = students.map(student => ({
+      ...student,
+      IC: student.ic, // Add uppercase IC for frontend compatibility
+      kelas_id: student.kelas_id || null,
+      nama_kelas: student.nama_kelas || 'Tiada Kelas',
+      umur: student.umur || null
+    }));
+
     // Get total count for pagination
     let countQuery = `
       SELECT COUNT(*) as total
       FROM users u
-      JOIN students s ON u.ic = s.user_ic
+      LEFT JOIN students s ON u.ic = s.user_ic
       LEFT JOIN classes c ON s.kelas_id = c.id
       WHERE u.role = 'student'
     `;
@@ -95,12 +106,12 @@ export const getAllStudents = async (req, res) => {
 
     const response = {
       success: true,
-      data: students,
+      data: formattedStudents,
       pagination: {
         page: parseInt(page),
-        limit: parseInt(limit),
+        limit: safeLimit,
         total,
-        pages: Math.ceil(total / limit)
+        pages: Math.ceil(total / safeLimit)
       }
     };
 
@@ -347,17 +358,23 @@ export const getStudentStats = async (req, res) => {
     const [stats] = await pool.execute(`
       SELECT 
         COUNT(*) as total,
-        SUM(CASE WHEN status = 'aktif' THEN 1 ELSE 0 END) as active,
-        SUM(CASE WHEN status = 'tidak_aktif' THEN 1 ELSE 0 END) as inactive,
-        SUM(CASE WHEN status = 'cuti' THEN 1 ELSE 0 END) as on_leave,
-        SUM(CASE WHEN DATE(created_at) >= DATE_SUB(CURDATE(), INTERVAL 1 MONTH) THEN 1 ELSE 0 END) as new_this_month
-      FROM users
-      WHERE role = 'student'
+        SUM(CASE WHEN u.status = 'aktif' THEN 1 ELSE 0 END) as active,
+        SUM(CASE WHEN u.status = 'tidak_aktif' THEN 1 ELSE 0 END) as inactive,
+        SUM(CASE WHEN u.status = 'cuti' THEN 1 ELSE 0 END) as on_leave,
+        SUM(CASE WHEN DATE(u.created_at) >= DATE_SUB(CURDATE(), INTERVAL 1 MONTH) THEN 1 ELSE 0 END) as new_this_month
+      FROM users u
+      WHERE u.role = 'student'
     `);
     
     const response = {
       success: true,
-      data: stats[0]
+      data: {
+        total: stats[0].total || 0,
+        active: stats[0].active || 0,
+        inactive: stats[0].inactive || 0,
+        on_leave: stats[0].on_leave || 0,
+        new_this_month: stats[0].new_this_month || 0
+      }
     };
 
     studentCache.set(cacheKey, response);

@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { studentsAPI, examsAPI } from '../../services/api';
-import { X } from 'lucide-react';
+import { X, Search, ChevronDown, Check } from 'lucide-react';
 
 const ResultFormModal = ({ isOpen, onClose, onSave, initialData }) => {
   const [formData, setFormData] = useState({
@@ -11,17 +11,42 @@ const ResultFormModal = ({ isOpen, onClose, onSave, initialData }) => {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
+  
+  // Searchable student select state
+  const [studentSearchTerm, setStudentSearchTerm] = useState('');
+  const [isStudentDropdownOpen, setIsStudentDropdownOpen] = useState(false);
+  const studentDropdownRef = useRef(null);
+  const studentInputRef = useRef(null);
 
   useEffect(() => {
     if (isOpen) {
       setError(null);
       setLoading(true);
+      setStudentSearchTerm('');
+      setIsStudentDropdownOpen(false);
       fetchDependencies();
       setFormData(initialData || {
         student_ic: '', exam_id: '', markah: '', gred: '', status: '', catatan: ''
       });
     }
   }, [isOpen, initialData]);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (studentDropdownRef.current && !studentDropdownRef.current.contains(event.target)) {
+        setIsStudentDropdownOpen(false);
+      }
+    };
+
+    if (isStudentDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isStudentDropdownOpen]);
 
   const fetchDependencies = async () => {
     setLoading(true);
@@ -59,6 +84,38 @@ const ResultFormModal = ({ isOpen, onClose, onSave, initialData }) => {
     }
     
     setFormData(prev => ({ ...prev, ...updates }));
+  };
+
+  // Filter students based on search term
+  const filteredStudents = students.filter(s => {
+    const studentIc = s.ic || s.IC || s.user_ic || '';
+    const studentName = s.nama || s.name || '';
+    const searchLower = studentSearchTerm.toLowerCase();
+    return studentName.toLowerCase().includes(searchLower) || 
+           studentIc.toLowerCase().includes(searchLower) ||
+           studentIc.includes(studentSearchTerm);
+  });
+
+  // Get selected student display name
+  const getSelectedStudentDisplay = () => {
+    if (!formData.student_ic) return '';
+    const student = students.find(s => {
+      const studentIc = s.ic || s.IC || s.user_ic || '';
+      return studentIc === formData.student_ic;
+    });
+    if (student) {
+      const studentIc = student.ic || student.IC || student.user_ic || '';
+      const studentName = student.nama || student.name || '';
+      return `${studentName} (${studentIc})`;
+    }
+    return '';
+  };
+
+  const handleStudentSelect = (student) => {
+    const studentIc = student.ic || student.IC || student.user_ic || '';
+    setFormData(prev => ({ ...prev, student_ic: studentIc }));
+    setStudentSearchTerm('');
+    setIsStudentDropdownOpen(false);
   };
 
   const handleSubmit = async (e) => {
@@ -128,14 +185,90 @@ const ResultFormModal = ({ isOpen, onClose, onSave, initialData }) => {
             <form id="result-form" onSubmit={handleSubmit} className="space-y-6">
               <div>
                 <label className="form-label">Pelajar</label>
-                <select name="student_ic" value={formData.student_ic} onChange={handleChange} required className="input-mosque w-full">
-                  <option value="">Pilih Pelajar</option>
-                  {students.map(s => {
-                    const studentIc = s.ic || s.IC || s.user_ic || '';
-                    const studentName = s.nama || s.name || '';
-                    return <option key={studentIc} value={studentIc}>{studentName} ({studentIc})</option>;
-                  })}
-                </select>
+                <div className="relative" ref={studentDropdownRef}>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      ref={studentInputRef}
+                      value={isStudentDropdownOpen ? studentSearchTerm : getSelectedStudentDisplay()}
+                      onChange={(e) => {
+                        setStudentSearchTerm(e.target.value);
+                        setIsStudentDropdownOpen(true);
+                        if (!isStudentDropdownOpen) {
+                          setIsStudentDropdownOpen(true);
+                        }
+                      }}
+                      onFocus={() => {
+                        setIsStudentDropdownOpen(true);
+                        setStudentSearchTerm('');
+                      }}
+                      placeholder="Cari pelajar dengan nama atau IC..."
+                      required
+                      className="input-mosque w-full pr-10"
+                    />
+                    <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                      <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform ${isStudentDropdownOpen ? 'transform rotate-180' : ''}`} />
+                    </div>
+                  </div>
+                  
+                  {isStudentDropdownOpen && (
+                    <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto">
+                      <div className="p-2 border-b border-gray-200 sticky top-0 bg-white">
+                        <div className="relative">
+                          <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                          <input
+                            type="text"
+                            value={studentSearchTerm}
+                            onChange={(e) => setStudentSearchTerm(e.target.value)}
+                            placeholder="Taip nama atau IC untuk mencari..."
+                            className="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                            autoFocus
+                          />
+                        </div>
+                      </div>
+                      <div className="py-1">
+                        {filteredStudents.length > 0 ? (
+                          filteredStudents.map(s => {
+                            const studentIc = s.ic || s.IC || s.user_ic || '';
+                            const studentName = s.nama || s.name || '';
+                            const isSelected = formData.student_ic === studentIc;
+                            return (
+                              <button
+                                key={studentIc}
+                                type="button"
+                                onClick={() => handleStudentSelect(s)}
+                                className={`w-full text-left px-4 py-2 hover:bg-emerald-50 focus:bg-emerald-50 focus:outline-none ${
+                                  isSelected ? 'bg-emerald-100' : ''
+                                }`}
+                              >
+                                <div className="flex items-center justify-between">
+                                  <div>
+                                    <div className="font-medium text-gray-900">{studentName}</div>
+                                    <div className="text-sm text-gray-500">{studentIc}</div>
+                                  </div>
+                                  {isSelected && (
+                                    <Check className="w-5 h-5 text-emerald-600" />
+                                  )}
+                                </div>
+                              </button>
+                            );
+                          })
+                        ) : (
+                          <div className="px-4 py-3 text-sm text-gray-500 text-center">
+                            Tiada pelajar ditemui
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+                {/* Hidden input for form validation */}
+                <input
+                  type="hidden"
+                  name="student_ic"
+                  value={formData.student_ic}
+                  required
+                />
               </div>
               <div>
                 <label className="form-label">Peperiksaan</label>

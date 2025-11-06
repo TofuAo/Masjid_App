@@ -30,7 +30,13 @@ const Kelas = () => {
     loading,
     error,
     handlers,
+    fetchItems,
   } = useCrud(classesAPI, 'kelas');
+
+  // Fetch all classes with high limit
+  useEffect(() => {
+    fetchItems({ limit: 1000 });
+  }, [fetchItems]);
 
   const {
     add: handleAdd,
@@ -58,14 +64,54 @@ const Kelas = () => {
     fetchGurus();
   }, [fetchGurus]);
 
-  // Calculate statistics
-  const kelassArray = Array.isArray(kelass) ? kelass : [];
-  const totalKelass = kelassArray.length;
-  const aktifKelass = kelassArray.filter(k => k.status === 'aktif').length;
-  const tidakAktifKelass = kelassArray.filter(k => k.status === 'tidak_aktif').length;
-  const penuhKelass = kelassArray.filter(k => k.status === 'penuh').length;
-  const totalKapasiti = kelassArray.reduce((sum, k) => sum + (Number(k.kapasiti) || 0), 0);
-  const averageYuran = kelassArray.length > 0 ? (kelassArray.reduce((sum, k) => sum + (Number(k.yuran) || 0), 0) / kelassArray.length).toFixed(2) : 0;
+  // Statistics from API
+  const [stats, setStats] = useState({
+    total: 0,
+    aktif: 0,
+    tidak_aktif: 0,
+    penuh: 0,
+    total_kapasiti: 0,
+    average_yuran: 0
+  });
+
+  // Fetch stats from API
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const response = await classesAPI.getStats();
+        if (response?.success && response?.data) {
+          setStats({
+            total: response.data.total || 0,
+            aktif: response.data.aktif || 0,
+            tidak_aktif: response.data.tidak_aktif || 0,
+            penuh: response.data.penuh || 0,
+            total_kapasiti: response.data.total_kapasiti || 0,
+            average_yuran: response.data.average_yuran || 0
+          });
+        }
+      } catch (error) {
+        console.error('Failed to fetch stats:', error);
+        // Fallback to calculated stats
+        const kelassArray = Array.isArray(kelass) ? kelass : [];
+        setStats({
+          total: kelassArray.length,
+          aktif: kelassArray.filter(k => k.status === 'aktif').length,
+          tidak_aktif: kelassArray.filter(k => k.status === 'tidak_aktif').length,
+          penuh: kelassArray.filter(k => k.status === 'penuh').length,
+          total_kapasiti: kelassArray.reduce((sum, k) => sum + (Number(k.kapasiti) || 0), 0),
+          average_yuran: kelassArray.length > 0 ? (kelassArray.reduce((sum, k) => sum + (Number(k.yuran) || 0), 0) / kelassArray.length) : 0
+        });
+      }
+    };
+    fetchStats();
+  }, [kelass.length]);
+
+  const totalKelass = stats.total;
+  const aktifKelass = stats.aktif;
+  const tidakAktifKelass = stats.tidak_aktif;
+  const penuhKelass = stats.penuh;
+  const totalKapasiti = stats.total_kapasiti;
+  const averageYuran = stats.average_yuran ? Number(stats.average_yuran).toFixed(2) : '0.00';
 
   const renderContent = () => {
     if (loading) {
@@ -124,20 +170,57 @@ const Kelas = () => {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
                         <label className="block text-sm font-medium text-gray-500">Nama Kelas</label>
-                        <p className="mt-1 text-sm text-gray-900">{selectedKelas.class_name}</p>
+                        <p className="mt-1 text-sm text-gray-900">{selectedKelas.nama_kelas || selectedKelas.class_name || '-'}</p>
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-500">Level</label>
                         <p className="mt-1 text-sm text-gray-900">{selectedKelas.level}</p>
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-500">Sessions</label>
+                        <label className="block text-sm font-medium text-gray-500">Jadual / Sessions</label>
                         <div className="mt-1 text-sm text-gray-900">
-                          {selectedKelas.sessions.map((session, index) => (
-                            <div key={index}>
-                              {session.days.join(' & ')}: {session.times.join(', ')}
-                            </div>
-                          ))}
+                          {(() => {
+                            // Prioritize jadual field if available
+                            if (selectedKelas.jadual) {
+                              return <p>{selectedKelas.jadual}</p>;
+                            }
+                            
+                            // Parse sessions if it's a string
+                            let sessions = selectedKelas.sessions;
+                            if (typeof sessions === 'string') {
+                              try {
+                                sessions = JSON.parse(sessions);
+                              } catch (e) {
+                                sessions = [];
+                              }
+                            }
+                            
+                            // Handle array of sessions
+                            if (Array.isArray(sessions) && sessions.length > 0) {
+                              return (
+                                <div>
+                                  {sessions.map((session, index) => {
+                                    if (typeof session === 'string') {
+                                      return <p key={index}>{session}</p>;
+                                    } else if (session && typeof session === 'object') {
+                                      const days = session.days || [];
+                                      const times = session.times || [];
+                                      if (days.length > 0 || times.length > 0) {
+                                        return (
+                                          <p key={index}>
+                                            {days.join(' & ')} {times.length > 0 ? `: ${times.join(', ')}` : ''}
+                                          </p>
+                                        );
+                                      }
+                                    }
+                                    return null;
+                                  })}
+                                </div>
+                              );
+                            }
+                            
+                            return <p>-</p>;
+                          })()}
                         </div>
                       </div>
                       <div>
@@ -150,7 +233,7 @@ const Kelas = () => {
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-500">Guru</label>
-                        <p className="mt-1 text-sm text-gray-900">{gurus.find(g => g.ic === selectedKelas.guru_ic)?.nama || 'Tiada Guru'}</p>
+                        <p className="mt-1 text-sm text-gray-900">{selectedKelas.guru_nama || gurus.find(g => g.ic === selectedKelas.guru_ic)?.nama || 'Tiada Guru'}</p>
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-500">Status</label>
@@ -174,11 +257,11 @@ const Kelas = () => {
                     <div className="space-y-3">
                       <div className="flex justify-between">
                         <span className="text-sm text-gray-600">Pelajar Terdaftar</span>
-                        <span className="text-sm font-medium text-gray-900">{(selectedKelas.students || []).length}</span>
+                        <span className="text-sm font-medium text-gray-900">{selectedKelas.student_count || (selectedKelas.students || []).length || 0}</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-sm text-gray-600">Tempat Kosong</span>
-                        <span className="text-sm font-medium text-gray-900">{selectedKelas.kapasiti - (selectedKelas.students || []).length}</span>
+                        <span className="text-sm font-medium text-gray-900">{(selectedKelas.kapasiti || 0) - (selectedKelas.student_count || (selectedKelas.students || []).length || 0)}</span>
                       </div>
                       {/* Placeholder for attendance and revenue, as student data is not fully integrated here */}
                       <div className="flex justify-between">
@@ -187,7 +270,7 @@ const Kelas = () => {
                       </div>
                       <div className="flex justify-between">
                         <span className="text-sm text-gray-600">Pendapatan Bulanan</span>
-                        <span className="text-sm font-medium text-gray-900">RM {selectedKelas.yuran * (selectedKelas.students || []).length}</span>
+                        <span className="text-sm font-medium text-gray-900">RM {((selectedKelas.yuran || 0) * (selectedKelas.student_count || (selectedKelas.students || []).length || 0)).toFixed(2)}</span>
                       </div>
                     </div>
                   </Card.Content>
@@ -198,11 +281,13 @@ const Kelas = () => {
                     <Card.Title>Senarai Pelajar</Card.Title>
                   </Card.Header>
                   <Card.Content>
-                    <div className="space-y-2">
+                    <div className="space-y-2 max-h-96 overflow-y-auto">
                       {(selectedKelas.students || []).length > 0 ? (
                         selectedKelas.students.map(student => (
-                          <div key={student.id} className="p-2 bg-emerald-50 border border-emerald-200 rounded text-sm">
-                            {student.nama}
+                          <div key={student.ic || student.id} className="p-2 bg-emerald-50 border border-emerald-200 rounded text-sm">
+                            <div className="font-medium">{student.nama}</div>
+                            {student.telefon && <div className="text-xs text-gray-600">{student.telefon}</div>}
+                            {student.ic && <div className="text-xs text-gray-500">IC: {student.ic}</div>}
                           </div>
                         ))
                       ) : (

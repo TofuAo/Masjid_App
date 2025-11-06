@@ -13,7 +13,10 @@ import {
   X,
   Settings,
   User,
-  LogOut
+  LogOut,
+  Megaphone,
+  Clock,
+  UserCheck
 } from 'lucide-react';
 import { SidebarProvider, useSidebar } from './components/ui/SidebarProvider';
 
@@ -57,6 +60,9 @@ const LayoutContent = ({ children, user, onLogout }) => {
   if (user?.role === 'admin') {
     menuItems = [
       ...menuItems,
+      { icon: <Megaphone className="w-5 h-5" />, label: 'Pengumuman', link: '/announcements' },
+      { icon: <Clock className="w-5 h-5" />, label: 'Check In / Out', link: '/staff-checkin' },
+      { icon: <UserCheck className="w-5 h-5" />, label: 'Kelulusan Pendaftaran', link: '/pending-registrations' },
       { icon: <Users className="w-5 h-5" />, label: 'Pelajar', link: '/pelajar' },
       { icon: <GraduationCap className="w-5 h-5" />, label: 'Guru', link: '/guru' },
       { icon: <BookOpen className="w-5 h-5" />, label: 'Kelas', link: '/kelas' },
@@ -69,6 +75,9 @@ const LayoutContent = ({ children, user, onLogout }) => {
   } else if (user?.role === 'teacher') {
     menuItems = [
       ...menuItems,
+      { icon: <Megaphone className="w-5 h-5" />, label: 'Pengumuman', link: '/announcements' },
+      { icon: <Clock className="w-5 h-5" />, label: 'Check In / Out', link: '/staff-checkin' },
+      { icon: <UserCheck className="w-5 h-5" />, label: 'Kelulusan Pendaftaran', link: '/pending-registrations' },
       { icon: <Users className="w-5 h-5" />, label: 'Pelajar', link: '/pelajar' },
       { icon: <BookOpen className="w-5 h-5" />, label: 'Kelas', link: '/kelas' },
       { icon: <Calendar className="w-5 h-5" />, label: 'Kehadiran', link: '/kehadiran' },
@@ -77,6 +86,7 @@ const LayoutContent = ({ children, user, onLogout }) => {
   } else if (user?.role === 'student') {
     menuItems = [
       ...menuItems,
+      { icon: <Megaphone className="w-5 h-5" />, label: 'Pengumuman', link: '/announcements' },
       { icon: <Calendar className="w-5 h-5" />, label: 'Kehadiran', link: '/kehadiran' },
       { icon: <FileText className="w-5 h-5" />, label: 'Keputusan', link: '/keputusan' },
       { icon: <CreditCard className="w-5 h-5" />, label: 'Yuran', link: '/yuran' },

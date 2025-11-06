@@ -2,6 +2,31 @@ import jwt from 'jsonwebtoken';
 import { pool, testConnection } from '../config/database.js';
 
 export const authenticateToken = async (req, res, next) => {
+  // Skip authentication for public masjid location endpoint
+  // Check if request has skipAuth flag
+  if (req.skipAuth || req._skipAuthForMasjidLocation) {
+    return next();
+  }
+  
+  // Check both path (relative to router) and originalUrl (full path)
+  const path = req.path || '';
+  const originalUrl = req.originalUrl || '';
+  const url = req.url || '';
+  const baseUrl = req.baseUrl || '';
+  
+  // Check if this is the masjid-location endpoint (multiple ways to catch it)
+  const isMasjidLocation = 
+    path === '/masjid-location' ||
+    path.includes('masjid-location') || 
+    originalUrl.includes('masjid-location') ||
+    originalUrl.includes('/api/settings/masjid-location') ||
+    url.includes('masjid-location') ||
+    (baseUrl + path).includes('masjid-location');
+  
+  if (isMasjidLocation) {
+    return next();
+  }
+
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
 

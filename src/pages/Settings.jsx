@@ -4,10 +4,10 @@ import { toast } from 'react-toastify';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import Badge from '../components/ui/Badge';
-import { Settings as SettingsIcon, QrCode, Key, Upload, Link, Save, Users, Eye, EyeOff } from 'lucide-react';
+import { Settings as SettingsIcon, QrCode, Key, Upload, Link, Save, Users, Eye, EyeOff, MapPin } from 'lucide-react';
 
 const Settings = () => {
-  const [activeTab, setActiveTab] = useState('qr'); // 'qr' or 'password'
+  const [activeTab, setActiveTab] = useState('qr'); // 'qr', 'password', or 'checkin'
   const [loading, setLoading] = useState(false);
   
   // QR Code Settings
@@ -27,10 +27,95 @@ const Settings = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [loadingUsers, setLoadingUsers] = useState(false);
 
+  // Check-In Settings (coordinates are static)
+  const [checkInSettings, setCheckInSettings] = useState({
+    masjid_latitude: '3.807829297637092', // Static, not editable
+    masjid_longitude: '103.32799643765418', // Static, not editable
+    masjid_checkin_radius: '100'
+  });
+  const [loadingCheckInSettings, setLoadingCheckInSettings] = useState(false);
+
   useEffect(() => {
     fetchQRSettings();
     fetchAllUsers();
+    fetchCheckInSettings();
   }, []);
+
+  const fetchCheckInSettings = async () => {
+    try {
+      setLoadingCheckInSettings(true);
+      // Only fetch radius (coordinates are static)
+      const radiusResponse = await settingsAPI.getByKey('masjid_checkin_radius');
+
+      setCheckInSettings({
+        masjid_latitude: '3.807829297637092', // Static
+        masjid_longitude: '103.32799643765418', // Static
+        masjid_checkin_radius: radiusResponse?.data?.setting_value || '100'
+      });
+    } catch (error) {
+      console.error('Failed to fetch check-in settings:', error);
+      // Settings might not exist yet, use defaults
+      setCheckInSettings({
+        masjid_latitude: '3.807829297637092', // Static
+        masjid_longitude: '103.32799643765418', // Static
+        masjid_checkin_radius: '100'
+      });
+    } finally {
+      setLoadingCheckInSettings(false);
+    }
+  };
+
+  const handleSaveCheckInSettings = async () => {
+    try {
+      setLoading(true);
+
+      // Only validate radius (coordinates are static)
+      const radius = parseFloat(checkInSettings.masjid_checkin_radius);
+
+      // Validate radius
+      if (isNaN(radius)) {
+        toast.error('Jejari tidak sah. Sila masukkan nombor yang betul.');
+        return;
+      }
+      if (radius <= 0) {
+        toast.error('Jejari check-in mesti nombor positif.');
+        return;
+      }
+      if (radius > 10000) {
+        toast.error('Jejari check-in tidak boleh melebihi 10,000 meter.');
+        return;
+      }
+
+      // Only save radius (coordinates are static)
+      const radiusValue = Math.round(radius).toString();
+
+      await settingsAPI.update('masjid_checkin_radius', {
+        value: radiusValue,
+        type: 'text',
+        description: 'Maximum allowed distance from masjid for check-in (in meters)'
+      });
+
+      // Verify the settings were saved correctly
+      await fetchCheckInSettings();
+
+      // Dispatch custom event to notify all pages of the update
+      window.dispatchEvent(new CustomEvent('masjidLocationUpdated'));
+
+      // Show success message
+      toast.success(
+        `Tetapan jejari berjaya disimpan!
+        Jejari: ${radiusValue}m
+        
+        Semua halaman akan dikemas kini secara automatik.`,
+        { autoClose: 5000 }
+      );
+    } catch (error) {
+      console.error('Failed to save check-in settings:', error);
+      toast.error('Gagal menyimpan tetapan check-in.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const fetchQRSettings = async () => {
     try {
@@ -207,6 +292,17 @@ const Settings = () => {
             >
               <Key className="w-4 h-4 inline mr-2" />
               Pengurusan Kata Laluan
+            </button>
+            <button
+              onClick={() => setActiveTab('checkin')}
+              className={`px-4 py-2 font-medium transition-colors ${
+                activeTab === 'checkin'
+                  ? 'border-b-2 border-emerald-600 text-emerald-600'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              <MapPin className="w-4 h-4 inline mr-2" />
+              Tetapan Check-In
             </button>
           </div>
         </Card.Content>
@@ -414,6 +510,87 @@ const Settings = () => {
                   </Button>
                 </>
               )}
+            </div>
+          </Card.Content>
+        </Card>
+      )}
+
+      {/* Check-In Settings */}
+      {activeTab === 'checkin' && (
+        <Card>
+          <Card.Header>
+            <Card.Title className="flex items-center space-x-2">
+              <MapPin className="w-5 h-5" />
+              <span>Tetapan Check-In / Check-Out</span>
+            </Card.Title>
+          </Card.Header>
+          <Card.Content>
+            <div className="space-y-6">
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <p className="text-sm text-blue-800">
+                  <strong>Maklumat:</strong> Koordinat masjid adalah statik dan tidak boleh diubah. 
+                  Hanya jejari check-in boleh diselaraskan. Staff mesti berada dalam jejari yang ditetapkan untuk check-in/check-out.
+                </p>
+              </div>
+
+              {/* Static Coordinates Display */}
+              <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                <p className="text-sm font-medium text-gray-800 mb-2">Koordinat Masjid (Statik):</p>
+                <p className="text-xs text-gray-700 font-mono">
+                  <strong>Latitude:</strong> 3.807829297637092
+                </p>
+                <p className="text-xs text-gray-700 font-mono">
+                  <strong>Longitude:</strong> 103.32799643765418
+                </p>
+                <p className="text-xs text-gray-600 mt-2 italic">
+                  Koordinat ini adalah tetap dan tidak boleh diubah oleh pentadbir.
+                </p>
+              </div>
+
+              {/* Check-In Radius */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Jejari Maksimum Check-In (Meter)
+                </label>
+                <div className="space-y-2">
+                  <input
+                    type="range"
+                    min="50"
+                    max="2000"
+                    step="50"
+                    value={checkInSettings.masjid_checkin_radius || '100'}
+                    onChange={(e) => setCheckInSettings({ ...checkInSettings, masjid_checkin_radius: e.target.value })}
+                    className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-emerald-600"
+                  />
+                  <div className="flex items-center justify-between">
+                    <input
+                      type="number"
+                      step="1"
+                      min="1"
+                      value={checkInSettings.masjid_checkin_radius || '100'}
+                      onChange={(e) => setCheckInSettings({ ...checkInSettings, masjid_checkin_radius: e.target.value })}
+                      placeholder="100"
+                      className="w-32 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    />
+                    <span className="text-sm text-gray-600">meter</span>
+                  </div>
+                </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  Gunakan slider atau masukkan nilai secara terus. Nilai lalai: 100 meter.
+                </p>
+                <div className="mt-2 text-xs text-gray-600">
+                  <strong>Jejari semasa:</strong> {checkInSettings.masjid_checkin_radius || '100'} meter
+                </div>
+              </div>
+
+              <Button
+                onClick={handleSaveCheckInSettings}
+                disabled={loading || loadingCheckInSettings}
+                className="w-full"
+              >
+                <Save className="w-4 h-4 mr-2" />
+                Simpan Tetapan Jejari
+              </Button>
             </div>
           </Card.Content>
         </Card>

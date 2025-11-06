@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import useCrud from '../hooks/useCrud';
 import { teachersAPI } from '../services/api';
 import GuruList from '../components/guru/GuruList';
@@ -16,6 +16,7 @@ const Guru = () => {
     loading,
     error,
     handlers,
+    fetchItems,
   } = useCrud(teachersAPI, 'guru');
 
   const {
@@ -27,12 +28,51 @@ const Guru = () => {
     cancel: handleCancel,
   } = handlers;
 
-  // Calculate statistics
-  const gurusArray = Array.isArray(gurus) ? gurus : [];
-  const totalGurus = gurusArray.length;
-  const aktifGurus = gurusArray.filter(g => g.status === 'aktif').length;
-  const tidakAktifGurus = gurusArray.filter(g => g.status === 'tidak_aktif').length;
-  const cutiGurus = gurusArray.filter(g => g.status === 'cuti').length;
+  // Statistics from API
+  const [stats, setStats] = useState({
+    total: 0,
+    aktif: 0,
+    tidak_aktif: 0,
+    cuti: 0
+  });
+
+  // Fetch all teachers with high limit
+  useEffect(() => {
+    fetchItems({ limit: 1000 });
+  }, [fetchItems]);
+
+  // Fetch stats from API
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const response = await teachersAPI.getStats();
+        if (response?.success && response?.data) {
+          setStats({
+            total: response.data.total || 0,
+            aktif: response.data.aktif || 0,
+            tidak_aktif: response.data.tidak_aktif || 0,
+            cuti: response.data.cuti || 0
+          });
+        }
+      } catch (error) {
+        console.error('Failed to fetch stats:', error);
+        // Fallback to calculated stats
+        const gurusArray = Array.isArray(gurus) ? gurus : [];
+        setStats({
+          total: gurusArray.length,
+          aktif: gurusArray.filter(g => g.status === 'aktif').length,
+          tidak_aktif: gurusArray.filter(g => g.status === 'tidak_aktif').length,
+          cuti: gurusArray.filter(g => g.status === 'cuti').length
+        });
+      }
+    };
+    fetchStats();
+  }, [gurus.length]);
+
+  const totalGurus = stats.total;
+  const aktifGurus = stats.aktif;
+  const tidakAktifGurus = stats.tidak_aktif;
+  const cutiGurus = stats.cuti;
 
   const renderContent = () => {
     if (loading) {
@@ -92,7 +132,7 @@ const Guru = () => {
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-500">Nombor IC</label>
-                        <p className="mt-1 text-sm text-gray-900">{selectedGuru.IC}</p>
+                        <p className="mt-1 text-sm text-gray-900">{selectedGuru.IC || selectedGuru.ic || '-'}</p>
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-500">Nombor Telefon</label>
@@ -116,11 +156,15 @@ const Guru = () => {
                   </Card.Header>
                   <Card.Content>
                     <div className="flex flex-wrap gap-2">
-                      {selectedGuru.kepakaran.map((kepakaran) => (
-                        <Badge key={kepakaran} variant="info">
-                          {kepakaran}
-                        </Badge>
-                      ))}
+                      {selectedGuru.kepakaran && Array.isArray(selectedGuru.kepakaran) && selectedGuru.kepakaran.length > 0 ? (
+                        selectedGuru.kepakaran.map((kepakaran, index) => (
+                          <Badge key={index} variant="info">
+                            {kepakaran}
+                          </Badge>
+                        ))
+                      ) : (
+                        <p className="text-sm text-gray-500">Tiada kepakaran didaftarkan</p>
+                      )}
                     </div>
                   </Card.Content>
                 </Card>
@@ -135,15 +179,13 @@ const Guru = () => {
                     <div className="space-y-3">
                       <div className="flex justify-between">
                         <span className="text-sm text-gray-600">Kelas Aktif</span>
-                        <span className="text-sm font-medium text-gray-900">3</span>
+                        <span className="text-sm font-medium text-gray-900">{selectedGuru.total_classes || selectedGuru.classes?.length || 0}</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-sm text-gray-600">Jumlah Pelajar</span>
-                        <span className="text-sm font-medium text-gray-900">45</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-sm text-gray-600">Pengalaman</span>
-                        <span className="text-sm font-medium text-gray-900">5 tahun</span>
+                        <span className="text-sm font-medium text-gray-900">
+                          {selectedGuru.classes?.reduce((sum, c) => sum + (c.student_count || 0), 0) || 0}
+                        </span>
                       </div>
                     </div>
                   </Card.Content>
@@ -155,15 +197,15 @@ const Guru = () => {
                   </Card.Header>
                   <Card.Content>
                     <div className="space-y-2">
-                      <div className="p-2 bg-emerald-50 border border-emerald-200 rounded text-sm">
-                        Al-Quran Pemula (15 pelajar)
-                      </div>
-                      <div className="p-2 bg-blue-50 border border-blue-200 rounded text-sm">
-                        Tajwid (12 pelajar)
-                      </div>
-                      <div className="p-2 bg-purple-50 border border-purple-200 rounded text-sm">
-                        Fardhu Ain (18 pelajar)
-                      </div>
+                      {selectedGuru.classes && selectedGuru.classes.length > 0 ? (
+                        selectedGuru.classes.map((kelas, index) => (
+                          <div key={kelas.id || index} className="p-2 bg-emerald-50 border border-emerald-200 rounded text-sm">
+                            {kelas.nama_kelas || kelas.class_name} ({kelas.student_count || 0} pelajar)
+                          </div>
+                        ))
+                      ) : (
+                        <p className="text-sm text-gray-500">Tiada kelas yang diampu</p>
+                      )}
                     </div>
                   </Card.Content>
                 </Card>
@@ -172,13 +214,6 @@ const Guru = () => {
           </div>
         );
       default:
-        // Calculate statistics
-        const gurusArray = Array.isArray(gurus) ? gurus : [];
-        const totalGurus = gurusArray.length;
-        const aktifGurus = gurusArray.filter(g => g.status === 'aktif').length;
-        const tidakAktifGurus = gurusArray.filter(g => g.status === 'tidak_aktif').length;
-        const cutiGurus = gurusArray.filter(g => g.status === 'cuti').length;
-
         return (
           <div className="space-y-6">
             {/* Statistics Cards */}

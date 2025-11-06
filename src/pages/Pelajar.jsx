@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { Navigate } from 'react-router-dom';
 import useCrud from '../hooks/useCrud';
 import { studentsAPI } from '../services/api';
 import PelajarList from '../components/pelajar/PelajarList';
@@ -18,7 +19,13 @@ const Pelajar = ({ user }) => {
     loading,
     error,
     handlers,
+    fetchItems,
   } = useCrud(studentsAPI, 'pelajar');
+
+  // Prevent students from accessing this page
+  if (user?.role === 'student') {
+    return <Navigate to="/" replace />;
+  }
 
   const {
     add: handleAdd,
@@ -29,12 +36,52 @@ const Pelajar = ({ user }) => {
     cancel: handleCancel,
   } = handlers;
 
-  // Calculate statistics
+  // Fetch all students with high limit
+  useEffect(() => {
+    fetchItems({ limit: 1000 });
+  }, [fetchItems]);
+
+  // Calculate statistics from API response
   const pelajarsArray = Array.isArray(pelajars) ? pelajars : [];
-  const totalPelajars = pelajarsArray.length;
-  const aktifPelajars = pelajarsArray.filter(p => p.status === 'aktif').length;
-  const tidakAktifPelajars = pelajarsArray.filter(p => p.status === 'tidak_aktif').length;
-  const cutiPelajars = pelajarsArray.filter(p => p.status === 'cuti').length;
+  // Get stats from API if available, otherwise calculate from array
+  const [stats, setStats] = useState({
+    total: pelajarsArray.length,
+    active: pelajarsArray.filter(p => p.status === 'aktif').length,
+    inactive: pelajarsArray.filter(p => p.status === 'tidak_aktif').length,
+    on_leave: pelajarsArray.filter(p => p.status === 'cuti').length
+  });
+
+  // Fetch stats from API
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const response = await studentsAPI.getStats();
+        if (response?.success && response?.data) {
+          setStats({
+            total: response.data.total || 0,
+            active: response.data.active || 0,
+            inactive: response.data.inactive || 0,
+            on_leave: response.data.on_leave || 0
+          });
+        }
+      } catch (error) {
+        console.error('Failed to fetch stats:', error);
+        // Fallback to calculated stats
+        setStats({
+          total: pelajarsArray.length,
+          active: pelajarsArray.filter(p => p.status === 'aktif').length,
+          inactive: pelajarsArray.filter(p => p.status === 'tidak_aktif').length,
+          on_leave: pelajarsArray.filter(p => p.status === 'cuti').length
+        });
+      }
+    };
+    fetchStats();
+  }, [pelajarsArray.length]);
+
+  const totalPelajars = stats.total;
+  const aktifPelajars = stats.active;
+  const tidakAktifPelajars = stats.inactive;
+  const cutiPelajars = stats.on_leave;
 
   const renderContent = () => {
     if (loading) {
@@ -47,6 +94,10 @@ const Pelajar = ({ user }) => {
 
     switch (currentView) {
       case 'form':
+        // Prevent students from accessing form
+        if (user?.role === 'student') {
+          return <Navigate to="/" replace />;
+        }
         return (
           <PelajarForm
             pelajar={selectedPelajar}
@@ -55,6 +106,10 @@ const Pelajar = ({ user }) => {
           />
         );
       case 'detail':
+        // Prevent students from accessing detail view
+        if (user?.role === 'student') {
+          return <Navigate to="/" replace />;
+        }
         return (
           <PelajarDetail
             pelajar={selectedPelajar}
@@ -63,13 +118,6 @@ const Pelajar = ({ user }) => {
           />
         );
       default:
-        // Calculate statistics
-        const pelajarsArray = Array.isArray(pelajars) ? pelajars : [];
-        const totalPelajars = pelajarsArray.length;
-        const aktifPelajars = pelajarsArray.filter(p => p.status === 'aktif').length;
-        const tidakAktifPelajars = pelajarsArray.filter(p => p.status === 'tidak_aktif').length;
-        const cutiPelajars = pelajarsArray.filter(p => p.status === 'cuti').length;
-
         return (
           <div className="space-y-6">
             {/* Statistics Cards */}
@@ -172,14 +220,16 @@ const Pelajar = ({ user }) => {
 
   return (
     <div>
-      <div className="mb-4">
-        <Link
-          to={`${location.pathname}/import`}
-          className="bg-emerald-500 text-white py-2 px-4 rounded hover:bg-emerald-700"
-        >
-          Import Pelajar
-        </Link>
-      </div>
+      {user?.role === 'admin' && (
+        <div className="mb-4">
+          <Link
+            to={`${location.pathname}/import`}
+            className="bg-emerald-500 text-white py-2 px-4 rounded hover:bg-emerald-700"
+          >
+            Import Pelajar
+          </Link>
+        </div>
+      )}
 
       <Routes>
         <Route path="/" element={renderContent()} />

@@ -14,9 +14,9 @@ const PelajarList = ({ pelajars = [], onEdit, onView, onDelete, onAdd, user }) =
     filteredPelajars = pelajars.filter(pelajar => pelajar.IC === user.username); // Assuming username is IC for students
   } else {
     filteredPelajars = pelajars.filter(pelajar => {
-      const matchesSearch = pelajar.nama.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           pelajar.IC.includes(searchTerm) ||
-                           pelajar.telefon.includes(searchTerm);
+      const matchesSearch = (pelajar.nama || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+                           (pelajar.IC || pelajar.ic || '').includes(searchTerm) ||
+                           (pelajar.telefon || '').includes(searchTerm);
       const matchesStatus = statusFilter === 'semua' || pelajar.status === statusFilter;
       return matchesSearch && matchesStatus;
     });
@@ -33,7 +33,11 @@ const PelajarList = ({ pelajars = [], onEdit, onView, onDelete, onAdd, user }) =
     return <Badge variant={config.variant}>{config.label}</Badge>;
   };
 
-  const getKelasName = (kelasId) => {
+  const getKelasName = (kelasId, namaKelas) => {
+    // Use nama_kelas from database if available, otherwise fallback to hardcoded names
+    if (namaKelas) {
+      return namaKelas;
+    }
     const kelasNames = {
       'al-quran-pemula': 'Al-Quran Pemula',
       'al-quran-tahfiz': 'Al-Quran Tahfiz',
@@ -111,9 +115,11 @@ const PelajarList = ({ pelajars = [], onEdit, onView, onDelete, onAdd, user }) =
                 <th className="px-3 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Status
                 </th>
-              <th className="px-3 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Tindakan
-                </th>
+                {user?.role !== 'student' && (
+                  <th className="px-3 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Tindakan
+                  </th>
+                )}
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
@@ -126,13 +132,13 @@ const PelajarList = ({ pelajars = [], onEdit, onView, onDelete, onAdd, user }) =
                     </div>
                   </td>
                   <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-sm text-gray-900 hidden sm:table-cell">
-                    {pelajar.IC}
+                    {pelajar.IC || pelajar.ic || '-'}
                   </td>
                   <td className="px-3 sm:px-6 py-3 sm:py-4 text-sm text-gray-900">
-                    {pelajar.umur} tahun
+                    {pelajar.umur ? `${pelajar.umur} tahun` : '-'}
                   </td>
                   <td className="px-3 sm:px-6 py-3 sm:py-4 text-sm text-gray-900 hidden md:table-cell">
-                    {getKelasName(pelajar.kelas_id)}
+                    {getKelasName(pelajar.kelas_id, pelajar.nama_kelas)}
                   </td>
                   <td className="px-3 sm:px-6 py-3 sm:py-4">
                     {getStatusBadge(pelajar.status)}

@@ -8,6 +8,9 @@ export const normalizeICMiddleware = (req, res, next) => {
   if (req.body.ic) {
     req.body.ic = normalizeIC(req.body.ic);
   }
+  if (req.body.ic_number) {
+    req.body.ic_number = normalizeIC(req.body.ic_number);
+  }
   if (req.body.guru_ic) {
     req.body.guru_ic = normalizeIC(req.body.guru_ic);
   }

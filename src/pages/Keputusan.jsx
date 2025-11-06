@@ -12,6 +12,8 @@ const Keputusan = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [examFilter, setExamFilter] = useState('semua');
   const [gradeFilter, setGradeFilter] = useState('semua');
+  const [yearFilter, setYearFilter] = useState('semua');
+  const [semesterFilter, setSemesterFilter] = useState('semua');
   const [userRole, setUserRole] = useState('');
   const [exams, setExams] = useState([]); // To store available exams for filter
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -43,9 +45,12 @@ const Keputusan = () => {
       search: searchTerm,
       exam_id: examFilter === 'semua' ? undefined : examFilter,
       gred: gradeFilter === 'semua' ? undefined : gradeFilter,
+      year: yearFilter === 'semua' ? undefined : yearFilter,
+      semester: semesterFilter === 'semua' ? undefined : semesterFilter,
+      limit: 1000, // Show many results
     });
     fetchExams();
-  }, [fetchResults, fetchExams, searchTerm, examFilter, gradeFilter]);
+  }, [fetchResults, fetchExams, searchTerm, examFilter, gradeFilter, yearFilter, semesterFilter]);
 
   const handleAddResult = () => {
     setEditingResult(null);
@@ -182,8 +187,35 @@ const Keputusan = () => {
                 >
                   <option value="semua">Semua Peperiksaan</option>
                   {(Array.isArray(exams) ? exams : []).map(exam => (
-                    <option key={exam.id} value={exam.id}>{exam.subject || exam.nama_exam || `Exam ${exam.id}`}</option>
+                    <option key={exam.id} value={exam.id}>
+                      {exam.subject || exam.nama_exam || `Exam ${exam.id}`}
+                      {exam.tarikh_exam ? ` (${new Date(exam.tarikh_exam).toLocaleDateString('ms-MY')})` : ''}
+                    </option>
                   ))}
+                </select>
+              </div>
+              <div className="flex items-center space-x-2">
+                <select
+                  value={yearFilter}
+                  onChange={(e) => setYearFilter(e.target.value)}
+                  className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                >
+                  <option value="semua">Semua Tahun</option>
+                  {Array.from({ length: 5 }, (_, i) => {
+                    const year = new Date().getFullYear() - i;
+                    return <option key={year} value={year}>{year}</option>;
+                  })}
+                </select>
+              </div>
+              <div className="flex items-center space-x-2">
+                <select
+                  value={semesterFilter}
+                  onChange={(e) => setSemesterFilter(e.target.value)}
+                  className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                >
+                  <option value="semua">Semua Semester</option>
+                  <option value="1">Semester 1 (Jan-Jun)</option>
+                  <option value="2">Semester 2 (Jul-Dis)</option>
                 </select>
               </div>
               <div className="flex items-center space-x-2">
@@ -318,6 +350,9 @@ const Keputusan = () => {
                       Peperiksaan
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Tarikh Peperiksaan
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Markah
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -349,6 +384,9 @@ const Keputusan = () => {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         {k.peperiksaan_nama || k.exam_subject || k.subject || '-'}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {k.exam_date ? new Date(k.exam_date).toLocaleDateString('ms-MY') : '-'}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         {k.markah}

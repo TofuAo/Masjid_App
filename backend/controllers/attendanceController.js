@@ -152,6 +152,9 @@ export const markAttendance = async (req, res) => {
     }
 
     const { student_ic, class_id, tarikh, status } = req.body;
+    
+    // Use current date if tarikh is not provided
+    const attendanceDate = tarikh || new Date().toISOString().split('T')[0];
 
     if (!['Hadir', 'Tidak Hadir', 'Cuti'].includes(status)) {
       return res.status(400).json({
@@ -176,7 +179,7 @@ export const markAttendance = async (req, res) => {
     // Check if attendance already exists for this date
     const [existingAttendance] = await pool.execute(
       'SELECT id FROM attendance WHERE student_ic = ? AND class_id = ? AND tarikh = ?',
-      [student_ic, class_id, tarikh]
+      [student_ic, class_id, attendanceDate]
     );
 
     if (existingAttendance.length > 0) {
@@ -187,7 +190,7 @@ export const markAttendance = async (req, res) => {
         SET status = ?, updated_at = CURRENT_TIMESTAMP
         WHERE student_ic = ? AND class_id = ? AND tarikh = ?
       `,
-        [status, student_ic, class_id, tarikh]
+        [status, student_ic, class_id, attendanceDate]
       );
 
       res.json({
@@ -201,7 +204,7 @@ export const markAttendance = async (req, res) => {
         INSERT INTO attendance (student_ic, class_id, tarikh, status)
         VALUES (?, ?, ?, ?)
       `,
-        [student_ic, class_id, tarikh, status]
+        [student_ic, class_id, attendanceDate, status]
       );
 
       res.status(201).json({
@@ -230,6 +233,9 @@ export const bulkMarkAttendance = async (req, res) => {
     }
 
     const { class_id, tarikh, attendance_data } = req.body;
+    
+    // Use current date if tarikh is not provided
+    const attendanceDate = tarikh || new Date().toISOString().split('T')[0];
 
     // Start transaction
     await pool.execute('START TRANSACTION');
@@ -248,7 +254,7 @@ export const bulkMarkAttendance = async (req, res) => {
         // Check if attendance already exists
         const [existingAttendance] = await pool.execute(
           'SELECT id FROM attendance WHERE student_ic = ? AND class_id = ? AND tarikh = ?',
-          [student_ic, class_id, tarikh]
+          [student_ic, class_id, attendanceDate]
         );
 
         if (existingAttendance.length > 0) {
@@ -259,7 +265,7 @@ export const bulkMarkAttendance = async (req, res) => {
             SET status = ?, updated_at = CURRENT_TIMESTAMP
             WHERE student_ic = ? AND class_id = ? AND tarikh = ?
           `,
-            [status, student_ic, class_id, tarikh]
+            [status, student_ic, class_id, attendanceDate]
           );
         } else {
           // Insert new
@@ -268,7 +274,7 @@ export const bulkMarkAttendance = async (req, res) => {
             INSERT INTO attendance (student_ic, class_id, tarikh, status)
             VALUES (?, ?, ?, ?)
           `,
-            [student_ic, class_id, tarikh, status]
+            [student_ic, class_id, attendanceDate, status]
           );
         }
       }

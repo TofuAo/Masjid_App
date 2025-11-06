@@ -7,7 +7,7 @@ const KelasList = ({ kelass = [], onEdit, onView, onDelete, onAdd, gurus = [], u
 
   const filteredKelass = kelass.filter(kelas => {
     const lowerSearchTerm = searchTerm.toLowerCase();
-    const matchesSearch = (kelas.class_name || '').toLowerCase().includes(lowerSearchTerm) ||
+    const matchesSearch = (kelas.nama_kelas || kelas.class_name || '').toLowerCase().includes(lowerSearchTerm) ||
                          (kelas.level || '').toLowerCase().includes(lowerSearchTerm);
     const matchesStatus = statusFilter === 'semua' || kelas.status === statusFilter;
     return matchesSearch && matchesStatus;
@@ -27,8 +27,9 @@ const KelasList = ({ kelass = [], onEdit, onView, onDelete, onAdd, gurus = [], u
     );
   };
 
-  const getGuruName = (guruId) => {
-    const guru = gurus.find(g => g.id === guruId);
+  const getGuruName = (guruIc) => {
+    if (!guruIc) return 'Tiada Guru';
+    const guru = gurus.find(g => g.ic === guruIc || g.id === guruIc);
     return guru ? guru.nama : 'Tiada Guru';
   };
 
@@ -92,23 +93,69 @@ const KelasList = ({ kelass = [], onEdit, onView, onDelete, onAdd, gurus = [], u
                         <BookOpen className="h-5 w-5 text-blue-600" />
                       </div>
                       <div className="ml-4">
-                        <div className="text-sm font-medium text-mosque-neutral-900">{kelas.class_name || ''}</div>
+                        <div className="text-sm font-medium text-mosque-neutral-900">{kelas.nama_kelas || kelas.class_name || ''}</div>
                         <div className="text-sm text-mosque-neutral-500 flex items-center">
                           <Users size={12} className="mr-1" />
-                          {Number(kelas.kapasiti) || 0} tempat
+                          {kelas.student_count || 0} pelajar / {Number(kelas.kapasiti) || 0} tempat
                         </div>
                       </div>
                     </div>
                   </td>
                   <td className="px-3 sm:px-6 py-3 sm:py-4 text-sm text-mosque-neutral-700">{kelas.level || ''}</td>
                   <td className="px-3 sm:px-6 py-3 sm:py-4 text-sm text-mosque-neutral-700 hidden md:table-cell">
-                    {(kelas.sessions || []).map((session, index) => (
-                      <div key={index} className="text-xs">
-                        {(session.days || []).join(', ')} ({(session.times || []).join(', ')})
-                      </div>
-                    ))}
+                    {(() => {
+                      // Prioritize jadual field if available
+                      if (kelas.jadual) {
+                        return <span className="text-xs">{kelas.jadual}</span>;
+                      }
+                      
+                      // Parse sessions if it's a string
+                      let sessions = kelas.sessions;
+                      if (typeof sessions === 'string') {
+                        try {
+                          sessions = JSON.parse(sessions);
+                        } catch (e) {
+                          // If parsing fails, treat as empty
+                          sessions = [];
+                        }
+                      }
+                      
+                      // Handle array of sessions
+                      if (Array.isArray(sessions) && sessions.length > 0) {
+                        // Check if all sessions are simple strings
+                        const allStrings = sessions.every(s => typeof s === 'string');
+                        if (allStrings) {
+                          // Display as comma-separated list
+                          return <span className="text-xs">{sessions.join(', ')}</span>;
+                        }
+                        
+                        // Handle mixed or object sessions
+                        return (
+                          <div className="text-xs">
+                            {sessions.map((session, index) => {
+                              if (typeof session === 'string') {
+                                return <div key={index}>{session}</div>;
+                              } else if (session && typeof session === 'object') {
+                                const days = session.days || [];
+                                const times = session.times || [];
+                                if (days.length > 0 || times.length > 0) {
+                                  return (
+                                    <div key={index}>
+                                      {days.join(', ')} {times.length > 0 ? `(${times.join(', ')})` : ''}
+                                    </div>
+                                  );
+                                }
+                              }
+                              return null;
+                            })}
+                          </div>
+                        );
+                      }
+                      
+                      return <span className="text-xs text-gray-400">-</span>;
+                    })()}
                   </td>
-                  <td className="px-3 sm:px-6 py-3 sm:py-4 text-sm text-mosque-neutral-700 hidden md:table-cell">{getGuruName(kelas.guru_ic)}</td>
+                  <td className="px-3 sm:px-6 py-3 sm:py-4 text-sm text-mosque-neutral-700 hidden md:table-cell">{kelas.guru_nama || getGuruName(kelas.guru_ic)}</td>
                   <td className="px-3 sm:px-6 py-3 sm:py-4 text-sm text-mosque-neutral-700">RM {Number(kelas.yuran) || 0}</td>
                   <td className="px-3 sm:px-6 py-3 sm:py-4">{getStatusBadge(kelas.status)}</td>
                   <td className="px-3 sm:px-6 py-3 sm:py-4 text-sm font-medium">

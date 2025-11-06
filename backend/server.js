@@ -4,6 +4,8 @@ import { testConnection } from './config/database.js';
 import routes from './routes/index.js';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
+import { ensureCheckInTable } from './utils/ensureCheckInTable.js';
+import { ensurePendingStatus } from './utils/ensurePendingStatus.js';
 // Simple logger for production
 const logger = {
   info: (msg) => console.log(`[INFO] ${msg}`),
@@ -65,11 +67,33 @@ app.get('/health', (req, res) => {
 
 app.use('/api', routes);
 
+// Ensure check-in table exists on startup
+ensureCheckInTable().catch(err => {
+  console.error('Failed to ensure check-in table:', err);
+});
+
+// Ensure pending status exists in users table
+ensurePendingStatus().catch(err => {
+  console.error('Failed to ensure pending status:', err);
+});
+
 const PORT = process.env.PORT || 5001;
-app.listen(PORT, "0.0.0.0", async () => {
-  logger.success(`Server running on port ${theme.data(PORT)}`);
-  logger.info(`Environment: ${theme.data(process.env.NODE_ENV || 'development')}`);
-  logger.info(`Health check: http://localhost:${PORT}/health`);
+
+// Ensure check-in table and pending status exist before starting server
+Promise.all([ensureCheckInTable(), ensurePendingStatus()]).then(() => {
+  app.listen(PORT, "0.0.0.0", () => {
+    logger.success(`Server running on port ${theme.data(PORT)}`);
+    logger.info(`Environment: ${theme.data(process.env.NODE_ENV || 'development')}`);
+    logger.info(`Health check: http://localhost:${PORT}/health`);
+  });
+}).catch(err => {
+  console.error('Failed to ensure database tables:', err);
+  // Still start server, but log the error
+  app.listen(PORT, "0.0.0.0", () => {
+    logger.success(`Server running on port ${theme.data(PORT)}`);
+    logger.info(`Environment: ${theme.data(process.env.NODE_ENV || 'development')}`);
+    logger.info(`Health check: http://localhost:${PORT}/health`);
+  });
 });
 
 export default app;

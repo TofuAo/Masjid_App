@@ -3,7 +3,7 @@ import { validationResult } from 'express-validator';
 
 export const getAllResults = async (req, res) => {
   try {
-    const { search, exam_id, gred, page = 1, limit = 10 } = req.query;
+    const { search, exam_id, gred, year, semester, page = 1, limit = 1000 } = req.query;
     
     let query = `
       SELECT r.*, u.nama as pelajar_nama, u.ic as pelajar_ic, c.nama_kelas, e.subject as exam_subject, e.tarikh_exam as exam_date
@@ -33,10 +33,25 @@ export const getAllResults = async (req, res) => {
       queryParams.push(gred);
     }
     
+    // Filter by exam year
+    if (year) {
+      query += ` AND YEAR(e.tarikh_exam) = ?`;
+      queryParams.push(year);
+    }
+    
+    // Filter by semester (if semester field exists or based on month)
+    if (semester) {
+      if (semester === '1') {
+        query += ` AND MONTH(e.tarikh_exam) BETWEEN 1 AND 6`;
+      } else if (semester === '2') {
+        query += ` AND MONTH(e.tarikh_exam) BETWEEN 7 AND 12`;
+      }
+    }
+    
     // Add pagination (inline to avoid ER_WRONG_ARGUMENTS on LIMIT/OFFSET)
     const safeLimit = Math.max(1, parseInt(limit));
     const offset = (Math.max(1, parseInt(page)) - 1) * safeLimit;
-    query += ` ORDER BY r.created_at DESC LIMIT ${safeLimit} OFFSET ${offset}`;
+    query += ` ORDER BY e.tarikh_exam DESC, e.subject ASC, u.nama ASC LIMIT ${safeLimit} OFFSET ${offset}`;
     
     const [results] = await pool.execute(query, queryParams);
     
@@ -64,6 +79,21 @@ export const getAllResults = async (req, res) => {
     if (gred) {
       countQuery += ` AND r.gred = ?`;
       countParams.push(gred);
+    }
+    
+    // Filter by exam year
+    if (year) {
+      countQuery += ` AND YEAR(e.tarikh_exam) = ?`;
+      countParams.push(year);
+    }
+    
+    // Filter by semester
+    if (semester) {
+      if (semester === '1') {
+        countQuery += ` AND MONTH(e.tarikh_exam) BETWEEN 1 AND 6`;
+      } else if (semester === '2') {
+        countQuery += ` AND MONTH(e.tarikh_exam) BETWEEN 7 AND 12`;
+      }
     }
     
     const [countResult] = await pool.execute(countQuery, countParams);

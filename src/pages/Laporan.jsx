@@ -23,17 +23,46 @@ const Laporan = () => {
   const { items: fees, loading: loadingFees, error: errorFees, fetchItems: fetchFees } = useCrud(feesAPI, 'yuran');
   const { items: attendance, loading: loadingAttendance, error: errorAttendance, fetchItems: fetchAttendance } = useCrud(attendanceAPI, 'kehadiran');
   const { items: results, loading: loadingResults, error: errorResults, fetchItems: fetchResults } = useCrud(resultsAPI, 'keputusan');
+  
+  // Stats from APIs
+  const [studentsStats, setStudentsStats] = useState(null);
+  const [teachersStats, setTeachersStats] = useState(null);
+  const [classesStats, setClassesStats] = useState(null);
+  const [feesStats, setFeesStats] = useState(null);
 
   const loading = loadingStudents || loadingTeachers || loadingClasses || loadingFees || loadingAttendance || loadingResults;
   const error = errorStudents || errorTeachers || errorClasses || errorFees || errorAttendance || errorResults;
 
   useEffect(() => {
-    fetchStudents();
-    fetchTeachers();
-    fetchClasses();
-    fetchFees();
-    fetchAttendance();
-    fetchResults();
+    const fetchAllData = async () => {
+      await Promise.all([
+        fetchStudents({ limit: 1000 }),
+        fetchTeachers({ limit: 1000 }),
+        fetchClasses({ limit: 1000 }),
+        fetchFees({ limit: 1000 }),
+        fetchAttendance({ limit: 1000 }),
+        fetchResults({ limit: 1000 })
+      ]);
+      
+      // Fetch stats from APIs
+      try {
+        const [studentsStatsRes, teachersStatsRes, classesStatsRes, feesStatsRes] = await Promise.all([
+          studentsAPI.getStats(),
+          teachersAPI.getStats(),
+          classesAPI.getStats(),
+          feesAPI.getStats()
+        ]);
+        
+        if (studentsStatsRes?.success && studentsStatsRes?.data) setStudentsStats(studentsStatsRes.data);
+        if (teachersStatsRes?.success && teachersStatsRes?.data) setTeachersStats(teachersStatsRes.data);
+        if (classesStatsRes?.success && classesStatsRes?.data) setClassesStats(classesStatsRes.data);
+        if (feesStatsRes?.success && feesStatsRes?.data) setFeesStats(feesStatsRes.data);
+      } catch (error) {
+        console.error('Error fetching stats:', error);
+      }
+    };
+    
+    fetchAllData();
   }, [fetchStudents, fetchTeachers, fetchClasses, fetchFees, fetchAttendance, fetchResults]);
 
   const getReportData = () => {
@@ -44,17 +73,90 @@ const Laporan = () => {
     const attendanceArray = Array.isArray(attendance) ? attendance : [];
     const resultsArray = Array.isArray(results) ? results : [];
 
-    const totalPelajars = studentsArray.length;
-    const aktifPelajars = studentsArray.filter(s => s.status === 'aktif').length;
-    const totalGurus = teachersArray.length;
-    const totalKelass = classesArray.length;
-    const totalYuranCollected = feesArray.filter(f => f.status === 'terbayar').reduce((sum, f) => sum + f.jumlah, 0);
+    // Use stats from API if available, otherwise calculate from arrays
+    const totalPelajars = studentsStats?.total || studentsArray.length;
+    const aktifPelajars = studentsStats?.active || studentsArray.filter(s => s.status === 'aktif').length;
+    const totalGurus = teachersStats?.total || teachersArray.length;
+    const totalKelass = classesStats?.total || classesArray.length;
+    const totalYuranCollected = feesArray.filter(f => f.status === 'terbayar' || f.status === 'Bayar').reduce((sum, f) => sum + (Number(f.jumlah) || 0), 0);
     const totalAttendanceRecords = attendanceArray.length;
     const presentAttendance = attendanceArray.filter(a => a.status === 'hadir' || a.status === 'lewat').length;
     const attendanceRate = totalAttendanceRecords > 0 ? (presentAttendance / totalAttendanceRecords * 100).toFixed(1) : 0;
     const totalResults = resultsArray.length;
     const passedResults = resultsArray.filter(r => r.status === 'lulus').length;
     const passRate = totalResults > 0 ? (passedResults / totalResults * 100).toFixed(1) : 0;
+
+    // Group classes by level for Kelas Pengajian report
+    const levelOrder = ['ASAS', 'Asas', 'TAHSIN ASAS', 'PERTENGAHAN', 'LANJUTAN', 'TAHSIN LANJUTAN', 'TALAQQI'];
+    const classesByLevel = {};
+    
+    classesArray.forEach(c => {
+      const level = c.level || '';
+      const levelKey = level.toUpperCase();
+      if (!classesByLevel[levelKey]) {
+        classesByLevel[levelKey] = {
+          level: level,
+          classes: [],
+          totalStudents: 0
+        };
+      }
+      const studentCount = studentsArray.filter(s => s.kelas_id === c.id).length;
+      classesByLevel[levelKey].classes.push({
+        ...c,
+        student_count: studentCount,
+        guru_nama: c.guru_nama || teachersArray.find(t => t.ic === c.guru_ic)?.nama || 'Tiada Guru'
+      });
+      classesByLevel[levelKey].totalStudents += studentCount;
+    });
+
+    // Sort classes within each level by teacher name
+    Object.keys(classesByLevel).forEach(levelKey => {
+      classesByLevel[levelKey].classes.sort((a, b) => {
+        const nameA = a.guru_nama || '';
+        const nameB = b.guru_nama || '';
+        return nameA.localeCompare(nameB);
+      });
+    });
+
+    // Group TALAQQI by schedule (ISNIN & RABU vs SELASA & KHAMIS)
+    const talaqqiClasses = classesByLevel['TALAQQI']?.classes || [];
+    const talaqqiBySchedule = {
+      'IR': { // ISNIN & RABU
+        classes: talaqqiClasses.filter(c => c.jadual && (c.jadual.includes('ISNIN') || c.jadual.includes('RABU'))),
+        totalStudents: 0
+      },
+      'SK': { // SELASA & KHAMIS
+        classes: talaqqiClasses.filter(c => c.jadual && (c.jadual.includes('SELASA') || c.jadual.includes('KHAMIS'))),
+        totalStudents: 0
+      }
+    };
+    talaqqiBySchedule['IR'].totalStudents = talaqqiBySchedule['IR'].classes.reduce((sum, c) => sum + (c.student_count || 0), 0);
+    talaqqiBySchedule['SK'].totalStudents = talaqqiBySchedule['SK'].classes.reduce((sum, c) => sum + (c.student_count || 0), 0);
+
+    // Group teachers with their classes
+    const teachersWithClasses = teachersArray.map(teacher => {
+      const teacherClasses = classesArray
+        .filter(c => c.guru_ic === teacher.ic)
+        .map(c => ({
+          ...c,
+          student_count: studentsArray.filter(s => s.kelas_id === c.id).length
+        }))
+        .sort((a, b) => {
+          // Sort by level priority
+          const levelOrder = ['ASAS', 'TAHSIN ASAS', 'PERTENGAHAN', 'LANJUTAN', 'TAHSIN LANJUTAN', 'TALAQQI'];
+          const aLevel = levelOrder.indexOf(a.level?.toUpperCase()) !== -1 ? levelOrder.indexOf(a.level?.toUpperCase()) : 999;
+          const bLevel = levelOrder.indexOf(b.level?.toUpperCase()) !== -1 ? levelOrder.indexOf(b.level?.toUpperCase()) : 999;
+          if (aLevel !== bLevel) return aLevel - bLevel;
+          return (a.nama_kelas || '').localeCompare(b.nama_kelas || '');
+        });
+      
+      return {
+        ...teacher,
+        classes: teacherClasses,
+        totalClasses: teacherClasses.length,
+        totalStudents: teacherClasses.reduce((sum, c) => sum + (c.student_count || 0), 0)
+      };
+    }).filter(t => t.classes.length > 0).sort((a, b) => a.nama.localeCompare(b.nama));
 
     return {
       overview: {
@@ -73,11 +175,25 @@ const Laporan = () => {
           count: studentsArray.filter(s => s.kelas_id === c.id).length,
         })),
       },
+      kelasPengajian: {
+        byLevel: classesByLevel,
+        talaqqiBySchedule: talaqqiBySchedule,
+        teachersWithClasses: teachersWithClasses,
+        summary: Object.keys(classesByLevel).map(levelKey => ({
+          level: classesByLevel[levelKey].level,
+          bilKelas: classesByLevel[levelKey].classes.length,
+          bilPelajar: classesByLevel[levelKey].totalStudents
+        })).sort((a, b) => {
+          const aIndex = levelOrder.findIndex(l => l.toUpperCase() === a.level.toUpperCase());
+          const bIndex = levelOrder.findIndex(l => l.toUpperCase() === b.level.toUpperCase());
+          return (aIndex === -1 ? 999 : aIndex) - (bIndex === -1 ? 999 : bIndex);
+        })
+      },
       yuran: {
         totalKutipan: totalYuranCollected,
-        totalTunggak: feesArray.filter(f => f.status === 'tunggak').reduce((sum, f) => sum + f.jumlah, 0),
-        terbayar: feesArray.filter(f => f.status === 'terbayar').length,
-        tunggak: feesArray.filter(f => f.status === 'tunggak').length,
+        totalTunggak: feesArray.filter(f => !f.status || f.status === 'tunggak' || f.status === 'Belum Bayar').reduce((sum, f) => sum + (Number(f.jumlah) || 0), 0),
+        terbayar: feesArray.filter(f => f.status === 'terbayar' || f.status === 'Bayar').length,
+        tunggak: feesArray.filter(f => !f.status || f.status === 'tunggak' || f.status === 'Belum Bayar').length,
         byMonth: [], // This would require more complex aggregation on the backend or frontend
       },
       kehadiran: {
@@ -128,11 +244,30 @@ const Laporan = () => {
       }
       case 'kehadiran': {
         const arr = Array.isArray(attendance) ? attendance : [];
-        return arr.map(a => ({
-          Pelajar: a.pelajar_nama || a.nama,
+        // Filter by date range if provided
+        const filtered = arr.filter(a => {
+          if (!a.tarikh) return false;
+          const attendanceDate = new Date(a.tarikh);
+          const startDate = new Date(dateRange.start);
+          const endDate = new Date(dateRange.end);
+          // Set end date to end of day for inclusive comparison
+          endDate.setHours(23, 59, 59, 999);
+          return attendanceDate >= startDate && attendanceDate <= endDate;
+        });
+        // Sort by date (newest first), then by student name
+        filtered.sort((a, b) => {
+          const dateCompare = new Date(b.tarikh || 0) - new Date(a.tarikh || 0);
+          if (dateCompare !== 0) return dateCompare;
+          const nameA = (a.pelajar_nama || a.nama || '').toLowerCase();
+          const nameB = (b.pelajar_nama || b.nama || '').toLowerCase();
+          return nameA.localeCompare(nameB);
+        });
+        return filtered.map(a => ({
+          'No. IC': a.pelajar_ic || a.student_ic || '',
+          Pelajar: a.pelajar_nama || a.nama || '',
           Kelas: a.kelas_nama || a.nama_kelas || '',
-          Tarikh: a.tarikh || '',
-          Status: a.status
+          Tarikh: a.tarikh ? new Date(a.tarikh).toLocaleDateString('ms-MY') : '',
+          Status: a.status || ''
         }));
       }
       case 'keputusan': {
@@ -144,6 +279,16 @@ const Laporan = () => {
           Markah: r.markah || 0,
           Gred: r.gred || '',
           Status: r.status || (r.gred && ['A+', 'A', 'A-', 'B+', 'B', 'B-', 'C+', 'C', 'C-', 'D'].includes(r.gred) ? 'lulus' : 'gagal')
+        }));
+      }
+      case 'kelasPengajian': {
+        // Return summary data for Kelas Pengajian report
+        const summary = reportData.kelasPengajian?.summary || [];
+        return summary.map((item, index) => ({
+          'BIL.': index + 1,
+          'PERINGKAT': item.level,
+          'BIL. KELAS': item.bilKelas,
+          'BIL. PELAJAR': item.bilPelajar
         }));
       }
       case 'overview':
@@ -478,11 +623,11 @@ const Laporan = () => {
               </div>
               <div className="flex justify-between">
                 <span className="text-sm text-gray-600">Guru Aktif</span>
-                <span className="text-sm font-medium text-gray-900">{reportData.overview.totalGurus || 0}</span> {/* Assuming all are active for now */}
+                <span className="text-sm font-medium text-gray-900">{teachersStats?.aktif || reportData.overview.totalGurus || 0}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-sm text-gray-600">Guru Cuti</span>
-                <span className="text-sm font-medium text-gray-900">0</span> {/* No specific API for this yet */}
+                <span className="text-sm font-medium text-gray-900">{teachersStats?.cuti || 0}</span>
               </div>
             </div>
           </Card.Content>
@@ -503,11 +648,11 @@ const Laporan = () => {
               </div>
               <div className="flex justify-between">
                 <span className="text-sm text-gray-600">Kelas Aktif</span>
-                <span className="text-sm font-medium text-gray-900">{reportData.overview.totalKelass || 0}</span> {/* Assuming all are active for now */}
+                <span className="text-sm font-medium text-gray-900">{classesStats?.aktif || reportData.overview.totalKelass || 0}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-sm text-gray-600">Kelas Penuh</span>
-                <span className="text-sm font-medium text-gray-900">0</span> {/* No specific API for this yet */}
+                <span className="text-sm font-medium text-gray-900">{classesStats?.penuh || 0}</span>
               </div>
             </div>
           </Card.Content>
@@ -546,7 +691,7 @@ const Laporan = () => {
           <Card.Content>
             <div className="text-center">
               <div className="text-4xl font-bold text-blue-600 mb-2">
-                RM {(reportData.overview.totalYuran || 0).toLocaleString()}
+                RM {Number(reportData.overview.totalYuran || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </div>
               <div className="flex items-center justify-center text-sm text-gray-600">
                 <TrendingUp className="w-4 h-4 mr-1 text-green-500" />
@@ -621,7 +766,7 @@ const Laporan = () => {
               {(reportData.yuran.byMonth || []).map((item, index) => (
                 <div key={index} className="flex items-center justify-between">
                   <span className="text-sm text-gray-600">{item.month}</span>
-                  <span className="text-sm font-medium text-gray-900">RM {item.amount.toLocaleString()}</span>
+                  <span className="text-sm font-medium text-gray-900">RM {Number(item.amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                 </div>
               ))}
               {(reportData.yuran.byMonth || []).length === 0 && <p className="text-sm text-gray-500">Tiada data bulanan.</p>}
@@ -639,14 +784,14 @@ const Laporan = () => {
                 <span className="text-sm text-gray-600">Terbayar</span>
                 <div className="flex items-center space-x-2">
                   <Badge variant="success">{reportData.yuran.terbayar || 0}</Badge>
-                  <span className="text-sm font-medium text-gray-900">RM {(reportData.yuran.totalKutipan || 0).toLocaleString()}</span>
+                  <span className="text-sm font-medium text-gray-900">RM {Number(reportData.yuran.totalKutipan || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                 </div>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-sm text-gray-600">Tunggak</span>
                 <div className="flex items-center space-x-2">
                   <Badge variant="danger">{reportData.yuran.tunggak || 0}</Badge>
-                  <span className="text-sm font-medium text-gray-900">RM {(reportData.yuran.totalTunggak || 0).toLocaleString()}</span>
+                  <span className="text-sm font-medium text-gray-900">RM {Number(reportData.yuran.totalTunggak || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                 </div>
               </div>
             </div>
@@ -656,50 +801,392 @@ const Laporan = () => {
     </div>
   );
 
-  const renderKehadiranReport = () => (
-    <div className="space-y-6">
-      <Card>
-        <Card.Header>
-          <Card.Title>Kehadiran Mengikut Kelas</Card.Title>
-        </Card.Header>
-        <Card.Content>
-          <div className="space-y-4">
-            {(reportData.kehadiran.byKelas || []).map((item, index) => (
-              <div key={index} className="flex items-center justify-between">
-                <span className="text-sm text-gray-600">{item.kelas}</span>
-                <div className="flex items-center space-x-3">
-                  <div className="w-32 bg-gray-200 rounded-full h-2">
-                    <div 
-                      className="bg-emerald-600 h-2 rounded-full" 
-                      style={{ width: `${item.rate}%` }}
-                    ></div>
-                  </div>
-                  <span className="text-sm font-medium text-gray-900 w-12">{item.rate}%</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </Card.Content>
-      </Card>
+  const renderKehadiranReport = () => {
+    const attendanceArray = Array.isArray(attendance) ? attendance : [];
+    // Filter by date range
+    const filteredAttendance = attendanceArray.filter(a => {
+      if (!a.tarikh) return false;
+      const attendanceDate = new Date(a.tarikh);
+      const startDate = new Date(dateRange.start);
+      const endDate = new Date(dateRange.end);
+      endDate.setHours(23, 59, 59, 999);
+      return attendanceDate >= startDate && attendanceDate <= endDate;
+    });
 
-      <Card>
-        <Card.Header>
-          <Card.Title>Trend Kehadiran Mingguan</Card.Title>
-        </Card.Header>
-        <Card.Content>
-          <div className="space-y-3">
-            {(reportData.kehadiran.trends || []).map((item, index) => (
-              <div key={index} className="flex items-center justify-between">
-                <span className="text-sm text-gray-600">{item.week}</span>
-                <span className="text-sm font-medium text-gray-900">{item.rate}%</span>
+    // Group attendance by student for summary
+    const attendanceByStudent = {};
+    filteredAttendance.forEach(a => {
+      const studentKey = a.pelajar_ic || a.student_ic || '';
+      if (!attendanceByStudent[studentKey]) {
+        attendanceByStudent[studentKey] = {
+          nama: a.pelajar_nama || a.nama || '',
+          kelas: a.kelas_nama || a.nama_kelas || '',
+          ic: studentKey,
+          total: 0,
+          hadir: 0,
+          tidakHadir: 0,
+          lewat: 0,
+          sakit: 0,
+          cuti: 0
+        };
+      }
+      attendanceByStudent[studentKey].total++;
+      const status = (a.status || '').toLowerCase();
+      if (status === 'hadir') attendanceByStudent[studentKey].hadir++;
+      else if (status === 'tidak hadir') attendanceByStudent[studentKey].tidakHadir++;
+      else if (status === 'lewat') attendanceByStudent[studentKey].lewat++;
+      else if (status === 'sakit') attendanceByStudent[studentKey].sakit++;
+      else if (status === 'cuti') attendanceByStudent[studentKey].cuti++;
+    });
+
+    const studentSummary = Object.values(attendanceByStudent).sort((a, b) => 
+      a.nama.localeCompare(b.nama)
+    );
+
+    return (
+      <div className="space-y-6">
+        <Card>
+          <Card.Header>
+            <Card.Title>Ringkasan Kehadiran Pelajar</Card.Title>
+            <p className="text-sm text-gray-600 mt-1">
+              Tarikh: {new Date(dateRange.start).toLocaleDateString('ms-MY')} - {new Date(dateRange.end).toLocaleDateString('ms-MY')}
+            </p>
+          </Card.Header>
+          <Card.Content>
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-emerald-50">
+                  <tr>
+                    <th className="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase">No. IC</th>
+                    <th className="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase">Nama Pelajar</th>
+                    <th className="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase">Kelas</th>
+                    <th className="px-4 py-3 text-center text-xs font-bold text-gray-700 uppercase">Jumlah</th>
+                    <th className="px-4 py-3 text-center text-xs font-bold text-gray-700 uppercase">Hadir</th>
+                    <th className="px-4 py-3 text-center text-xs font-bold text-gray-700 uppercase">Tidak Hadir</th>
+                    <th className="px-4 py-3 text-center text-xs font-bold text-gray-700 uppercase">Lewat</th>
+                    <th className="px-4 py-3 text-center text-xs font-bold text-gray-700 uppercase">Sakit</th>
+                    <th className="px-4 py-3 text-center text-xs font-bold text-gray-700 uppercase">Cuti</th>
+                    <th className="px-4 py-3 text-center text-xs font-bold text-gray-700 uppercase">Kadar (%)</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {studentSummary.map((student, index) => {
+                    const rate = student.total > 0 
+                      ? ((student.hadir + student.lewat) / student.total * 100).toFixed(1)
+                      : '0.0';
+                    return (
+                      <tr key={student.ic || index} className="hover:bg-gray-50">
+                        <td className="px-4 py-3 text-sm text-gray-900">{student.ic}</td>
+                        <td className="px-4 py-3 text-sm text-gray-900">{student.nama}</td>
+                        <td className="px-4 py-3 text-sm text-gray-700">{student.kelas}</td>
+                        <td className="px-4 py-3 text-sm text-center text-gray-900">{student.total}</td>
+                        <td className="px-4 py-3 text-sm text-center text-green-600 font-medium">{student.hadir}</td>
+                        <td className="px-4 py-3 text-sm text-center text-red-600 font-medium">{student.tidakHadir}</td>
+                        <td className="px-4 py-3 text-sm text-center text-yellow-600 font-medium">{student.lewat}</td>
+                        <td className="px-4 py-3 text-sm text-center text-blue-600 font-medium">{student.sakit}</td>
+                        <td className="px-4 py-3 text-sm text-center text-gray-600 font-medium">{student.cuti}</td>
+                        <td className="px-4 py-3 text-sm text-center font-medium text-gray-900">{rate}%</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+              {studentSummary.length === 0 && (
+                <p className="text-center text-gray-500 py-4">Tiada rekod kehadiran untuk tempoh yang dipilih.</p>
+              )}
+            </div>
+          </Card.Content>
+        </Card>
+
+        <Card>
+          <Card.Header>
+            <Card.Title>Kehadiran Mengikut Kelas</Card.Title>
+          </Card.Header>
+          <Card.Content>
+            <div className="space-y-4">
+              {(reportData.kehadiran.byKelas || []).map((item, index) => (
+                <div key={index} className="flex items-center justify-between">
+                  <span className="text-sm text-gray-600">{item.kelas}</span>
+                  <div className="flex items-center space-x-3">
+                    <div className="w-32 bg-gray-200 rounded-full h-2">
+                      <div 
+                        className="bg-emerald-600 h-2 rounded-full" 
+                        style={{ width: `${item.rate}%` }}
+                      ></div>
+                    </div>
+                    <span className="text-sm font-medium text-gray-900 w-12">{item.rate}%</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Card.Content>
+        </Card>
+      </div>
+    );
+  };
+
+  const renderKelasPengajianReport = () => {
+    const { kelasPengajian } = reportData;
+    const summary = kelasPengajian?.summary || [];
+    const byLevel = kelasPengajian?.byLevel || {};
+    const talaqqiBySchedule = kelasPengajian?.talaqqiBySchedule || {};
+    const teachersWithClasses = kelasPengajian?.teachersWithClasses || [];
+
+    const levelDisplayNames = {
+      'ASAS': 'ASAS',
+      'Asas': 'ASAS',
+      'TAHSIN ASAS': 'TAHSIN ASAS',
+      'PERTENGAHAN': 'PERTENGAHAN',
+      'LANJUTAN': 'LANJUTAN',
+      'TAHSIN LANJUTAN': 'TAHSIN LANJUTAN',
+      'TALAQQI': 'TALAQQI'
+    };
+
+    const renderLevelSection = (levelKey) => {
+      const levelData = byLevel[levelKey];
+      if (!levelData || levelData.classes.length === 0) return null;
+
+      const levelName = levelData.level;
+      
+      return (
+        <Card key={levelKey} className="mb-6">
+          <Card.Header>
+            <Card.Title className="text-xl font-bold text-center">
+              PERINGKAT {levelDisplayNames[levelKey] || levelKey}
+            </Card.Title>
+          </Card.Header>
+          <Card.Content>
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-emerald-50">
+                  <tr>
+                    <th className="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase">BIL.</th>
+                    <th className="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase">TENAGA PENGAJAR</th>
+                    <th className="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase">JADUAL WAKTU KELAS</th>
+                    <th className="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase">BIL. PELAJAR</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {levelData.classes.map((kelas, index) => (
+                    <tr key={kelas.id || index} className="hover:bg-gray-50">
+                      <td className="px-4 py-3 text-sm text-gray-900">{index + 1}</td>
+                      <td className="px-4 py-3 text-sm text-gray-900">{kelas.guru_nama || 'Tiada Guru'}</td>
+                      <td className="px-4 py-3 text-sm text-gray-700">{kelas.jadual || '-'}</td>
+                      <td className="px-4 py-3 text-sm font-medium text-gray-900">{kelas.student_count || 0}</td>
+                    </tr>
+                  ))}
+                  <tr className="bg-emerald-100 font-bold">
+                    <td colSpan="3" className="px-4 py-3 text-sm text-gray-900">JUMLAH KESELURUHAN</td>
+                    <td className="px-4 py-3 text-sm text-gray-900">{levelData.totalStudents}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </Card.Content>
+        </Card>
+      );
+    };
+
+    const renderTalaqqiSection = () => {
+      const irClasses = talaqqiBySchedule['IR']?.classes || [];
+      const skClasses = talaqqiBySchedule['SK']?.classes || [];
+
+      return (
+        <div className="space-y-6">
+          <Card>
+            <Card.Header>
+              <Card.Title className="text-xl font-bold text-center">
+                PERINGKAT TALAQQI (ISNIN & RABU)
+              </Card.Title>
+            </Card.Header>
+            <Card.Content>
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-emerald-50">
+                    <tr>
+                      <th className="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase">BIL.</th>
+                      <th className="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase">TENAGA PENGAJAR</th>
+                      <th className="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase">JADUAL WAKTU KELAS</th>
+                      <th className="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase">BIL. PELAJAR</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {irClasses.map((kelas, index) => (
+                      <tr key={kelas.id || index} className="hover:bg-gray-50">
+                        <td className="px-4 py-3 text-sm text-gray-900">{index + 1}</td>
+                        <td className="px-4 py-3 text-sm text-gray-900">{kelas.guru_nama || 'Tiada Guru'}</td>
+                        <td className="px-4 py-3 text-sm text-gray-700">{kelas.jadual || '-'}</td>
+                        <td className="px-4 py-3 text-sm font-medium text-gray-900">{kelas.student_count || 0}</td>
+                      </tr>
+                    ))}
+                    <tr className="bg-emerald-100 font-bold">
+                      <td colSpan="3" className="px-4 py-3 text-sm text-gray-900">JUMLAH KESELURUHAN</td>
+                      <td className="px-4 py-3 text-sm text-gray-900">{irClasses.length}</td>
+                      <td className="px-4 py-3 text-sm text-gray-900">{talaqqiBySchedule['IR']?.totalStudents || 0}</td>
+                    </tr>
+                  </tbody>
+                </table>
               </div>
-            ))}
-            {(reportData.kehadiran.trends || []).length === 0 && <p className="text-sm text-gray-500">Tiada data trend mingguan.</p>}
-          </div>
-        </Card.Content>
-      </Card>
-    </div>
-  );
+            </Card.Content>
+          </Card>
+
+          <Card>
+            <Card.Header>
+              <Card.Title className="text-xl font-bold text-center">
+                PERINGKAT TALAQQI (SELASA & KHAMIS)
+              </Card.Title>
+            </Card.Header>
+            <Card.Content>
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-emerald-50">
+                    <tr>
+                      <th className="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase">BIL. KELAS</th>
+                      <th className="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase">TENAGA PENGAJAR</th>
+                      <th className="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase">JADUAL WAKTU KELAS</th>
+                      <th className="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase">BIL. PELAJAR</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {skClasses.map((kelas, index) => (
+                      <tr key={kelas.id || index} className="hover:bg-gray-50">
+                        <td className="px-4 py-3 text-sm text-gray-900">{index + 1}</td>
+                        <td className="px-4 py-3 text-sm text-gray-900">{kelas.guru_nama || 'Tiada Guru'}</td>
+                        <td className="px-4 py-3 text-sm text-gray-700">{kelas.jadual || '-'}</td>
+                        <td className="px-4 py-3 text-sm font-medium text-gray-900">{kelas.student_count || 0}</td>
+                      </tr>
+                    ))}
+                    <tr className="bg-emerald-100 font-bold">
+                      <td colSpan="3" className="px-4 py-3 text-sm text-gray-900">JUMLAH KESELURUHAN</td>
+                      <td className="px-4 py-3 text-sm text-gray-900">{skClasses.length}</td>
+                      <td className="px-4 py-3 text-sm text-gray-900">{talaqqiBySchedule['SK']?.totalStudents || 0}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </Card.Content>
+          </Card>
+        </div>
+      );
+    };
+
+    return (
+      <div className="space-y-6">
+        {/* Header */}
+        <Card>
+          <Card.Header className="text-center">
+            <Card.Title className="text-2xl font-bold">KELAS PENGAJIAN AL-QURAN DEWASA 2025</Card.Title>
+            <p className="text-lg mt-2 text-gray-700">MASJID NEGERI SULTAN AHMAD 1 KUANTAN</p>
+          </Card.Header>
+        </Card>
+
+        {/* Overview Summary */}
+        <Card>
+          <Card.Header>
+            <Card.Title className="text-xl font-bold text-center">OVERVIEW</Card.Title>
+          </Card.Header>
+          <Card.Content>
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-emerald-50">
+                  <tr>
+                    <th className="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase">BIL.</th>
+                    <th className="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase">PERINGKAT</th>
+                    <th className="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase">BIL. KELAS</th>
+                    <th className="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase">BIL. PELAJAR</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {summary.map((item, index) => (
+                    <tr key={index} className="hover:bg-gray-50">
+                      <td className="px-4 py-3 text-sm text-gray-900">{index + 1}</td>
+                      <td className="px-4 py-3 text-sm font-medium text-gray-900">{item.level}</td>
+                      <td className="px-4 py-3 text-sm text-gray-900">{item.bilKelas}</td>
+                      <td className="px-4 py-3 text-sm font-medium text-gray-900">{item.bilPelajar}</td>
+                    </tr>
+                  ))}
+                  <tr className="bg-emerald-100 font-bold">
+                    <td colSpan="2" className="px-4 py-3 text-sm text-gray-900">JUMLAH KESELURUHAN</td>
+                    <td className="px-4 py-3 text-sm text-gray-900">{summary.reduce((sum, s) => sum + s.bilKelas, 0)}</td>
+                    <td className="px-4 py-3 text-sm text-gray-900">{summary.reduce((sum, s) => sum + s.bilPelajar, 0)}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </Card.Content>
+        </Card>
+
+        {/* Level Sections */}
+        {['ASAS', 'Asas'].map(key => byLevel[key] && renderLevelSection(key)).filter(Boolean)}
+        {renderLevelSection('TAHSIN ASAS')}
+        {renderLevelSection('PERTENGAHAN')}
+        {renderLevelSection('LANJUTAN')}
+        {renderLevelSection('TAHSIN LANJUTAN')}
+        {byLevel['TALAQQI'] && renderTalaqqiSection()}
+
+        {/* Teachers Listing */}
+        <Card>
+          <Card.Header>
+            <Card.Title className="text-xl font-bold text-center">TENAGA PENGAJAR</Card.Title>
+          </Card.Header>
+          <Card.Content>
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200 text-xs">
+                <thead className="bg-emerald-50">
+                  <tr>
+                    <th className="px-2 py-2 text-left text-xs font-bold text-gray-700 uppercase">BIL.</th>
+                    <th className="px-2 py-2 text-left text-xs font-bold text-gray-700 uppercase">TENAGA PENGAJAR</th>
+                    <th className="px-2 py-2 text-left text-xs font-bold text-gray-700 uppercase">NO. TELEFON</th>
+                    <th className="px-2 py-2 text-left text-xs font-bold text-gray-700 uppercase">PERINGKAT</th>
+                    <th className="px-2 py-2 text-left text-xs font-bold text-gray-700 uppercase">WAKTU KELAS</th>
+                    <th className="px-2 py-2 text-left text-xs font-bold text-gray-700 uppercase">LOKASI</th>
+                    <th className="px-2 py-2 text-left text-xs font-bold text-gray-700 uppercase">KELAS</th>
+                    <th className="px-2 py-2 text-left text-xs font-bold text-gray-700 uppercase">BIL. KELAS</th>
+                    <th className="px-2 py-2 text-left text-xs font-bold text-gray-700 uppercase">BIL. PELAJAR</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {teachersWithClasses.map((teacher, index) => (
+                    teacher.classes.map((kelas, kelasIndex) => (
+                      <tr key={`${teacher.ic}-${kelas.id}`} className="hover:bg-gray-50">
+                        {kelasIndex === 0 && (
+                          <>
+                            <td rowSpan={teacher.classes.length} className="px-2 py-2 text-sm text-gray-900 align-top">{index + 1}</td>
+                            <td rowSpan={teacher.classes.length} className="px-2 py-2 text-sm text-gray-900 align-top">{teacher.nama}</td>
+                            <td rowSpan={teacher.classes.length} className="px-2 py-2 text-sm text-gray-700 align-top">{teacher.telefon || '-'}</td>
+                          </>
+                        )}
+                        <td className="px-2 py-2 text-sm text-gray-700">
+                          {kelas.level === 'ASAS' || kelas.level === 'Asas' ? 'A' :
+                           kelas.level === 'TAHSIN ASAS' ? 'TA' :
+                           kelas.level === 'PERTENGAHAN' ? 'P' :
+                           kelas.level === 'LANJUTAN' ? 'L' :
+                           kelas.level === 'TAHSIN LANJUTAN' ? 'TL' :
+                           kelas.level === 'TALAQQI' ? 'T' : '-'}
+                        </td>
+                        <td className="px-2 py-2 text-sm text-gray-700">
+                          {kelas.jadual?.includes('ISNIN') ? 'IR' :
+                           kelas.jadual?.includes('SELASA') ? 'SK' :
+                           kelas.jadual?.includes('SABTU') ? 'SA' : '-'}
+                          {' '}
+                          {kelas.jadual?.includes('5.00 pm') || kelas.jadual?.includes('5:00') ? 'ptg' :
+                           kelas.jadual?.includes('9.00 pm') || kelas.jadual?.includes('9:00 pm') ? 'mlm' :
+                           kelas.jadual?.includes('9.00 am') || kelas.jadual?.includes('9:00 am') ? 'pg' : ''}
+                        </td>
+                        <td className="px-2 py-2 text-sm text-gray-700">{kelas.nama_kelas || '-'}</td>
+                        <td className="px-2 py-2 text-sm text-gray-700">{kelasIndex === 0 ? teacher.totalClasses : ''}</td>
+                        <td className="px-2 py-2 text-sm text-gray-700">{kelas.student_count || 0}</td>
+                      </tr>
+                    ))
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </Card.Content>
+        </Card>
+      </div>
+    );
+  };
 
   const renderKeputusanReport = () => (
     <div className="space-y-6">
@@ -772,6 +1259,8 @@ const Laporan = () => {
         return renderKehadiranReport();
       case 'keputusan':
         return renderKeputusanReport();
+      case 'kelasPengajian':
+        return renderKelasPengajianReport();
       default:
         return renderOverviewReport();
     }
@@ -799,6 +1288,7 @@ const Laporan = () => {
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
               >
                 <option value="overview">Ringkasan Keseluruhan</option>
+                <option value="kelasPengajian">Kelas Pengajian Al-Quran 2025</option>
                 <option value="pelajars">Laporan Pelajar</option>
                 <option value="yuran">Laporan Yuran</option>
                 <option value="kehadiran">Laporan Kehadiran</option>
