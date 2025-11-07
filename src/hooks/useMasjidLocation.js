@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
+import resolveApiBaseUrl from '../utils/apiBaseUrl';
 
 /**
  * Custom hook for masjid location settings
@@ -25,8 +26,7 @@ export const useMasjidLocation = (options = {}) => {
     try {
       setError(null);
       // Use axios directly without auth token for public endpoint
-      const baseURL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api";
-      const response = await axios.get(`${baseURL}/settings/masjid-location`, {
+      const response = await axios.get(`${resolveApiBaseUrl()}/settings/masjid-location`, {
         headers: {
           'Content-Type': 'application/json'
         },

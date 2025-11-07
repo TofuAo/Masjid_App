@@ -678,7 +678,14 @@ export const resetPassword = async (req, res) => {
 // Check if user profile is complete
 export const checkProfileComplete = async (req, res) => {
   try {
-    const userId = req.user.userId;
+    const userId = req.user?.userId || req.user?.ic || req.user?.user_ic;
+
+    if (!userId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Cannot determine user identity from token'
+      });
+    }
 
     // Get user data
     const [users] = await pool.execute(

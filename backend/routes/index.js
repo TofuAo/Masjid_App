@@ -12,6 +12,7 @@ import settingsRoutes from './settings.js';
 import announcementRoutes from './announcements.js';
 import googleFormRoutes from './googleForm.js';
 import staffCheckInRoutes from './staffCheckIn.js';
+import exportRoutes from './export.js';
 
 const router = Router();
 
@@ -28,5 +29,6 @@ router.use('/settings', settingsRoutes);
 router.use('/announcements', announcementRoutes);
 router.use('/google-form', googleFormRoutes);
 router.use('/staff-checkin', staffCheckInRoutes);
+router.use('/export', exportRoutes);
 
 export default router;

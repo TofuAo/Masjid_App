@@ -1,15 +1,132 @@
 import React, { useState, useEffect } from 'react';
-import { settingsAPI, authAPI, studentsAPI, teachersAPI } from '../services/api';
+import { settingsAPI, authAPI, studentsAPI, teachersAPI, exportAPI } from '../services/api';
 import { toast } from 'react-toastify';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import Badge from '../components/ui/Badge';
-import { Settings as SettingsIcon, QrCode, Key, Upload, Link, Save, Users, Eye, EyeOff, MapPin } from 'lucide-react';
+import { Settings as SettingsIcon, QrCode, Key, Upload, Link, Save, Users, Eye, EyeOff, MapPin, Database, CloudUpload, History, DownloadCloud, Loader2 } from 'lucide-react';
 
 const Settings = () => {
-  const [activeTab, setActiveTab] = useState('qr'); // 'qr', 'password', or 'checkin'
+  const [activeTab, setActiveTab] = useState('qr'); // 'qr', 'password', 'checkin', or 'backup'
   const [loading, setLoading] = useState(false);
+  const [exportingBackup, setExportingBackup] = useState(false);
+  const [backupHistory, setBackupHistory] = useState([]);
+  const [loadingBackupHistory, setLoadingBackupHistory] = useState(false);
+  const [lastBackup, setLastBackup] = useState(null);
+  const [downloadingFile, setDownloadingFile] = useState(null);
   
+  const formatFileSize = (bytes) => {
+    if (bytes === null || bytes === undefined) return 'Tidak diketahui';
+    const sizeInBytes = Number(bytes);
+    if (!Number.isFinite(sizeInBytes) || sizeInBytes < 0) return 'Tidak diketahui';
+    if (sizeInBytes === 0) return '0 B';
+    const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+    const i = Math.min(Math.floor(Math.log(sizeInBytes) / Math.log(1024)), sizes.length - 1);
+    const value = sizeInBytes / Math.pow(1024, i);
+    return `${value.toFixed(value > 10 ? 0 : 1)} ${sizes[i]}`;
+  };
+
+  const formatDateTime = (dateString) => {
+    if (!dateString) return 'Tidak diketahui';
+    return new Intl.DateTimeFormat('ms-MY', {
+      dateStyle: 'medium',
+      timeStyle: 'short',
+    }).format(new Date(dateString));
+  };
+
+  const fetchBackupHistory = async () => {
+    try {
+      setLoadingBackupHistory(true);
+      const response = await exportAPI.getHistory({ limit: 5 });
+      const normalizeEntries = (items) =>
+        (items || []).map((entry) => ({
+          ...entry,
+          fileName:
+            entry?.fileName ||
+            (entry?.driveDownloadLink
+              ? decodeURIComponent(entry.driveDownloadLink.split('/').pop())
+              : undefined),
+        }));
+      if (response?.success) {
+        const normalized = normalizeEntries(response.data);
+        setBackupHistory(normalized);
+        setLastBackup(normalized[0] || null);
+      } else if (Array.isArray(response)) {
+        const normalized = normalizeEntries(response);
+        setBackupHistory(normalized);
+        setLastBackup(normalized[0] || null);
+      } else {
+        setBackupHistory([]);
+        setLastBackup(null);
+      }
+    } catch (error) {
+      console.error('Failed to fetch backup history:', error);
+      toast.error('Gagal memuatkan sejarah eksport pangkalan data.');
+    } finally {
+      setLoadingBackupHistory(false);
+    }
+  };
+
+  const handleExportDatabase = async () => {
+    try {
+      setExportingBackup(true);
+      const response = await exportAPI.triggerDatabaseBackup({ triggerType: 'manual-admin-action' });
+      if (response?.success) {
+        const backupData = {
+          ...response.data,
+          fileName:
+            response.data?.fileName ||
+            (response.data?.downloadUrl
+              ? decodeURIComponent(response.data.downloadUrl.split('/').pop())
+              : undefined),
+        };
+        setLastBackup(backupData);
+        toast.success('Eksport pangkalan data berjaya. Anda boleh memuat turun fail ZIP sekarang.');
+        await fetchBackupHistory();
+      } else {
+        toast.error(response?.message || 'Gagal memproses eksport pangkalan data.');
+      }
+    } catch (error) {
+      console.error('Failed to export database:', error);
+      toast.error(error?.message || 'Gagal mengeksport pangkalan data.');
+    } finally {
+      setExportingBackup(false);
+    }
+  };
+
+  const handleOpenLink = (url) => {
+    if (!url) return;
+    window.open(url, '_blank', 'noopener');
+  };
+
+  const handleDownloadArchive = async (fileName) => {
+    if (!fileName) {
+      toast.error('Fail eksport tidak ditemui.')
+      return
+    }
+
+    try {
+      setDownloadingFile(fileName)
+      const blob = await exportAPI.download(fileName)
+      const downloadBlob = new Blob([blob], {
+        type: 'application/zip',
+      })
+      const url = window.URL.createObjectURL(downloadBlob)
+      const link = document.createElement('a')
+      link.href = url
+      link.setAttribute('download', fileName)
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      window.URL.revokeObjectURL(url)
+    } catch (error) {
+      console.error('Failed to download backup file:', error)
+      toast.error('Gagal memuat turun fail eksport.')
+    } finally {
+      setDownloadingFile(null)
+    }
+  }
+
   // QR Code Settings
   const [qrSettings, setQrSettings] = useState({
     qr_code_image: '',
@@ -40,6 +157,12 @@ const Settings = () => {
     fetchAllUsers();
     fetchCheckInSettings();
   }, []);
+
+  useEffect(() => {
+    if (activeTab === 'backup') {
+      fetchBackupHistory();
+    }
+  }, [activeTab]);
 
   const fetchCheckInSettings = async () => {
     try {
@@ -303,6 +426,17 @@ const Settings = () => {
             >
               <MapPin className="w-4 h-4 inline mr-2" />
               Tetapan Check-In
+            </button>
+            <button
+              onClick={() => setActiveTab('backup')}
+              className={`px-4 py-2 font-medium transition-colors ${
+                activeTab === 'backup'
+                  ? 'border-b-2 border-emerald-600 text-emerald-600'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              <Database className="w-4 h-4 inline mr-2" />
+              Eksport Pangkalan Data
             </button>
           </div>
         </Card.Content>
@@ -595,6 +729,185 @@ const Settings = () => {
           </Card.Content>
         </Card>
       )}
+
+      {activeTab === 'backup' && (
+        <Card>
+          <Card.Header>
+            <Card.Title className="flex items-center space-x-2">
+              <CloudUpload className="w-5 h-5" />
+              <span>Eksport Pangkalan Data</span>
+            </Card.Title>
+          </Card.Header>
+          <Card.Content>
+            <div className="space-y-6">
+              <div className="bg-emerald-50 border border-emerald-100 rounded-lg p-4">
+                <p className="text-sm text-emerald-800">
+                  <strong>Maklumat:</strong> Eksport ini akan menjana sandaran penuh pangkalan data dan memuat naiknya ke Google Drive secara automatik.
+                  Pastikan akaun Google Drive perkhidmatan telah dikonfigurasi dalam fail persekitaran.
+                </p>
+              </div>
+
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div>
+                  <p className="text-sm font-medium text-gray-700">Eksport Manual</p>
+                  <p className="text-xs text-gray-500">Klik butang di bawah untuk menjana sandaran serta-merta (disyorkan selepas kemas kini besar).</p>
+                </div>
+                <Button
+                  onClick={handleExportDatabase}
+                  disabled={exportingBackup}
+                  className="sm:w-auto w-full"
+                >
+                  {exportingBackup ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Sedang Mengeksport...
+                    </>
+                  ) : (
+                    <>
+                      <CloudUpload className="w-4 h-4 mr-2" />
+                      Eksport Sekarang
+                    </>
+                  )}
+                </Button>
+              </div>
+
+              <div>
+                <h3 className="text-sm font-semibold text-gray-700 mb-2">Sandaran Terakhir</h3>
+                {lastBackup ? (
+                  <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 space-y-2">
+                    <p className="text-sm text-gray-700">
+                      <strong>Tarikh:</strong> {formatDateTime(lastBackup.createdAt || lastBackup.created_at)}
+                    </p>
+                    <p className="text-sm text-gray-700">
+                      <strong>Saiz Fail:</strong> {formatFileSize(lastBackup.fileSize || lastBackup.file_size)}
+                    </p>
+                    <p className="text-sm text-gray-700">
+                      <strong>Status:</strong>{' '}
+                      <Badge variant={(lastBackup.status || 'success') === 'success' ? 'success' : 'danger'}>
+                        {(lastBackup.status || 'success') === 'success' ? 'Berjaya' : 'Gagal'}
+                      </Badge>
+                    </p>
+                    {lastBackup.driveViewLink || lastBackup.drive_view_link ? (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleOpenLink(lastBackup.driveViewLink || lastBackup.drive_view_link)}
+                        className="mt-2"
+                      >
+                        <DownloadCloud className="w-4 h-4 mr-2" />
+                        Buka di Google Drive
+                      </Button>
+                    ) : null}
+                    {lastBackup.fileName && (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleDownloadArchive(lastBackup.fileName)}
+                        className="mt-2"
+                        disabled={downloadingFile === lastBackup.fileName}
+                      >
+                        {downloadingFile === lastBackup.fileName ? (
+                          <>
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            Memuat Turun...
+                          </>
+                        ) : (
+                          <>
+                            <DownloadCloud className="w-4 h-4 mr-2" />
+                            Muat Turun ZIP
+                          </>
+                        )}
+                      </Button>
+                    )}
+                    {!lastBackup.driveViewLink && !lastBackup.fileName && (
+                      <p className="text-xs text-gray-500 mt-1">Tiada pautan muat turun tersedia.</p>
+                    )}
+                    {lastBackup.errorMessage && (
+                      <p className="text-xs text-red-600 bg-red-50 border border-red-100 rounded-md p-2">
+                        <strong>Ralat:</strong> {lastBackup.errorMessage}
+                      </p>
+                    )}
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-500">Belum ada sandaran. Mulakan eksport pertama anda.</p>
+                )}
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-sm font-semibold text-gray-700 flex items-center">
+                    <History className="w-4 h-4 mr-2" />
+                    Sejarah Eksport Terkini
+                  </h3>
+                </div>
+                {loadingBackupHistory ? (
+                  <div className="flex items-center justify-center py-6 text-gray-500 text-sm">
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Memuatkan sejarah eksport...
+                  </div>
+                ) : backupHistory.length > 0 ? (
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tarikh</th>
+                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Saiz</th>
+                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Jenis</th>
+                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tindakan</th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {backupHistory.map((backup) => (
+                          <tr key={backup.id || backup.fileName || backup.file_name}>
+                            <td className="px-4 py-2 text-sm text-gray-700">{formatDateTime(backup.createdAt)}</td>
+                            <td className="px-4 py-2 text-sm text-gray-700">{formatFileSize(backup.fileSize)}</td>
+                            <td className="px-4 py-2 text-sm text-gray-700">
+                              <Badge variant={backup.status === 'success' ? 'success' : 'danger'}>
+                                {backup.status === 'success' ? 'Berjaya' : 'Gagal'}
+                              </Badge>
+                            </td>
+                            <td className="px-4 py-2 text-sm text-gray-600">{backup.triggerType === 'scheduled-year-end' ? 'Auto Tahunan' : 'Manual'}</td>
+                            <td className="px-4 py-2 text-sm text-gray-600">
+                              <div className="flex items-center gap-2">
+                                {backup.driveViewLink ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleOpenLink(backup.driveViewLink)}
+                                    className="text-emerald-600 hover:text-emerald-700 font-medium"
+                                  >
+                                    Drive
+                                  </button>
+                                ) : null}
+                                {backup.fileName ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDownloadArchive(backup.fileName)}
+                                    className="text-emerald-600 hover:text-emerald-700 font-medium"
+                                  >
+                                    Muat Turun
+                                  </button>
+                                ) : !backup.driveViewLink ? (
+                                  <span className="text-gray-400">-</span>
+                                ) : null}
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-500">Tiada eksport direkodkan lagi.</p>
+                )}
+              </div>
+            </div>
+          </Card.Content>
+        </Card>
+      )}
+ 
     </div>
   );
 };

@@ -6,6 +6,7 @@ import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import { ensureCheckInTable } from './utils/ensureCheckInTable.js';
 import { ensurePendingStatus } from './utils/ensurePendingStatus.js';
+import { scheduleAnnualDatabaseBackup } from './schedulers/annualBackupJob.js';
 // Simple logger for production
 const logger = {
   info: (msg) => console.log(`[INFO] ${msg}`),
@@ -85,6 +86,7 @@ Promise.all([ensureCheckInTable(), ensurePendingStatus()]).then(() => {
     logger.success(`Server running on port ${theme.data(PORT)}`);
     logger.info(`Environment: ${theme.data(process.env.NODE_ENV || 'development')}`);
     logger.info(`Health check: http://localhost:${PORT}/health`);
+    scheduleAnnualDatabaseBackup();
   });
 }).catch(err => {
   console.error('Failed to ensure database tables:', err);
@@ -93,6 +95,7 @@ Promise.all([ensureCheckInTable(), ensurePendingStatus()]).then(() => {
     logger.success(`Server running on port ${theme.data(PORT)}`);
     logger.info(`Environment: ${theme.data(process.env.NODE_ENV || 'development')}`);
     logger.info(`Health check: http://localhost:${PORT}/health`);
+    scheduleAnnualDatabaseBackup();
   });
 });
 

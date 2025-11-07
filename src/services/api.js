@@ -1,8 +1,9 @@
 import axios from 'axios';
+import resolveApiBaseUrl from '../utils/apiBaseUrl';
 
 // Create axios instance with base configuration
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api",
+  baseURL: resolveApiBaseUrl(),
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
@@ -328,6 +329,15 @@ export const staffCheckInAPI = {
   getHistory: (params) => api.get('/staff-checkin/history', { params }),
   quickCheckIn: (data) => api.post('/staff-checkin/quick-check-in', data),
   quickCheckOut: (data) => api.post('/staff-checkin/quick-check-out', data),
+};
+
+export const exportAPI = {
+  triggerDatabaseBackup: (payload) => api.post('/export/database', payload),
+  getHistory: (params) => api.get('/export/history', { params }),
+  download: (fileName) =>
+    api.get(`/export/download/${encodeURIComponent(fileName)}`, {
+      responseType: 'blob',
+    }),
 };
 
 export default api;
