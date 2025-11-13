@@ -66,14 +66,14 @@ const Dashboard = () => {
         }
       }
 
-      const [studentsResponse, teachersResponse, classesResponse, feesResponse, examsResponse, announcementsResponse] = await Promise.all([
-        studentsAPI.getAll({ limit: 1000 }),
-        teachersAPI.getAll({ limit: 1000 }),
-        classesAPI.getAll({ limit: 1000 }),
-        feesAPI.getAll({ limit: 1000 }),
-        examsAPI.getAll({ limit: 1000 }),
-        announcementsAPI.getAll({ limit: 10, status: 'published' }).catch(() => []), // Fetch announcements, don't fail if error
-      ]);
+      const [studentsResponse, teachersResponse, classesResponse, feesResponse, examsResponse, announcementsResponse] = await Promise.allSettled([
+        studentsAPI.getAll({ limit: 1000 }).catch(() => []),
+        teachersAPI.getAll({ limit: 1000 }).catch(() => []),
+        classesAPI.getAll({ limit: 1000 }).catch(() => []),
+        feesAPI.getAll({ limit: 1000 }).catch(() => []),
+        examsAPI.getAll({ limit: 1000 }).catch(() => []),
+        announcementsAPI.getAll({ limit: 10, status: 'published' }).catch(() => []),
+      ]).then(results => results.map(r => r.status === 'fulfilled' ? r.value : []));
 
       const students = Array.isArray(studentsResponse) ? studentsResponse : (studentsResponse?.data || []);
       const teachers = Array.isArray(teachersResponse) ? teachersResponse : (teachersResponse?.data || []);
@@ -310,9 +310,15 @@ const Dashboard = () => {
       setAnnouncements(filteredAnnouncements);
 
     } catch (err) {
+      // Only show error if it's not an auth error (auth errors are handled by interceptor)
+      if (err?.status !== 401 && err?.status !== 403) {
       console.error('Failed to fetch dashboard data:', err);
       setError(err);
       toast.error('Gagal memuatkan data papan pemuka.');
+      } else {
+        // For auth errors, just set empty data - user will be redirected or can login
+        setError(null);
+      }
     } finally {
       setLoading(false);
     }
@@ -380,49 +386,49 @@ const Dashboard = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <div className="bg-white/80 backdrop-blur-sm border border-white/20 rounded-xl shadow-lg p-6">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-sm font-medium text-gray-600">Jumlah Rekod</h3>
+              <h3 className="text-sm font-medium text-black">Jumlah Rekod</h3>
               <Calendar className="w-5 h-5 text-emerald-600" />
             </div>
-            <div className="text-3xl font-bold text-gray-900">{attendanceStats.total}</div>
-            <p className="text-sm text-gray-500 mt-2">Bulan {monthName}</p>
+            <div className="text-3xl font-bold text-black">{attendanceStats.total}</div>
+            <p className="text-sm text-black mt-2">Bulan {monthName}</p>
           </div>
 
           <div className="bg-white/80 backdrop-blur-sm border border-white/20 rounded-xl shadow-lg p-6">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-sm font-medium text-gray-600">Hadir</h3>
+              <h3 className="text-sm font-medium text-black">Hadir</h3>
               <CheckCircle className="w-5 h-5 text-green-600" />
             </div>
             <div className="text-3xl font-bold text-green-600">{attendanceStats.hadir}</div>
-            <p className="text-sm text-gray-500 mt-2">
+            <p className="text-sm text-black mt-2">
               {attendanceStats.total > 0 ? ((attendanceStats.hadir / attendanceStats.total) * 100).toFixed(1) : 0}% dari jumlah
             </p>
           </div>
 
           <div className="bg-white/80 backdrop-blur-sm border border-white/20 rounded-xl shadow-lg p-6">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-sm font-medium text-gray-600">Tidak Hadir</h3>
+              <h3 className="text-sm font-medium text-black">Tidak Hadir</h3>
               <XCircle className="w-5 h-5 text-red-600" />
             </div>
             <div className="text-3xl font-bold text-red-600">{attendanceStats.tidakHadir}</div>
-            <p className="text-sm text-gray-500 mt-2">
+            <p className="text-sm text-black mt-2">
               {attendanceStats.total > 0 ? ((attendanceStats.tidakHadir / attendanceStats.total) * 100).toFixed(1) : 0}% dari jumlah
             </p>
           </div>
 
           <div className="bg-white/80 backdrop-blur-sm border border-white/20 rounded-xl shadow-lg p-6">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-sm font-medium text-gray-600">Kadar Kehadiran</h3>
+              <h3 className="text-sm font-medium text-black">Kadar Kehadiran</h3>
               <CheckCircle className="w-5 h-5 text-emerald-600" />
             </div>
             <div className="text-3xl font-bold text-emerald-600">{attendanceRate}%</div>
-            <p className="text-sm text-gray-500 mt-2">Bulan {monthName}</p>
+            <p className="text-sm text-black mt-2">Bulan {monthName}</p>
           </div>
         </div>
 
         {/* Attendance Details Table */}
         <div className="bg-white/80 backdrop-blur-sm border border-white/20 rounded-xl shadow-lg p-6">
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl font-bold text-gray-900 flex items-center">
+            <h2 className="text-xl font-bold text-black flex items-center">
               <Calendar className="w-5 h-5 mr-2 text-emerald-600" />
               Rekod Kehadiran Bulan {monthName}
             </h2>
@@ -437,23 +443,23 @@ const Dashboard = () => {
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-emerald-50">
                 <tr>
-                  <th className="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase">Tarikh</th>
-                  <th className="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase">Kelas</th>
-                  <th className="px-4 py-3 text-center text-xs font-bold text-gray-700 uppercase">Status</th>
+                  <th className="px-4 py-3 text-left text-xs font-bold text-black uppercase">Tarikh</th>
+                  <th className="px-4 py-3 text-left text-xs font-bold text-black uppercase">Kelas</th>
+                  <th className="px-4 py-3 text-center text-xs font-bold text-black uppercase">Status</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {monthlyAttendance.length > 0 ? (
                   monthlyAttendance.slice(0, 10).map((record, index) => (
                     <tr key={index} className="hover:bg-gray-50">
-                      <td className="px-4 py-3 text-sm text-gray-900">
+                      <td className="px-4 py-3 text-sm text-black">
                         {record.tarikh ? new Date(record.tarikh).toLocaleDateString('ms-MY', { 
                           weekday: 'short',
                           day: 'numeric',
                           month: 'short'
                         }) : '-'}
                       </td>
-                      <td className="px-4 py-3 text-sm text-gray-700">
+                      <td className="px-4 py-3 text-sm text-black">
                         {record.kelas_nama || record.nama_kelas || '-'}
                       </td>
                       <td className="px-4 py-3 text-center">
@@ -463,7 +469,7 @@ const Dashboard = () => {
                   ))
                 ) : (
                   <tr>
-                    <td colSpan="3" className="px-4 py-8 text-center text-gray-500">
+                    <td colSpan="3" className="px-4 py-8 text-center text-black">
                       Tiada rekod kehadiran untuk bulan ini.
                     </td>
                   </tr>
@@ -494,11 +500,11 @@ const Dashboard = () => {
         {/* Today's Schedule (left column) */}
         <div className="bg-white/80 backdrop-blur-sm border border-white/20 rounded-xl shadow-lg p-6">
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl font-bold text-gray-900 flex items-center">
+            <h2 className="text-xl font-bold text-black flex items-center">
               <Calendar className="w-5 h-5 mr-2 text-emerald-600" />
               Jadual Hari Ini
             </h2>
-            <span className="text-sm text-gray-600">
+            <span className="text-sm text-black">
               {new Date().toLocaleDateString('ms-MY', { 
                 weekday: 'long', 
                 day: 'numeric', 
@@ -515,21 +521,21 @@ const Dashboard = () => {
                       <span className="text-emerald-700 font-bold text-sm">{schedule.time}</span>
                     </div>
                     <div>
-                      <h3 className="font-semibold text-gray-900">{schedule.class}</h3>
-                      <p className="text-sm text-gray-600">{schedule.teacher}</p>
+                      <h3 className="font-semibold text-black">{schedule.class}</h3>
+                      <p className="text-sm text-black">{schedule.teacher}</p>
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className="text-sm font-medium text-gray-900">{schedule.students} pelajar</p>
+                    <p className="text-sm font-medium text-black">{schedule.students} pelajar</p>
                     <div className="flex items-center mt-1">
                       <div className={`w-2 h-2 ${schedule.isUpcoming ? 'bg-blue-500' : 'bg-emerald-500'} rounded-full mr-2`}></div>
-                      <span className="text-xs text-gray-600">{schedule.isUpcoming ? 'Akan Datang' : 'Aktif'}</span>
+                      <span className="text-xs text-black">{schedule.isUpcoming ? 'Akan Datang' : 'Aktif'}</span>
                     </div>
                   </div>
                 </div>
               ))
             ) : (
-              <div className="text-center py-4 text-gray-500">Tiada jadual kelas untuk hari ini.</div>
+              <div className="text-center py-4 text-black">Tiada jadual kelas untuk hari ini.</div>
             )}
           </div>
         </div>
@@ -538,7 +544,7 @@ const Dashboard = () => {
         <div className="space-y-6">
           <div className="bg-white/80 backdrop-blur-sm border border-white/20 rounded-xl shadow-lg p-6">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-gray-900 flex items-center">
+              <h3 className="text-lg font-semibold text-black flex items-center">
                 <AlertCircle className="w-5 h-5 mr-2 text-amber-600" />
                 Notis Penting
               </h3>
@@ -558,7 +564,7 @@ const Dashboard = () => {
                   urgent: 'bg-red-50 border-red-200 text-red-800',
                   high: 'bg-amber-50 border-amber-200 text-amber-800',
                   normal: 'bg-blue-50 border-blue-200 text-blue-800',
-                  low: 'bg-gray-50 border-gray-200 text-gray-700'
+                  low: 'bg-gray-50 border-gray-200 text-black'
                 };
                 const colorClass = priorityColors[announcement.priority] || priorityColors.normal;
                 
@@ -616,7 +622,7 @@ const Dashboard = () => {
               {/* Empty state */}
               {announcements.length === 0 && outstandingFeesCount === 0 && upcomingExamsCount === 0 && newStudentsCount === 0 && (
                 <div className="p-3 bg-gray-50 border border-gray-200 rounded-lg">
-                  <p className="text-sm text-gray-700">Tiada notis penting buat masa ini.</p>
+                  <p className="text-sm text-black">Tiada notis penting buat masa ini.</p>
                 </div>
               )}
             </div>

@@ -333,8 +333,8 @@ const Login = ({ onLogin }) => {
               className="mx-auto h-20 w-auto object-contain"
             />
           </div>
-          <h2 className="mt-2 text-xl font-bold text-gray-900">Masjid Negeri Sultan Ahmad 1</h2>
-          <p className="mt-1 text-sm text-gray-600">E-SKP</p>
+          <h2 className="mt-2 text-xl font-bold text-black">Masjid Negeri Sultan Ahmad 1</h2>
+          <p className="mt-1 text-sm text-black">e-SKP</p>
         </div>
 
         {/* Top Action Buttons */}
@@ -344,7 +344,7 @@ const Login = ({ onLogin }) => {
             className={`py-2 px-3 rounded-md text-sm font-medium transition-colors ${
               activeTab === 'login'
                 ? 'bg-blue-600 text-white'
-                : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                : 'bg-white text-black border border-gray-300 hover:bg-gray-50'
             }`}
           >
             Login
@@ -354,7 +354,7 @@ const Login = ({ onLogin }) => {
             className={`py-2 px-3 rounded-md text-sm font-medium transition-colors ${
               activeTab === 'checkin'
                 ? 'bg-teal-600 text-white'
-                : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                : 'bg-white text-black border border-gray-300 hover:bg-gray-50'
             }`}
           >
             Check In / Out
@@ -364,7 +364,7 @@ const Login = ({ onLogin }) => {
             className={`py-2 px-3 rounded-md text-sm font-medium transition-colors ${
               activeTab === 'checkin-shift'
                 ? 'bg-teal-600 text-white'
-                : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                : 'bg-white text-black border border-gray-300 hover:bg-gray-50'
             }`}
           >
             Check In / Out (Shift)
@@ -372,7 +372,7 @@ const Login = ({ onLogin }) => {
         </div>
 
         {/* Date and Time Display */}
-        <div className="text-center text-sm text-gray-600 font-medium">
+        <div className="text-center text-sm text-black font-medium">
           {formatDateTime(currentTime)}
         </div>
 
@@ -411,7 +411,7 @@ const Login = ({ onLogin }) => {
                     required
                   />
                   <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                    <span className="text-gray-500 text-sm">@masjid.com</span>
+                    <span className="text-black text-sm">@masjid.com</span>
                   </div>
                 </div>
               </div>
@@ -439,9 +439,9 @@ const Login = ({ onLogin }) => {
                     className="absolute inset-y-0 right-0 pr-3 flex items-center"
                   >
                     {showPassword ? (
-                      <EyeOff className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+                      <EyeOff className="h-5 w-5 text-gray-400 hover:text-black" />
                     ) : (
-                      <Eye className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+                      <Eye className="h-5 w-5 text-gray-400 hover:text-black" />
                     )}
                   </button>
                 </div>
@@ -470,7 +470,7 @@ const Login = ({ onLogin }) => {
                      
                      {/* Location Status */}
               <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-                <label className="block text-sm font-medium text-gray-700 mb-3 flex items-center">
+                <label className="block text-sm font-medium text-black mb-3 flex items-center">
                   <MapPin className="h-4 w-4 mr-2 text-blue-600" />
                   Lokasi Semasa Anda
                 </label>
@@ -584,7 +584,7 @@ const Login = ({ onLogin }) => {
                     required
                   />
                   <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                    <span className="text-gray-500 text-sm">@masjid.com</span>
+                    <span className="text-black text-sm">@masjid.com</span>
                   </div>
                 </div>
               </div>
@@ -612,9 +612,9 @@ const Login = ({ onLogin }) => {
                     className="absolute inset-y-0 right-0 pr-3 flex items-center"
                   >
                     {showPassword ? (
-                      <EyeOff className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+                      <EyeOff className="h-5 w-5 text-gray-400 hover:text-black" />
                     ) : (
-                      <Eye className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+                      <Eye className="h-5 w-5 text-gray-400 hover:text-black" />
                     )}
                   </button>
                 </div>
@@ -686,7 +686,7 @@ const Login = ({ onLogin }) => {
 
               {/* Support Info */}
               <div className="text-center">
-                <p className="text-xs text-gray-500">Sokongan Pengguna</p>
+                <p className="text-xs text-black">Sokongan Pengguna</p>
               </div>
             </>
           )}
@@ -694,7 +694,7 @@ const Login = ({ onLogin }) => {
 
         {/* Footer */}
         <div className="text-center">
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-black">
             © 2025 Masjid Negeri Sultan Ahmad 1. Hak Cipta Terpelihara.
           </p>
         </div>

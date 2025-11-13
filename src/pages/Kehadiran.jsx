@@ -6,7 +6,9 @@ import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import Badge from '../components/ui/Badge';
 import GoogleFormModal from '../components/kehadiran/GoogleFormModal';
-import { Calendar, Users, CheckCircle, XCircle, Clock, AlertCircle, Plus } from 'lucide-react';
+import AttendanceFormModal from '../components/kehadiran/AttendanceFormModal';
+import ClassAttendanceModal from '../components/kehadiran/ClassAttendanceModal';
+import { Calendar, Users, CheckCircle, XCircle, Clock, AlertCircle, Plus, ChevronRight } from 'lucide-react';
 
 const Kehadiran = () => {
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
@@ -14,6 +16,9 @@ const Kehadiran = () => {
   const [kelass, setKelass] = useState([]);
   const [userRole, setUserRole] = useState('');
   const [showGoogleFormModal, setShowGoogleFormModal] = useState(false);
+  const [showAttendanceFormModal, setShowAttendanceFormModal] = useState(false);
+  const [showClassModal, setShowClassModal] = useState(false);
+  const [selectedClassAttendance, setSelectedClassAttendance] = useState(null);
   const [googleFormUrl, setGoogleFormUrl] = useState(null);
 
   const {
@@ -61,12 +66,58 @@ const Kehadiran = () => {
 
   const kehadiranArray = Array.isArray(kehadiran) ? kehadiran : [];
   const filteredKehadiran = kehadiranArray.filter(k => {
-    const matchesDate = k.tarikh === selectedDate;
-    const matchesKelas = selectedKelas === 'semua' || k.class_id === parseInt(selectedKelas) || k.kelas_id === parseInt(selectedKelas);
+    // Normalize date for comparison - handle both string and Date object formats
+    const attendanceDate = k.tarikh ? (typeof k.tarikh === 'string' ? k.tarikh.split('T')[0] : new Date(k.tarikh).toISOString().split('T')[0]) : '';
+    const matchesDate = attendanceDate === selectedDate;
+    
+    // Normalize class_id for comparison - handle both string and number
+    const attendanceClassId = k.class_id || k.kelas_id;
+    const selectedClassId = selectedKelas === 'semua' ? null : parseInt(selectedKelas);
+    const matchesKelas = selectedKelas === 'semua' || attendanceClassId === selectedClassId || parseInt(attendanceClassId) === selectedClassId;
+    
     // Normalize status for comparison
     k.normalizedStatus = normalizeStatus(k.status);
     return matchesDate && matchesKelas;
   });
+
+  // Group attendance by class
+  const groupedByClass = filteredKehadiran.reduce((acc, record) => {
+    const classId = record.class_id || record.kelas_id;
+    const className = record.kelas_nama || record.nama_kelas || 'Tiada Kelas';
+    
+    if (!acc[classId]) {
+      acc[classId] = {
+        classId,
+        className,
+        students: [],
+        total: 0,
+        hadir: 0,
+        tidakHadir: 0,
+        lewat: 0,
+        sakit: 0,
+        other: 0
+      };
+    }
+    
+    acc[classId].students.push(record);
+    acc[classId].total++;
+    
+    const status = normalizeStatus(record.status);
+    if (status === 'hadir') acc[classId].hadir++;
+    else if (status === 'tidak_hadir') acc[classId].tidakHadir++;
+    else if (status === 'lewat') acc[classId].lewat++;
+    else if (status === 'sakit') acc[classId].sakit++;
+    else acc[classId].other++;
+    
+    return acc;
+  }, {});
+
+  const classGroups = Object.values(groupedByClass);
+
+  const handleClassClick = (classGroup) => {
+    setSelectedClassAttendance(classGroup);
+    setShowClassModal(true);
+  };
 
   const getStatusBadge = (status) => {
     // Normalize status if needed
@@ -128,28 +179,13 @@ const Kehadiran = () => {
   const cutiCount = filteredKehadiran.filter(k => normalizeStatus(k.status) === 'cuti' || k.status === 'Cuti').length;
   const kehadiranRate = totalPelajar > 0 ? ((hadirCount + lewatCount) / totalPelajar * 100).toFixed(1) : 0;
 
-  // Handle Google Form button click
-  const handleAmbilKehadiran = async () => {
+  // Handle Ambil Kehadiran button click - show attendance form modal
+  const handleAmbilKehadiran = () => {
     if (selectedKelas === 'semua') {
       toast.error('Sila pilih kelas terlebih dahulu');
       return;
     }
-
-    try {
-      // Fetch Google Form URL for the selected class
-      const response = await googleFormAPI.getClassFormUrl(selectedKelas);
-      const formUrl = response?.data?.google_form_url || response?.google_form_url;
-      
-      if (formUrl) {
-        setGoogleFormUrl(formUrl);
-        setShowGoogleFormModal(true);
-      } else {
-        toast.warning('Google Form belum dikonfigurasi untuk kelas ini. Sila hubungi pentadbir.');
-      }
-    } catch (error) {
-      console.error('Error fetching Google Form URL:', error);
-      toast.error('Gagal memuatkan pautan Google Form');
-    }
+    setShowAttendanceFormModal(true);
   };
 
   // Handle form submission from Google Form
@@ -197,7 +233,7 @@ const Kehadiran = () => {
         <Card.Content>
           <div className="flex flex-col sm:flex-row gap-4">
             <div className="flex-1">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-black mb-1">
                 Tarikh
               </label>
               <input
@@ -210,7 +246,7 @@ const Kehadiran = () => {
             {userRole !== 'student' && (
               <>
                 <div className="flex-1">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-black mb-1">
                     Kelas
                   </label>
                   <select
@@ -251,8 +287,8 @@ const Kehadiran = () => {
               </div>
             </div>
             <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Jumlah</p>
-              <p className="text-2xl font-bold text-gray-900">{totalPelajar}</p>
+              <p className="text-sm font-medium text-black">Jumlah</p>
+              <p className="text-2xl font-bold text-black">{totalPelajar}</p>
             </div>
           </div>
         </Card>
@@ -265,8 +301,8 @@ const Kehadiran = () => {
               </div>
             </div>
             <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Hadir</p>
-              <p className="text-2xl font-bold text-gray-900">{hadirCount}</p>
+              <p className="text-sm font-medium text-black">Hadir</p>
+              <p className="text-2xl font-bold text-black">{hadirCount}</p>
             </div>
           </div>
         </Card>
@@ -279,8 +315,8 @@ const Kehadiran = () => {
               </div>
             </div>
             <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Tidak Hadir</p>
-              <p className="text-2xl font-bold text-gray-900">{tidakHadirCount}</p>
+              <p className="text-sm font-medium text-black">Tidak Hadir</p>
+              <p className="text-2xl font-bold text-black">{tidakHadirCount}</p>
             </div>
           </div>
         </Card>
@@ -293,8 +329,8 @@ const Kehadiran = () => {
               </div>
             </div>
             <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Lewat</p>
-              <p className="text-2xl font-bold text-gray-900">{lewatCount}</p>
+              <p className="text-sm font-medium text-black">Lewat</p>
+              <p className="text-2xl font-bold text-black">{lewatCount}</p>
             </div>
           </div>
         </Card>
@@ -307,8 +343,8 @@ const Kehadiran = () => {
               </div>
             </div>
             <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Sakit</p>
-              <p className="text-2xl font-bold text-gray-900">{sakitCount}</p>
+              <p className="text-sm font-medium text-black">Sakit</p>
+              <p className="text-2xl font-bold text-black">{sakitCount}</p>
             </div>
           </div>
         </Card>
@@ -321,119 +357,98 @@ const Kehadiran = () => {
               </div>
             </div>
             <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Kadar</p>
-              <p className="text-2xl font-bold text-gray-900">{kehadiranRate}%</p>
+              <p className="text-sm font-medium text-black">Kadar</p>
+              <p className="text-2xl font-bold text-black">{kehadiranRate}%</p>
             </div>
           </div>
         </Card>
       </div>
       )}
 
-      {/* Kehadiran List */}
+      {/* Kehadiran List - Grouped by Class */}
       <Card>
         <Card.Header>
           <Card.Title>Senarai Kehadiran - {new Date(selectedDate).toLocaleDateString('ms-MY')}</Card.Title>
         </Card.Header>
         <Card.Content>
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  {userRole !== 'student' && (
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Pelajar
-                    </th>
-                  )}
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Kelas
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Tarikh
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Status
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Catatan
-                  </th>
-                  {userRole !== 'student' && (
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Tindakan
-                    </th>
-                  )}
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {filteredKehadiran.map((k) => (
-                  <tr key={k.id} className="hover:bg-gray-50">
-                    {userRole !== 'student' && (
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-gray-900">{k.pelajar_nama}</div>
-                      </td>
-                    )}
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {k.kelas_nama}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {new Date(k.tarikh).toLocaleDateString('ms-MY')}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      {getStatusBadge(k.status)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {k.catatan || '-'}
-                    </td>
-                    {userRole !== 'student' && (
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        <div className="flex space-x-2">
-                          <button
-                            onClick={() => updateKehadiran(k.id, 'hadir')}
-                            className={`px-2 py-1 text-xs rounded ${
-                              (k.status === 'Hadir' || normalizeStatus(k.status) === 'hadir')
-                                ? 'bg-green-100 text-green-800' 
-                                : 'bg-gray-100 text-gray-600 hover:bg-green-100 hover:text-green-800'
-                            }`}
-                          >
-                            Hadir
-                          </button>
-                          <button
-                            onClick={() => updateKehadiran(k.id, 'tidak_hadir')}
-                            className={`px-2 py-1 text-xs rounded ${
-                              (k.status === 'Tidak Hadir' || normalizeStatus(k.status) === 'tidak_hadir')
-                                ? 'bg-red-100 text-red-800' 
-                                : 'bg-gray-100 text-gray-600 hover:bg-red-100 hover:text-red-800'
-                            }`}
-                          >
-                            Tidak Hadir
-                          </button>
-                          <button
-                            onClick={() => updateKehadiran(k.id, 'lewat')}
-                            className={`px-2 py-1 text-xs rounded ${
-                              (k.status === 'Lewat' || normalizeStatus(k.status) === 'lewat')
-                                ? 'bg-amber-100 text-amber-800' 
-                                : 'bg-gray-100 text-gray-600 hover:bg-amber-100 hover:text-amber-800'
-                            }`}
-                          >
-                            Lewat
-                          </button>
+          <div className="space-y-3">
+            {classGroups.length === 0 ? (
+              <div className="text-center py-8">
+                <p className="text-black">Tiada rekod kehadiran untuk tarikh dan kelas yang dipilih</p>
+              </div>
+            ) : (
+              classGroups.map((classGroup) => (
+                <div
+                  key={classGroup.classId}
+                  onClick={() => handleClassClick(classGroup)}
+                  className="p-4 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 hover:border-emerald-300 cursor-pointer transition-all"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1">
+                      <h3 className="text-lg font-semibold text-black mb-2">
+                        {classGroup.className}
+                      </h3>
+                      <div className="flex items-center gap-6 text-sm">
+                        <div className="flex items-center gap-2">
+                          <Users className="w-4 h-4 text-gray-500" />
+                          <span className="text-black">Jumlah: <span className="font-semibold text-black">{classGroup.total}</span></span>
                         </div>
-                      </td>
-                    )}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                        <div className="flex items-center gap-2">
+                          <CheckCircle className="w-4 h-4 text-green-600" />
+                          <span className="text-black">Hadir: <span className="font-semibold text-green-700">{classGroup.hadir}</span></span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <XCircle className="w-4 h-4 text-red-600" />
+                          <span className="text-black">Tidak Hadir: <span className="font-semibold text-red-700">{classGroup.tidakHadir}</span></span>
+                        </div>
+                        {classGroup.lewat > 0 && (
+                          <div className="flex items-center gap-2">
+                            <Clock className="w-4 h-4 text-amber-600" />
+                            <span className="text-black">Lewat: <span className="font-semibold text-amber-700">{classGroup.lewat}</span></span>
+                          </div>
+                        )}
+                        {(classGroup.sakit + classGroup.other) > 0 && (
+                          <div className="flex items-center gap-2">
+                            <AlertCircle className="w-4 h-4 text-blue-600" />
+                            <span className="text-black">Lain-lain: <span className="font-semibold text-blue-700">{classGroup.sakit + classGroup.other}</span></span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    <ChevronRight className="w-5 h-5 text-gray-400" />
+                  </div>
+                </div>
+              ))
+            )}
           </div>
-
-          {filteredKehadiran.length === 0 && (
-            <div className="text-center py-8">
-              <p className="text-gray-500">Tiada rekod kehadiran untuk tarikh dan kelas yang dipilih</p>
-            </div>
-          )}
         </Card.Content>
       </Card>
 
-      {/* Google Form Modal */}
+      {/* Attendance Form Modal */}
+      <AttendanceFormModal
+        isOpen={showAttendanceFormModal}
+        onClose={() => {
+          setShowAttendanceFormModal(false);
+          fetchAttendanceData({ date: selectedDate, class_id: selectedKelas === 'semua' ? undefined : selectedKelas });
+        }}
+        classId={selectedKelas}
+        className={selectedClassName}
+        selectedDate={selectedDate}
+      />
+
+      {/* Class Attendance Modal */}
+      <ClassAttendanceModal
+        isOpen={showClassModal}
+        onClose={() => {
+          setShowClassModal(false);
+          setSelectedClassAttendance(null);
+        }}
+        className={selectedClassAttendance?.className || ''}
+        attendanceDate={selectedDate}
+        students={selectedClassAttendance?.students || []}
+      />
+
+      {/* Google Form Modal (kept for backward compatibility) */}
       <GoogleFormModal
         isOpen={showGoogleFormModal}
         onClose={() => {

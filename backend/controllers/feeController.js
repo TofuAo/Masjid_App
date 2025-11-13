@@ -208,18 +208,40 @@ export const createFee = async (req, res) => {
 
     const { student_ic, jumlah, status, tarikh, bulan, tahun, cara_bayar, no_resit, resit_img } = req.body;
     
-    // Check if student exists
-    const [students] = await pool.execute(
-      "SELECT ic FROM users WHERE ic = ? AND role = 'student'",
-      [student_ic]
+    // Normalize IC for lookup (remove dashes and convert to uppercase)
+    const normalizedIC = student_ic ? student_ic.replace(/-/g, '').toUpperCase() : null;
+    const normalizedICNoDash = normalizedIC ? normalizedIC.replace(/-/g, '') : null;
+    
+    // Check if student exists - try multiple formats to handle inconsistent IC storage
+    let [students] = await pool.execute(
+      `SELECT ic FROM users 
+       WHERE (
+         ic = ? OR 
+         ic = ? OR 
+         REPLACE(UPPER(ic), '-', '') = ? OR
+         REPLACE(UPPER(ic), '-', '') = REPLACE(UPPER(?), '-', '')
+       ) AND role = 'student'`,
+      [student_ic, normalizedIC, normalizedICNoDash, student_ic]
     );
+    
+    if (students.length === 0) {
+      // Try case-insensitive search as last resort
+      [students] = await pool.execute(
+        "SELECT ic FROM users WHERE UPPER(REPLACE(ic, '-', '')) = UPPER(REPLACE(?, '-', '')) AND role = 'student'",
+        [student_ic]
+      );
+    }
     
     if (students.length === 0) {
       return res.status(400).json({
         success: false,
-        message: 'Student not found'
+        message: 'Student not found',
+        debug: { provided_ic: student_ic, normalized_ic: normalizedIC }
       });
     }
+    
+    // Use the actual IC from database for consistency
+    const actualStudentIC = students[0].ic;
     
     // Use current date/time if not provided
     const now = new Date();
@@ -228,18 +250,30 @@ export const createFee = async (req, res) => {
     const feeBulan = bulan || monthNames[now.getMonth()];
     const feeTahun = tahun || now.getFullYear();
     
-    // Map frontend status to backend if needed
-    const backendStatus = status === 'terbayar' ? 'Bayar' : 
-                         status === 'tunggak' ? 'Belum Bayar' : 
-                         status || 'Belum Bayar';
+    // Map frontend status to backend - keep 'terbayar' and 'tunggak' as they are valid in DB
+    const backendStatus = status === 'Bayar' ? 'terbayar' : 
+                         status === 'Belum Bayar' ? 'tunggak' : 
+                         (status || 'tunggak');
     
     // Set tarikh_bayar if status is paid
-    const tarikh_bayar = (backendStatus === 'Bayar' || backendStatus === 'terbayar') ? feeDate : null;
+    const tarikh_bayar = (backendStatus === 'terbayar' || backendStatus === 'Bayar') ? feeDate : null;
+    
+    // Ensure all values are not undefined (convert to null if undefined)
+    const safeActualStudentIC = actualStudentIC || null;
+    const safeJumlah = jumlah || 0;
+    const safeBackendStatus = backendStatus || 'tunggak';
+    const safeFeeDate = feeDate || null;
+    const safeTarikhBayar = tarikh_bayar || null;
+    const safeFeeBulan = feeBulan || null;
+    const safeFeeTahun = feeTahun || null;
+    const safeCaraBayar = cara_bayar || null;
+    const safeNoResit = no_resit || null;
+    const safeResitImg = resit_img || null;
     
     const [result] = await pool.execute(`
       INSERT INTO fees (student_ic, jumlah, status, tarikh, tarikh_bayar, bulan, tahun, cara_bayar, no_resit, resit_img)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `, [student_ic, jumlah, backendStatus, feeDate, tarikh_bayar, feeBulan, feeTahun, cara_bayar, no_resit, resit_img]);
+    `, [safeActualStudentIC, safeJumlah, safeBackendStatus, safeFeeDate, safeTarikhBayar, safeFeeBulan, safeFeeTahun, safeCaraBayar, safeNoResit, safeResitImg]);
     
     const [newFee] = await pool.execute(`
       SELECT f.*, u.nama as pelajar_nama, u.ic as pelajar_ic, c.nama_kelas
@@ -280,7 +314,7 @@ export const updateFee = async (req, res) => {
     
     // Check if fee exists
     const [existingFees] = await pool.execute(
-      'SELECT id FROM fees WHERE id = ?',
+      'SELECT id, student_ic FROM fees WHERE id = ?',
       [id]
     );
     
@@ -291,19 +325,56 @@ export const updateFee = async (req, res) => {
       });
     }
     
-    // Map frontend status to backend if needed
-    const backendStatus = status === 'terbayar' ? 'Bayar' : 
-                         status === 'tunggak' ? 'Belum Bayar' : 
-                         status || 'Belum Bayar';
+    // If student_ic is provided, validate it exists
+    let actualStudentIC = existingFees[0].student_ic; // Use existing student_ic from fee record
+    if (student_ic && student_ic !== existingFees[0].student_ic) {
+      // Normalize IC for lookup
+      const normalizedIC = student_ic.replace(/-/g, '').toUpperCase();
+      const normalizedICNoDash = normalizedIC.replace(/-/g, '');
+      
+      // Check if student exists - try multiple formats
+      let [students] = await pool.execute(
+        `SELECT ic FROM users 
+         WHERE (
+           ic = ? OR 
+           ic = ? OR 
+           REPLACE(UPPER(ic), '-', '') = ? OR
+           REPLACE(UPPER(ic), '-', '') = REPLACE(UPPER(?), '-', '')
+         ) AND role = 'student'`,
+        [student_ic, normalizedIC, normalizedICNoDash, student_ic]
+      );
+      
+      if (students.length === 0) {
+        // Try case-insensitive search as last resort
+        [students] = await pool.execute(
+          "SELECT ic FROM users WHERE UPPER(REPLACE(ic, '-', '')) = UPPER(REPLACE(?, '-', '')) AND role = 'student'",
+          [student_ic]
+        );
+      }
+      
+      if (students.length === 0) {
+        return res.status(400).json({
+          success: false,
+          message: 'Student not found'
+        });
+      }
+      
+      actualStudentIC = students[0].ic;
+    }
+    
+    // Map frontend status to backend - keep 'terbayar' and 'tunggak' as they are valid in DB
+    const backendStatus = status === 'Bayar' ? 'terbayar' : 
+                         status === 'Belum Bayar' ? 'tunggak' : 
+                         (status || 'tunggak');
     
     // Set tarikh_bayar if status is paid
-    const tarikh_bayar = (backendStatus === 'Bayar' || backendStatus === 'terbayar') ? tarikh : null;
+    const tarikh_bayar = (backendStatus === 'terbayar' || backendStatus === 'Bayar') ? tarikh : null;
     
     await pool.execute(`
       UPDATE fees 
       SET student_ic = ?, jumlah = ?, status = ?, tarikh = ?, tarikh_bayar = ?, bulan = ?, tahun = ?, cara_bayar = ?, no_resit = ?, resit_img = ?, updated_at = CURRENT_TIMESTAMP
       WHERE id = ?
-    `, [student_ic, jumlah, backendStatus, tarikh, tarikh_bayar, bulan, tahun, cara_bayar, no_resit, resit_img, id]);
+    `, [actualStudentIC, jumlah, backendStatus, tarikh, tarikh_bayar, bulan, tahun, cara_bayar, no_resit, resit_img, id]);
     
     const [updatedFee] = await pool.execute(`
       SELECT f.*, u.nama as pelajar_nama, u.ic as pelajar_ic, c.nama_kelas

@@ -3,13 +3,15 @@ import { validationResult } from 'express-validator';
 
 export const getAttendance = async (req, res) => {
   try {
-    const { date, kelas_id, pelajar_id, page = 1, limit = 50 } = req.query;
+    const { date, kelas_id, class_id, pelajar_id, page = 1, limit = 50 } = req.query;
 
     let query = `
-      SELECT a.*, u.nama as pelajar_nama, u.ic as pelajar_ic, c.nama_kelas
+      SELECT a.*, u.nama as pelajar_nama, u.ic as pelajar_ic, c.nama_kelas,
+             mu.nama as marked_by_name
       FROM attendance a
       JOIN users u ON a.student_ic = u.ic
       JOIN classes c ON a.class_id = c.id
+      LEFT JOIN users mu ON a.marked_by = mu.ic
       WHERE 1=1
     `;
 
@@ -26,9 +28,11 @@ export const getAttendance = async (req, res) => {
       queryParams.push(date);
     }
 
-    if (kelas_id) {
+    // Support both kelas_id and class_id for compatibility
+    const classId = kelas_id || class_id;
+    if (classId) {
       query += ` AND a.class_id = ?`;
-      queryParams.push(kelas_id);
+      queryParams.push(classId);
     }
 
     if (pelajar_id) {
@@ -62,9 +66,10 @@ export const getAttendance = async (req, res) => {
       countParams.push(date);
     }
 
-    if (kelas_id) {
+    // Use the same classId variable from above
+    if (classId) {
       countQuery += ` AND a.class_id = ?`;
-      countParams.push(kelas_id);
+      countParams.push(classId);
     }
 
     if (pelajar_id) {
@@ -237,14 +242,19 @@ export const bulkMarkAttendance = async (req, res) => {
     // Use current date if tarikh is not provided
     const attendanceDate = tarikh || new Date().toISOString().split('T')[0];
 
-    // Start transaction
-    await pool.execute('START TRANSACTION');
+    // Get a connection from the pool for transaction
+    const connection = await pool.getConnection();
 
     try {
+      // Start transaction
+      await connection.beginTransaction();
+
       for (const record of attendance_data) {
         const { student_ic, status } = record;
 
         if (!['Hadir', 'Tidak Hadir', 'Cuti'].includes(status)) {
+          await connection.rollback();
+          connection.release();
           return res.status(400).json({
             success: false,
             message: 'Invalid attendance status',
@@ -252,14 +262,14 @@ export const bulkMarkAttendance = async (req, res) => {
         }
 
         // Check if attendance already exists
-        const [existingAttendance] = await pool.execute(
+        const [existingAttendance] = await connection.execute(
           'SELECT id FROM attendance WHERE student_ic = ? AND class_id = ? AND tarikh = ?',
           [student_ic, class_id, attendanceDate]
         );
 
         if (existingAttendance.length > 0) {
           // Update existing
-          await pool.execute(
+          await connection.execute(
             `
             UPDATE attendance 
             SET status = ?, updated_at = CURRENT_TIMESTAMP
@@ -269,7 +279,7 @@ export const bulkMarkAttendance = async (req, res) => {
           );
         } else {
           // Insert new
-          await pool.execute(
+          await connection.execute(
             `
             INSERT INTO attendance (student_ic, class_id, tarikh, status)
             VALUES (?, ?, ?, ?)
@@ -279,14 +289,16 @@ export const bulkMarkAttendance = async (req, res) => {
         }
       }
 
-      await pool.execute('COMMIT');
+      await connection.commit();
+      connection.release();
 
       res.json({
         success: true,
         message: 'Bulk attendance marked successfully',
       });
     } catch (error) {
-      await pool.execute('ROLLBACK');
+      await connection.rollback();
+      connection.release();
       throw error;
     }
   } catch (error) {
@@ -294,6 +306,123 @@ export const bulkMarkAttendance = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Internal server error',
+    });
+  }
+};
+
+export const bulkMarkAttendanceWithProof = async (req, res) => {
+  try {
+    const { class_id, tarikh, attendance_data } = req.body;
+    
+    if (!class_id || !attendance_data) {
+      return res.status(400).json({
+        success: false,
+        message: 'class_id and attendance_data are required',
+      });
+    }
+
+    // Parse attendance_data if it's a string (from FormData)
+    let parsedAttendanceData;
+    try {
+      parsedAttendanceData = typeof attendance_data === 'string' 
+        ? JSON.parse(attendance_data) 
+        : attendance_data;
+    } catch (parseError) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid attendance_data format',
+      });
+    }
+
+    if (!Array.isArray(parsedAttendanceData) || parsedAttendanceData.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'attendance_data must be a non-empty array',
+      });
+    }
+
+    // Use current date if tarikh is not provided
+    const attendanceDate = tarikh || new Date().toISOString().split('T')[0];
+
+    // Handle proof image
+    let proofImagePath = null;
+    if (req.file) {
+      proofImagePath = `uploads/${req.file.filename}`;
+    }
+
+    // Get user who marked the attendance
+    const markedBy = req.user?.ic || null;
+
+    // Get a connection from the pool for transaction
+    const connection = await pool.getConnection();
+    
+    try {
+      // Start transaction
+      await connection.beginTransaction();
+
+      for (const record of parsedAttendanceData) {
+        const { student_ic, status } = record;
+
+        // Allow additional statuses: Lewat, Sakit
+        if (!['Hadir', 'Tidak Hadir', 'Cuti', 'Lewat', 'Sakit'].includes(status)) {
+          await connection.rollback();
+          connection.release();
+          return res.status(400).json({
+            success: false,
+            message: `Invalid attendance status: ${status}`,
+          });
+        }
+
+        // Check if attendance already exists
+        const [existingAttendance] = await connection.execute(
+          'SELECT id FROM attendance WHERE student_ic = ? AND class_id = ? AND tarikh = ?',
+          [student_ic, class_id, attendanceDate]
+        );
+
+        if (existingAttendance.length > 0) {
+          // Update existing - always update all fields (use NULL if not provided)
+          await connection.execute(
+            `
+            UPDATE attendance 
+            SET status = ?, 
+                proof_image = ?,
+                marked_by = ?,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE student_ic = ? AND class_id = ? AND tarikh = ?
+          `,
+            [status, proofImagePath || null, markedBy || null, student_ic, class_id, attendanceDate]
+          );
+        } else {
+          // Insert new - always include all fields (use NULL if not provided)
+          await connection.execute(
+            `
+            INSERT INTO attendance (student_ic, class_id, tarikh, status, proof_image, marked_by)
+            VALUES (?, ?, ?, ?, ?, ?)
+          `,
+            [student_ic, class_id, attendanceDate, status, proofImagePath || null, markedBy || null]
+          );
+        }
+      }
+
+      await connection.commit();
+      connection.release();
+
+      res.json({
+        success: true,
+        message: 'Bulk attendance marked successfully',
+        proof_image: proofImagePath,
+      });
+    } catch (error) {
+      await connection.rollback();
+      connection.release();
+      throw error;
+    }
+  } catch (error) {
+    console.error('Bulk mark attendance with proof error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: error.message,
     });
   }
 };

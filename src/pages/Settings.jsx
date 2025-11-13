@@ -407,7 +407,7 @@ const Settings = () => {
               className={`px-4 py-2 font-medium transition-colors ${
                 activeTab === 'qr'
                   ? 'border-b-2 border-emerald-600 text-emerald-600'
-                  : 'text-gray-600 hover:text-gray-900'
+                  : 'text-black hover:text-black'
               }`}
             >
               <QrCode className="w-4 h-4 inline mr-2" />
@@ -418,7 +418,7 @@ const Settings = () => {
               className={`px-4 py-2 font-medium transition-colors ${
                 activeTab === 'password'
                   ? 'border-b-2 border-emerald-600 text-emerald-600'
-                  : 'text-gray-600 hover:text-gray-900'
+                  : 'text-black hover:text-black'
               }`}
             >
               <Key className="w-4 h-4 inline mr-2" />
@@ -429,7 +429,7 @@ const Settings = () => {
               className={`px-4 py-2 font-medium transition-colors ${
                 activeTab === 'checkin'
                   ? 'border-b-2 border-emerald-600 text-emerald-600'
-                  : 'text-gray-600 hover:text-gray-900'
+                  : 'text-black hover:text-black'
               }`}
             >
               <MapPin className="w-4 h-4 inline mr-2" />
@@ -440,7 +440,7 @@ const Settings = () => {
               className={`px-4 py-2 font-medium transition-colors ${
                 activeTab === 'backup'
                   ? 'border-b-2 border-emerald-600 text-emerald-600'
-                  : 'text-gray-600 hover:text-gray-900'
+                  : 'text-black hover:text-black'
               }`}
             >
               <Database className="w-4 h-4 inline mr-2" />
@@ -460,7 +460,7 @@ const Settings = () => {
             <div className="space-y-6">
               {/* Enable/Disable Custom QR */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-black mb-2">
                   Gunakan QR Code Kustom
                 </label>
                 <select
@@ -478,7 +478,7 @@ const Settings = () => {
 
               {/* QR Code Image Upload/URL */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-black mb-2">
                   URL Gambar QR Code
                 </label>
                 <div className="flex items-center space-x-2">
@@ -516,7 +516,7 @@ const Settings = () => {
 
               {/* QR Code Link */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-black mb-2">
                   Pautan QR Code (Alternatif)
                 </label>
                 <div className="flex items-center space-x-2">
@@ -560,7 +560,7 @@ const Settings = () => {
             <div className="space-y-6">
               {/* User Selection */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-black mb-2">
                   Pilih Pengguna
                 </label>
                 {loadingUsers ? (
@@ -589,17 +589,17 @@ const Settings = () => {
               {selectedUser && (
                 <>
                   <div className="bg-gray-50 p-4 rounded-lg">
-                    <p className="text-sm font-medium text-gray-900">
+                    <p className="text-sm font-medium text-black">
                       Nama: <span className="font-normal">{selectedUser.nama}</span>
                     </p>
-                    <p className="text-sm font-medium text-gray-900">
+                    <p className="text-sm font-medium text-black">
                       IC: <span className="font-normal">{selectedUser.user_ic || selectedUser.ic}</span>
                     </p>
-                    <p className="text-sm font-medium text-gray-900">
+                    <p className="text-sm font-medium text-black">
                       Peranan: <Badge variant="default">{selectedUser.role}</Badge>
                     </p>
                     {selectedUser.email && (
-                      <p className="text-sm font-medium text-gray-900">
+                      <p className="text-sm font-medium text-black">
                         Email: <span className="font-normal">{selectedUser.email}</span>
                       </p>
                     )}
@@ -607,7 +607,7 @@ const Settings = () => {
 
                   {/* New Password */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-sm font-medium text-black mb-2">
                       Kata Laluan Baru
                     </label>
                     <div className="relative">
@@ -621,7 +621,7 @@ const Settings = () => {
                       <button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-black"
                       >
                         {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                       </button>
@@ -630,7 +630,7 @@ const Settings = () => {
 
                   {/* Confirm Password */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-sm font-medium text-black mb-2">
                       Sahkan Kata Laluan
                     </label>
                     <input
@@ -677,21 +677,21 @@ const Settings = () => {
 
               {/* Static Coordinates Display */}
               <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-                <p className="text-sm font-medium text-gray-800 mb-2">Koordinat Masjid (Statik):</p>
-                <p className="text-xs text-gray-700 font-mono">
+                <p className="text-sm font-medium text-black mb-2">Koordinat Masjid (Statik):</p>
+                <p className="text-xs text-black font-mono">
                   <strong>Latitude:</strong> 3.807829297637092
                 </p>
-                <p className="text-xs text-gray-700 font-mono">
+                <p className="text-xs text-black font-mono">
                   <strong>Longitude:</strong> 103.32799643765418
                 </p>
-                <p className="text-xs text-gray-600 mt-2 italic">
+                <p className="text-xs text-black mt-2 italic">
                   Koordinat ini adalah tetap dan tidak boleh diubah oleh pentadbir.
                 </p>
               </div>
 
               {/* Check-In Radius */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-black mb-2">
                   Jejari Maksimum Check-In (Meter)
                 </label>
                 <div className="space-y-2">
@@ -714,13 +714,13 @@ const Settings = () => {
                       placeholder="100"
                       className="w-32 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500"
                     />
-                    <span className="text-sm text-gray-600">meter</span>
+                    <span className="text-sm text-black">meter</span>
                   </div>
                 </div>
                 <p className="text-xs text-gray-500 mt-1">
                   Gunakan slider atau masukkan nilai secara terus. Nilai lalai: 100 meter.
                 </p>
-                <div className="mt-2 text-xs text-gray-600">
+                <div className="mt-2 text-xs text-black">
                   <strong>Jejari semasa:</strong> {checkInSettings.masjid_checkin_radius || '100'} meter
                 </div>
               </div>
@@ -757,8 +757,8 @@ const Settings = () => {
 
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                 <div>
-                  <p className="text-sm font-medium text-gray-700">Eksport Manual</p>
-                  <p className="text-xs text-gray-500">Klik butang di bawah untuk menjana sandaran serta-merta (disyorkan selepas kemas kini besar).</p>
+                  <p className="text-sm font-medium text-black">Eksport Manual</p>
+                  <p className="text-xs text-black">Klik butang di bawah untuk menjana sandaran serta-merta (disyorkan selepas kemas kini besar).</p>
                 </div>
                 <Button
                   onClick={handleExportDatabase}
@@ -780,16 +780,16 @@ const Settings = () => {
               </div>
 
               <div>
-                <h3 className="text-sm font-semibold text-gray-700 mb-2">Sandaran Terakhir</h3>
+                <h3 className="text-sm font-semibold text-black mb-2">Sandaran Terakhir</h3>
                 {lastBackup ? (
                   <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 space-y-2">
-                    <p className="text-sm text-gray-700">
+                    <p className="text-sm text-black">
                       <strong>Tarikh:</strong> {formatDateTime(lastBackup.createdAt || lastBackup.created_at)}
                     </p>
-                    <p className="text-sm text-gray-700">
+                    <p className="text-sm text-black">
                       <strong>Saiz Fail:</strong> {formatFileSize(lastBackup.fileSize || lastBackup.file_size)}
                     </p>
-                    <p className="text-sm text-gray-700">
+                    <p className="text-sm text-black">
                       <strong>Status:</strong>{' '}
                       <Badge variant={(lastBackup.status || 'success') === 'success' ? 'success' : 'danger'}>
                         {(lastBackup.status || 'success') === 'success' ? 'Berjaya' : 'Gagal'}
@@ -830,7 +830,7 @@ const Settings = () => {
                       </Button>
                     )}
                     {!lastBackup.driveViewLink && !lastBackup.fileName && (
-                      <p className="text-xs text-gray-500 mt-1">Tiada pautan muat turun tersedia.</p>
+                      <p className="text-xs text-black mt-1">Tiada pautan muat turun tersedia.</p>
                     )}
                     {lastBackup.errorMessage && (
                       <p className="text-xs text-red-600 bg-red-50 border border-red-100 rounded-md p-2">
@@ -839,13 +839,13 @@ const Settings = () => {
                     )}
                   </div>
                 ) : (
-                  <p className="text-sm text-gray-500">Belum ada sandaran. Mulakan eksport pertama anda.</p>
+                  <p className="text-sm text-black">Belum ada sandaran. Mulakan eksport pertama anda.</p>
                 )}
               </div>
 
               <div>
                 <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-sm font-semibold text-gray-700 flex items-center">
+                  <h3 className="text-sm font-semibold text-black flex items-center">
                     <History className="w-4 h-4 mr-2" />
                     Sejarah Eksport Terkini
                   </h3>
@@ -870,15 +870,15 @@ const Settings = () => {
                       <tbody className="bg-white divide-y divide-gray-200">
                         {backupHistory.map((backup) => (
                           <tr key={backup.id || backup.fileName || backup.file_name}>
-                            <td className="px-4 py-2 text-sm text-gray-700">{formatDateTime(backup.createdAt)}</td>
-                            <td className="px-4 py-2 text-sm text-gray-700">{formatFileSize(backup.fileSize)}</td>
-                            <td className="px-4 py-2 text-sm text-gray-700">
+                            <td className="px-4 py-2 text-sm text-black">{formatDateTime(backup.createdAt)}</td>
+                            <td className="px-4 py-2 text-sm text-black">{formatFileSize(backup.fileSize)}</td>
+                            <td className="px-4 py-2 text-sm text-black">
                               <Badge variant={backup.status === 'success' ? 'success' : 'danger'}>
                                 {backup.status === 'success' ? 'Berjaya' : 'Gagal'}
                               </Badge>
                             </td>
-                            <td className="px-4 py-2 text-sm text-gray-600">{backup.triggerType === 'scheduled-year-end' ? 'Auto Tahunan' : 'Manual'}</td>
-                            <td className="px-4 py-2 text-sm text-gray-600">
+                            <td className="px-4 py-2 text-sm text-black">{backup.triggerType === 'scheduled-year-end' ? 'Auto Tahunan' : 'Manual'}</td>
+                            <td className="px-4 py-2 text-sm text-black">
                               <div className="flex items-center gap-2">
                                 {backup.driveViewLink ? (
                                   <button

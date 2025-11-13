@@ -19,12 +19,13 @@ import {
   UserCheck,
   History,
   ShieldCheck,
-  UserCog
+  UserCog,
 } from 'lucide-react';
 import { SidebarProvider, useSidebar } from './components/ui/SidebarProvider';
 import { usePreferences } from './hooks/usePreferences';
 import { getScheme } from './config/seasonalSchemes';
 import SeasonalElements from './components/seasonal/SeasonalElements';
+import SidebarThemeAnimation from './components/seasonal/SidebarThemeAnimation';
 
 const LayoutContent = ({ children, user, onLogout }) => {
   const location = useLocation();
@@ -142,10 +143,7 @@ const LayoutContent = ({ children, user, onLogout }) => {
         transition: 'background 0.5s ease'
       }}
     >
-      {/* Seasonal Elements in Main Area */}
-      <div className="fixed inset-0 pointer-events-none overflow-hidden opacity-30" style={{ zIndex: 0 }}>
-        <SeasonalElements scheme={colorScheme} />
-      </div>
+      {/* Seasonal Elements removed from main area - only in sidebar */}
       {/* Mobile Overlay */}
       {isOpen && (
         <div 
@@ -170,15 +168,25 @@ const LayoutContent = ({ children, user, onLogout }) => {
           color: 'white'
         }}
       >
-        {/* Seasonal Elements in Sidebar - More Visible */}
+        {/* Seasonal Tree Elements in Sidebar - Visible with Animation */}
         <div 
-          className="absolute inset-0 pointer-events-none overflow-hidden transition-opacity duration-500"
+          className="absolute inset-0 pointer-events-none overflow-visible transition-opacity duration-500"
           style={{ 
-            opacity: 0.35,
+            opacity: 1,
             zIndex: 1
           }}
         >
           <SeasonalElements scheme={colorScheme} />
+        </div>
+        
+        {/* Theme-specific Sidebar Animations */}
+        <div 
+          className="absolute inset-0 pointer-events-none overflow-hidden transition-opacity duration-500"
+          style={{ 
+            zIndex: 2
+          }}
+        >
+          <SidebarThemeAnimation scheme={colorScheme} />
         </div>
         
         {/* Additional decorative overlay */}
@@ -207,7 +215,7 @@ const LayoutContent = ({ children, user, onLogout }) => {
                   className="h-12 w-auto object-contain flex-shrink-0"
                 />
                 <div className="flex-1 min-w-0">
-                  <h1 className="text-sm font-bold truncate">E-SKP</h1>
+                  <h1 className="text-sm font-bold truncate">e-SKP</h1>
                   <p className="text-xs truncate opacity-80">Masjid Negeri Sultan Ahmad 1</p>
                 </div>
               </div>
@@ -321,8 +329,8 @@ const LayoutContent = ({ children, user, onLogout }) => {
           <div className="flex items-center justify-between px-4 md:px-6 py-3">
             {/* Left Section: Text Instead of Logo */}
             <div className="flex items-center gap-3 md:gap-4">
-              <h1 className="text-lg md:text-xl lg:text-2xl font-semibold text-gray-800">
-                E-SKP
+              <h1 className="text-lg md:text-xl lg:text-2xl font-semibold text-black">
+                e-SKP
               </h1>
             </div>
 
@@ -334,8 +342,9 @@ const LayoutContent = ({ children, user, onLogout }) => {
                 className="p-2 rounded-md hover:bg-gray-100 transition-colors"
                 aria-label="Toggle menu"
               >
-                <Menu className="w-5 h-5 text-gray-700" />
+                <Menu className="w-5 h-5 text-black" />
               </button>
+
 
               {/* User Info with Dropdown */}
               <div className="flex items-center gap-3 md:gap-4 relative" ref={userMenuRef}>
@@ -344,7 +353,7 @@ const LayoutContent = ({ children, user, onLogout }) => {
                   className="flex items-center gap-3 md:gap-4 hover:opacity-80 transition-opacity"
                 >
                   <div className="hidden lg:block text-right">
-                    <p className="text-sm font-medium text-gray-800">
+                    <p className="text-sm font-medium text-black">
                       {getRoleLabel(user?.role) || 'Admin Masjid'}
                     </p>
                   </div>
@@ -387,10 +396,10 @@ const LayoutContent = ({ children, user, onLogout }) => {
                         </div>
                       </div>
                       <div className="text-center">
-                        <p className="font-bold text-gray-900 text-sm">
+                        <p className="font-bold text-black text-sm">
                           {user?.nama || 'Admin Masjid'}
                         </p>
-                        <p className="text-xs text-gray-500 mt-1">
+                        <p className="text-xs text-black mt-1">
                           {user?.email || 'admin@masjid.com'}
                         </p>
                       </div>
@@ -401,7 +410,7 @@ const LayoutContent = ({ children, user, onLogout }) => {
                       <Link
                         to="/settings"
                         onClick={() => setUserMenuOpen(false)}
-                        className="flex items-center gap-3 px-4 py-3 text-gray-700 hover:bg-gray-100 transition-colors"
+                        className="flex items-center gap-3 px-4 py-3 text-black hover:bg-gray-100 transition-colors"
                       >
                         <User className="w-5 h-5 text-blue-500" />
                         <span className="text-sm">Profil</span>
@@ -411,7 +420,7 @@ const LayoutContent = ({ children, user, onLogout }) => {
                           setUserMenuOpen(false);
                           onLogout();
                         }}
-                        className="w-full flex items-center gap-3 px-4 py-3 text-gray-700 hover:bg-gray-100 transition-colors"
+                        className="w-full flex items-center gap-3 px-4 py-3 text-black hover:bg-gray-100 transition-colors"
                       >
                         <LogOut className="w-5 h-5 text-blue-500" />
                         <span className="text-sm">Log Keluar</span>

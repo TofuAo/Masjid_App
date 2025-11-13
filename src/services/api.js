@@ -64,18 +64,22 @@ api.interceptors.response.use(
     return response.data;
   },
   (error) => {
-    // Log full error details for debugging
+    // Don't log auth errors to reduce console noise
+    const isAuthError = error.response?.status === 401 || error.response?.status === 403;
+    const errorMessage = error.response?.data?.message || '';
+    const isTokenError = errorMessage.includes('token') || errorMessage.includes('Token') || errorMessage.includes('expired') || errorMessage.includes('invalid');
+    
+    if (isAuthError && isTokenError) {
+      // Silently handle token errors - don't spam console
+      removeStoredAuth();
+    } else {
+      // Log other errors for debugging
     if (error.response) {
       console.error('API Error:', error.config?.url, 'Status:', error.response?.status);
       console.error('Error Response Data:', error.response?.data);
     } else {
       console.error('API Error (no response):', error.message);
     }
-    
-    if (error.response?.status === 401) {
-      // Token expired or invalid
-      removeStoredAuth();
-      // window.location.href = '/login'; // <-- REMOVE THIS to prevent auto reload
     }
     
     // Return error with proper message structure
@@ -237,6 +241,13 @@ export const attendanceAPI = {
   },
   mark: (data) => api.post('/attendance', data),
   bulkMark: (data) => api.post('/attendance/bulk', data),
+  bulkMarkWithProof: (formData) => {
+    return api.post('/attendance/bulk-with-proof', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+  },
   getStats: (params) => api.get('/attendance/stats', { params }),
   getStudentHistory: (id, params) => api.get(`/attendance/student/${id}`, { params }),
 };
@@ -396,5 +407,6 @@ export const exportAPI = {
       responseType: 'blob',
     }),
 };
+
 
 export default api;

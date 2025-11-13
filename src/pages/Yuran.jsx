@@ -159,15 +159,19 @@ const Yuran = () => {
     );
   };
 
-  const updateYuranStatus = async (id, newStatus) => {
+  const updateYuranStatus = async (id, newStatus, studentIC = null) => {
     try {
       // This action should only be available to admin/teacher
       if (userRole === 'student') return; 
 
-      // If id is 0, it means the student doesn't have a fee record yet
+      // If id is 0 or falsy, it means the student doesn't have a fee record yet
       // We need to find the student from the list and create a fee record first
-      if (id === 0 || !id) {
-        const student = yuranArray.find(y => y.id === id || (!y.id && y.pelajar_ic));
+      if (id === 0 || !id || id === '0') {
+        // Find student by IC if provided, otherwise find by id
+        const student = studentIC 
+          ? yuranArray.find(y => y.pelajar_ic === studentIC || y.student_ic === studentIC)
+          : yuranArray.find(y => (y.id === id || y.id === 0 || !y.id) && y.pelajar_ic);
+        
         if (!student || !student.pelajar_ic) {
           toast.error('Maklumat pelajar tidak ditemui.');
           return;
@@ -180,7 +184,7 @@ const Yuran = () => {
         const tahun = currentDate.getFullYear();
 
         await feesAPI.create({
-          student_ic: student.pelajar_ic,
+          student_ic: student.pelajar_ic || student.student_ic,
           jumlah: student.jumlah || 150.00,
           status: 'terbayar',
           tarikh: currentDate.toISOString().split('T')[0],
@@ -205,7 +209,8 @@ const Yuran = () => {
       fetchFees(); // Re-fetch to update the list
     } catch (err) {
       console.error('Failed to update fee status:', err);
-      toast.error(err?.message || 'Gagal mengemaskini status yuran.');
+      const errorMessage = err?.response?.data?.message || err?.message || 'Gagal mengemaskini status yuran.';
+      toast.error(errorMessage);
     }
   };
 
@@ -260,7 +265,7 @@ const Yuran = () => {
               <div className="space-y-4">
                 {/* Enable/Disable */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-black mb-2">
                     Gunakan QR Code Kustom
                   </label>
                   <select
@@ -275,7 +280,7 @@ const Yuran = () => {
 
                 {/* QR Code Image */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-black mb-2">
                     URL Gambar QR Code
                   </label>
                   <div className="flex items-center space-x-2">
@@ -310,7 +315,7 @@ const Yuran = () => {
 
                 {/* QR Code Link */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-black mb-2">
                     Pautan QR Code (Alternatif)
                   </label>
                   <div className="flex items-center space-x-2">
@@ -323,7 +328,7 @@ const Yuran = () => {
                       className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500"
                     />
                   </div>
-                  <p className="mt-1 text-xs text-gray-500">
+                  <p className="mt-1 text-xs text-black">
                     Jika dipenuhi, QR code akan mengandungi pautan ini. Jika tidak, akan gunakan format pembayaran dengan nombor akaun.
                   </p>
                 </div>
@@ -336,7 +341,7 @@ const Yuran = () => {
                   <Save className="w-4 h-4 mr-2" />
                   {savingQR ? 'Menyimpan...' : 'Simpan Tetapan QR Code'}
                 </Button>
-                <p className="text-xs text-gray-600 text-center">
+                <p className="text-xs text-black text-center">
                   * Tetapan ini akan mempengaruhi semua pengguna sistem
                 </p>
               </div>
@@ -407,8 +412,8 @@ const Yuran = () => {
               </div>
             </div>
             <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Jumlah Yuran</p>
-              <p className="text-2xl font-bold text-gray-900">{totalYuran}</p>
+              <p className="text-sm font-medium text-black">Jumlah Yuran</p>
+              <p className="text-2xl font-bold text-black">{totalYuran}</p>
             </div>
           </div>
         </Card>
@@ -421,8 +426,8 @@ const Yuran = () => {
               </div>
             </div>
             <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Terbayar</p>
-              <p className="text-2xl font-bold text-gray-900">{terbayarCount}</p>
+              <p className="text-sm font-medium text-black">Terbayar</p>
+              <p className="text-2xl font-bold text-black">{terbayarCount}</p>
             </div>
           </div>
         </Card>
@@ -435,8 +440,8 @@ const Yuran = () => {
               </div>
             </div>
             <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Tunggak</p>
-              <p className="text-2xl font-bold text-gray-900">{tunggakCount}</p>
+              <p className="text-sm font-medium text-black">Tunggak</p>
+              <p className="text-2xl font-bold text-black">{tunggakCount}</p>
             </div>
           </div>
         </Card>
@@ -449,8 +454,8 @@ const Yuran = () => {
               </div>
             </div>
             <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Kutipan</p>
-              <p className="text-2xl font-bold text-gray-900">RM {totalKutipan}</p>
+              <p className="text-sm font-medium text-black">Kutipan</p>
+              <p className="text-2xl font-bold text-black">RM {totalKutipan}</p>
             </div>
           </div>
         </Card>
@@ -463,8 +468,8 @@ const Yuran = () => {
               </div>
             </div>
             <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Tunggak</p>
-              <p className="text-2xl font-bold text-gray-900">RM {totalTunggak}</p>
+              <p className="text-sm font-medium text-black">Tunggak</p>
+              <p className="text-2xl font-bold text-black">RM {totalTunggak}</p>
             </div>
           </div>
         </Card>
@@ -484,26 +489,26 @@ const Yuran = () => {
                 <thead className="bg-gray-50">
                   <tr>
                     {userRole !== 'student' && (
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-6 py-3 text-left text-xs font-medium text-black uppercase tracking-wider">
                         Pelajar
                       </th>
                     )}
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-black uppercase tracking-wider">
                       Kelas
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-black uppercase tracking-wider">
                       Bulan/Tahun
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-black uppercase tracking-wider">
                       Jumlah
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-black uppercase tracking-wider">
                       Status
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-black uppercase tracking-wider">
                       Tarikh Bayar
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-black uppercase tracking-wider">
                       Tindakan
                     </th>
                   </tr>
@@ -513,22 +518,22 @@ const Yuran = () => {
                     <tr key={y.id || `student-${y.pelajar_ic || index}`} className="hover:bg-gray-50">
                       {userRole !== 'student' && (
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm font-medium text-gray-900">{y.pelajar_nama}</div>
+                          <div className="text-sm font-medium text-black">{y.pelajar_nama}</div>
                         </td>
                       )}
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-black">
                         {y.kelas_nama}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-black">
                         {y.bulan} {y.tahun}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-black">
                         RM {y.jumlah}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         {getStatusBadge(y.status)}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-black">
                         {y.tarikh_bayar ? new Date(y.tarikh_bayar).toLocaleDateString('ms-MY') : '-'}
                       </td>
                       {userRole !== 'student' ? (
@@ -536,7 +541,7 @@ const Yuran = () => {
                           <div className="flex space-x-2">
                             {(!y.status || y.status === 'tunggak' || y.status === 'pending' || y.status === 'Belum Bayar') && (
                               <button
-                                onClick={() => updateYuranStatus(y.id || 0, 'terbayar')}
+                                onClick={() => updateYuranStatus(y.id || 0, 'terbayar', y.pelajar_ic || y.student_ic)}
                                 className="px-3 py-1 text-xs bg-green-100 text-green-800 rounded hover:bg-green-200 font-medium"
                                 title="Tandakan sebagai terbayar"
                               >
@@ -544,7 +549,7 @@ const Yuran = () => {
                               </button>
                             )}
                             {(y.status === 'terbayar' || y.status === 'Bayar') && (
-                              <div className="text-xs text-gray-500 flex items-center">
+                              <div className="text-xs text-black flex items-center">
                                 <CheckCircle className="w-3 h-3 mr-1 text-green-600" />
                                 {y.no_resit ? `Resit: ${y.no_resit}` : 'Terbayar'}
                               </div>
@@ -568,7 +573,7 @@ const Yuran = () => {
                               <span>Bayar Yuran</span>
                             </button>
                           ) : (
-                            <div className="text-xs text-gray-500">
+                            <div className="text-xs text-black">
                               {y.no_resit && `Resit: ${y.no_resit}`}
                             </div>
                           )}
@@ -583,7 +588,7 @@ const Yuran = () => {
 
           {!loading && yuran.length === 0 && (
             <div className="text-center py-8">
-              <p className="text-gray-500">Tiada rekod yuran ditemui</p>
+              <p className="text-black">Tiada rekod yuran ditemui</p>
             </div>
           )}
         </Card.Content>

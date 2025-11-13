@@ -10,20 +10,29 @@ import {
   getFeeStats
 } from '../controllers/feeController.js';
 import { authenticateToken, requireRole } from '../middleware/auth.js';
+import { normalizeICMiddleware } from '../middleware/normalizeIC.js';
 
 const router = express.Router();
 
 // Validation rules
 const feeValidation = [
   body('student_ic')
-    .matches(/^\d{6}-\d{2}-\d{4}$/)
-    .withMessage('Student IC must be in format: 123456-78-9012'),
+    .custom((value) => {
+      // Accept multiple formats:
+      // - 12 digits: 123456-78-9012 or 123456789012
+      // - ICs starting with S: S0102020512 (11 characters)
+      if (!value) return false;
+      const cleaned = value.replace(/-/g, '').toUpperCase();
+      // Check for 12-digit format OR S-prefixed format (S + 10 digits)
+      return /^\d{12}$/.test(cleaned) || /^S\d{10}$/.test(cleaned);
+    })
+    .withMessage('Student IC must be 12 digits (format: 123456-78-9012 or 123456789012) or S-prefixed format (S0102020512)'),
   body('jumlah')
     .isFloat({ min: 0 })
     .withMessage('Amount must be a positive number'),
   body('status')
-    .isIn(['Bayar', 'Belum Bayar'])
-    .withMessage('Status must be one of: Bayar, Belum Bayar'),
+    .isIn(['Bayar', 'Belum Bayar', 'terbayar', 'tunggak'])
+    .withMessage('Status must be one of: Bayar, Belum Bayar, terbayar, tunggak'),
   body('tarikh')
     .isISO8601()
     .withMessage('Date must be a valid date'),
@@ -61,8 +70,8 @@ router.use(authenticateToken);
 router.get('/', getAllFees);
 router.get('/stats', getFeeStats);
 router.get('/:id', idValidation, getFeeById);
-router.post('/', requireRole(['admin', 'staff']), feeValidation, createFee);
-router.put('/:id', requireRole(['admin', 'staff']), idValidation, feeValidation, updateFee);
+router.post('/', requireRole(['admin', 'staff']), feeValidation, normalizeICMiddleware, createFee);
+router.put('/:id', requireRole(['admin', 'staff']), idValidation, feeValidation, normalizeICMiddleware, updateFee);
 router.put('/:id/mark-paid', requireRole(['admin', 'staff']), idValidation, markPaidValidation, markAsPaid);
 router.delete('/:id', requireRole(['admin']), idValidation, deleteFee);
 

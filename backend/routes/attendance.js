@@ -4,12 +4,14 @@ import {
   getAttendance,
   markAttendance,
   bulkMarkAttendance,
+  bulkMarkAttendanceWithProof,
   getAttendanceStats,
   getStudentAttendanceHistory
 } from '../controllers/attendanceController.js';
 import { authenticateToken, requireRole } from '../middleware/auth.js';
 import { isValidICFormat } from '../utils/icNormalizer.js';
 import { normalizeICMiddleware } from '../middleware/normalizeIC.js';
+import { uploadAttendanceProof } from '../middleware/upload.js';
 
 const router = express.Router();
 
@@ -74,5 +76,6 @@ router.get('/stats', getAttendanceStats);
 router.get('/student/:student_ic', icValidation, normalizeICMiddleware, getStudentAttendanceHistory);
 router.post('/', requireRole(['admin', 'staff', 'teacher']), attendanceValidation, normalizeICMiddleware, markAttendance);
 router.post('/bulk', requireRole(['admin', 'staff', 'teacher']), bulkAttendanceValidation, normalizeICMiddleware, bulkMarkAttendance);
+router.post('/bulk-with-proof', requireRole(['admin', 'staff', 'teacher']), uploadAttendanceProof, normalizeICMiddleware, bulkMarkAttendanceWithProof);
 
 export default router;

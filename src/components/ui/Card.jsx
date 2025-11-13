@@ -18,7 +18,7 @@ const CardHeader = ({ children, className = '' }) => {
 
 const CardTitle = ({ children, className = '' }) => {
   return (
-    <h3 className={`text-lg font-semibold text-gray-900 dark:text-gray-100 ${className}`}>
+    <h3 className={`text-lg font-semibold text-black dark:text-black ${className}`}>
       {children}
     </h3>
   );

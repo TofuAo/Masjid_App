@@ -105,6 +105,38 @@ export const authenticateToken = async (req, res, next) => {
   }
 };
 
+/**
+ * Optional authentication middleware - sets req.user if token is present, but doesn't fail if missing
+ */
+export const optionalAuth = async (req, res, next) => {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+
+  if (!token) {
+    // No token, continue without setting req.user
+    return next();
+  }
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    
+    // Verify user still exists and is active
+    const [users] = await pool.execute(
+      'SELECT ic, nama, email, role, status FROM users WHERE ic = ? AND status = "aktif"',
+      [decoded.userId]
+    );
+
+    if (users.length > 0) {
+      req.user = users[0];
+    }
+    
+    next();
+  } catch (error) {
+    // Invalid token, continue without setting req.user
+    next();
+  }
+};
+
 export const requireRole = (roles) => {
   return (req, res, next) => {
     if (!req.user) {

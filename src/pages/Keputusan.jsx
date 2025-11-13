@@ -173,7 +173,7 @@ const Keputusan = () => {
       'D': { variant: 'danger', color: 'text-red-600' },
       'F': { variant: 'danger', color: 'text-red-600' }
     };
-    const config = gradeConfig[gred] || { variant: 'default', color: 'text-gray-600' };
+    const config = gradeConfig[gred] || { variant: 'default', color: 'text-black' };
     return (
       <Badge variant={config.variant} className={config.color}>
         {gred}
@@ -323,8 +323,8 @@ const Keputusan = () => {
               </div>
             </div>
             <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Jumlah Keputusan</p>
-              <p className="text-2xl font-bold text-gray-900">{totalKeputusan}</p>
+              <p className="text-sm font-medium text-black">Jumlah Keputusan</p>
+              <p className="text-2xl font-bold text-black">{totalKeputusan}</p>
             </div>
           </div>
         </Card>
@@ -337,8 +337,8 @@ const Keputusan = () => {
               </div>
             </div>
             <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Lulus</p>
-              <p className="text-2xl font-bold text-gray-900">{lulusCount}</p>
+              <p className="text-sm font-medium text-black">Lulus</p>
+              <p className="text-2xl font-bold text-black">{lulusCount}</p>
             </div>
           </div>
         </Card>
@@ -351,8 +351,8 @@ const Keputusan = () => {
               </div>
             </div>
             <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Gagal</p>
-              <p className="text-2xl font-bold text-gray-900">{gagalCount}</p>
+              <p className="text-sm font-medium text-black">Gagal</p>
+              <p className="text-2xl font-bold text-black">{gagalCount}</p>
             </div>
           </div>
         </Card>
@@ -365,8 +365,8 @@ const Keputusan = () => {
               </div>
             </div>
             <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Purata Markah</p>
-              <p className="text-2xl font-bold text-gray-900">{averageMarkah}</p>
+              <p className="text-sm font-medium text-black">Purata Markah</p>
+              <p className="text-2xl font-bold text-black">{averageMarkah}</p>
             </div>
           </div>
         </Card>
@@ -384,9 +384,9 @@ const Keputusan = () => {
                 <Award className="w-6 h-6 text-yellow-600" />
               </div>
               <div>
-                <h3 className="text-lg font-semibold text-gray-900">{topPerformer.pelajar_nama}</h3>
-                <p className="text-sm text-gray-600">{topPerformer.kelas_nama}</p>
-                <p className="text-sm text-gray-500">Markah: {topPerformer.markah} ({topPerformer.gred})</p>
+                <h3 className="text-lg font-semibold text-black">{topPerformer.pelajar_nama}</h3>
+                <p className="text-sm text-black">{topPerformer.kelas_nama}</p>
+                <p className="text-sm text-black">Markah: {topPerformer.markah} ({topPerformer.gred})</p>
               </div>
             </div>
           </Card.Content>
@@ -407,33 +407,33 @@ const Keputusan = () => {
                 <thead className="bg-gray-50">
                   <tr>
                     {userRole !== 'student' && (
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-6 py-3 text-left text-xs font-medium text-black uppercase tracking-wider">
                         Pelajar
                       </th>
                     )}
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-black uppercase tracking-wider">
                       Kelas
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-black uppercase tracking-wider">
                       Peperiksaan
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-black uppercase tracking-wider">
                       Tarikh Peperiksaan
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-black uppercase tracking-wider">
                       Markah
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-black uppercase tracking-wider">
                       Gred
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-black uppercase tracking-wider">
                       Status
                     </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-6 py-3 text-left text-xs font-medium text-black uppercase tracking-wider">
                         Catatan
                       </th>
                       {userRole !== 'student' && (
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-6 py-3 text-left text-xs font-medium text-black uppercase tracking-wider">
                           Tindakan
                         </th>
                       )}
@@ -444,19 +444,19 @@ const Keputusan = () => {
                     <tr key={k.id} className="hover:bg-gray-50">
                       {userRole !== 'student' && (
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm font-medium text-gray-900">{k.pelajar_nama}</div>
+                          <div className="text-sm font-medium text-black">{k.pelajar_nama}</div>
                         </td>
                       )}
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-black">
                         {k.kelas_nama}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-black">
                         {k.peperiksaan_nama || k.exam_subject || k.subject || '-'}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-black">
                         {k.exam_date ? new Date(k.exam_date).toLocaleDateString('ms-MY') : '-'}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-black">
                         {k.markah}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
@@ -465,7 +465,7 @@ const Keputusan = () => {
                       <td className="px-6 py-4 whitespace-nowrap">
                         {getStatusBadge(k.status)}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-black">
                         {k.catatan || '-'}
                       </td>
                       {userRole !== 'student' && (
@@ -489,7 +489,7 @@ const Keputusan = () => {
 
           {!loading && keputusan.length === 0 && (
             <div className="text-center py-8">
-              <p className="text-gray-500">Tiada keputusan ditemui</p>
+              <p className="text-black">Tiada keputusan ditemui</p>
             </div>
           )}
         </Card.Content>

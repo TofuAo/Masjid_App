@@ -3,6 +3,8 @@ import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import dotenv from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import { testConnection } from './config/database.js';
 import routes from './routes/index.js';
 import { sanitizeInput } from './middleware/sanitize.js';
@@ -12,6 +14,9 @@ import { ensurePendingPicTable } from './utils/pendingPicChanges.js';
 import { ensurePicRole } from './utils/ensurePicRole.js';
 import { scheduleAnnualDatabaseBackup } from './schedulers/annualBackupJob.js';
 import { scheduleAnnouncementCleanup } from './schedulers/announcementCleanupJob.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 // Simple logger for production
 const logger = {
   info: (msg) => console.log(`[INFO] ${msg}`),
@@ -189,6 +194,9 @@ app.get('/health', (req, res) => {
     environment: process.env.NODE_ENV || 'development'
   });
 });
+
+// Serve static files from uploads directory
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 app.use('/api', routes);
 

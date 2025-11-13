@@ -302,8 +302,8 @@ const ResultFormModal = ({
                               >
                                 <div className="flex items-center justify-between">
                                   <div>
-                                    <div className="font-medium text-gray-900">{studentName}</div>
-                                    <div className="text-sm text-gray-500">{studentIc}</div>
+                                    <div className="font-medium text-black">{studentName}</div>
+                                    <div className="text-sm text-black">{studentIc}</div>
                                   </div>
                                   {isSelected && (
                                     <Check className="w-5 h-5 text-emerald-600" />
@@ -313,7 +313,7 @@ const ResultFormModal = ({
                             );
                           })
                         ) : (
-                          <div className="px-4 py-3 text-sm text-gray-500 text-center">
+                          <div className="px-4 py-3 text-sm text-black text-center">
                             Tiada pelajar ditemui
                           </div>
                         )}
@@ -350,7 +350,7 @@ const ResultFormModal = ({
                       value={formData.gred || ''}
                       readOnly
                       placeholder="-"
-                      className="input-mosque w-full bg-gray-100 cursor-not-allowed text-gray-700"
+                      className="input-mosque w-full bg-gray-100 cursor-not-allowed text-black"
                     />
                     {canManageGrades && onManageGrades && (
                       <button
@@ -377,7 +377,7 @@ const ResultFormModal = ({
                     }
                     readOnly
                     placeholder="-"
-                    className="input-mosque w-full bg-gray-100 cursor-not-allowed text-gray-700"
+                    className="input-mosque w-full bg-gray-100 cursor-not-allowed text-black"
                   />
                   <input type="hidden" name="status" value={formData.status || ''} />
                 </div>
