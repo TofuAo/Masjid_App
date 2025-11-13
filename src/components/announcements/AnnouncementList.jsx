@@ -48,7 +48,8 @@ const AnnouncementList = ({ announcements = [], onEdit, onView, onDelete, onAdd,
       all: 'Semua Pengguna',
       students: 'Pelajar Sahaja',
       teachers: 'Guru Sahaja',
-      admin: 'Admin Sahaja'
+      admin: 'Admin Sahaja',
+      pic: 'PIC Sahaja'
     };
     return labels[audience] || audience;
   };
@@ -58,7 +59,7 @@ const AnnouncementList = ({ announcements = [], onEdit, onView, onDelete, onAdd,
       <Card.Header>
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
           <Card.Title>Senarai Pengumuman ({announcements.length})</Card.Title>
-          {user?.role === 'admin' && (
+          {(user?.role === 'admin' || user?.role === 'pic') && (
             <Button onClick={onAdd} className="flex items-center">
               <Plus className="w-4 h-4 mr-2" />
               Buat Pengumuman
@@ -83,7 +84,7 @@ const AnnouncementList = ({ announcements = [], onEdit, onView, onDelete, onAdd,
                     <div className="flex items-center space-x-2 mb-2">
                       <h3 className="text-lg font-semibold text-gray-900">{announcement.title}</h3>
                       {getPriorityBadge(announcement.priority)}
-                      {user?.role === 'admin' && getStatusBadge(announcement.status)}
+                      {(user?.role === 'admin' || user?.role === 'pic') && getStatusBadge(announcement.status)}
                     </div>
                     
                     <p className="text-gray-700 mb-3 whitespace-pre-wrap">{announcement.content}</p>
@@ -109,7 +110,7 @@ const AnnouncementList = ({ announcements = [], onEdit, onView, onDelete, onAdd,
                     </div>
                   </div>
                   
-                  {user?.role === 'admin' && (
+                  {(user?.role === 'admin' || user?.role === 'pic') && (
                     <div className="flex space-x-2 ml-4">
                       <button
                         onClick={() => onView(announcement)}

@@ -13,6 +13,9 @@ import announcementRoutes from './announcements.js';
 import googleFormRoutes from './googleForm.js';
 import staffCheckInRoutes from './staffCheckIn.js';
 import exportRoutes from './export.js';
+import adminActionRoutes from './adminActions.js';
+import pendingPicChangeRoutes from './pendingPicChanges.js';
+import picUserRoutes from './picUsers.js';
 
 const router = Router();
 
@@ -30,5 +33,8 @@ router.use('/announcements', announcementRoutes);
 router.use('/google-form', googleFormRoutes);
 router.use('/staff-checkin', staffCheckInRoutes);
 router.use('/export', exportRoutes);
+router.use('/admin-actions', adminActionRoutes);
+router.use('/pending-pic-changes', pendingPicChangeRoutes);
+router.use('/pic-users', picUserRoutes);
 
 export default router;

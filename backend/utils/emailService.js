@@ -51,7 +51,7 @@ const createTransporter = () => {
 // Email templates
 export const emailTemplates = {
   passwordReset: (resetLink, userNama, userIc) => ({
-    subject: 'Penetapan Semula Kata Laluan Sistem Kelas Pengajian',
+    subject: 'Penetapan Semula Kata Laluan E-SKP',
     html: `
       <!DOCTYPE html>
       <html>
@@ -190,10 +190,10 @@ export const emailTemplates = {
               Tuan/Puan,
             </div>
             <div class="purpose-title">
-              Penetapan Semula Kata Laluan Sistem Kelas Pengajian
+              Penetapan Semula Kata Laluan E-SKP
             </div>
             <div class="account-intro">
-              Butiran Akaun Sistem Kelas Pengajian adalah seperti dibawah :
+              Butiran Akaun E-SKP adalah seperti dibawah :
             </div>
             <div class="account-info">
               <div class="account-item">
@@ -219,7 +219,7 @@ export const emailTemplates = {
               Terima Kasih
             </div>
             <div class="signature">
-              <div class="signature-name">Pentadbir Sistem Kelas Pengajian</div>
+              <div class="signature-name">Pentadbir E-SKP</div>
               <div class="signature-org">Masjid Negeri Sultan Ahmad 1</div>
             </div>
           </div>
@@ -228,15 +228,15 @@ export const emailTemplates = {
       </html>
     `,
     text: `
-      Penetapan Semula Kata Laluan Sistem Kelas Pengajian
+      Penetapan Semula Kata Laluan E-SKP
 
       Assalamualaikum WBT / Salam Sejahtera
 
       Tuan/Puan,
 
-      Penetapan Semula Kata Laluan Sistem Kelas Pengajian
+      Penetapan Semula Kata Laluan E-SKP
 
-      Butiran Akaun Sistem Kelas Pengajian adalah seperti dibawah :
+      Butiran Akaun E-SKP adalah seperti dibawah :
 
       Nama Akaun Pengguna: ${userNama}
       No Kad Pengenalan / Passport: ${userIc || 'N/A'}
@@ -252,7 +252,7 @@ export const emailTemplates = {
 
       Terima Kasih
 
-      Pentadbir Sistem Kelas Pengajian
+      Pentadbir E-SKP
       Masjid Negeri Sultan Ahmad 1
     `
   }),
@@ -502,7 +502,7 @@ export const sendEmail = async (to, subject, html, text) => {
     }
 
     const mailOptions = {
-      from: `"Pentadbir Sistem Kelas Pengajian" <${process.env.EMAIL_USER}>`,
+      from: `"Pentadbir E-SKP" <${process.env.EMAIL_USER}>`,
       to: to,
       subject: subject,
       html: html,

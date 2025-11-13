@@ -196,6 +196,7 @@ const AnnouncementForm = ({ announcement, onSubmit, onCancel }) => {
               <option value="students">Pelajar Sahaja</option>
               <option value="teachers">Guru Sahaja</option>
               <option value="admin">Admin Sahaja</option>
+              <option value="pic">PIC Sahaja</option>
             </select>
           </div>
 

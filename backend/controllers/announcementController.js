@@ -1,5 +1,10 @@
 import { pool } from '../config/database.js';
 import { validationResult } from 'express-validator';
+import {
+  createAnnouncementRecord,
+  updateAnnouncementRecord,
+  deleteAnnouncementRecord
+} from '../services/announcementService.js';
 
 export const getAllAnnouncements = async (req, res) => {
   try {
@@ -29,15 +34,15 @@ export const getAllAnnouncements = async (req, res) => {
       query += ` AND (a.target_audience = ? OR a.target_audience = 'all')`;
       queryParams.push(target_audience);
     } else if (req.user?.role) {
-      // Filter announcements based on user role - show all that match their role
       const userRole = req.user.role;
       if (userRole === 'student') {
         query += ` AND (a.target_audience = 'all' OR a.target_audience = 'students')`;
       } else if (userRole === 'teacher') {
         query += ` AND (a.target_audience = 'all' OR a.target_audience = 'teachers')`;
+      } else if (userRole === 'pic') {
+        query += ` AND (a.target_audience = 'all' OR a.target_audience = 'pic' OR a.target_audience = 'admin')`;
       } else if (userRole === 'admin') {
         // Admins see all announcements regardless of target_audience
-        // No additional filter needed
       }
     } else {
       query += ` AND a.target_audience = 'all'`;
@@ -81,6 +86,8 @@ export const getAllAnnouncements = async (req, res) => {
         countQuery += ` AND (a.target_audience = 'all' OR a.target_audience = 'students')`;
       } else if (userRole === 'teacher') {
         countQuery += ` AND (a.target_audience = 'all' OR a.target_audience = 'teachers')`;
+      } else if (userRole === 'pic') {
+        countQuery += ` AND (a.target_audience = 'all' OR a.target_audience = 'pic' OR a.target_audience = 'admin')`;
       } else if (userRole === 'admin') {
         // Admins see all, no filter needed
       }
@@ -175,47 +182,25 @@ export const createAnnouncement = async (req, res) => {
       });
     }
 
-    const { title, content, status, priority, target_audience, start_date, end_date } = req.body;
-    const author_ic = req.user.ic;
-
-    // Handle datetime-local format - it comes as YYYY-MM-DDTHH:mm (local time without timezone)
-    // Convert to proper datetime format for MySQL, preserving the local time
-    const formatDateTimeForDB = (dateTimeString) => {
-      if (!dateTimeString) return null;
-      // datetime-local format: YYYY-MM-DDTHH:mm
-      // MySQL expects: YYYY-MM-DD HH:mm:ss
-      // Treat the input as local time and convert to MySQL datetime format
-      if (dateTimeString.includes('T')) {
-        return dateTimeString.replace('T', ' ') + ':00';
-      }
-      return dateTimeString;
-    };
-
-    const [result] = await pool.execute(`
-      INSERT INTO announcements (title, content, author_ic, status, priority, target_audience, start_date, end_date)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    `, [
+    const result = await createAnnouncementRecord(
+      {
       title, 
       content, 
-      author_ic, 
-      status || 'published', 
-      priority || 'normal', 
-      target_audience || 'all', 
-      formatDateTimeForDB(start_date), 
-      formatDateTimeForDB(end_date)
-    ]);
-
-    const [newAnnouncement] = await pool.execute(`
-      SELECT a.*, u.nama as author_nama
-      FROM announcements a
-      JOIN users u ON a.author_ic = u.ic
-      WHERE a.id = ?
-    `, [result.insertId]);
+        status,
+        priority,
+        target_audience,
+        start_date,
+        end_date
+      },
+      { actorIc: req.user.ic }
+    );
 
     res.status(201).json({
       success: true,
       message: 'Announcement created successfully',
-      data: newAnnouncement[0]
+      data: result.announcement,
+      undoToken: result.undoToken,
+      undoExpiresAt: result.undoExpiresAt
     });
   } catch (error) {
     console.error('Create announcement error:', error);
@@ -241,56 +226,37 @@ export const updateAnnouncement = async (req, res) => {
     const { title, content, status, priority, target_audience, start_date, end_date } = req.body;
 
     // Check if announcement exists
-    const [existing] = await pool.execute(
-      'SELECT id FROM announcements WHERE id = ?',
-      [id]
-    );
-
-    if (existing.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: 'Announcement not found'
-      });
-    }
-
-    // Handle datetime-local format - convert to MySQL datetime format
-    const formatDateTimeForDB = (dateTimeString) => {
-      if (!dateTimeString) return null;
-      // datetime-local format: YYYY-MM-DDTHH:mm
-      // MySQL expects: YYYY-MM-DD HH:mm:ss
-      if (dateTimeString.includes('T')) {
-        return dateTimeString.replace('T', ' ') + ':00';
-      }
-      return dateTimeString;
-    };
-
-    await pool.execute(`
-      UPDATE announcements 
-      SET title = ?, content = ?, status = ?, priority = ?, target_audience = ?, start_date = ?, end_date = ?, updated_at = CURRENT_TIMESTAMP
-      WHERE id = ?
-    `, [
+    try {
+      const result = await updateAnnouncementRecord(
+        id,
+        {
       title, 
       content, 
       status, 
       priority, 
       target_audience, 
-      formatDateTimeForDB(start_date), 
-      formatDateTimeForDB(end_date), 
-      id
-    ]);
-
-    const [updatedAnnouncement] = await pool.execute(`
-      SELECT a.*, u.nama as author_nama
-      FROM announcements a
-      JOIN users u ON a.author_ic = u.ic
-      WHERE a.id = ?
-    `, [id]);
+          start_date,
+          end_date
+        },
+        { actorIc: req.user.ic }
+      );
 
     res.json({
       success: true,
       message: 'Announcement updated successfully',
-      data: updatedAnnouncement[0]
-    });
+        data: result.announcement,
+        undoToken: result.undoToken,
+        undoExpiresAt: result.undoExpiresAt
+      });
+    } catch (err) {
+      if (err.status === 404) {
+        return res.status(404).json({
+          success: false,
+          message: 'Announcement not found'
+        });
+      }
+      throw err;
+    }
   } catch (error) {
     console.error('Update announcement error:', error);
     res.status(500).json({
@@ -304,24 +270,27 @@ export const deleteAnnouncement = async (req, res) => {
   try {
     const { id } = req.params;
     
-    const [existing] = await pool.execute(
-      'SELECT id FROM announcements WHERE id = ?',
-      [id]
-    );
+    try {
+      const result = await deleteAnnouncementRecord(
+        id,
+        { actorIc: req.user.ic }
+      );
 
-    if (existing.length === 0) {
+      res.json({
+        success: true,
+        message: 'Announcement deleted successfully',
+        undoToken: result.undoToken,
+        undoExpiresAt: result.undoExpiresAt
+      });
+    } catch (err) {
+      if (err.status === 404) {
       return res.status(404).json({
         success: false,
         message: 'Announcement not found'
       });
     }
-
-    await pool.execute('DELETE FROM announcements WHERE id = ?', [id]);
-
-    res.json({
-      success: true,
-      message: 'Announcement deleted successfully'
-    });
+      throw err;
+    }
   } catch (error) {
     console.error('Delete announcement error:', error);
     res.status(500).json({

@@ -1,8 +1,18 @@
-import { pool, testConnection } from '../config/database.js';
+import { pool } from '../config/database.js';
 import { validationResult } from 'express-validator';
-import NodeCache from 'node-cache';
+import { studentCache } from '../utils/studentCache.js';
+import {
+  createStudentRecord,
+  updateStudentRecord,
+  deleteStudentRecord
+} from '../services/studentService.js';
 
-const studentCache = new NodeCache({ stdTTL: 600 }); // 10 minutes
+const normalizeIcForQuery = (ic) => {
+  if (typeof ic !== 'string') {
+    return ic;
+  }
+  return ic.replace(/-/g, '');
+};
 
 export const getAllStudents = async (req, res) => {
   try {
@@ -131,6 +141,7 @@ export const getAllStudents = async (req, res) => {
 export const getStudentById = async (req, res) => {
   try {
     const { ic } = req.params;
+    const cleanedIc = normalizeIcForQuery(ic);
     const cacheKey = `student:${ic}`;
 
     // Check if data is in cache
@@ -144,8 +155,8 @@ export const getStudentById = async (req, res) => {
       FROM users u
       JOIN students s ON u.ic = s.user_ic
       LEFT JOIN classes c ON s.kelas_id = c.id
-      WHERE u.ic = ? AND u.role = 'student'
-    `, [ic]);
+      WHERE REPLACE(u.ic, '-', '') = ? AND u.role = 'student'
+    `, [cleanedIc]);
 
     if (students.length === 0) {
       return res.status(404).json({
@@ -174,12 +185,9 @@ export const getStudentById = async (req, res) => {
 
 export const createStudent = async (req, res) => {
   try {
-    console.log('Creating student with data:', req.body);
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       const errs = errors.array();
-      console.log('Validation errors:', errs);
-      // Surface the first error clearly in message for clients
       const first = errs[0] || {};
       const friendly = first.msg ? `${first.param ? `${first.param}: ` : ''}${first.msg}` : 'Validation failed';
       return res.status(400).json({
@@ -189,54 +197,25 @@ export const createStudent = async (req, res) => {
       });
     }
 
-    const { nama, ic, umur, alamat, telefon, email, password, kelas_id, status, tarikh_daftar } = req.body;
-    
-    // Convert empty string or undefined to null for kelas_id
-    const finalKelasId = kelas_id === '' || kelas_id === undefined ? null : kelas_id;
-
-    const connection = await pool.getConnection();
-    await connection.beginTransaction();
-
     try {
-      // Insert into users table
-      await connection.execute(
-        `INSERT INTO users (ic, nama, umur, alamat, telefon, email, password, role, status) 
-         VALUES (?, ?, ?, ?, ?, ?, ?, 'student', ?)`,
-        [ic, nama, umur, alamat, telefon, email, password, status]
-      );
-
-      // Insert into students table
-      await connection.execute(
-        `INSERT INTO students (user_ic, kelas_id, tarikh_daftar) 
-         VALUES (?, ?, ?)`,
-        [ic, finalKelasId, tarikh_daftar]
-      );
-
-      await connection.commit();
-
-      const [newStudent] = await pool.execute(`
-        SELECT u.ic, u.nama, u.email, u.status, u.telefon, s.kelas_id, s.tarikh_daftar, c.nama_kelas
-        FROM users u
-        JOIN students s ON u.ic = s.user_ic
-        LEFT JOIN classes c ON s.kelas_id = c.id
-        WHERE u.ic = ?
-      `, [ic]);
-      
-      studentCache.flushAll();
+      const result = await createStudentRecord(req.body, { actorIc: req.user.ic });
       res.status(201).json({
         success: true,
         message: 'Student created successfully',
-        data: newStudent[0]
+        data: result.student
       });
     } catch (error) {
-      await connection.rollback();
       console.error('Create student error:', error);
+      if (error.status === 400 || error.status === 404) {
+        return res.status(error.status).json({
+          success: false,
+          message: error.message
+        });
+      }
       res.status(500).json({
         success: false,
         message: 'Internal server error'
       });
-    } finally {
-      connection.release();
     }
   } catch (error) {
     console.error('Create student error:', error);
@@ -258,55 +237,25 @@ export const updateStudent = async (req, res) => {
       });
     }
 
-    const { ic } = req.params;
-    const { nama, umur, alamat, telefon, email, kelas_id, status, tarikh_daftar } = req.body;
-    
-    // Convert empty string or undefined to null for kelas_id
-    const finalKelasId = kelas_id === '' || kelas_id === undefined ? null : kelas_id;
-
-    const connection = await pool.getConnection();
-    await connection.beginTransaction();
-
     try {
-      // Update users table
-      await connection.execute(
-        `UPDATE users SET nama = ?, umur = ?, alamat = ?, telefon = ?, email = ?, status = ?
-         WHERE ic = ?`,
-        [nama, umur, alamat, telefon, email, status, ic]
-      );
-
-      // Update students table
-      await connection.execute(
-        `UPDATE students SET kelas_id = ?, tarikh_daftar = ?
-         WHERE user_ic = ?`,
-        [finalKelasId, tarikh_daftar, ic]
-      );
-
-      await connection.commit();
-
-      const [updatedStudent] = await pool.execute(`
-        SELECT u.ic, u.nama, u.email, u.status, u.telefon, s.kelas_id, s.tarikh_daftar, c.nama_kelas
-        FROM users u
-        JOIN students s ON u.ic = s.user_ic
-        LEFT JOIN classes c ON s.kelas_id = c.id
-        WHERE u.ic = ?
-      `, [ic]);
-      
-      studentCache.flushAll();
+      const result = await updateStudentRecord(req.params.ic, req.body, { actorIc: req.user.ic });
       res.json({
         success: true,
         message: 'Student updated successfully',
-        data: updatedStudent[0]
+        data: result.student
       });
     } catch (error) {
-      await connection.rollback();
       console.error('Update student error:', error);
+      if (error.status === 400 || error.status === 404) {
+        return res.status(error.status).json({
+          success: false,
+          message: error.message
+        });
+      }
       res.status(500).json({
         success: false,
         message: 'Internal server error'
       });
-    } finally {
-      connection.release();
     }
   } catch (error) {
     console.error('Update student error:', error);
@@ -319,24 +268,27 @@ export const updateStudent = async (req, res) => {
 
 export const deleteStudent = async (req, res) => {
   try {
-    const { ic } = req.params;
-    
-    // The ON DELETE CASCADE in the database schema will handle deleting the student record.
-    // We just need to delete the user record.
-    const [result] = await pool.execute("DELETE FROM users WHERE ic = ? AND role = 'student'", [ic]);
-
-    if (result.affectedRows === 0) {
-      return res.status(404).json({
+    try {
+      const result = await deleteStudentRecord(req.params.ic, { actorIc: req.user.ic });
+      res.json({
+        success: true,
+        message: 'Student deleted successfully',
+        undoToken: result.undoToken,
+        undoExpiresAt: result.undoExpiresAt
+      });
+    } catch (error) {
+      console.error('Delete student error:', error);
+      if (error.status === 400 || error.status === 404) {
+        return res.status(error.status).json({
+          success: false,
+          message: error.message
+        });
+      }
+      res.status(500).json({
         success: false,
-        message: 'Student not found'
+        message: 'Internal server error'
       });
     }
-    
-    studentCache.flushAll();
-    res.json({
-      success: true,
-      message: 'Student deleted successfully'
-    });
   } catch (error) {
     console.error('Delete student error:', error);
     res.status(500).json({

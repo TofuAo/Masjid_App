@@ -10,7 +10,7 @@ import { formatPhone } from '../../utils/phoneUtils';
 const PelajarForm = ({ pelajar = null, onSubmit, onCancel }) => {
   const [formData, setFormData] = useState({
     nama: pelajar?.nama || '',
-    ic: pelajar?.ic || '',
+    ic: pelajar?.ic ? formatIC(pelajar.ic, true) : '',
     umur: pelajar?.umur || 5,
     alamat: pelajar?.alamat || '',
     telefon: pelajar?.telefon || '',
@@ -27,6 +27,22 @@ const PelajarForm = ({ pelajar = null, onSubmit, onCancel }) => {
   useEffect(() => {
     fetchClasses();
   }, []);
+
+  useEffect(() => {
+    if (!pelajar) return;
+    setFormData({
+      nama: pelajar.nama || '',
+      ic: pelajar.ic ? formatIC(pelajar.ic, true) : '',
+      umur: pelajar.umur || 5,
+      alamat: pelajar.alamat || '',
+      telefon: pelajar.telefon || '',
+      kelas_id: pelajar.kelas_id || null,
+      status: pelajar.status || 'aktif',
+      tarikh_daftar: pelajar.tarikh_daftar || new Date().toISOString().split('T')[0],
+      email: pelajar.email || '',
+      password: ''
+    });
+  }, [pelajar]);
 
   const fetchClasses = async () => {
     setLoadingClasses(true);
@@ -205,36 +221,34 @@ const PelajarForm = ({ pelajar = null, onSubmit, onCancel }) => {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Nombor Telefon *
+                Nombor Telefon <span className="text-gray-400 text-xs font-normal">(Pilihan)</span>
               </label>
               <input
                 type="tel"
                 name="telefon"
                 value={formData.telefon}
                 onChange={handleChange}
-                required
                 maxLength={12}
                 autoComplete="tel"
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                placeholder="Contoh: 012-3456789 atau 0123456789"
+                placeholder="Contoh (Pilihan): 012-3456789 atau 0123456789"
               />
-              <p className="text-xs text-gray-500 mt-1">Format: 01X diikuti 7-8 digit (dengan atau tanpa sempang)</p>
+              <p className="text-xs text-gray-500 mt-1">Format: 01X diikuti 7-8 digit (dengan atau tanpa sempang). Tinggalkan kosong jika tiada.</p>
             </div>
           </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Alamat *
+              Alamat <span className="text-gray-400 text-xs font-normal">(Pilihan)</span>
             </label>
             <textarea
               name="alamat"
               value={formData.alamat}
               onChange={handleChange}
-              required
               minLength={10}
               rows="3"
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-              placeholder="Masukkan alamat penuh"
+              placeholder="Masukkan alamat penuh (Pilihan)"
             />
           </div>
 

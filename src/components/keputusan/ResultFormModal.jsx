@@ -1,8 +1,17 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { studentsAPI, examsAPI } from '../../services/api';
 import { X, Search, ChevronDown, Check } from 'lucide-react';
+import { determineGradeFromRanges, getStatusFromGrade } from '../../utils/grades';
 
-const ResultFormModal = ({ isOpen, onClose, onSave, initialData }) => {
+const ResultFormModal = ({
+  isOpen,
+  onClose,
+  onSave,
+  initialData,
+  gradeRanges = [],
+  onManageGrades,
+  canManageGrades = false
+}) => {
   const [formData, setFormData] = useState({
     student_ic: '', exam_id: '', markah: '', gred: '', status: '', catatan: ''
   });
@@ -17,19 +26,6 @@ const ResultFormModal = ({ isOpen, onClose, onSave, initialData }) => {
   const [isStudentDropdownOpen, setIsStudentDropdownOpen] = useState(false);
   const studentDropdownRef = useRef(null);
   const studentInputRef = useRef(null);
-
-  useEffect(() => {
-    if (isOpen) {
-      setError(null);
-      setLoading(true);
-      setStudentSearchTerm('');
-      setIsStudentDropdownOpen(false);
-      fetchDependencies();
-      setFormData(initialData || {
-        student_ic: '', exam_id: '', markah: '', gred: '', status: '', catatan: ''
-      });
-    }
-  }, [isOpen, initialData]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -48,7 +44,7 @@ const ResultFormModal = ({ isOpen, onClose, onSave, initialData }) => {
     };
   }, [isStudentDropdownOpen]);
 
-  const fetchDependencies = async () => {
+  const fetchDependencies = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
@@ -65,26 +61,89 @@ const ResultFormModal = ({ isOpen, onClose, onSave, initialData }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+
+    setError(null);
+    setLoading(true);
+    setStudentSearchTerm('');
+    setIsStudentDropdownOpen(false);
+    fetchDependencies();
+
+    setFormData(() => {
+      const studentIc =
+        initialData?.student_ic ||
+        initialData?.pelajar_ic ||
+        initialData?.pelajar_user_ic ||
+        '';
+      const examId = initialData?.exam_id ? String(initialData.exam_id) : '';
+      const markValue =
+        initialData?.markah !== undefined && initialData?.markah !== null
+          ? String(initialData.markah)
+          : '';
+      const notes = initialData?.catatan || '';
+
+      const gradeFromMark = determineGradeFromRanges(markValue, gradeRanges);
+      const initialGrade = gradeFromMark || initialData?.gred || '';
+      const statusFromGrade = getStatusFromGrade(initialGrade);
+
+      return {
+        student_ic: studentIc,
+        exam_id: examId,
+        markah: markValue,
+        gred: initialGrade,
+        status: statusFromGrade,
+        catatan: notes
+      };
+    });
+  }, [isOpen, initialData, fetchDependencies, gradeRanges]);
 
   // Calculate status from gred
   const calculateStatus = (gred) => {
     if (!gred) return '';
-    const passingGrades = ['A+', 'A', 'A-', 'B+', 'B', 'B-', 'C+', 'C', 'C-', 'D'];
-    return passingGrades.includes(gred) ? 'lulus' : 'gagal';
+    return getStatusFromGrade(gred);
   };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     const updates = { [name]: value };
-    
-    // Auto-calculate status when gred changes
-    if (name === 'gred') {
-      updates.status = calculateStatus(value);
+
+    if (name === 'markah') {
+      const computedGrade = determineGradeFromRanges(value, gradeRanges);
+      updates.gred = computedGrade;
+      updates.status = calculateStatus(computedGrade);
     }
     
     setFormData(prev => ({ ...prev, ...updates }));
   };
+
+  useEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+
+    setFormData(prev => {
+      if (prev.markah === '' || prev.markah === null || prev.markah === undefined) {
+        if (prev.gred === '' && prev.status === '') {
+          return prev;
+        }
+        return { ...prev, gred: '', status: '' };
+      }
+
+      const computedGrade = determineGradeFromRanges(prev.markah, gradeRanges);
+      const computedStatus = calculateStatus(computedGrade);
+
+      if (computedGrade === prev.gred && computedStatus === prev.status) {
+        return prev;
+      }
+
+      return { ...prev, gred: computedGrade, status: computedStatus };
+    });
+  }, [gradeRanges, isOpen]);
 
   // Filter students based on search term
   const filteredStudents = students.filter(s => {
@@ -140,6 +199,9 @@ const ResultFormModal = ({ isOpen, onClose, onSave, initialData }) => {
         exam_id: parseInt(formData.exam_id),
         markah: parseInt(formData.markah) || 0
       };
+      const finalGrade = determineGradeFromRanges(submitData.markah, gradeRanges);
+      submitData.gred = finalGrade || formData.gred;
+      submitData.status = calculateStatus(submitData.gred);
       
       console.log('Submitting with data:', submitData);
       await onSave(submitData);
@@ -161,9 +223,6 @@ const ResultFormModal = ({ isOpen, onClose, onSave, initialData }) => {
   };
 
   if (!isOpen) return null;
-
-  const grades = ['A+', 'A', 'A-', 'B+', 'B', 'B-', 'C+', 'C', 'C-', 'D', 'F'];
-  const statuses = ['lulus', 'gagal'];
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-4">
@@ -283,18 +342,44 @@ const ResultFormModal = ({ isOpen, onClose, onSave, initialData }) => {
                   <input type="number" name="markah" value={formData.markah} onChange={handleChange} required min="0" max="100" className="input-mosque w-full" />
                 </div>
                 <div>
-                  <label className="form-label">Gred</label>
-                  <select name="gred" value={formData.gred} onChange={handleChange} required className="input-mosque w-full">
-                    <option value="">Pilih Gred</option>
-                    {grades.map(g => <option key={g} value={g}>{g}</option>)}
-                  </select>
+                  <label className="form-label">Gred (Auto)</label>
+                  <div className="space-y-2">
+                    <input
+                      type="text"
+                      name="gred"
+                      value={formData.gred || ''}
+                      readOnly
+                      placeholder="-"
+                      className="input-mosque w-full bg-gray-100 cursor-not-allowed text-gray-700"
+                    />
+                    {canManageGrades && onManageGrades && (
+                      <button
+                        type="button"
+                        onClick={onManageGrades}
+                        className="text-sm text-emerald-600 hover:text-emerald-700"
+                      >
+                        Tetapkan julat gred
+                      </button>
+                    )}
+                  </div>
                 </div>
                 <div>
-                  <label className="form-label">Status</label>
-                  <select name="status" value={formData.status} onChange={handleChange} required className="input-mosque w-full">
-                    <option value="">Pilih Status</option>
-                    {statuses.map(s => <option key={s} value={s} className="capitalize">{s}</option>)}
-                  </select>
+                  <label className="form-label">Status (Auto)</label>
+                  <input
+                    type="text"
+                    name="statusDisplay"
+                    value={
+                      formData.status === 'lulus'
+                        ? 'Lulus'
+                        : formData.status === 'gagal'
+                        ? 'Gagal'
+                        : ''
+                    }
+                    readOnly
+                    placeholder="-"
+                    className="input-mosque w-full bg-gray-100 cursor-not-allowed text-gray-700"
+                  />
+                  <input type="hidden" name="status" value={formData.status || ''} />
                 </div>
               </div>
               <div>

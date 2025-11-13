@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { MapPin, LogIn, LogOut, Eye, EyeOff, User, Lock, AlertCircle, CheckCircle } from 'lucide-react';
+import { MapPin, LogIn, LogOut, Eye, EyeOff, User, Lock, AlertCircle, CheckCircle, History } from 'lucide-react';
 import api from '../services/api';
 import { formatIC } from '../utils/icUtils';
 
@@ -12,6 +12,8 @@ const QuickStaffCheckIn = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [message, setMessage] = useState(null);
   const [messageType, setMessageType] = useState(null); // 'success' or 'error'
+  const [lastAction, setLastAction] = useState(null);
+  const [checkingLastAction, setCheckingLastAction] = useState(false);
 
   // Get current location automatically on page load
   useEffect(() => {
@@ -83,6 +85,60 @@ const QuickStaffCheckIn = () => {
     }, 5000);
   };
 
+  const formatDateTime = (dateString) => {
+    if (!dateString) return '-';
+    const date = new Date(dateString);
+    if (Number.isNaN(date.getTime())) return '-';
+    return date.toLocaleString('ms-MY', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  const handleViewLastAction = async (e) => {
+    e.preventDefault();
+
+    if (!formData.icNumber || !formData.password) {
+      showMessage('Sila masukkan IC Number dan password', 'error');
+      return;
+    }
+
+    setCheckingLastAction(true);
+    try {
+      const response = await api.post('/staff-checkin/quick-last-action', {
+        icNumber: formData.icNumber,
+        password: formData.password
+      });
+
+      if (response.success && response.data) {
+        setLastAction({
+          action: response.data.action,
+          actionTime: response.data.actionTime,
+          record: response.data.record || null
+        });
+        showMessage('Rekod terakhir berjaya dipaparkan.', 'success');
+      } else if (response.success && !response.data) {
+        setLastAction({ action: null, actionTime: null, record: null });
+        showMessage(response.message || 'Tiada rekod check in/out sebelum ini.', 'error');
+      } else {
+        setLastAction(null);
+        showMessage(response.message || 'Gagal mendapatkan rekod terakhir.', 'error');
+      }
+    } catch (error) {
+      console.error('Quick last action error:', error);
+      setLastAction(null);
+      showMessage(
+        error.message || error.response?.data?.message || 'Gagal mendapatkan rekod terakhir. Sila cuba lagi.',
+        'error'
+      );
+    } finally {
+      setCheckingLastAction(false);
+    }
+  };
+
   // Quick Check-In
   const handleQuickCheckIn = async (e) => {
     e.preventDefault();
@@ -113,6 +169,11 @@ const QuickStaffCheckIn = () => {
         );
         // Clear form after successful check-in
         setFormData({ icNumber: '', password: '' });
+        setLastAction({
+          action: 'check_in',
+          actionTime: response.data?.check_in_time || new Date().toISOString(),
+          record: response.data || null
+        });
       } else {
         showMessage(response.message || 'Check-in gagal', 'error');
       }
@@ -157,6 +218,11 @@ const QuickStaffCheckIn = () => {
         );
         // Clear form after successful check-out
         setFormData({ icNumber: '', password: '' });
+        setLastAction({
+          action: 'check_out',
+          actionTime: response.data?.check_out_time || new Date().toISOString(),
+          record: response.data || null
+        });
       } else {
         showMessage(response.message || 'Check-out gagal', 'error');
       }
@@ -239,6 +305,39 @@ const QuickStaffCheckIn = () => {
             </div>
           )}
 
+          {lastAction && (
+            <div
+              className={`p-3 rounded-md border ${
+                lastAction.action === 'check_in'
+                  ? 'bg-blue-50 border-blue-200 text-blue-700'
+                  : lastAction.action === 'check_out'
+                  ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
+                  : 'bg-gray-50 border-gray-200 text-gray-700'
+              }`}
+            >
+              <div className="flex items-start">
+                <History className="h-5 w-5 mr-2 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm font-medium">
+                    Aksi Terakhir
+                  </p>
+                  <p className="text-xs mt-1">
+                    {lastAction.action === 'check_in'
+                      ? `Check in pada ${formatDateTime(lastAction.actionTime)}`
+                      : lastAction.action === 'check_out'
+                      ? `Check out pada ${formatDateTime(lastAction.actionTime)}`
+                      : 'Tiada rekod check in/out sebelum ini.'}
+                  </p>
+                  {lastAction.record?.nama && (
+                    <p className="text-xs mt-1 text-gray-600">
+                      Nama: {lastAction.record.nama}
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* IC Number Input */}
           <div>
             <label htmlFor="icNumber" className="block text-sm font-medium text-gray-700 mb-1">
@@ -297,6 +396,29 @@ const QuickStaffCheckIn = () => {
               </button>
             </div>
           </div>
+
+          <button
+            onClick={handleViewLastAction}
+            disabled={
+              checkingLastAction ||
+              !formData.icNumber ||
+              !formData.password ||
+              loading
+            }
+            className="w-full flex justify-center items-center py-2.5 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            {checkingLastAction ? (
+              <div className="flex items-center">
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                Memeriksa...
+              </div>
+            ) : (
+              <>
+                <History className="h-4 w-4 mr-2" />
+                Lihat Aksi Terakhir
+              </>
+            )}
+          </button>
 
           {/* Check In Button */}
           <button

@@ -1,8 +1,9 @@
 import express from 'express';
 import { body } from 'express-validator';
-import { login, getProfile, changePassword, register, adminChangePassword, requestPasswordReset, resetPassword, checkProfileComplete, updateProfile, getPendingRegistrations, approveRegistration, rejectRegistration } from '../controllers/authController.js';
+import { login, getProfile, changePassword, register, registerExistingUser, adminChangePassword, requestPasswordReset, resetPassword, checkProfileComplete, updateProfile, getPendingRegistrations, approveRegistration, rejectRegistration, getPreferences, updatePreferences } from '../controllers/authController.js';
 import { authenticateToken, requireRole } from '../middleware/auth.js';
 import { normalizeICMiddleware } from '../middleware/normalizeIC.js';
+import { authLimiter, registrationLimiter, passwordResetLimiter } from '../middleware/security.js';
 
 const router = express.Router();
 
@@ -26,14 +27,52 @@ const registerValidation = [
       return true;
     }),
   body('email')
-    .notEmpty()
-    .withMessage('Email is required')
+    .optional({ checkFalsy: true })
     .isEmail()
     .withMessage('Email must be valid')
     .normalizeEmail(),
   body('password')
     .isLength({ min: 6 })
-    .withMessage('Password must be at least 6 characters')
+    .withMessage('Password must be at least 6 characters'),
+  body('confirmPassword')
+    .optional()
+    .custom((value, { req }) => {
+      if (value && value !== req.body.password) {
+        throw new Error('Password confirmation does not match password');
+      }
+      return true;
+    })
+];
+
+const registerExistingValidation = [
+  body('nama')
+    .notEmpty()
+    .withMessage('Nama diperlukan')
+    .trim(),
+  body('ic_number')
+    .notEmpty()
+    .withMessage('Nombor IC diperlukan')
+    .custom((value) => {
+      const cleaned = value.toString().replace(/[-\s]/g, '');
+      if (cleaned.length !== 12) {
+        throw new Error('Nombor IC mestilah 12 digit');
+      }
+      if (!/^\d{12}$/.test(cleaned)) {
+        throw new Error('Nombor IC mestilah hanya nombor');
+      }
+      return true;
+    }),
+  body('password')
+    .isLength({ min: 6 })
+    .withMessage('Kata laluan mestilah sekurang-kurangnya 6 aksara'),
+  body('confirmPassword')
+    .optional()
+    .custom((value, { req }) => {
+      if (value && value !== req.body.password) {
+        throw new Error('Kata laluan dan pengesahan tidak sepadan');
+      }
+      return true;
+    })
 ];
 
 // Login validation rules
@@ -94,20 +133,25 @@ const updateProfileValidation = [
   body('kepakaran').optional().isArray().withMessage('Kepakaran must be an array')
 ];
 
-// Routes
-router.post('/login', loginValidation, normalizeICMiddleware, login);
-router.post('/register', registerValidation, normalizeICMiddleware, register);
+// Routes with security rate limiting
+router.post('/login', authLimiter, loginValidation, normalizeICMiddleware, login);
+router.post('/register', registrationLimiter, registerValidation, normalizeICMiddleware, register);
+router.post('/self-register', registrationLimiter, registerExistingValidation, normalizeICMiddleware, registerExistingUser);
 router.get('/profile', authenticateToken, getProfile);
 router.get('/profile/complete', authenticateToken, checkProfileComplete);
 router.put('/profile', authenticateToken, updateProfileValidation, updateProfile);
 router.put('/change-password', authenticateToken, changePasswordValidation, changePassword);
 router.put('/admin/change-password', authenticateToken, requireRole(['admin']), adminChangePasswordValidation, normalizeICMiddleware, adminChangePassword);
-router.post('/forgot-password', requestPasswordResetValidation, normalizeICMiddleware, requestPasswordReset);
-router.post('/reset-password', resetPasswordValidation, resetPassword);
+router.post('/forgot-password', passwordResetLimiter, requestPasswordResetValidation, normalizeICMiddleware, requestPasswordReset);
+router.post('/reset-password', passwordResetLimiter, resetPasswordValidation, resetPassword);
 
 // Admin routes for managing pending registrations
 router.get('/pending-registrations', authenticateToken, requireRole(['admin', 'teacher']), getPendingRegistrations);
 router.post('/approve-registration', authenticateToken, requireRole(['admin', 'teacher']), body('user_ic').notEmpty().withMessage('User IC is required'), normalizeICMiddleware, approveRegistration);
 router.post('/reject-registration', authenticateToken, requireRole(['admin', 'teacher']), body('user_ic').notEmpty().withMessage('User IC is required'), normalizeICMiddleware, rejectRegistration);
+
+// User preferences routes (available to all authenticated users)
+router.get('/preferences', authenticateToken, getPreferences);
+router.put('/preferences', authenticateToken, updatePreferences);
 
 export default router;

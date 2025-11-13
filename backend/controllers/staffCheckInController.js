@@ -2,6 +2,26 @@ import { pool } from '../config/database.js';
 import bcrypt from 'bcryptjs';
 import { validationResult } from 'express-validator';
 
+const DEFAULT_HISTORY_MONTHS = 3;
+const isStaffRole = (role) => role === 'teacher' || role === 'admin' || role === 'pic';
+
+function formatDateOnly(date) {
+  if (!date) return null;
+  const parsed = date instanceof Date ? date : new Date(date);
+  if (Number.isNaN(parsed.getTime())) return null;
+  const year = parsed.getFullYear();
+  const month = String(parsed.getMonth() + 1).padStart(2, '0');
+  const day = String(parsed.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function getDefaultHistoryStartDate() {
+  const start = new Date();
+  start.setHours(0, 0, 0, 0);
+  start.setMonth(start.getMonth() - DEFAULT_HISTORY_MONTHS);
+  return formatDateOnly(start);
+}
+
 // Helper function to calculate distance between two coordinates using Haversine formula
 function calculateDistance(lat1, lon1, lat2, lon2) {
   const R = 6371e3; // Earth's radius in meters
@@ -91,7 +111,7 @@ export const checkIn = async (req, res) => {
     }
 
     // Check if user is staff or admin
-    if (req.user.role !== 'teacher' && req.user.role !== 'admin') {
+    if (!isStaffRole(req.user.role)) {
       return res.status(403).json({
         success: false,
         message: 'Only staff members can check in'
@@ -170,7 +190,7 @@ export const checkOut = async (req, res) => {
     }
 
     // Check if user is staff or admin
-    if (req.user.role !== 'teacher' && req.user.role !== 'admin') {
+    if (!isStaffRole(req.user.role)) {
       return res.status(403).json({
         success: false,
         message: 'Only staff members can check out'
@@ -244,6 +264,9 @@ export const getCheckInHistory = async (req, res) => {
     const staffIc = req.user.ic;
     const { startDate, endDate, staff_ic } = req.query;
 
+    const defaultStartDate = getDefaultHistoryStartDate();
+    const todayDate = formatDateOnly(new Date());
+
     let query = `
       SELECT sc.*, u.nama 
       FROM staff_checkin sc 
@@ -264,25 +287,68 @@ export const getCheckInHistory = async (req, res) => {
     }
 
     // Date filtering
-    if (startDate) {
+    const effectiveStartDate = (startDate ? formatDateOnly(startDate) : null) || defaultStartDate;
+    const effectiveEndDate = (endDate ? formatDateOnly(endDate) : null) || todayDate;
+
+    if (effectiveStartDate) {
       query += ' AND DATE(sc.check_in_time) >= ?';
-      params.push(startDate);
+      params.push(effectiveStartDate);
     }
-    if (endDate) {
+    if (effectiveEndDate) {
       query += ' AND DATE(sc.check_in_time) <= ?';
-      params.push(endDate);
+      params.push(effectiveEndDate);
     }
 
-    query += ' ORDER BY sc.check_in_time DESC LIMIT 100';
+    const limitParam = parseInt(req.query.limit, 10);
+    if (!Number.isNaN(limitParam) && limitParam > 0) {
+      const safeLimit = Math.min(limitParam, 5000);
+      query += ` ORDER BY sc.check_in_time DESC LIMIT ${safeLimit}`;
+    } else {
+      query += ' ORDER BY sc.check_in_time DESC LIMIT 100';
+    }
 
     const [records] = await pool.execute(query, params);
 
     res.json({
       success: true,
-      data: records
+      data: records,
+      metadata: {
+        startDate: effectiveStartDate,
+        endDate: effectiveEndDate
+      }
     });
   } catch (error) {
     console.error('Get check-in history error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
+  }
+};
+
+export const getStaffList = async (req, res) => {
+  try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        message: 'Only administrators can view staff list'
+      });
+    }
+
+    const [staff] = await pool.execute(
+      `SELECT ic, nama, role 
+       FROM users 
+       WHERE role IN ('teacher', 'admin', 'pic') 
+         AND status = 'aktif'
+       ORDER BY nama ASC`
+    );
+
+    res.json({
+      success: true,
+      data: staff
+    });
+  } catch (error) {
+    console.error('Get staff list error:', error);
     res.status(500).json({
       success: false,
       message: 'Internal server error'
@@ -296,7 +362,7 @@ export const getTodayStatus = async (req, res) => {
     const staffIc = req.user.ic;
 
     // Check if user is staff or admin
-    if (req.user.role !== 'teacher' && req.user.role !== 'admin') {
+    if (!isStaffRole(req.user.role)) {
       return res.status(403).json({
         success: false,
         message: 'Only staff members can check status'
@@ -381,7 +447,7 @@ export const quickCheckIn = async (req, res) => {
     const user = users[0];
 
     // Check if user is staff or admin (not student)
-    if (user.role !== 'teacher' && user.role !== 'admin') {
+    if (!isStaffRole(user.role)) {
       return res.status(403).json({
         success: false,
         message: 'Hanya kakitangan boleh check in. Pelajar tidak dibenarkan.'
@@ -459,6 +525,104 @@ export const quickCheckIn = async (req, res) => {
   }
 };
 
+export const quickGetLastAction = async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Validation failed',
+        errors: errors.array()
+      });
+    }
+
+    const { icNumber, password } = req.body;
+
+    if (!icNumber || !password) {
+      return res.status(400).json({
+        success: false,
+        message: 'IC Number and password are required'
+      });
+    }
+
+    const [users] = await pool.execute(
+      'SELECT * FROM users WHERE ic = ?',
+      [icNumber]
+    );
+
+    if (!users || users.length === 0) {
+      return res.status(401).json({
+        success: false,
+        message: 'IC Number atau kata laluan salah'
+      });
+    }
+
+    const user = users[0];
+
+    if (!isStaffRole(user.role)) {
+      return res.status(403).json({
+        success: false,
+        message: 'Hanya kakitangan boleh melihat rekod check in/out.'
+      });
+    }
+
+    const isPasswordValid = password === user.password || await bcrypt.compare(password, user.password);
+
+    if (!isPasswordValid) {
+      return res.status(401).json({
+        success: false,
+        message: 'IC Number atau kata laluan salah'
+      });
+    }
+
+    const [records] = await pool.execute(
+      `SELECT sc.*, u.nama 
+       FROM staff_checkin sc 
+       JOIN users u ON sc.staff_ic = u.ic 
+       WHERE sc.staff_ic = ? 
+       ORDER BY sc.check_in_time DESC 
+       LIMIT 1`,
+      [icNumber]
+    );
+
+    if (!records || records.length === 0) {
+      return res.json({
+        success: true,
+        data: null,
+        message: 'Tiada rekod check in/out sebelum ini.'
+      });
+    }
+
+    const record = records[0];
+    let action = 'check_in';
+    let actionTime = record.check_in_time;
+
+    if (record.check_out_time) {
+      action = 'check_out';
+      actionTime = record.check_out_time;
+    } else if (record.status === 'checked_out') {
+      action = 'check_out';
+      actionTime = record.check_out_time || record.updated_at || record.check_in_time;
+    }
+
+    return res.json({
+      success: true,
+      data: {
+        record,
+        action,
+        actionTime
+      },
+      message: 'Rekod terakhir ditemui.'
+    });
+  } catch (error) {
+    console.error('Quick get last action error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
+  }
+};
+
 // Quick Check-In Shift (with IC and password, no JWT required)
 export const quickCheckInShift = async (req, res) => {
   try {
@@ -504,7 +668,7 @@ export const quickCheckInShift = async (req, res) => {
     const user = users[0];
 
     // Check if user is staff or admin (not student)
-    if (user.role !== 'teacher' && user.role !== 'admin') {
+    if (!isStaffRole(user.role)) {
       return res.status(403).json({
         success: false,
         message: 'Hanya kakitangan boleh check in. Pelajar tidak dibenarkan.'
@@ -627,7 +791,7 @@ export const quickCheckOutShift = async (req, res) => {
     const user = users[0];
 
     // Check if user is staff or admin (not student)
-    if (user.role !== 'teacher' && user.role !== 'admin') {
+    if (!isStaffRole(user.role)) {
       return res.status(403).json({
         success: false,
         message: 'Hanya kakitangan boleh check out. Pelajar tidak dibenarkan.'
@@ -754,7 +918,7 @@ export const quickCheckOut = async (req, res) => {
     const user = users[0];
 
     // Check if user is staff or admin (not student)
-    if (user.role !== 'teacher' && user.role !== 'admin') {
+    if (!isStaffRole(user.role)) {
       return res.status(403).json({
         success: false,
         message: 'Hanya kakitangan boleh check out. Pelajar tidak dibenarkan.'

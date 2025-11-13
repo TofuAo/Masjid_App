@@ -1,5 +1,9 @@
-import { pool, testConnection } from '../config/database.js';
+import { pool } from '../config/database.js';
 import { validationResult } from 'express-validator';
+import {
+  getGradeRangesFromSettings,
+  determineGradeForMark
+} from '../utils/grading.js';
 
 export const getAllResults = async (req, res) => {
   try {
@@ -166,7 +170,10 @@ export const createResult = async (req, res) => {
       });
     }
 
-    const { student_ic, exam_id, markah, gred, slip_img, catatan = null } = req.body;
+    const { student_ic, exam_id, markah, slip_img, catatan = null } = req.body;
+    const gradeRanges = await getGradeRangesFromSettings();
+    const sanitizedMarkah = Math.max(0, Math.min(100, parseInt(markah, 10)));
+    const computedGrade = determineGradeForMark(sanitizedMarkah, gradeRanges) || 'F';
     
     // Check if student exists
     const [students] = await pool.execute(
@@ -210,7 +217,7 @@ export const createResult = async (req, res) => {
     const [result] = await pool.execute(`
       INSERT INTO results (student_ic, exam_id, markah, gred, slip_img, catatan)
       VALUES (?, ?, ?, ?, ?, ?)
-    `, [student_ic, exam_id, markah, gred, slip_img, catatan || null]);
+    `, [student_ic, exam_id, sanitizedMarkah, computedGrade, slip_img, catatan || null]);
     
     const [newResult] = await pool.execute(`
       SELECT r.*, u.nama as pelajar_nama, u.ic as pelajar_ic, c.nama_kelas, e.subject as exam_subject, e.tarikh_exam as exam_date
@@ -248,7 +255,10 @@ export const updateResult = async (req, res) => {
     }
 
     const { id } = req.params;
-    const { student_ic, exam_id, markah, gred, slip_img, catatan = null } = req.body;
+    const { student_ic, exam_id, markah, slip_img, catatan = null } = req.body;
+    const gradeRanges = await getGradeRangesFromSettings();
+    const sanitizedMarkah = Math.max(0, Math.min(100, parseInt(markah, 10)));
+    const computedGrade = determineGradeForMark(sanitizedMarkah, gradeRanges) || 'F';
     
     // Check if result exists
     const [existingResults] = await pool.execute(
@@ -280,7 +290,7 @@ export const updateResult = async (req, res) => {
       UPDATE results 
       SET student_ic = ?, exam_id = ?, markah = ?, gred = ?, slip_img = ?, catatan = ?, updated_at = CURRENT_TIMESTAMP
       WHERE id = ?
-    `, [student_ic, exam_id, markah, gred, slip_img, catatan || null, id]);
+    `, [student_ic, exam_id, sanitizedMarkah, computedGrade, slip_img, catatan || null, id]);
     
     const [updatedResult] = await pool.execute(`
       SELECT r.*, u.nama as pelajar_nama, u.ic as pelajar_ic, c.nama_kelas, e.subject as exam_subject, e.tarikh_exam as exam_date

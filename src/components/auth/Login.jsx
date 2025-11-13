@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
-import api from '../../services/api';
+import api, { staffCheckInAPI, setAuthToken } from '../../services/api';
 import { Eye, EyeOff, Lock, User, AlertCircle, Key, LockKeyhole, MapPin, LogIn, LogOut, Clock, CheckCircle, XCircle } from 'lucide-react';
 import { formatIC } from '../../utils/icUtils';
-import { staffCheckInAPI } from '../../services/api';
 import { calculateDistance } from '../../utils/distanceUtils';
 import { useMasjidLocation } from '../../hooks/useMasjidLocation';
 
@@ -184,7 +183,22 @@ const Login = ({ onLogin }) => {
         throw new Error('Pelajar tidak boleh mengakses fungsi check-in/check-out');
       }
       
-      localStorage.setItem('authToken', token);
+      const rawExpiresAt =
+        response.data?.expiresAt ||
+        response.expiresAt ||
+        (response.data?.expiresIn ? Date.now() + response.data.expiresIn * 1000 : null);
+
+      let expiresAtMs = null;
+      if (typeof rawExpiresAt === 'string') {
+        const parsed = Date.parse(rawExpiresAt);
+        if (!Number.isNaN(parsed)) {
+          expiresAtMs = parsed;
+        }
+      } else if (typeof rawExpiresAt === 'number' && Number.isFinite(rawExpiresAt)) {
+        expiresAtMs = rawExpiresAt;
+      }
+
+      setAuthToken(token, expiresAtMs || undefined);
       localStorage.setItem('user', JSON.stringify(user));
       if (typeof onLogin === 'function') onLogin(user);
       
@@ -320,7 +334,7 @@ const Login = ({ onLogin }) => {
             />
           </div>
           <h2 className="mt-2 text-xl font-bold text-gray-900">Masjid Negeri Sultan Ahmad 1</h2>
-          <p className="mt-1 text-sm text-gray-600">Sistem Kelas Pengajian</p>
+          <p className="mt-1 text-sm text-gray-600">E-SKP</p>
         </div>
 
         {/* Top Action Buttons */}

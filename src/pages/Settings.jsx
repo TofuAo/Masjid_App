@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Navigate } from 'react-router-dom';
 import { settingsAPI, authAPI, studentsAPI, teachersAPI, exportAPI } from '../services/api';
 import { toast } from 'react-toastify';
 import Card from '../components/ui/Card';
@@ -7,6 +8,13 @@ import Badge from '../components/ui/Badge';
 import { Settings as SettingsIcon, QrCode, Key, Upload, Link, Save, Users, Eye, EyeOff, MapPin, Database, CloudUpload, History, DownloadCloud, Loader2 } from 'lucide-react';
 
 const Settings = () => {
+  // Check if user is admin - redirect non-admins to personal settings
+  const storedUser = localStorage.getItem('user');
+  const user = storedUser ? JSON.parse(storedUser) : null;
+  
+  if (!user || user.role !== 'admin') {
+    return <Navigate to="/personal-settings" replace />;
+  }
   const [activeTab, setActiveTab] = useState('qr'); // 'qr', 'password', 'checkin', or 'backup'
   const [loading, setLoading] = useState(false);
   const [exportingBackup, setExportingBackup] = useState(false);

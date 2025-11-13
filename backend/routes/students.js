@@ -13,6 +13,10 @@ import { isValidICFormat } from '../utils/icNormalizer.js';
 import { normalizeICMiddleware } from '../middleware/normalizeIC.js';
 import { isValidPhoneFormat } from '../utils/phoneNormalizer.js';
 import { normalizePhoneMiddleware } from '../middleware/normalizePhone.js';
+import { requirePicApproval } from '../middleware/picApproval.js';
+import { pool } from '../config/database.js';
+
+const normalizeIcForQuery = (value) => (typeof value === 'string' ? value.replace(/-/g, '') : value);
 
 const router = express.Router();
 
@@ -36,16 +40,14 @@ const studentValidation = [
     .isInt({ min: 5, max: 100 })
     .withMessage('Age must be between 5 and 100'),
   body('alamat')
-    .notEmpty()
-    .withMessage('Address is required')
+    .optional({ nullable: true, checkFalsy: true })
     .isLength({ min: 10, max: 500 })
     .withMessage('Address must be between 10 and 500 characters'),
   body('telefon')
-    .notEmpty()
-    .withMessage('Phone number is required')
+    .optional({ nullable: true, checkFalsy: true })
     .custom((value) => {
       if (!isValidPhoneFormat(value)) {
-        throw new Error('Phone must be a valid Malaysian mobile number (format: 012-3456789 or 0123456789)');
+        throw new Error('Phone must be a valid Malaysian mobile number (format: 012-3456789 atau 0123456789)');
       }
       return true;
     }),
@@ -86,8 +88,99 @@ router.use(authenticateToken);
 router.get('/', getAllStudents);
 router.get('/stats', getStudentStats);
 router.get('/:ic', icValidation, normalizeICMiddleware, getStudentById);
-router.post('/', requireRole(['admin', 'staff']), studentValidation, normalizeICMiddleware, normalizePhoneMiddleware, createStudent);
-router.put('/:ic', requireRole(['admin', 'staff']), icValidation, studentValidation, normalizeICMiddleware, normalizePhoneMiddleware, updateStudent);
-router.delete('/:ic', requireRole(['admin']), icValidation, normalizeICMiddleware, deleteStudent);
+router.post(
+  '/',
+  requireRole(['admin', 'staff', 'pic']),
+  studentValidation,
+  normalizeICMiddleware,
+  normalizePhoneMiddleware,
+  requirePicApproval({
+    actionKey: 'students:create',
+    entityType: 'student',
+    message: 'Permintaan menambah pelajar dihantar untuk kelulusan admin.',
+    prepare: async (req) => ({
+      metadata: {
+        summary: `Tambah pelajar ${req.body?.nama || ''}`,
+        nama: req.body?.nama,
+        ic: req.body?.ic
+      }
+    })
+  }),
+  createStudent
+);
+router.put(
+  '/:ic',
+  requireRole(['admin', 'staff', 'pic']),
+  icValidation,
+  studentValidation,
+  normalizeICMiddleware,
+  normalizePhoneMiddleware,
+  requirePicApproval({
+    actionKey: 'students:update',
+    entityType: 'student',
+    message: 'Permintaan kemaskini pelajar dihantar untuk kelulusan admin.',
+    prepare: async (req) => {
+      const cleanedIc = normalizeIcForQuery(req.params.ic);
+      const [rows] = await pool.execute(
+        `SELECT u.ic, u.nama, u.email, u.telefon, u.status, s.kelas_id, s.tarikh_daftar
+         FROM users u
+         JOIN students s ON u.ic = s.user_ic
+         WHERE REPLACE(u.ic, '-', '') = ?`,
+        [cleanedIc]
+      );
+      if (rows.length === 0) {
+        const error = new Error('Pelajar tidak dijumpai.');
+        error.status = 404;
+        throw error;
+      }
+      return {
+        entityId: cleanedIc,
+        metadata: {
+          summary: `Kemaskini pelajar ${rows[0].nama}`,
+          current: rows[0],
+          requested: {
+            ...req.body,
+            ic: normalizeIcForQuery(req.body?.ic || cleanedIc)
+          }
+        }
+      };
+    }
+  }),
+  updateStudent
+);
+router.delete(
+  '/:ic',
+  requireRole(['admin', 'pic']),
+  icValidation,
+  normalizeICMiddleware,
+  requirePicApproval({
+    actionKey: 'students:delete',
+    entityType: 'student',
+    message: 'Permintaan padam pelajar dihantar untuk kelulusan admin.',
+    prepare: async (req) => {
+      const cleanedIc = normalizeIcForQuery(req.params.ic);
+      const [rows] = await pool.execute(
+        `SELECT u.ic, u.nama, u.email, u.telefon, u.status, s.kelas_id, s.tarikh_daftar
+         FROM users u
+         JOIN students s ON u.ic = s.user_ic
+         WHERE REPLACE(u.ic, '-', '') = ?`,
+        [cleanedIc]
+      );
+      if (rows.length === 0) {
+        const error = new Error('Pelajar tidak dijumpai.');
+        error.status = 404;
+        throw error;
+      }
+      return {
+        entityId: cleanedIc,
+        metadata: {
+          summary: `Padam pelajar ${rows[0].nama}`,
+          current: rows[0]
+        }
+      };
+    }
+  }),
+  deleteStudent
+);
 
 export default router;

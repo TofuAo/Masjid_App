@@ -1,6 +1,24 @@
 import axios from 'axios';
 import resolveApiBaseUrl from '../utils/apiBaseUrl';
 
+const TOKEN_EXPIRY_KEY = 'authTokenExpiry';
+
+const removeStoredAuth = () => {
+  localStorage.removeItem('authToken');
+  localStorage.removeItem('user');
+  localStorage.removeItem(TOKEN_EXPIRY_KEY);
+};
+
+const getStoredExpiry = () => {
+  const expiry = localStorage.getItem(TOKEN_EXPIRY_KEY);
+  return expiry ? Number(expiry) : null;
+};
+
+const isTokenExpired = () => {
+  const expiry = getStoredExpiry();
+  return typeof expiry === 'number' && !Number.isNaN(expiry) && Date.now() > expiry;
+};
+
 // Create axios instance with base configuration
 const api = axios.create({
   baseURL: resolveApiBaseUrl(),
@@ -13,9 +31,17 @@ const api = axios.create({
 // Request interceptor to add auth token
 api.interceptors.request.use(
   (config) => {
+    if (isTokenExpired()) {
+      removeStoredAuth();
+      return Promise.reject({
+        message: 'Sesi anda telah tamat tempoh. Sila log masuk semula.',
+        status: 401,
+      });
+    }
+
     const token = localStorage.getItem('authToken');
     // Only log token status for debugging, skip for public endpoints
-    if (config.url && !config.url.includes('/auth/register') && !config.url.includes('/auth/login') && !config.url.includes('/auth/forgot-password') && !config.url.includes('/auth/reset-password') && !config.url.includes('/settings/masjid-location')) {
+    if (config.url && !config.url.includes('/auth/register') && !config.url.includes('/auth/self-register') && !config.url.includes('/auth/login') && !config.url.includes('/auth/forgot-password') && !config.url.includes('/auth/reset-password') && !config.url.includes('/settings/masjid-location')) {
       console.log('API Request:', config.url, 'Token:', token ? 'Present' : 'Missing');
     }
     if (token) {
@@ -32,7 +58,7 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => {
     // Only log for non-public endpoints
-    if (response.config.url && !response.config.url.includes('/auth/register') && !response.config.url.includes('/auth/login')) {
+    if (response.config.url && !response.config.url.includes('/auth/register') && !response.config.url.includes('/auth/self-register') && !response.config.url.includes('/auth/login')) {
       console.log('API Response:', response.config.url, 'Status:', response.status);
     }
     return response.data;
@@ -48,8 +74,7 @@ api.interceptors.response.use(
     
     if (error.response?.status === 401) {
       // Token expired or invalid
-      localStorage.removeItem('authToken');
-      localStorage.removeItem('user');
+      removeStoredAuth();
       // window.location.href = '/login'; // <-- REMOVE THIS to prevent auto reload
     }
     
@@ -81,6 +106,7 @@ export const authAPI = {
     return api.post('/auth/login', credentials);
   },
   register: (data) => api.post('/auth/register', data),
+  registerExisting: (data) => api.post('/auth/self-register', data),
   getProfile: () => api.get('/auth/profile'),
   checkProfileComplete: () => api.get('/auth/profile/complete'),
   updateProfile: (data) => api.put('/auth/profile', data),
@@ -91,6 +117,8 @@ export const authAPI = {
   getPendingRegistrations: () => api.get('/auth/pending-registrations'),
   approveRegistration: (user_ic) => api.post('/auth/approve-registration', { user_ic }),
   rejectRegistration: (user_ic) => api.post('/auth/reject-registration', { user_ic }),
+  getPreferences: () => api.get('/auth/preferences'),
+  updatePreferences: (data) => api.put('/auth/preferences', data),
 };
 
 // Students API
@@ -272,21 +300,27 @@ export const examsAPI = {
 };
 
 // Utility functions
-export const setAuthToken = (token) => {
+export const setAuthToken = (token, expiresAt) => {
   if (token) {
     localStorage.setItem('authToken', token);
+    if (expiresAt) {
+      localStorage.setItem(TOKEN_EXPIRY_KEY, String(expiresAt));
+    }
   } else {
-    localStorage.removeItem('authToken');
+    removeStoredAuth();
   }
 };
 
 export const getAuthToken = () => {
+  if (isTokenExpired()) {
+    removeStoredAuth();
+    return null;
+  }
   return localStorage.getItem('authToken');
 };
 
 export const clearAuth = () => {
-  localStorage.removeItem('authToken');
-  localStorage.removeItem('user');
+  removeStoredAuth();
 };
 
 // Settings API
@@ -294,6 +328,8 @@ export const settingsAPI = {
   getAll: () => api.get('/settings'),
   getByKey: (key) => api.get(`/settings?key=${key}`),
   getQRCode: () => api.get('/settings/qr-code'),
+  getGradeRanges: () => api.get('/settings/grade-ranges'),
+  updateGradeRanges: (data) => api.put('/settings/grade-ranges', data),
   update: (key, data) => api.put(`/settings/${key}`, data),
 };
 
@@ -314,6 +350,25 @@ export const announcementsAPI = {
   delete: (id) => api.delete(`/announcements/${id}`),
 };
 
+export const adminActionsAPI = {
+  list: (params) => api.get('/admin-actions', { params }),
+  undo: (snapshotId) => api.post(`/admin-actions/${snapshotId}/undo`)
+};
+
+export const picUsersAPI = {
+  getAll: (params) => api.get('/pic-users', { params }),
+  create: (data) => api.post('/pic-users', data),
+  update: (ic, data) => api.put(`/pic-users/${encodeURIComponent(ic)}`, data),
+  delete: (ic) => api.delete(`/pic-users/${encodeURIComponent(ic)}`)
+};
+
+export const pendingPicChangesAPI = {
+  list: (params) => api.get('/pending-pic-changes', { params }),
+  getById: (id) => api.get(`/pending-pic-changes/${id}`),
+  approve: (id, data) => api.post(`/pending-pic-changes/${id}/approve`, data),
+  reject: (id, data) => api.post(`/pending-pic-changes/${id}/reject`, data),
+};
+
 // Google Form API
 export const googleFormAPI = {
   getClassFormUrl: (classId) => api.get(`/google-form/class/${classId}`),
@@ -327,8 +382,10 @@ export const staffCheckInAPI = {
   checkOut: (data) => api.post('/staff-checkin/check-out', data),
   getTodayStatus: () => api.get('/staff-checkin/today-status'),
   getHistory: (params) => api.get('/staff-checkin/history', { params }),
+  getStaffList: () => api.get('/staff-checkin/staff'),
   quickCheckIn: (data) => api.post('/staff-checkin/quick-check-in', data),
   quickCheckOut: (data) => api.post('/staff-checkin/quick-check-out', data),
+  quickGetLastAction: (data) => api.post('/staff-checkin/quick-last-action', data),
 };
 
 export const exportAPI = {

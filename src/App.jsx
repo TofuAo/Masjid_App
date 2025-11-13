@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
-import { setAuthToken, authAPI } from './services/api';
+import { setAuthToken, authAPI, clearAuth } from './services/api';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import Layout from './Layout';
@@ -16,19 +16,35 @@ import PayYuran from './pages/PayYuran';
 import Keputusan from './pages/Keputusan';
 import Laporan from './pages/Laporan';
 import Settings from './pages/Settings';
+import PersonalSettings from './pages/PersonalSettings';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import Announcements from './pages/Announcements';
+import AdminActions from './pages/AdminActions';
 import StaffCheckIn from './pages/StaffCheckIn';
 import QuickStaffCheckIn from './pages/QuickStaffCheckIn';
 import CompleteProfile from './pages/CompleteProfile';
 import PendingRegistrations from './pages/PendingRegistrations';
+import PicApprovals from './pages/PicApprovals';
+import PicUsers from './pages/PicUsers';
+import { PreferencesProvider, usePreferences } from './contexts/PreferencesContext';
+import { LanguageProvider } from './contexts/LanguageContext';
 
 function App() {
+  return (
+    <PreferencesProvider>
+      <AppContent />
+    </PreferencesProvider>
+  );
+}
+
+// Inner component that uses preferences
+function AppContent() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [profileComplete, setProfileComplete] = useState(null);
   const [checkingProfile, setCheckingProfile] = useState(true);
+  const { preferences } = usePreferences();
 
   const checkProfileComplete = useCallback(async () => {
     try {
@@ -50,6 +66,17 @@ function App() {
     // Check if user is logged in
     const storedUser = localStorage.getItem('user');
     const token = localStorage.getItem('authToken');
+    const expiryValue = localStorage.getItem('authTokenExpiry');
+    const expiryMs = expiryValue ? Number(expiryValue) : null;
+
+    if (expiryValue) {
+      if (!Number.isFinite(expiryMs) || Date.now() > expiryMs) {
+        clearAuth();
+        setCheckingProfile(false);
+        setLoading(false);
+        return;
+      }
+    }
     
     if (storedUser && token) {
       try {
@@ -61,8 +88,7 @@ function App() {
         checkProfileComplete();
       } catch (error) {
         console.error('Error parsing stored user:', error);
-        localStorage.removeItem('user');
-        localStorage.removeItem('authToken');
+        clearAuth();
         setCheckingProfile(false);
       }
     } else {
@@ -81,8 +107,7 @@ function App() {
   const handleLogout = () => {
     setUser(null);
     setProfileComplete(null);
-    localStorage.removeItem('user');
-    localStorage.removeItem('authToken');
+    clearAuth();
   };
 
   const handleProfileComplete = () => {
@@ -105,7 +130,7 @@ function App() {
   }
 
   return (
-    <>
+    <LanguageProvider language={preferences?.language || 'ms'}>
       {!user ? (
         <>
           <Routes>
@@ -149,9 +174,13 @@ function App() {
                 <Route path="/keputusan" element={<Keputusan />} />
                 <Route path="/laporan" element={<Laporan />} />
                 <Route path="/settings" element={<Settings />} />
+                <Route path="/personal-settings" element={<PersonalSettings />} />
                 <Route path="/announcements" element={<Announcements user={user} />} />
-                <Route path="/staff-checkin" element={<StaffCheckIn />} />
+                <Route path="/admin-actions" element={<AdminActions user={user} />} />
+                <Route path="/staff-checkin" element={<StaffCheckIn user={user} />} />
                 <Route path="/pending-registrations" element={<PendingRegistrations />} />
+                <Route path="/pic-approvals" element={<PicApprovals user={user} />} />
+                <Route path="/pic-users" element={<PicUsers />} />
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
             </Layout>
@@ -159,7 +188,7 @@ function App() {
           <ToastContainer position="top-right" />
         </>
       )}
-    </>
+    </LanguageProvider>
   );
 }
 

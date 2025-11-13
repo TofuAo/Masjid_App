@@ -190,7 +190,7 @@ http://YOUR_VPS_IP
 
 3. **Run deployment:**
    ```bash
-   curl -o vps-complete-deploy.sh https://raw.githubusercontent.com/yourusername/MyMasjidApp/main/vps-complete-deploy.sh
+   curl -o vps-complete-deploy.sh https://raw.githubusercontent.com/TofuAo/Masjid_App/main/vps-complete-deploy.sh
    chmod +x vps-complete-deploy.sh
    sudo bash vps-complete-deploy.sh
    ```

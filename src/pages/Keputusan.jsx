@@ -1,12 +1,20 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import useCrud from '../hooks/useCrud';
-import { resultsAPI, examsAPI } from '../services/api';
+import { resultsAPI, examsAPI, settingsAPI } from '../services/api';
 import { toast } from 'react-toastify';
 import ResultFormModal from '../components/keputusan/ResultFormModal';
+import GradeSettingsModal from '../components/keputusan/GradeSettingsModal';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import Badge from '../components/ui/Badge';
-import { FileText, TrendingUp, TrendingDown, Award, Plus, Search, Filter, AlertCircle } from 'lucide-react';
+import { FileText, TrendingUp, TrendingDown, Award, Plus, Search, Filter, Settings } from 'lucide-react';
+import {
+  DEFAULT_GRADE_RANGES,
+  cloneDefaultGradeRanges,
+  normalizeGradeRanges,
+  extractGradeOptions,
+  getStatusFromGrade
+} from '../utils/grades';
 
 const Keputusan = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -18,6 +26,9 @@ const Keputusan = () => {
   const [exams, setExams] = useState([]); // To store available exams for filter
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingResult, setEditingResult] = useState(null);
+  const [gradeRanges, setGradeRanges] = useState(() => cloneDefaultGradeRanges());
+  const [isGradeModalOpen, setIsGradeModalOpen] = useState(false);
+  const [gradeRangesLoading, setGradeRangesLoading] = useState(false);
 
   const {
     items: keputusan,
@@ -36,6 +47,52 @@ const Keputusan = () => {
     }
   }, []);
 
+  const fetchGradeRanges = useCallback(async () => {
+    try {
+      setGradeRangesLoading(true);
+      const response = await settingsAPI.getGradeRanges();
+      const ranges = Array.isArray(response?.data) ? response.data : (Array.isArray(response) ? response : response?.data?.data);
+      const normalized = normalizeGradeRanges(ranges);
+      setGradeRanges(normalized);
+    } catch (err) {
+      console.error('Failed to fetch grade ranges:', err);
+      toast.error('Gagal memuatkan konfigurasi gred. Menggunakan tetapan lalai.');
+      setGradeRanges(cloneDefaultGradeRanges());
+    } finally {
+      setGradeRangesLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchGradeRanges();
+  }, [fetchGradeRanges]);
+
+  const handleSaveGradeRanges = useCallback(async (ranges) => {
+    try {
+      setGradeRangesLoading(true);
+      await settingsAPI.updateGradeRanges({ ranges });
+      const normalized = normalizeGradeRanges(ranges);
+      setGradeRanges(normalized);
+      toast.success('Julat gred berjaya dikemaskini!');
+      setIsGradeModalOpen(false);
+    } catch (err) {
+      console.error('Failed to update grade ranges:', err);
+      const message =
+        err?.errors?.join(', ') ||
+        err?.message ||
+        err?.response?.data?.message ||
+        'Gagal mengemaskini julat gred.';
+      toast.error(message);
+      throw err;
+    } finally {
+      setGradeRangesLoading(false);
+    }
+  }, []);
+
+  const gradeOptions = useMemo(() => {
+    return extractGradeOptions(gradeRanges);
+  }, [gradeRanges]);
+
   useEffect(() => {
     const user = JSON.parse(localStorage.getItem('user'));
     if (user && user.role) {
@@ -51,6 +108,12 @@ const Keputusan = () => {
     });
     fetchExams();
   }, [fetchResults, fetchExams, searchTerm, examFilter, gradeFilter, yearFilter, semesterFilter]);
+
+  useEffect(() => {
+    if (gradeFilter !== 'semua' && !gradeOptions.includes(gradeFilter)) {
+      setGradeFilter('semua');
+    }
+  }, [gradeFilter, gradeOptions]);
 
   const handleAddResult = () => {
     setEditingResult(null);
@@ -78,7 +141,6 @@ const Keputusan = () => {
     } catch (err) {
       console.error('Failed to save result:', err);
       console.error('Error details:', JSON.stringify(err, null, 2));
-      setError(err);
       // Re-throw the error so the modal can catch it
       throw err;
     }
@@ -92,7 +154,6 @@ const Keputusan = () => {
         fetchResults(); // Refresh the list
       } catch (err) {
         console.error('Failed to delete result:', err);
-        setError(err);
         toast.error('Gagal memadam keputusan.');
       }
     }
@@ -135,11 +196,7 @@ const Keputusan = () => {
   };
 
   // Calculate status from gred if not provided
-  const calculateStatus = (gred) => {
-    if (!gred) return 'gagal';
-    const passingGrades = ['A+', 'A', 'A-', 'B+', 'B', 'B-', 'C+', 'C', 'C-', 'D'];
-    return passingGrades.includes(gred) ? 'lulus' : 'gagal';
-  };
+  const calculateStatus = useCallback((gred) => getStatusFromGrade(gred), []);
 
   // Calculate statistics
   const keputusanArray = Array.isArray(keputusan) ? keputusan : [];
@@ -153,8 +210,6 @@ const Keputusan = () => {
   const gagalCount = keputusanWithStatus.filter(k => k.status === 'gagal').length;
   const averageMarkah = totalKeputusan > 0 ? (keputusanWithStatus.reduce((sum, k) => sum + (Number(k.markah) || 0), 0) / totalKeputusan).toFixed(1) : 0;
   const topPerformer = keputusanWithStatus.reduce((top, k) => (Number(k.markah) || 0) > (Number(top?.markah) || 0) ? k : top, null);
-
-  const grades = ['A+', 'A', 'A-', 'B+', 'B', 'B-', 'C+', 'C', 'C-', 'D', 'F'];
 
   return (
     <div className="space-y-6">
@@ -225,11 +280,24 @@ const Keputusan = () => {
                   className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                 >
                   <option value="semua">Semua Gred</option>
-                  {grades.map(grade => (
+                  {gradeOptions.map(grade => (
                     <option key={grade} value={grade}>{grade}</option>
                   ))}
                 </select>
               </div>
+              {userRole === 'admin' && (
+                <div className="flex items-end">
+                  <Button
+                    variant="secondary"
+                    className="flex items-center space-x-2"
+                    onClick={() => setIsGradeModalOpen(true)}
+                    disabled={gradeRangesLoading}
+                  >
+                    <Settings className="w-4 h-4" />
+                    <span>Tetapkan Gred</span>
+                  </Button>
+                </div>
+              )}
               <div className="flex items-end">
                 <Button className="flex items-center" onClick={handleAddResult}>
                   <Plus className="w-4 h-4 mr-2" />
@@ -432,6 +500,16 @@ const Keputusan = () => {
         onClose={() => setIsModalOpen(false)}
         onSave={handleSaveResult}
         initialData={editingResult}
+        gradeRanges={gradeRanges}
+        onManageGrades={userRole === 'admin' ? () => setIsGradeModalOpen(true) : undefined}
+        canManageGrades={userRole === 'admin'}
+      />
+      <GradeSettingsModal
+        isOpen={isGradeModalOpen}
+        onClose={() => setIsGradeModalOpen(false)}
+        initialRanges={gradeRanges}
+        onSave={handleSaveGradeRanges}
+        isSaving={gradeRangesLoading}
       />
     </div>
   );

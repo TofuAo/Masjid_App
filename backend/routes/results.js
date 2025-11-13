@@ -14,6 +14,8 @@ import { authenticateToken, requireRole } from '../middleware/auth.js';
 const router = express.Router();
 
 // Validation rules
+const allowedGrades = ['A+', 'A', 'A-', 'B+', 'B', 'B-', 'C+', 'C', 'C-', 'D', 'F'];
+
 const resultValidation = [
   body('student_ic')
     .matches(/^\d{6}-\d{2}-\d{4}$/)
@@ -25,8 +27,9 @@ const resultValidation = [
     .isInt({ min: 0, max: 100 })
     .withMessage('Marks must be between 0 and 100'),
   body('gred')
-    .isIn(['A+', 'A', 'A-', 'B+', 'B', 'B-', 'C+', 'C', 'C-', 'D', 'F'])
-    .withMessage('Grade must be one of: A+, A, A-, B+, B, B-, C+, C, C-', 'D', 'F'),
+    .optional({ nullable: true, checkFalsy: true })
+    .custom((value) => typeof value === 'string' && allowedGrades.includes(value))
+    .withMessage('Grade must be one of: A+, A, A-, B+, B, B-, C+, C, C-, D, F'),
   body('status')
     .optional()
     .isIn(['lulus', 'gagal'])

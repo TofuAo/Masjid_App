@@ -71,8 +71,8 @@ router.use(authenticateToken);
 router.get('/', getAllTeachers);
 router.get('/stats', getTeacherStats);
 router.get('/:ic', icValidation, normalizeICMiddleware, getTeacherById);
-router.post('/', requireRole(['admin', 'staff']), teacherValidation, normalizeICMiddleware, normalizePhoneMiddleware, createTeacher);
-router.put('/:ic', requireRole(['admin', 'staff']), icValidation, teacherValidation, normalizeICMiddleware, normalizePhoneMiddleware, updateTeacher);
+router.post('/', requireRole(['admin', 'teacher']), teacherValidation, normalizeICMiddleware, normalizePhoneMiddleware, createTeacher);
+router.put('/:ic', requireRole(['admin', 'teacher']), icValidation, teacherValidation, normalizeICMiddleware, normalizePhoneMiddleware, updateTeacher);
 router.delete('/:ic', requireRole(['admin']), icValidation, normalizeICMiddleware, deleteTeacher);
 
 export default router;

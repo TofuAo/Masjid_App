@@ -1,5 +1,10 @@
 import { pool } from '../config/database.js';
 import { validationResult } from 'express-validator';
+import {
+  getGradeRangesFromSettings,
+  saveGradeRangesToSettings,
+  validateGradeRangesPayload
+} from '../utils/grading.js';
 
 // Get all settings or specific setting
 export const getSettings = async (req, res) => {
@@ -141,6 +146,58 @@ export const getQRCodeSettings = async (req, res) => {
     });
   } catch (error) {
     console.error('Get QR code settings error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
+  }
+};
+
+export const getGradeRanges = async (req, res) => {
+  try {
+    const ranges = await getGradeRangesFromSettings();
+    res.json({
+      success: true,
+      data: ranges
+    });
+  } catch (error) {
+    console.error('Get grade ranges error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
+  }
+};
+
+export const updateGradeRanges = async (req, res) => {
+  try {
+    const { ranges } = req.body;
+    const { ranges: normalizedRanges, errors } = validateGradeRangesPayload(ranges);
+
+    if (errors.length) {
+      return res.status(400).json({
+        success: false,
+        message: 'Validation failed',
+        errors
+      });
+    }
+
+    const savedRanges = await saveGradeRangesToSettings(normalizedRanges);
+
+    res.json({
+      success: true,
+      message: 'Grade ranges updated successfully',
+      data: savedRanges
+    });
+  } catch (error) {
+    console.error('Update grade ranges error:', error);
+    if (error.validationErrors) {
+      return res.status(400).json({
+        success: false,
+        message: 'Validation failed',
+        errors: error.validationErrors
+      });
+    }
     res.status(500).json({
       success: false,
       message: 'Internal server error'

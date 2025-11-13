@@ -1,5 +1,6 @@
 import jwt from 'jsonwebtoken';
 import { pool, testConnection } from '../config/database.js';
+import { logUnauthorizedAccess, logSuspiciousActivity } from './securityLogger.js';
 
 export const authenticateToken = async (req, res, next) => {
   // Skip authentication for public masjid location endpoint
@@ -31,6 +32,7 @@ export const authenticateToken = async (req, res, next) => {
   const token = authHeader && authHeader.split(' ')[1];
 
   if (!token) {
+    logUnauthorizedAccess(req, 'Missing authentication token');
     return res.status(401).json({ 
       success: false, 
       message: 'Access token required' 
@@ -47,6 +49,7 @@ export const authenticateToken = async (req, res, next) => {
     );
 
     if (users.length === 0) {
+      logUnauthorizedAccess(req, 'User not found or inactive');
       return res.status(401).json({
         success: false,
         message: 'User not found or inactive'
@@ -94,6 +97,7 @@ export const authenticateToken = async (req, res, next) => {
     next();
   } catch (error) {
     console.error("Authentication error:", error);
+    logUnauthorizedAccess(req, `Invalid or expired token: ${error.message}`);
     return res.status(403).json({
       success: false,
       message: 'Invalid or expired token'
@@ -116,6 +120,7 @@ export const requireRole = (roles) => {
     }
 
     if (!roles.includes(req.user.role)) {
+      logUnauthorizedAccess(req, `Insufficient permissions. User role: ${req.user.role}, Required: ${roles.join(', ')}`);
       return res.status(403).json({ 
         success: false, 
         message: 'Insufficient permissions' 

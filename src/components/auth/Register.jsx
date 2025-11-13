@@ -1,18 +1,20 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { authAPI, setAuthToken } from '../../services/api';
-import { Eye, EyeOff, Lock, User, AlertCircle, CreditCard, Mail } from 'lucide-react';
+import { Eye, EyeOff, Lock, User, AlertCircle, CreditCard, Mail, RefreshCw, UserPlus } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { formatIC, isValidIC } from '../../utils/icUtils';
 
 const Register = ({ onRegister }) => {
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
+  const [mode, setMode] = useState('existing'); // 'existing' or 'new'
   const [formData, setFormData] = useState({
     ic_number: '',
     nama: '',
-    email: '',
     password: '',
+    confirmPassword: '',
+    email: '',
   });
 
   const [loading, setLoading] = useState(false);
@@ -23,7 +25,7 @@ const Register = ({ onRegister }) => {
     
     // Format IC number as user types
     if (name === 'ic_number') {
-      const formatted = formatIC(value, false);
+      const formatted = formatIC(value, true);
       setFormData((prev) => ({
         ...prev,
         [name]: formatted,
@@ -51,16 +53,23 @@ const Register = ({ onRegister }) => {
       setError('Sila masukkan nama');
       return false;
     }
-    if (!formData.email || formData.email.trim() === '') {
-      setError('Sila masukkan emel');
-      return false;
-    }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      setError('Format emel tidak sah');
-      return false;
+    if (mode === 'new' && formData.email) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(formData.email.trim())) {
+        setError('Format emel tidak sah');
+        return false;
+      }
     }
     if (!formData.password || formData.password.length < 6) {
       setError('Kata laluan mestilah sekurang-kurangnya 6 aksara');
+      return false;
+    }
+    if (!formData.confirmPassword || formData.confirmPassword.length < 6) {
+      setError('Sila sahkan kata laluan anda');
+      return false;
+    }
+    if (formData.password !== formData.confirmPassword) {
+      setError('Kata laluan dan pengesahan tidak sepadan');
       return false;
     }
     return true;
@@ -78,20 +87,42 @@ const Register = ({ onRegister }) => {
     setError('');
 
     try {
-      const response = await authAPI.register({
+      const payload = {
         ic_number: formData.ic_number,
         nama: formData.nama,
-        email: formData.email.trim(),
         password: formData.password,
-        role: 'student', // Hardcoded to student only
-      });
+        confirmPassword: formData.confirmPassword,
+      };
+
+      let response;
+
+      if (mode === 'existing') {
+        response = await authAPI.registerExisting(payload);
+      } else {
+        response = await authAPI.register({
+          ...payload,
+          email: formData.email ? formData.email.trim() : undefined,
+        });
+      }
 
       if (response && response.success) {
         // If token is null, registration is pending approval
         if (response.data.token) {
-          setAuthToken(response.data.token);
+          const rawExpiresAt =
+            response.data?.expiresAt ||
+            (response.data?.expiresIn ? Date.now() + response.data.expiresIn * 1000 : null);
+          let expiresAtMs = null;
+          if (typeof rawExpiresAt === 'string') {
+            const parsed = Date.parse(rawExpiresAt);
+            if (!Number.isNaN(parsed)) {
+              expiresAtMs = parsed;
+            }
+          } else if (typeof rawExpiresAt === 'number' && Number.isFinite(rawExpiresAt)) {
+            expiresAtMs = rawExpiresAt;
+          }
+
+          setAuthToken(response.data.token, expiresAtMs || undefined);
           localStorage.setItem('user', JSON.stringify(response.data.user));
-          localStorage.setItem('authToken', response.data.token);
           
           toast.success('Pendaftaran berjaya! Selamat datang!');
           
@@ -102,11 +133,16 @@ const Register = ({ onRegister }) => {
           }
         } else {
           // Registration pending approval
-          toast.success(response.message || 'Pendaftaran berjaya! Akaun anda sedang menunggu kelulusan.');
+          const successMessage =
+            mode === 'existing'
+              ? response.message || 'Maklumat berjaya dikemaskini. Akaun anda sedang menunggu kelulusan.'
+              : response.message ||
+                'Permohonan akaun baharu diterima. Akaun anda akan diaktifkan selepas kelulusan pentadbir.';
+          toast.success(successMessage);
           // Redirect to login page
           navigate('/login', { 
             state: { 
-              message: 'Pendaftaran berjaya! Akaun anda sedang menunggu kelulusan daripada pentadbir.' 
+              message: successMessage 
             } 
           });
         }
@@ -169,8 +205,53 @@ const Register = ({ onRegister }) => {
                 className="mx-auto h-20 w-auto object-contain"
               />
             </div>
-            <h2 className="text-2xl font-bold text-gray-900">Daftar Akaun Pelajar</h2>
-            <p className="mt-2 text-sm text-gray-600">Sistem Kelas Pengajian - Masjid Negeri Sultan Ahmad 1</p>
+            <h2 className="text-2xl font-bold text-gray-900">Daftar / Kemaskini Akaun</h2>
+            <p className="mt-2 text-sm text-gray-600">
+              Pilih salah satu pilihan di bawah. Sistem akan samakan nama dengan rekod sedia ada dan membetulkan nombor IC secara automatik.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6">
+            <button
+              type="button"
+              onClick={() => setMode('existing')}
+              className={`flex items-center justify-center gap-2 rounded-lg border px-4 py-3 text-sm font-medium transition-all ${
+                mode === 'existing'
+                  ? 'border-emerald-500 bg-emerald-50 text-emerald-700 shadow'
+                  : 'border-gray-200 bg-white text-gray-600 hover:border-emerald-200'
+              }`}
+            >
+              <RefreshCw className="h-4 w-4" />
+              Kemaskini Rekod Sedia Ada
+            </button>
+            <button
+              type="button"
+              onClick={() => setMode('new')}
+              className={`flex items-center justify-center gap-2 rounded-lg border px-4 py-3 text-sm font-medium transition-all ${
+                mode === 'new'
+                  ? 'border-emerald-500 bg-emerald-50 text-emerald-700 shadow'
+                  : 'border-gray-200 bg-white text-gray-600 hover:border-emerald-200'
+              }`}
+            >
+              <UserPlus className="h-4 w-4" />
+              Permohonan Akaun Baharu
+            </button>
+          </div>
+
+          <div className="rounded-lg border border-emerald-100 bg-emerald-50/70 p-4 text-sm text-emerald-800 mb-6">
+            {mode === 'existing' ? (
+              <ul className="space-y-2 list-disc list-inside">
+                <li>Pastikan nama diisi sama seperti rekod asal.</li>
+                <li>Sistem akan mengemaskini nombor IC dan kata laluan anda secara automatik.</li>
+                <li>Jika rekod telah aktif, anda boleh terus log masuk selepas berjaya.</li>
+              </ul>
+            ) : (
+              <ul className="space-y-2 list-disc list-inside">
+                <li>Permohonan baharu akan dihantar untuk kelulusan pentadbir.</li>
+                <li>Anda boleh masukkan emel untuk menerima pemberitahuan (pilihan).</li>
+                <li>Sila gunakan nombor IC sebenar bagi mengelakkan permohonan ditolak.</li>
+              </ul>
+            )}
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">
@@ -222,7 +303,7 @@ const Register = ({ onRegister }) => {
                   name="ic_number"
                   type="text"
                   required
-                  maxLength={12}
+                  maxLength={14}
                   autoComplete="username"
                   value={formData.ic_number}
                   onChange={handleChange}
@@ -230,34 +311,35 @@ const Register = ({ onRegister }) => {
                   placeholder="123456789012"
                 />
               </div>
-              <p className="mt-1 text-xs text-gray-500">Masukkan 12 digit nombor IC tanpa sengkang</p>
+              <p className="mt-1 text-xs text-gray-500">Masukkan 12 digit nombor IC tanpa sengkang. Pastikan nombor ini tepat.</p>
             </div>
 
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
-                Emel *
-              </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Mail className="h-5 w-5 text-gray-400" />
+            {mode === 'new' && (
+              <div>
+                <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
+                  Emel (Pilihan)
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <Mail className="h-5 w-5 text-gray-400" />
+                  </div>
+                  <input
+                    id="email"
+                    name="email"
+                    type="email"
+                    autoComplete="email"
+                    value={formData.email}
+                    onChange={handleChange}
+                    className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                    placeholder="nama@example.com"
+                  />
                 </div>
-                <input
-                  id="email"
-                  name="email"
-                  type="email"
-                  required
-                  autoComplete="email"
-                  value={formData.email}
-                  onChange={handleChange}
-                  className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                  placeholder="nama@example.com"
-                />
               </div>
-            </div>
+            )}
 
             <div>
               <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
-                Kata Laluan *
+                Kata Laluan Baharu *
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -290,6 +372,29 @@ const Register = ({ onRegister }) => {
             </div>
 
             <div>
+              <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-2">
+                Sahkan Kata Laluan *
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <Lock className="h-5 w-5 text-gray-400" />
+                </div>
+                <input
+                  id="confirmPassword"
+                  name="confirmPassword"
+                  type="password"
+                  required
+                  minLength={6}
+                  autoComplete="new-password"
+                  value={formData.confirmPassword}
+                  onChange={handleChange}
+                  className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                  placeholder="Ulang kata laluan"
+                />
+              </div>
+            </div>
+
+            <div>
               <button 
                 type="submit" 
                 disabled={loading} 
@@ -301,7 +406,7 @@ const Register = ({ onRegister }) => {
                     Memproses...
                   </span>
                 ) : (
-                  'Daftar'
+                  'Daftar / Kemaskini'
                 )}
               </button>
             </div>

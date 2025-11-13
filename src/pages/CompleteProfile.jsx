@@ -11,6 +11,7 @@ const CompleteProfile = ({ user, onComplete }) => {
   const [classes, setClasses] = useState([]);
   const [formData, setFormData] = useState({
     umur: '',
+    ic: '',
     telefon: '',
     email: '',
     kelas_id: '',
@@ -23,6 +24,14 @@ const CompleteProfile = ({ user, onComplete }) => {
     // Fetch classes if user is a student
     if (user?.role === 'student') {
       fetchClasses();
+    }
+
+    // Pre-fill IC if available
+    if (user?.ic) {
+      setFormData(prev => ({
+        ...prev,
+        ic: user.ic
+      }));
     }
   }, [user]);
 
@@ -51,6 +60,9 @@ const CompleteProfile = ({ user, onComplete }) => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
+    if (name === 'ic') {
+      return;
+    }
     setFormData(prev => ({
       ...prev,
       [name]: value
@@ -191,6 +203,15 @@ const CompleteProfile = ({ user, onComplete }) => {
             <p className="text-gray-600">
               Sila lengkapkan maklumat anda untuk meneruskan
             </p>
+            <div className="mt-4">
+              <button
+                type="button"
+                onClick={() => navigate('/login')}
+                className="text-sm font-medium text-emerald-600 hover:text-emerald-700 underline underline-offset-4 transition-colors"
+              >
+                Pergi ke Laman Log Masuk
+              </button>
+            </div>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">
@@ -216,6 +237,25 @@ const CompleteProfile = ({ user, onComplete }) => {
                 {errors.umur && (
                   <p className="text-red-500 text-xs mt-1">{errors.umur}</p>
                 )}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <User className="inline w-4 h-4 mr-1" />
+                  Nombor IC
+                </label>
+                <input
+                  type="text"
+                  name="ic"
+                  value={formData.ic}
+                  onChange={handleChange}
+                  className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 border-gray-300 bg-gray-100 cursor-not-allowed"
+                  placeholder="123456789012"
+                  readOnly
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Nombor IC ditetapkan oleh pentadbir dan tidak boleh diubah.
+                </p>
               </div>
 
               <div>

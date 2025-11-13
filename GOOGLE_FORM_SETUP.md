@@ -1,6 +1,6 @@
 # Google Form Integration Setup Guide
 
-This guide explains how to set up Google Forms for attendance tracking that integrates with the Sistem Kelas Pengajian.
+This guide explains how to set up Google Forms for attendance tracking that integrates with the E-SKP.
 
 ## Overview
 
@@ -9,7 +9,7 @@ When a teacher clicks "Ambil Kehadiran" (Take Attendance), a Google Form popup a
 ## Prerequisites
 
 1. A Google account with access to Google Forms and Google Apps Script
-2. Admin access to the Sistem Kelas Pengajian
+2. Admin access to the E-SKP
 3. The backend API running and accessible
 
 ## Step 1: Create a Google Form

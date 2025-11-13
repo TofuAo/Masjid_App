@@ -1,5 +1,6 @@
-import { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { toast } from 'react-toastify';
+import { adminActionsAPI } from '../services/api';
 
 const useCrud = (api, itemName) => {
   const [items, setItems] = useState([]);
@@ -55,11 +56,109 @@ const useCrud = (api, itemName) => {
     setView('detail');
   };
 
+  const handleUndoAction = useCallback(
+    async (snapshotId, closeToast) => {
+      try {
+        await adminActionsAPI.undo(snapshotId);
+        if (typeof closeToast === 'function') {
+          closeToast();
+        }
+        toast.success('Tindakan berjaya diundur.');
+        fetchItems();
+      } catch (err) {
+        console.error('Failed to undo action:', err);
+        toast.error('Gagal mengundur tindakan. Sila cuba lagi.');
+      }
+    },
+    [fetchItems]
+  );
+
+  const renderUndoToastContent = useCallback(
+    (message, expiryText, undoToken, closeToast) => {
+      const children = [
+        React.createElement('span', { key: 'msg' }, message),
+        React.createElement(
+          'button',
+          {
+            key: 'btn',
+            type: 'button',
+            onClick: () => handleUndoAction(undoToken, closeToast),
+            style: {
+              padding: '0.4rem 0.75rem',
+              backgroundColor: '#1d4ed8',
+              color: '#ffffff',
+              border: 'none',
+              borderRadius: '0.375rem',
+              cursor: 'pointer'
+            }
+          },
+          'Undo'
+        )
+      ];
+
+      if (expiryText) {
+        children.push(
+          React.createElement(
+            'span',
+            {
+              key: 'expiry',
+              style: {
+                fontSize: '0.75rem',
+                color: '#d1d5db'
+              }
+            },
+            expiryText
+          )
+        );
+      }
+
+      return React.createElement(
+        'div',
+        {
+          style: {
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '0.5rem'
+          }
+        },
+        children
+      );
+    },
+    [handleUndoAction]
+  );
+
+  const showSuccessWithUndo = useCallback(
+    (message, response) => {
+      if (response?.undoToken) {
+        const expiresAt = response.undoExpiresAt ? new Date(response.undoExpiresAt) : null;
+        const expiryText = expiresAt && !Number.isNaN(expiresAt.getTime())
+          ? `Boleh diundur sehingga ${expiresAt.toLocaleString('ms-MY')}`
+          : null;
+
+        toast.success(({ closeToast }) => (
+          renderUndoToastContent(message, expiryText, response.undoToken, closeToast)
+        ), {
+          closeOnClick: false,
+          autoClose: 8000
+        });
+      } else {
+        toast.success(message);
+      }
+    },
+    [renderUndoToastContent]
+  );
+
   const handleDelete = async (id) => {
     if (window.confirm(`Adakah anda pasti mahu memadam ${itemName} ini?`)) {
       try {
-        await api.delete(id);
-        toast.success(`${itemName} berjaya dipadam!`);
+        const response = await api.delete(id);
+        if (response?.pendingApproval) {
+          toast.info(
+            response.message || `Permintaan padam ${itemName} dihantar untuk kelulusan admin.`
+          );
+        } else {
+        showSuccessWithUndo(`${itemName} berjaya dipadam!`, response);
+        }
         fetchItems(); // Refetch data after deletion
       } catch (err) {
         console.error(`Failed to delete ${itemName}:`, err);
@@ -68,14 +167,43 @@ const useCrud = (api, itemName) => {
     }
   };
 
+  const resolveIdentifier = (item) => {
+    if (!item) return undefined;
+    const candidateKeys = ['id', 'ic', 'IC', 'uuid', 'slug', 'code'];
+    for (const key of candidateKeys) {
+      const value = item[key];
+      if (value !== undefined && value !== null && value !== '') {
+        return value;
+      }
+    }
+    return undefined;
+  };
+
   const handleSubmit = async (formData) => {
     try {
+      let response;
       if (currentItem) {
-        await api.update(currentItem.id, formData);
-        toast.success(`Maklumat ${itemName} berjaya dikemaskini!`);
+        const identifier = resolveIdentifier(currentItem);
+        if (identifier === undefined) {
+          throw new Error('Identifier untuk kemaskini tidak ditemui.');
+        }
+        response = await api.update(identifier, formData);
+        if (response?.pendingApproval) {
+          toast.info(
+            response.message || `Permintaan kemaskini ${itemName} dihantar untuk kelulusan admin.`
+          );
+        } else {
+        showSuccessWithUndo(`Maklumat ${itemName} berjaya dikemaskini!`, response);
+        }
       } else {
-        await api.create(formData);
-        toast.success(`${itemName} baru berjaya ditambah!`);
+        response = await api.create(formData);
+        if (response?.pendingApproval) {
+          toast.info(
+            response.message || `Permintaan ${itemName} dihantar untuk kelulusan admin.`
+          );
+        } else {
+        showSuccessWithUndo(`${itemName} baru berjaya ditambah!`, response);
+        }
       }
       setView('list');
       fetchItems(); // Refetch data after submission

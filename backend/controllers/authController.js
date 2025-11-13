@@ -3,7 +3,11 @@ import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 import { pool } from '../config/database.js';
 import { validationResult } from 'express-validator';
-import { sendPasswordResetEmail, sendWelcomeEmail } from '../utils/emailService.js';
+import { sendPasswordResetEmail } from '../utils/emailService.js';
+import { formatICWithHyphen } from '../utils/icFormatter.js';
+import { logFailedAuthAttempt, logSuspiciousActivity } from '../middleware/securityLogger.js';
+
+const SESSION_DURATION_SECONDS = 24 * 60 * 60; // 24 hours
 
 export const register = async (req, res) => {
   try {
@@ -18,7 +22,15 @@ export const register = async (req, res) => {
       });
     }
 
-    const { nama, ic_number, email, password, role } = req.body;
+    const { nama, ic_number, email, password, confirmPassword } = req.body;
+
+    if (confirmPassword && confirmPassword !== password) {
+      return res.status(400).json({
+        success: false,
+        message: 'Kata laluan dan pengesahan tidak sepadan',
+        errors: [{ msg: 'Kata laluan dan pengesahan tidak sepadan', param: 'confirmPassword' }]
+      });
+    }
 
     // Normalize IC number (remove hyphens and ensure it's 12 digits)
     const normalizedIC = ic_number.replace(/\D/g, '');
@@ -78,10 +90,14 @@ export const register = async (req, res) => {
     );
 
     const user = users[0];
+    user.ic_formatted = formatICWithHyphen(user.ic);
+    user.ic_formatted = formatICWithHyphen(user.ic);
 
     // Don't generate token for pending users - they need approval first
     // Remove password from response
     const { password: _, ...userWithoutPassword } = user;
+    userWithoutPassword.ic_formatted = formatICWithHyphen(user.ic);
+    userWithoutPassword.ic_formatted = formatICWithHyphen(user.ic);
 
     // Skip welcome email since we don't have email for registration
     // Email can be added later in profile completion
@@ -97,6 +113,216 @@ export const register = async (req, res) => {
     });
   } catch (error) {
     console.error('Registration error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
+  }
+};
+
+export const registerExistingUser = async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      const firstError = errors.array()[0];
+      return res.status(400).json({
+        success: false,
+        message: firstError.msg || 'Validation failed',
+        errors: errors.array()
+      });
+    }
+
+    const { nama, ic_number, password } = req.body;
+    const confirmPassword = req.body.confirmPassword ?? req.body.confirm_password;
+
+    if (confirmPassword && password !== confirmPassword) {
+      return res.status(400).json({
+        success: false,
+        message: 'Kata laluan dan pengesahan tidak sepadan.'
+      });
+    }
+
+    const cleanedName = nama?.trim();
+    if (!cleanedName) {
+      return res.status(400).json({
+        success: false,
+        message: 'Nama diperlukan.'
+      });
+    }
+
+    const normalizedIC = ic_number.replace(/\D/g, '');
+    if (normalizedIC.length !== 12) {
+      return res.status(400).json({
+        success: false,
+        message: 'Nombor IC mestilah 12 digit.'
+      });
+    }
+
+    if (password.length < 6) {
+      return res.status(400).json({
+        success: false,
+        message: 'Kata laluan mestilah sekurang-kurangnya 6 aksara.'
+      });
+    }
+
+    // Ensure IC not already used by another user
+    const [icConflicts] = await pool.execute(
+      'SELECT ic, nama FROM users WHERE ic = ?',
+      [normalizedIC]
+    );
+
+    if (icConflicts.length > 0) {
+      const conflictUser = icConflicts[0];
+      if (conflictUser.nama.trim().toLowerCase() !== cleanedName.toLowerCase()) {
+        return res.status(400).json({
+          success: false,
+          message: 'Nombor IC ini telah digunakan oleh pengguna lain. Sila hubungi pentadbir.'
+        });
+      }
+    }
+
+    const [matchingUsers] = await pool.execute(
+      `
+        SELECT *
+        FROM users
+        WHERE LOWER(TRIM(nama)) = LOWER(TRIM(?))
+        ORDER BY created_at ASC
+      `,
+      [cleanedName]
+    );
+
+    if (matchingUsers.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Nama tidak ditemui dalam sistem. Sila hubungi pentadbir untuk bantuan.'
+      });
+    }
+
+    if (matchingUsers.length > 1) {
+      return res.status(409).json({
+        success: false,
+        message: 'Lebih daripada satu pengguna ditemui dengan nama ini. Sila hubungi pentadbir untuk pengesahan.'
+      });
+    }
+
+    const existingUser = matchingUsers[0];
+    const oldIC = existingUser.ic;
+    const requiresICUpdate = oldIC !== normalizedIC;
+
+    if (existingUser.password && existingUser.password.length > 0 && !requiresICUpdate) {
+      return res.status(400).json({
+        success: false,
+        message: 'Akaun ini telah didaftarkan. Sila log masuk menggunakan kata laluan sedia ada.'
+      });
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 12);
+
+    const tablesToUpdate = [
+      { table: 'students', column: 'user_ic' },
+      { table: 'teachers', column: 'user_ic' },
+      { table: 'classes', column: 'guru_ic' },
+      { table: 'attendance', column: 'student_ic' },
+      { table: 'results', column: 'student_ic' },
+      { table: 'fees', column: 'student_ic' },
+      { table: 'staff_checkin', column: 'staff_ic' },
+      { table: 'announcements', column: 'author_ic' },
+      { table: 'password_reset_tokens', column: 'user_ic' },
+    ];
+
+    const connection = await pool.getConnection();
+    try {
+      await connection.beginTransaction();
+      await connection.query('SET FOREIGN_KEY_CHECKS = 0');
+
+      // Update users table
+      await connection.execute(
+        `
+          UPDATE users
+          SET ic = ?, password = ?, status = CASE WHEN status IS NULL OR status = '' THEN 'aktif' ELSE status END, updated_at = CURRENT_TIMESTAMP
+          WHERE ic = ?
+        `,
+        [normalizedIC, hashedPassword, oldIC]
+      );
+
+      if (requiresICUpdate) {
+        for (const { table, column } of tablesToUpdate) {
+          try {
+            await connection.execute(
+              `UPDATE ${table} SET ${column} = ? WHERE ${column} = ?`,
+              [normalizedIC, oldIC]
+            );
+          } catch (error) {
+            // Ignore missing tables
+            if (error.code !== 'ER_NO_SUCH_TABLE') {
+              throw error;
+            }
+          }
+        }
+      }
+
+      await connection.query('SET FOREIGN_KEY_CHECKS = 1');
+      await connection.commit();
+    } catch (error) {
+      await connection.query('SET FOREIGN_KEY_CHECKS = 1').catch(() => {});
+      await connection.rollback();
+      throw error;
+    } finally {
+      connection.release();
+    }
+
+    const [updatedUsers] = await pool.execute(
+      'SELECT * FROM users WHERE ic = ?',
+      [normalizedIC]
+    );
+
+    if (updatedUsers.length === 0) {
+      return res.status(500).json({
+        success: false,
+        message: 'Gagal mengemaskini akaun. Sila cuba lagi atau hubungi pentadbir.'
+      });
+    }
+
+    const updatedUser = updatedUsers[0];
+    updatedUser.ic_formatted = formatICWithHyphen(updatedUser.ic);
+    const { password: _, ...userWithoutPassword } = updatedUser;
+    userWithoutPassword.ic_formatted = formatICWithHyphen(updatedUser.ic);
+
+    if (updatedUser.status !== 'aktif') {
+      return res.status(200).json({
+        success: true,
+        message: 'Maklumat berjaya dikemaskini. Akaun anda masih memerlukan kelulusan pentadbir.',
+        data: {
+          user: userWithoutPassword,
+          token: null
+        }
+      });
+    }
+
+    const token = jwt.sign(
+      {
+        userId: updatedUser.ic,
+        nama: updatedUser.nama,
+        role: updatedUser.role
+      },
+      process.env.JWT_SECRET,
+      { expiresIn: SESSION_DURATION_SECONDS }
+    );
+
+    const expiresAt = new Date(Date.now() + SESSION_DURATION_SECONDS * 1000).toISOString();
+
+    res.status(200).json({
+      success: true,
+      message: 'Pendaftaran berjaya! Anda kini boleh mengakses sistem.',
+      data: {
+        user: userWithoutPassword,
+        token,
+        expiresIn: SESSION_DURATION_SECONDS,
+        expiresAt
+      }
+    });
+  } catch (error) {
+    console.error('Register existing user error:', error);
     res.status(500).json({
       success: false,
       message: 'Internal server error'
@@ -124,6 +350,8 @@ export const login = async (req, res) => {
     );
 
     if (!users || users.length === 0) {
+      // Log failed authentication attempt
+      logFailedAuthAttempt(req, 'User not found');
       return res.status(401).json({
         success: false,
         message: 'IC Number atau kata laluan salah'
@@ -132,10 +360,30 @@ export const login = async (req, res) => {
 
     const user = users[0];
 
-    // DEV ONLY: allow bcrypt OR plaintext password for demo users. REMOVE BEFORE PRODUCTION
-    const isPasswordValid = password === user.password || await bcrypt.compare(password, user.password);
+    // SECURITY: Only use bcrypt comparison - never allow plaintext passwords
+    // Check if password is already hashed (starts with $2a$, $2b$, or $2y$)
+    const isHashed = user.password && (user.password.startsWith('$2a$') || user.password.startsWith('$2b$') || user.password.startsWith('$2y$'));
+    
+    let isPasswordValid = false;
+    if (isHashed) {
+      // Password is hashed, use bcrypt comparison
+      isPasswordValid = await bcrypt.compare(password, user.password);
+    } else {
+      // Password is not hashed (legacy data), hash it and update the database
+      // This should not happen in production, but we handle it securely
+      console.warn(`⚠️ SECURITY WARNING: User ${user.ic} has unhashed password. Migrating to hashed password.`);
+      const hashedPassword = await bcrypt.hash(password, 12);
+      await pool.execute(
+        'UPDATE users SET password = ?, updated_at = CURRENT_TIMESTAMP WHERE ic = ?',
+        [hashedPassword, user.ic]
+      );
+      // For this login attempt, compare the provided password with the newly hashed one
+      isPasswordValid = await bcrypt.compare(password, hashedPassword);
+    }
     
     if (!isPasswordValid) {
+      // Log failed authentication attempt
+      logFailedAuthAttempt(req, 'Invalid password');
       return res.status(401).json({
         success: false,
         message: 'IC Number atau kata laluan salah'
@@ -144,6 +392,7 @@ export const login = async (req, res) => {
 
     // Check if user account is approved (status must be 'aktif')
     if (user.status === 'pending') {
+      logFailedAuthAttempt(req, 'Account pending approval');
       return res.status(403).json({
         success: false,
         message: 'Akaun anda sedang menunggu kelulusan daripada pentadbir. Sila tunggu sehingga kelulusan diberikan.',
@@ -152,6 +401,7 @@ export const login = async (req, res) => {
     }
 
     if (user.status === 'tidak_aktif') {
+      logFailedAuthAttempt(req, 'Account inactive');
       return res.status(403).json({
         success: false,
         message: 'Akaun anda telah dinyahaktifkan. Sila hubungi pentadbir untuk maklumat lanjut.',
@@ -166,18 +416,23 @@ export const login = async (req, res) => {
         nama: user.nama,
         role: user.role
       },
-      process.env.JWT_SECRET
+      process.env.JWT_SECRET,
+      { expiresIn: SESSION_DURATION_SECONDS }
     );
 
     // Remove password from response
     const { password: _, ...userWithoutPassword } = user;
+
+    const expiresAt = new Date(Date.now() + SESSION_DURATION_SECONDS * 1000).toISOString();
 
     res.json({
       success: true,
       message: 'Login successful',
       data: {
         user: userWithoutPassword,
-        token
+        token,
+        expiresIn: SESSION_DURATION_SECONDS,
+        expiresAt
       }
     });
   } catch (error) {
@@ -407,6 +662,16 @@ export const requestPasswordReset = async (req, res) => {
       console.error('Error code:', emailResult.code);
       console.error('=====================================\n');
       
+      // Check if email service is not configured
+      if (emailResult.error === 'Transporter not available' || emailResult.message === 'Email service not configured') {
+        console.error('⚠️ Email service is not configured. Please set EMAIL_USER and EMAIL_PASSWORD environment variables.');
+        return res.status(500).json({
+          success: false,
+          message: 'Perkhidmatan emel tidak dikonfigurasi. Sila hubungi pentadbir sistem.',
+          error: process.env.NODE_ENV === 'development' ? 'Email service not configured. Please set EMAIL_USER and EMAIL_PASSWORD.' : undefined
+        });
+      }
+      
       // Return detailed error to help with debugging
       return res.status(500).json({
         success: false,
@@ -542,6 +807,142 @@ export const approveRegistration = async (req, res) => {
 };
 
 // Reject registration (admin/staff only)
+// Get user preferences
+export const getPreferences = async (req, res) => {
+  try {
+    const userId = req.user?.ic || req.user?.userId || req.user?.user_ic;
+
+    if (!userId) {
+      return res.status(400).json({
+        success: false,
+        message: 'User identifier is missing'
+      });
+    }
+
+    const [users] = await pool.execute(
+      'SELECT preferences FROM users WHERE ic = ?',
+      [userId]
+    );
+
+    if (users.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    // Parse preferences JSON or return defaults
+    let preferences = {};
+    if (users[0].preferences) {
+      try {
+        preferences = typeof users[0].preferences === 'string' 
+          ? JSON.parse(users[0].preferences) 
+          : users[0].preferences;
+      } catch (e) {
+        console.error('Error parsing preferences:', e);
+        preferences = {};
+      }
+    }
+
+    // Return defaults if no preferences set
+    const defaultPreferences = {
+      theme: 'light',
+      colorScheme: 'summer', // Default to green emerald (summer)
+      language: 'ms',
+      fontFamily: 'system',
+      fontSize: 'medium'
+    };
+
+    res.json({
+      success: true,
+      data: { ...defaultPreferences, ...preferences }
+    });
+  } catch (error) {
+    console.error('Get preferences error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
+  }
+};
+
+// Update user preferences
+export const updatePreferences = async (req, res) => {
+  try {
+    const userId = req.user?.ic || req.user?.userId || req.user?.user_ic;
+
+    if (!userId) {
+      return res.status(400).json({
+        success: false,
+        message: 'User identifier is missing'
+      });
+    }
+
+    const { theme, colorScheme, language, fontFamily, fontSize } = req.body;
+
+    // Validate preferences
+    const validThemes = ['light', 'dark', 'auto'];
+    const validColorSchemes = ['spring', 'summer', 'fall', 'winter'];
+    const validLanguages = ['ms', 'en'];
+    const validFontFamilies = ['system', 'sans-serif', 'serif', 'monospace'];
+    const validFontSizes = ['small', 'medium', 'large', 'xlarge'];
+
+    const preferences = {};
+    if (theme && validThemes.includes(theme)) {
+      preferences.theme = theme;
+    }
+    if (colorScheme && validColorSchemes.includes(colorScheme)) {
+      preferences.colorScheme = colorScheme;
+    }
+    if (language && validLanguages.includes(language)) {
+      preferences.language = language;
+    }
+    if (fontFamily && validFontFamilies.includes(fontFamily)) {
+      preferences.fontFamily = fontFamily;
+    }
+    if (fontSize && validFontSizes.includes(fontSize)) {
+      preferences.fontSize = fontSize;
+    }
+
+    // Get existing preferences and merge
+    const [users] = await pool.execute(
+      'SELECT preferences FROM users WHERE ic = ?',
+      [userId]
+    );
+
+    let existingPreferences = {};
+    if (users[0]?.preferences) {
+      try {
+        existingPreferences = typeof users[0].preferences === 'string'
+          ? JSON.parse(users[0].preferences)
+          : users[0].preferences;
+      } catch (e) {
+        console.error('Error parsing existing preferences:', e);
+      }
+    }
+
+    const mergedPreferences = { ...existingPreferences, ...preferences };
+
+    // Update preferences in database
+    await pool.execute(
+      'UPDATE users SET preferences = ?, updated_at = CURRENT_TIMESTAMP WHERE ic = ?',
+      [JSON.stringify(mergedPreferences), userId]
+    );
+
+    res.json({
+      success: true,
+      message: 'Preferences updated successfully',
+      data: mergedPreferences
+    });
+  } catch (error) {
+    console.error('Update preferences error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
+  }
+};
+
 export const rejectRegistration = async (req, res) => {
   try {
     // Only admin and staff can reject registrations
@@ -760,108 +1161,115 @@ export const updateProfile = async (req, res) => {
       });
     }
 
-    const userId = req.user.userId;
+    const userId = req.user?.ic || req.user?.userId || req.user?.user_ic;
+
+    if (!userId) {
+      return res.status(400).json({
+        success: false,
+        message: 'User identifier is missing from the session'
+      });
+    }
     const { umur, telefon, email, kelas_id, tarikh_daftar, kepakaran } = req.body;
 
-    // Start transaction
-    await pool.execute('START TRANSACTION');
+    const connection = await pool.getConnection();
 
     try {
+      await connection.beginTransaction();
+
       // Update users table
       const updateFields = [];
       const updateValues = [];
 
       if (umur !== undefined) {
         updateFields.push('umur = ?');
-        updateValues.push(umur);
+        updateValues.push(umur === null ? null : umur);
       }
       if (telefon !== undefined) {
         updateFields.push('telefon = ?');
-        updateValues.push(telefon);
+        updateValues.push(telefon === null ? null : telefon);
       }
       if (email !== undefined) {
         updateFields.push('email = ?');
-        updateValues.push(email);
+        updateValues.push(email === null ? null : email);
       }
 
       if (updateFields.length > 0) {
         updateFields.push('updated_at = CURRENT_TIMESTAMP');
         updateValues.push(userId);
-        
-        await pool.execute(
+
+        await connection.execute(
           `UPDATE users SET ${updateFields.join(', ')} WHERE ic = ?`,
           updateValues
         );
       }
 
       // Update role-specific tables
-      const [users] = await pool.execute('SELECT role FROM users WHERE ic = ?', [userId]);
-      const userRole = users[0].role;
+      const [users] = await connection.execute('SELECT role FROM users WHERE ic = ?', [userId]);
+      const userRole = users[0]?.role;
 
       if (userRole === 'student') {
-        // Check if student record exists
-        const [students] = await pool.execute(
+        const [students] = await connection.execute(
           'SELECT * FROM students WHERE user_ic = ?',
           [userId]
         );
 
         if (students.length === 0) {
-          // Insert new student record
-          await pool.execute(
+          await connection.execute(
             'INSERT INTO students (user_ic, kelas_id, tarikh_daftar) VALUES (?, ?, ?)',
-            [userId, kelas_id || null, tarikh_daftar || null]
+            [
+              userId,
+              kelas_id === undefined || kelas_id === null ? null : kelas_id,
+              tarikh_daftar === undefined || tarikh_daftar === null ? null : tarikh_daftar
+            ]
           );
         } else {
-          // Update existing student record
           const studentUpdateFields = [];
           const studentUpdateValues = [];
 
           if (kelas_id !== undefined) {
             studentUpdateFields.push('kelas_id = ?');
-            studentUpdateValues.push(kelas_id);
+            studentUpdateValues.push(kelas_id === null ? null : kelas_id);
           }
           if (tarikh_daftar !== undefined) {
             studentUpdateFields.push('tarikh_daftar = ?');
-            studentUpdateValues.push(tarikh_daftar);
+            studentUpdateValues.push(tarikh_daftar === null ? null : tarikh_daftar);
           }
 
           if (studentUpdateFields.length > 0) {
             studentUpdateValues.push(userId);
-            await pool.execute(
+            await connection.execute(
               `UPDATE students SET ${studentUpdateFields.join(', ')} WHERE user_ic = ?`,
               studentUpdateValues
             );
           }
         }
       } else if (userRole === 'teacher') {
-        // Check if teacher record exists
-        const [teachers] = await pool.execute(
+        const [teachers] = await connection.execute(
           'SELECT * FROM teachers WHERE user_ic = ?',
           [userId]
         );
 
         if (teachers.length === 0) {
-          // Insert new teacher record
           const kepakaranJSON = kepakaran ? JSON.stringify(kepakaran) : null;
-          await pool.execute(
+          await connection.execute(
             'INSERT INTO teachers (user_ic, kepakaran) VALUES (?, ?)',
             [userId, kepakaranJSON]
           );
-        } else {
-          // Update existing teacher record
-          if (kepakaran !== undefined) {
-            const kepakaranJSON = kepakaran ? JSON.stringify(kepakaran) : null;
-            await pool.execute(
-              'UPDATE teachers SET kepakaran = ? WHERE user_ic = ?',
-              [kepakaranJSON, userId]
-            );
-          }
+        } else if (kepakaran !== undefined) {
+          const kepakaranJSON =
+            Array.isArray(kepakaran) && kepakaran.length > 0
+              ? JSON.stringify(kepakaran)
+              : null;
+          await connection.execute(
+            'UPDATE teachers SET kepakaran = ? WHERE user_ic = ?',
+            [kepakaranJSON, userId]
+          );
         }
       }
 
-      await pool.execute('COMMIT');
+      await connection.commit();
+      connection.release();
 
-      // Get updated user data
       const [updatedUsers] = await pool.execute(
         'SELECT ic, nama, email, role, status, umur, alamat, telefon FROM users WHERE ic = ?',
         [userId]
@@ -873,7 +1281,12 @@ export const updateProfile = async (req, res) => {
         data: updatedUsers[0]
       });
     } catch (error) {
-      await pool.execute('ROLLBACK');
+      try {
+        await connection.rollback();
+      } catch (rollbackError) {
+        console.error('Rollback error:', rollbackError);
+      }
+      connection.release();
       throw error;
     }
   } catch (error) {

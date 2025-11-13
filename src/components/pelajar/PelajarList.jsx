@@ -124,7 +124,7 @@ const PelajarList = ({ pelajars = [], onEdit, onView, onDelete, onAdd, user }) =
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {filteredPelajars.map((pelajar) => (
-                <tr key={pelajar.ic}>
+                <tr key={pelajar.ic || pelajar.IC}>
                   <td className="px-3 sm:px-6 py-3 sm:py-4">
                     <div>
                       <div className="text-sm font-medium text-gray-900">{pelajar.nama}</div>
@@ -163,7 +163,7 @@ const PelajarList = ({ pelajars = [], onEdit, onView, onDelete, onAdd, user }) =
                               <Edit className="w-4 h-4" />
                             </button>
                             <button
-                              onClick={() => onDelete(pelajar.id)}
+                              onClick={() => onDelete(pelajar.ic || pelajar.IC)}
                               className="text-red-600 hover:text-red-900"
                               title="Padam"
                             >

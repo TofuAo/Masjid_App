@@ -4,7 +4,9 @@ import {
   getSettings,
   updateSetting,
   getQRCodeSettings,
-  getMasjidLocationSettings
+  getMasjidLocationSettings,
+  getGradeRanges,
+  updateGradeRanges
 } from '../controllers/settingsController.js';
 import { authenticateToken, requireRole } from '../middleware/auth.js';
 
@@ -47,9 +49,29 @@ const settingKeyValidation = [
     .withMessage('Setting key must be a string')
 ];
 
+const gradeRangesValidation = [
+  body('ranges')
+    .isArray({ min: 1 })
+    .withMessage('Ranges must be a non-empty array'),
+  body('ranges.*.grade')
+    .notEmpty()
+    .withMessage('Grade label is required')
+    .isString()
+    .withMessage('Grade label must be a string'),
+  body('ranges.*.min')
+    .notEmpty()
+    .withMessage('Minimum mark is required')
+    .custom((value) => !Number.isNaN(Number(value)))
+    .withMessage('Minimum mark must be a number'),
+  body('ranges.*.max')
+    .optional({ nullable: true })
+    .custom((value) => value === null || value === '' || !Number.isNaN(Number(value)))
+    .withMessage('Maximum mark must be a number or empty'),
+];
+
 // Apply authentication to all routes EXCEPT masjid-location
 // Custom middleware that checks path before applying auth
-router.use((req, res, next) => {
+router.use(async (req, res, next) => {
   // Skip authentication for masjid-location endpoint
   const path = req.path || '';
   const originalUrl = req.originalUrl || '';
@@ -63,12 +85,16 @@ router.use((req, res, next) => {
   }
   
   // Apply authentication to all other routes
-  authenticateToken(req, res, next);
+  // authenticateToken is async, so we need to await it or let Express handle the promise
+  return authenticateToken(req, res, next);
 });
 
 // Routes (these require authentication)
-router.get('/', getSettings);
+// IMPORTANT: Specific routes must be defined BEFORE parameterized routes (/:key)
+router.get('/grade-ranges', getGradeRanges);
+router.put('/grade-ranges', requireRole(['admin']), gradeRangesValidation, updateGradeRanges);
 router.get('/qr-code', getQRCodeSettings);
+router.get('/', getSettings);
 router.put('/:key', requireRole(['admin']), settingKeyValidation, updateSettingValidation, updateSetting);
 
 export default router;
