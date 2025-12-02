@@ -8,8 +8,15 @@ const isLocalhost = (hostname) => {
          hostname === '[::1]';
 };
 
+const isCloudflareDomain = (hostname) => {
+  if (!hostname) return false;
+  return hostname.includes('.workers.dev') || 
+         hostname.includes('.pages.dev') ||
+         hostname.includes('cloudflare');
+};
+
 export const resolveApiBaseUrl = () => {
-  // Check environment variable first
+  // Check environment variable first (highest priority)
   const envUrl = import.meta.env?.VITE_API_BASE_URL;
   if (envUrl && envUrl.trim()) {
     const url = envUrl.trim().replace(/\/$/, '');
@@ -23,6 +30,19 @@ export const resolveApiBaseUrl = () => {
     // Always use localhost:5000 for localhost connections
     if (isLocalhost(hostname)) {
       return LOCAL_FALLBACK;
+    }
+
+    // For Cloudflare deployments, require environment variable
+    // This prevents fallback to localhost which won't work
+    if (isCloudflareDomain(hostname)) {
+      console.error(
+        'VITE_API_BASE_URL environment variable is not set. ' +
+        'Please set VITE_API_BASE_URL in your Cloudflare Pages/Workers environment variables ' +
+        'to point to your backend API URL (e.g., https://your-backend-domain.com/api)'
+      );
+      // Return a placeholder that will fail gracefully
+      // The error message will guide the user to fix the configuration
+      return 'https://api-backend-not-configured.com/api';
     }
 
     // For production, use same host with /api
