@@ -122,18 +122,15 @@ export const getClassById = async (req, res) => {
     `;
     const queryParams = [id];
     
-    // If user is a teacher, only allow access to their classes
-    if (req.user && req.user.role === 'teacher') {
-      query += ` AND c.guru_ic = ?`;
-      queryParams.push(req.user.ic);
-    }
+    // Allow teachers to view all classes (they can differentiate visually in frontend)
+    // No need to restrict access here - teachers should be able to view any class
     
     const [classes] = await pool.execute(query, queryParams);
     
     if (classes.length === 0) {
       return res.status(404).json({
         success: false,
-        message: 'Class not found or you do not have access to this class'
+        message: 'Class not found'
       });
     }
 

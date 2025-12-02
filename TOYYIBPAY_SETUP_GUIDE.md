@@ -1,4 +1,150 @@
-# ToyyibPay Setup Guide
+2025-12-02T03:17:52.103Z	Initializing build environment...
+2025-12-02T03:17:52.103Z	Initializing build environment...
+2025-12-02T03:18:20.643Z	Success: Finished initializing build environment
+2025-12-02T03:18:21.185Z	Cloning repository...
+2025-12-02T03:18:22.693Z	Detected the following tools from environment: npm@10.9.2, nodejs@22.16.0
+2025-12-02T03:18:22.694Z	Restoring from dependencies cache
+2025-12-02T03:18:22.696Z	Restoring from build output cache
+2025-12-02T03:18:23.112Z	Installing project dependencies: npm clean-install --progress=false
+2025-12-02T03:18:27.712Z	npm warn deprecated node-domexception@1.0.0: Use your platform's native DOMException instead
+2025-12-02T03:18:30.449Z	
+2025-12-02T03:18:30.449Z	added 326 packages, and audited 327 packages in 7s
+2025-12-02T03:18:30.450Z	
+2025-12-02T03:18:30.450Z	72 packages are looking for funding
+2025-12-02T03:18:30.450Z	  run `npm fund` for details
+2025-12-02T03:18:30.454Z	
+2025-12-02T03:18:30.454Z	4 vulnerabilities (2 moderate, 2 high)
+2025-12-02T03:18:30.454Z	
+2025-12-02T03:18:30.455Z	To address issues that do not require attention, run:
+2025-12-02T03:18:30.455Z	  npm audit fix
+2025-12-02T03:18:30.455Z	
+2025-12-02T03:18:30.455Z	Some issues need review, and may require choosing
+2025-12-02T03:18:30.455Z	a different dependency.
+2025-12-02T03:18:30.455Z	
+2025-12-02T03:18:30.455Z	Run `npm audit` for details.
+2025-12-02T03:18:30.698Z	Executing user build command: npm run build
+2025-12-02T03:18:31.066Z	
+2025-12-02T03:18:31.067Z	> mymasjidapp@0.0.0 build
+2025-12-02T03:18:31.067Z	> vite build
+2025-12-02T03:18:31.067Z	
+2025-12-02T03:18:31.682Z	[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+2025-12-02T03:18:31.942Z	vite v7.1.7 building for production...
+2025-12-02T03:18:32.050Z	transforming...
+2025-12-02T03:18:39.633Z	✓ 1835 modules transformed.
+2025-12-02T03:18:40.315Z	rendering chunks...
+2025-12-02T03:18:40.749Z	computing gzip size...
+2025-12-02T03:18:40.803Z	dist/index.html                     0.51 kB │ gzip:   0.33 kB
+2025-12-02T03:18:40.803Z	dist/assets/index-CZ4c4fXT.css     86.87 kB │ gzip:  14.36 kB
+2025-12-02T03:18:40.804Z	dist/assets/xlsx-DGuHH-KN.js      429.49 kB │ gzip: 143.07 kB
+2025-12-02T03:18:40.806Z	dist/assets/index-i-MELZE2.js   1,315.41 kB │ gzip: 335.22 kB
+2025-12-02T03:18:40.807Z	✓ built in 8.80s
+2025-12-02T03:18:40.807Z	
+2025-12-02T03:18:40.807Z	(!) Some chunks are larger than 500 kB after minification. Consider:
+2025-12-02T03:18:40.808Z	- Using dynamic import() to code-split the application
+2025-12-02T03:18:40.811Z	- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+2025-12-02T03:18:40.811Z	- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+2025-12-02T03:18:40.950Z	Success: Build command completed
+2025-12-02T03:18:41.154Z	Executing user deploy command: npx wrangler deploy
+2025-12-02T03:18:42.662Z	npm warn exec The following package was not found and will be installed: wrangler@4.51.0
+2025-12-02T03:18:57.369Z	
+2025-12-02T03:18:57.369Z	 ⛅️ wrangler 4.51.0
+2025-12-02T03:18:57.369Z	───────────────────
+2025-12-02T03:18:57.483Z	▲ [WARNING] Failed to match Worker name. Your config file is using the Worker name "mymasjidapp", but the CI system expected "e-quran". Overriding using the CI provided Worker name. Workers Builds connected builds will attempt to open a pull request to resolve this config name mismatch.
+2025-12-02T03:18:57.483Z	
+2025-12-02T03:18:57.483Z	
+2025-12-02T03:18:58.304Z	🌀 Building list of assets...
+2025-12-02T03:18:58.304Z	✨ Read 8 files from the assets directory /opt/buildhome/repo/dist
+2025-12-02T03:18:58.329Z	🌀 Starting asset upload...
+2025-12-02T03:19:00.092Z	No updated asset files to upload. Proceeding with deployment...
+2025-12-02T03:19:00.093Z	Total Upload: 0.33 KiB / gzip: 0.24 KiB
+2025-12-02T03:19:00.825Z	
+2025-12-02T03:19:00.827Z	✘ [ERROR] A request to the Cloudflare API (/accounts/3bed1d313d18b06bc3f09e2834a503a2/workers/scripts/e-quran/versions) failed.
+2025-12-02T03:19:00.827Z	
+2025-12-02T03:19:00.827Z	  Invalid _redirects configuration:
+2025-12-02T03:19:00.827Z	  Line 1: Infinite loop detected in this rule. This would cause a redirect to strip `.html` or `/index` and end up triggering this rule again. [code: 10021]
+2025-12-02T03:19:00.827Z	  To learn more about this error, visit: https://developers.cloudflare.com/workers/observability/errors/#validation-errors-10021
+2025-12-02T03:19:00.827Z	
+2025-12-02T03:19:00.827Z	  
+2025-12-02T03:19:00.827Z	  If you think this is a bug, please open an issue at: https://github.com/cloudflare/workers-sdk/issues/new/choose
+2025-12-02T03:19:00.827Z	
+2025-12-02T03:19:00.827Z	
+2025-12-02T03:19:00.828Z	
+2025-12-02T03:19:00.828Z	Cloudflare collects anonymous telemetry about your usage of Wrangler. Learn more at https://github.com/cloudflare/workers-sdk/tree/main/packages/wrangler/telemetry.md
+2025-12-02T03:19:00.843Z	🪵  Logs were written to "/opt/buildhome/.config/.wrangler/logs/wrangler-2025-12-02_03-18-56_582.log"
+2025-12-02T03:19:01.697Z	Failed: error occurred while running deploy command2025-12-02T03:17:52.103Z	Initializing build environment...
+2025-12-02T03:17:52.103Z	Initializing build environment...
+2025-12-02T03:18:20.643Z	Success: Finished initializing build environment
+2025-12-02T03:18:21.185Z	Cloning repository...
+2025-12-02T03:18:22.693Z	Detected the following tools from environment: npm@10.9.2, nodejs@22.16.0
+2025-12-02T03:18:22.694Z	Restoring from dependencies cache
+2025-12-02T03:18:22.696Z	Restoring from build output cache
+2025-12-02T03:18:23.112Z	Installing project dependencies: npm clean-install --progress=false
+2025-12-02T03:18:27.712Z	npm warn deprecated node-domexception@1.0.0: Use your platform's native DOMException instead
+2025-12-02T03:18:30.449Z	
+2025-12-02T03:18:30.449Z	added 326 packages, and audited 327 packages in 7s
+2025-12-02T03:18:30.450Z	
+2025-12-02T03:18:30.450Z	72 packages are looking for funding
+2025-12-02T03:18:30.450Z	  run `npm fund` for details
+2025-12-02T03:18:30.454Z	
+2025-12-02T03:18:30.454Z	4 vulnerabilities (2 moderate, 2 high)
+2025-12-02T03:18:30.454Z	
+2025-12-02T03:18:30.455Z	To address issues that do not require attention, run:
+2025-12-02T03:18:30.455Z	  npm audit fix
+2025-12-02T03:18:30.455Z	
+2025-12-02T03:18:30.455Z	Some issues need review, and may require choosing
+2025-12-02T03:18:30.455Z	a different dependency.
+2025-12-02T03:18:30.455Z	
+2025-12-02T03:18:30.455Z	Run `npm audit` for details.
+2025-12-02T03:18:30.698Z	Executing user build command: npm run build
+2025-12-02T03:18:31.066Z	
+2025-12-02T03:18:31.067Z	> mymasjidapp@0.0.0 build
+2025-12-02T03:18:31.067Z	> vite build
+2025-12-02T03:18:31.067Z	
+2025-12-02T03:18:31.682Z	[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+2025-12-02T03:18:31.942Z	vite v7.1.7 building for production...
+2025-12-02T03:18:32.050Z	transforming...
+2025-12-02T03:18:39.633Z	✓ 1835 modules transformed.
+2025-12-02T03:18:40.315Z	rendering chunks...
+2025-12-02T03:18:40.749Z	computing gzip size...
+2025-12-02T03:18:40.803Z	dist/index.html                     0.51 kB │ gzip:   0.33 kB
+2025-12-02T03:18:40.803Z	dist/assets/index-CZ4c4fXT.css     86.87 kB │ gzip:  14.36 kB
+2025-12-02T03:18:40.804Z	dist/assets/xlsx-DGuHH-KN.js      429.49 kB │ gzip: 143.07 kB
+2025-12-02T03:18:40.806Z	dist/assets/index-i-MELZE2.js   1,315.41 kB │ gzip: 335.22 kB
+2025-12-02T03:18:40.807Z	✓ built in 8.80s
+2025-12-02T03:18:40.807Z	
+2025-12-02T03:18:40.807Z	(!) Some chunks are larger than 500 kB after minification. Consider:
+2025-12-02T03:18:40.808Z	- Using dynamic import() to code-split the application
+2025-12-02T03:18:40.811Z	- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+2025-12-02T03:18:40.811Z	- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+2025-12-02T03:18:40.950Z	Success: Build command completed
+2025-12-02T03:18:41.154Z	Executing user deploy command: npx wrangler deploy
+2025-12-02T03:18:42.662Z	npm warn exec The following package was not found and will be installed: wrangler@4.51.0
+2025-12-02T03:18:57.369Z	
+2025-12-02T03:18:57.369Z	 ⛅️ wrangler 4.51.0
+2025-12-02T03:18:57.369Z	───────────────────
+2025-12-02T03:18:57.483Z	▲ [WARNING] Failed to match Worker name. Your config file is using the Worker name "mymasjidapp", but the CI system expected "e-quran". Overriding using the CI provided Worker name. Workers Builds connected builds will attempt to open a pull request to resolve this config name mismatch.
+2025-12-02T03:18:57.483Z	
+2025-12-02T03:18:57.483Z	
+2025-12-02T03:18:58.304Z	🌀 Building list of assets...
+2025-12-02T03:18:58.304Z	✨ Read 8 files from the assets directory /opt/buildhome/repo/dist
+2025-12-02T03:18:58.329Z	🌀 Starting asset upload...
+2025-12-02T03:19:00.092Z	No updated asset files to upload. Proceeding with deployment...
+2025-12-02T03:19:00.093Z	Total Upload: 0.33 KiB / gzip: 0.24 KiB
+2025-12-02T03:19:00.825Z	
+2025-12-02T03:19:00.827Z	✘ [ERROR] A request to the Cloudflare API (/accounts/3bed1d313d18b06bc3f09e2834a503a2/workers/scripts/e-quran/versions) failed.
+2025-12-02T03:19:00.827Z	
+2025-12-02T03:19:00.827Z	  Invalid _redirects configuration:
+2025-12-02T03:19:00.827Z	  Line 1: Infinite loop detected in this rule. This would cause a redirect to strip `.html` or `/index` and end up triggering this rule again. [code: 10021]
+2025-12-02T03:19:00.827Z	  To learn more about this error, visit: https://developers.cloudflare.com/workers/observability/errors/#validation-errors-10021
+2025-12-02T03:19:00.827Z	
+2025-12-02T03:19:00.827Z	  
+2025-12-02T03:19:00.827Z	  If you think this is a bug, please open an issue at: https://github.com/cloudflare/workers-sdk/issues/new/choose
+2025-12-02T03:19:00.827Z	
+2025-12-02T03:19:00.827Z	
+2025-12-02T03:19:00.828Z	
+2025-12-02T03:19:00.828Z	Cloudflare collects anonymous telemetry about your usage of Wrangler. Learn more at https://github.com/cloudflare/workers-sdk/tree/main/packages/wrangler/telemetry.md
+2025-12-02T03:19:00.843Z	🪵  Logs were written to "/opt/buildhome/.config/.wrangler/logs/wrangler-2025-12-02_03-18-56_582.log"
+2025-12-02T03:19:01.697Z	Failed: error occurred while running deploy command# ToyyibPay Setup Guide
 
 Complete guide to setting up ToyyibPay payment gateway in your MyMasjidApp.
 
