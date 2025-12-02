@@ -588,3 +588,69 @@ export const getFeeStats = async (req, res) => {
     });
   }
 };
+
+export const confirmFeeDocument = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { confirmed, notes } = req.body;
+    const confirmedBy = req.user?.ic;
+
+    if (!confirmedBy) {
+      return res.status(401).json({
+        success: false,
+        message: 'Unauthorized'
+      });
+    }
+
+    // Check if fee record exists
+    const [existingFee] = await pool.execute(
+      'SELECT * FROM fees WHERE id = ?',
+      [id]
+    );
+
+    if (existingFee.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Fee record not found'
+      });
+    }
+
+    const isConfirmed = confirmed === true || confirmed === 1 || confirmed === '1';
+
+    // Update confirmation status
+    await pool.execute(
+      `UPDATE fees 
+       SET document_confirmed = ?, 
+           confirmed_by = ?, 
+           confirmed_at = ${isConfirmed ? 'CURRENT_TIMESTAMP' : 'NULL'},
+           confirmation_notes = ?
+       WHERE id = ?`,
+      [isConfirmed ? 1 : 0, isConfirmed ? confirmedBy : null, notes || null, id]
+    );
+
+    const [updatedFee] = await pool.execute(
+      `SELECT f.*, u.nama as pelajar_nama, u.ic as pelajar_ic, c.nama_kelas,
+              cu.nama as confirmed_by_name
+       FROM fees f
+       JOIN users u ON f.student_ic = u.ic
+       LEFT JOIN students s ON u.ic = s.user_ic
+       LEFT JOIN classes c ON s.kelas_id = c.id
+       LEFT JOIN users cu ON f.confirmed_by = cu.ic
+       WHERE f.id = ?`,
+      [id]
+    );
+
+    res.json({
+      success: true,
+      message: isConfirmed ? 'Document confirmed successfully' : 'Document confirmation removed',
+      data: updatedFee[0]
+    });
+  } catch (error) {
+    console.error('Confirm fee document error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: error.message
+    });
+  }
+};

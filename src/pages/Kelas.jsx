@@ -50,19 +50,52 @@ const Kelas = () => {
     cancel: handleCancel,
   } = handlers;
 
+  // State for full class details with students
+  const [fullClassDetails, setFullClassDetails] = useState(null);
+  const [loadingDetails, setLoadingDetails] = useState(false);
+
+  // Fetch full class details when viewing a class
+  const fetchClassDetails = useCallback(async (classId) => {
+    if (!classId) return;
+    
+    setLoadingDetails(true);
+    try {
+      const response = await classesAPI.getById(classId);
+      // Handle both direct response and wrapped response
+      const classData = response?.data || response;
+      if (classData) {
+        setFullClassDetails(classData);
+      }
+    } catch (error) {
+      console.error('Failed to fetch class details:', error);
+      toast.error('Gagal memuatkan maklumat kelas.');
+    } finally {
+      setLoadingDetails(false);
+    }
+  }, []);
+
+  // Enhanced view handler that fetches full details
+  const handleViewWithDetails = useCallback((item) => {
+    handleView(item);
+    // Fetch full details including students
+    if (item?.id) {
+      fetchClassDetails(item.id);
+    }
+  }, [handleView, fetchClassDetails]);
+
   // Handle URL parameter for viewing a specific class
   useEffect(() => {
     const viewId = searchParams.get('view');
     if (viewId && kelass.length > 0) {
       const kelas = kelass.find(k => k.id === parseInt(viewId));
       if (kelas) {
-        handleView(kelas);
+        handleViewWithDetails(kelas);
         // Remove the view parameter from URL after setting the view
         setSearchParams({}, { replace: true });
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams, kelass.length, handleView, setSearchParams]);
+  }, [searchParams, kelass.length, handleViewWithDetails, setSearchParams]);
 
   const [gurus, setGurus] = useState([]);
 
@@ -159,24 +192,35 @@ const Kelas = () => {
           />
         );
       case 'detail':
+        // Use full class details if available, otherwise fall back to selectedKelas
+        const displayKelas = fullClassDetails || selectedKelas;
+        
+        if (loadingDetails) {
+          return (
+            <div className="space-y-6">
+              <LoadingSkeleton type="card" />
+            </div>
+          );
+        }
+        
         return (
           <div className="space-y-6">
             {/* Header */}
             <div className="flex items-center justify-between flex-wrap gap-3">
               <div className="flex items-center space-x-3">
-                <BackButton onClick={handleCancel} />
+                <BackButton onClick={() => { handleCancel(); setFullClassDetails(null); }} />
                 <h2 className="text-2xl font-bold text-gray-900">Maklumat Kelas</h2>
               </div>
               <div className="flex space-x-3">
                 <button
-                  onClick={handleCancel}
+                  onClick={() => { handleCancel(); setFullClassDetails(null); }}
                   className="btn-secondary"
                 >
                   Tutup
                 </button>
                 {user?.role !== 'teacher' && (
                   <button
-                    onClick={() => handleEdit(selectedKelas)}
+                    onClick={() => handleEdit(displayKelas)}
                     className="btn-primary"
                   >
                     Edit
@@ -196,23 +240,23 @@ const Kelas = () => {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
                         <label className="block text-sm font-medium text-gray-500">Nama Kelas</label>
-                        <p className="mt-1 text-sm text-gray-900">{selectedKelas.nama_kelas || selectedKelas.class_name || '-'}</p>
+                        <p className="mt-1 text-sm text-gray-900">{displayKelas.nama_kelas || displayKelas.class_name || '-'}</p>
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-500">Level</label>
-                        <p className="mt-1 text-sm text-gray-900">{selectedKelas.level}</p>
+                        <p className="mt-1 text-sm text-gray-900">{displayKelas.level}</p>
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-500">Jadual / Sessions</label>
                         <div className="mt-1 text-sm text-gray-900">
                           {(() => {
                             // Prioritize jadual field if available
-                            if (selectedKelas.jadual) {
-                              return <p>{selectedKelas.jadual}</p>;
+                            if (displayKelas.jadual) {
+                              return <p>{displayKelas.jadual}</p>;
                             }
                             
                             // Parse sessions if it's a string
-                            let sessions = selectedKelas.sessions;
+                            let sessions = displayKelas.sessions;
                             if (typeof sessions === 'string') {
                               try {
                                 sessions = JSON.parse(sessions);
@@ -251,15 +295,15 @@ const Kelas = () => {
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-500">Yuran</label>
-                        <p className="mt-1 text-sm text-gray-900">RM {selectedKelas.yuran}</p>
+                        <p className="mt-1 text-sm text-gray-900">RM {displayKelas.yuran}</p>
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-500">Kapasiti</label>
-                        <p className="mt-1 text-sm text-gray-900">{selectedKelas.kapasiti} pelajar</p>
+                        <p className="mt-1 text-sm text-gray-900">{displayKelas.kapasiti} pelajar</p>
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-500">Guru</label>
-                        <p className="mt-1 text-sm text-gray-900">{selectedKelas.guru_nama || gurus.find(g => g.ic === selectedKelas.guru_ic)?.nama || 'Tiada Guru'}</p>
+                        <p className="mt-1 text-sm text-gray-900">{displayKelas.guru_nama || gurus.find(g => g.ic === displayKelas.guru_ic)?.nama || 'Tiada Guru'}</p>
                       </div>
                     </div>
                   </Card.Content>
@@ -275,11 +319,11 @@ const Kelas = () => {
                     <div className="space-y-3">
                       <div className="flex justify-between">
                         <span className="text-sm text-gray-600">Pelajar Terdaftar</span>
-                        <span className="text-sm font-medium text-gray-900">{selectedKelas.student_count || (selectedKelas.students || []).length || 0}</span>
+                        <span className="text-sm font-medium text-gray-900">{displayKelas.student_count || (displayKelas.students || []).length || 0}</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-sm text-gray-600">Tempat Kosong</span>
-                        <span className="text-sm font-medium text-gray-900">{(selectedKelas.kapasiti || 0) - (selectedKelas.student_count || (selectedKelas.students || []).length || 0)}</span>
+                        <span className="text-sm font-medium text-gray-900">{(displayKelas.kapasiti || 0) - (displayKelas.student_count || (displayKelas.students || []).length || 0)}</span>
                       </div>
                       {/* Placeholder for attendance and revenue, as student data is not fully integrated here */}
                       <div className="flex justify-between">
@@ -288,7 +332,7 @@ const Kelas = () => {
                       </div>
                       <div className="flex justify-between">
                         <span className="text-sm text-gray-600">Pendapatan Bulanan</span>
-                        <span className="text-sm font-medium text-gray-900">RM {((selectedKelas.yuran || 0) * (selectedKelas.student_count || (selectedKelas.students || []).length || 0)).toFixed(2)}</span>
+                        <span className="text-sm font-medium text-gray-900">RM {((displayKelas.yuran || 0) * (displayKelas.student_count || (displayKelas.students || []).length || 0)).toFixed(2)}</span>
                       </div>
                     </div>
                   </Card.Content>
@@ -300,8 +344,8 @@ const Kelas = () => {
                   </Card.Header>
                   <Card.Content>
                     <div className="space-y-2 max-h-96 overflow-y-auto">
-                      {(selectedKelas.students || []).length > 0 ? (
-                        selectedKelas.students.map(student => (
+                      {(displayKelas.students || []).length > 0 ? (
+                        displayKelas.students.map(student => (
                           <div key={student.ic || student.id} className="p-2 bg-emerald-50 border border-emerald-200 rounded text-sm">
                             <div className="font-medium">{student.nama}</div>
                             {student.telefon && <div className="text-xs text-gray-600">{student.telefon}</div>}
@@ -371,7 +415,7 @@ const Kelas = () => {
             <KelasList
               kelass={kelass}
               onEdit={handleEdit}
-              onView={handleView}
+              onView={handleViewWithDetails}
               onDelete={handleDelete}
               onAdd={handleAdd}
               gurus={gurus}

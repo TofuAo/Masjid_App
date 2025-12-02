@@ -682,3 +682,68 @@ export const deleteAttendance = async (req, res) => {
     });
   }
 };
+
+export const confirmAttendanceDocument = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { confirmed, notes } = req.body;
+    const confirmedBy = req.user?.ic;
+
+    if (!confirmedBy) {
+      return res.status(401).json({
+        success: false,
+        message: 'Unauthorized'
+      });
+    }
+
+    // Check if attendance record exists
+    const [existingAttendance] = await pool.execute(
+      'SELECT * FROM attendance WHERE id = ?',
+      [id]
+    );
+
+    if (existingAttendance.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Attendance record not found'
+      });
+    }
+
+    const isConfirmed = confirmed === true || confirmed === 1 || confirmed === '1';
+
+    // Update confirmation status
+    await pool.execute(
+      `UPDATE attendance 
+       SET document_confirmed = ?, 
+           confirmed_by = ?, 
+           confirmed_at = ${isConfirmed ? 'CURRENT_TIMESTAMP' : 'NULL'},
+           confirmation_notes = ?
+       WHERE id = ?`,
+      [isConfirmed ? 1 : 0, isConfirmed ? confirmedBy : null, notes || null, id]
+    );
+
+    const [updatedAttendance] = await pool.execute(
+      `SELECT a.*, u.nama as pelajar_nama, u.ic as pelajar_ic, c.nama_kelas,
+              cu.nama as confirmed_by_name
+       FROM attendance a
+       JOIN users u ON a.student_ic = u.ic
+       JOIN classes c ON a.class_id = c.id
+       LEFT JOIN users cu ON a.confirmed_by = cu.ic
+       WHERE a.id = ?`,
+      [id]
+    );
+
+    res.json({
+      success: true,
+      message: isConfirmed ? 'Document confirmed successfully' : 'Document confirmation removed',
+      data: updatedAttendance[0]
+    });
+  } catch (error) {
+    console.error('Confirm attendance document error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: error.message
+    });
+  }
+};

@@ -14,8 +14,8 @@ const pool = mysql.createPool({
   connectionLimit: 10,
   queueLimit: 0,
   connectTimeout: 60000,
-  acquireTimeout: 60000,
-  timeout: 60000,
+  // Note: acquireTimeout and timeout are not valid for mysql2 pool
+  // They are handled automatically by the pool
 });
 
 // ✅ Add connection tester for debugging and startup check

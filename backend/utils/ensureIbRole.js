@@ -55,6 +55,26 @@ export async function ensureIbRole() {
           UNIQUE KEY unique_month_year (bulan, tahun)
         )
       `);
+      
+      // Create indexes
+      try {
+        await pool.execute(`
+          CREATE INDEX idx_payment_confirmation_period 
+          ON payment_confirmations(confirmation_period_start, confirmation_period_end)
+        `);
+      } catch (idxError) {
+        // Index might already exist, ignore
+      }
+      
+      try {
+        await pool.execute(`
+          CREATE INDEX idx_payment_confirmation_status 
+          ON payment_confirmations(status)
+        `);
+      } catch (idxError) {
+        // Index might already exist, ignore
+      }
+      
       console.log('✅ payment_confirmations table created');
     }
 

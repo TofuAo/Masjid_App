@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { CheckCircle, XCircle, Clock, FileText, Calendar, DollarSign, AlertCircle, Search, Filter } from 'lucide-react';
+import { CheckCircle, XCircle, Clock, FileText, Calendar, DollarSign, AlertCircle, Search, Filter, Zap, CheckSquare } from 'lucide-react';
 import { ibAPI } from '../services/api';
 import { toast } from 'react-toastify';
 
@@ -10,6 +10,11 @@ const IbDashboard = () => {
   const [confirming, setConfirming] = useState(false);
   const [notes, setNotes] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
+  const [approvingPayments, setApprovingPayments] = useState(false);
+  const [approvalMode, setApprovalMode] = useState('whole_month'); // 'whole_month' or 'selective_days'
+  const [selectedStartDate, setSelectedStartDate] = useState('');
+  const [selectedEndDate, setSelectedEndDate] = useState('');
+  const [excludedPaymentIds, setExcludedPaymentIds] = useState([]);
 
   useEffect(() => {
     loadReports();
@@ -71,6 +76,88 @@ const IbDashboard = () => {
     } finally {
       setConfirming(false);
     }
+  };
+
+  const handleQuickApproveMonth = async (bulan, tahun, e) => {
+    e.stopPropagation(); // Prevent opening the modal
+    
+    if (!confirm(`Adakah anda pasti ingin mengesahkan semua pembayaran untuk ${bulan} ${tahun}?`)) {
+      return;
+    }
+
+    try {
+      setApprovingPayments(true);
+      const response = await ibAPI.approvePaymentsByDate({
+        bulan,
+        tahun,
+        notes: `Quick approval for ${bulan} ${tahun}`
+      });
+
+      if (response.success) {
+        toast.success(`Berjaya mengesahkan ${response.data.confirmed} dokumen pembayaran!`);
+        await loadReports();
+        if (selectedReport && selectedReport.bulan === bulan && selectedReport.tahun === tahun) {
+          await loadMonthlyReport(bulan, tahun);
+        }
+      }
+    } catch (error) {
+      console.error('Error approving payments:', error);
+      toast.error(error.response?.data?.message || 'Gagal mengesahkan pembayaran');
+    } finally {
+      setApprovingPayments(false);
+    }
+  };
+
+  const handleApproveByDateRange = async () => {
+    if (!selectedReport) return;
+
+    if (approvalMode === 'selective_days' && (!selectedStartDate || !selectedEndDate)) {
+      toast.error('Sila pilih tarikh mula dan tarikh akhir');
+      return;
+    }
+
+    const confirmMessage = approvalMode === 'whole_month'
+      ? `Adakah anda pasti ingin mengesahkan semua pembayaran untuk ${selectedReport.bulan} ${selectedReport.tahun}?`
+      : `Adakah anda pasti ingin mengesahkan pembayaran dari ${selectedStartDate} hingga ${selectedEndDate}?`;
+
+    if (!confirm(confirmMessage)) {
+      return;
+    }
+
+    try {
+      setApprovingPayments(true);
+      const response = await ibAPI.approvePaymentsByDate({
+        bulan: selectedReport.bulan,
+        tahun: selectedReport.tahun,
+        start_date: approvalMode === 'selective_days' ? selectedStartDate : null,
+        end_date: approvalMode === 'selective_days' ? selectedEndDate : null,
+        exclude_payment_ids: excludedPaymentIds,
+        notes: notes.trim() || `Approval for ${selectedReport.bulan} ${selectedReport.tahun}`
+      });
+
+      if (response.success) {
+        toast.success(`Berjaya mengesahkan ${response.data.confirmed} dokumen pembayaran!`);
+        setExcludedPaymentIds([]);
+        setSelectedStartDate('');
+        setSelectedEndDate('');
+        setApprovalMode('whole_month');
+        await loadMonthlyReport(selectedReport.bulan, selectedReport.tahun);
+        await loadReports();
+      }
+    } catch (error) {
+      console.error('Error approving payments by date:', error);
+      toast.error(error.response?.data?.message || 'Gagal mengesahkan pembayaran');
+    } finally {
+      setApprovingPayments(false);
+    }
+  };
+
+  const toggleExcludePayment = (paymentId) => {
+    setExcludedPaymentIds(prev => 
+      prev.includes(paymentId)
+        ? prev.filter(id => id !== paymentId)
+        : [...prev, paymentId]
+    );
   };
 
   const getStatusBadge = (status) => {
@@ -189,11 +276,19 @@ const IbDashboard = () => {
                 </div>
 
                 {report.canConfirm && (
-                  <div className="mt-4 pt-4 border-t">
-                    <div className="flex items-center gap-2 text-blue-600 text-sm font-medium">
+                  <div className="mt-4 pt-4 border-t space-y-2">
+                    <div className="flex items-center gap-2 text-blue-600 text-sm font-medium mb-2">
                       <AlertCircle className="w-4 h-4" />
-                      Klik untuk mengesahkan
+                      Klik untuk melihat butiran
                     </div>
+                    <button
+                      onClick={(e) => handleQuickApproveMonth(report.bulan, report.tahun, e)}
+                      disabled={approvingPayments}
+                      className="w-full bg-green-600 text-white px-4 py-2 rounded-md font-medium hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm"
+                    >
+                      <Zap className="w-4 h-4" />
+                      {approvingPayments ? 'Mengesahkan...' : 'Sahkan Semua Pembayaran'}
+                    </button>
                   </div>
                 )}
               </div>
@@ -260,11 +355,12 @@ const IbDashboard = () => {
                           <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tarikh Bayar</th>
                           <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Cara Bayar</th>
                           <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">No. Resit</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status Dokumen</th>
                         </tr>
                       </thead>
                       <tbody className="bg-white divide-y divide-gray-200">
                         {selectedReport.payments.map((payment) => (
-                          <tr key={payment.id}>
+                          <tr key={payment.id} className={payment.document_confirmed ? 'bg-green-50' : ''}>
                             <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">{payment.pelajar_nama}</td>
                             <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">{payment.nama_kelas || '-'}</td>
                             <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">{formatCurrency(payment.jumlah || 0)}</td>
@@ -280,6 +376,19 @@ const IbDashboard = () => {
                             </td>
                             <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">{payment.cara_bayar || '-'}</td>
                             <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">{payment.no_resit || '-'}</td>
+                            <td className="px-4 py-3 whitespace-nowrap">
+                              {payment.document_confirmed ? (
+                                <span className="px-2 py-1 bg-green-100 text-green-800 rounded text-xs flex items-center gap-1">
+                                  <CheckCircle className="w-3 h-3" />
+                                  Disahkan
+                                </span>
+                              ) : (
+                                <span className="px-2 py-1 bg-yellow-100 text-yellow-800 rounded text-xs flex items-center gap-1">
+                                  <Clock className="w-3 h-3" />
+                                  Menunggu
+                                </span>
+                              )}
+                            </td>
                           </tr>
                         ))}
                       </tbody>
@@ -287,29 +396,144 @@ const IbDashboard = () => {
                   </div>
                 </div>
 
-                {/* Confirmation Section */}
-                {selectedReport.confirmation?.status !== 'confirmed' && (
-                  <div className="border-t pt-6">
-                    <h3 className="text-lg font-semibold mb-4">Pengesahan Laporan</h3>
-                    <div className="space-y-4">
+                {/* Payment Document Confirmation Section */}
+                <div className="border-t pt-6">
+                  <h3 className="text-lg font-semibold mb-4">Pengesahan Dokumen Pembayaran</h3>
+                  
+                  {/* Approval Mode Selection */}
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Mod Pengesahan</label>
+                    <div className="flex gap-4">
+                      <label className="flex items-center">
+                        <input
+                          type="radio"
+                          value="whole_month"
+                          checked={approvalMode === 'whole_month'}
+                          onChange={(e) => setApprovalMode(e.target.value)}
+                          className="mr-2"
+                        />
+                        <span className="text-sm">Keseluruhan Bulan</span>
+                      </label>
+                      <label className="flex items-center">
+                        <input
+                          type="radio"
+                          value="selective_days"
+                          checked={approvalMode === 'selective_days'}
+                          onChange={(e) => setApprovalMode(e.target.value)}
+                          className="mr-2"
+                        />
+                        <span className="text-sm">Hari Tertentu</span>
+                      </label>
+                    </div>
+                  </div>
+
+                  {/* Date Range Selection for Selective Days */}
+                  {approvalMode === 'selective_days' && (
+                    <div className="grid grid-cols-2 gap-4 mb-4">
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Nota (Pilihan)</label>
-                        <textarea
-                          value={notes}
-                          onChange={(e) => setNotes(e.target.value)}
-                          rows={3}
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Tarikh Mula</label>
+                        <input
+                          type="date"
+                          value={selectedStartDate}
+                          onChange={(e) => setSelectedStartDate(e.target.value)}
                           className="w-full border border-gray-300 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          placeholder="Masukkan nota atau komen mengenai laporan ini..."
                         />
                       </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Tarikh Akhir</label>
+                        <input
+                          type="date"
+                          value={selectedEndDate}
+                          onChange={(e) => setSelectedEndDate(e.target.value)}
+                          className="w-full border border-gray-300 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Payments List with Exclude Option */}
+                  {approvalMode === 'selective_days' && selectedStartDate && selectedEndDate && (
+                    <div className="mb-4 max-h-60 overflow-y-auto border rounded-lg p-4">
+                      <div className="text-sm font-medium text-gray-700 mb-2">
+                        Pilih pembayaran untuk dikecualikan (jika ada):
+                      </div>
+                      <div className="space-y-2">
+                        {selectedReport.payments
+                          .filter(p => {
+                            if (!p.tarikh_bayar) return false;
+                            const paymentDate = new Date(p.tarikh_bayar).toISOString().split('T')[0];
+                            return paymentDate >= selectedStartDate && paymentDate <= selectedEndDate;
+                          })
+                          .map((payment) => (
+                            <div
+                              key={payment.id}
+                              className="flex items-center justify-between p-2 hover:bg-gray-50 rounded"
+                            >
+                              <div className="flex items-center space-x-2 flex-1">
+                                <button
+                                  onClick={() => toggleExcludePayment(payment.id)}
+                                  className={`flex items-center justify-center w-5 h-5 border-2 rounded transition-colors ${
+                                    excludedPaymentIds.includes(payment.id)
+                                      ? 'border-gray-300 bg-gray-100'
+                                      : 'border-emerald-600 bg-emerald-50'
+                                  } hover:border-emerald-600`}
+                                >
+                                  {excludedPaymentIds.includes(payment.id) ? (
+                                    <XCircle className="w-3 h-3 text-gray-500" />
+                                  ) : (
+                                    <CheckCircle className="w-3 h-3 text-emerald-600" />
+                                  )}
+                                </button>
+                                <span className="text-sm text-gray-700">{payment.pelajar_nama}</span>
+                                <span className="text-xs text-gray-500">
+                                  {payment.tarikh_bayar ? formatDate(payment.tarikh_bayar) : '-'}
+                                </span>
+                                <span className="text-sm font-medium text-gray-900">
+                                  {formatCurrency(payment.jumlah || 0)}
+                                </span>
+                              </div>
+                            </div>
+                          ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Notes */}
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Nota (Pilihan)</label>
+                    <textarea
+                      value={notes}
+                      onChange={(e) => setNotes(e.target.value)}
+                      rows={3}
+                      className="w-full border border-gray-300 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="Masukkan nota atau komen mengenai pengesahan ini..."
+                    />
+                  </div>
+
+                  {/* Approve Button */}
+                  <button
+                    onClick={handleApproveByDateRange}
+                    disabled={approvingPayments || (approvalMode === 'selective_days' && (!selectedStartDate || !selectedEndDate))}
+                    className="w-full bg-green-600 text-white px-6 py-3 rounded-md font-medium hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  >
+                    <CheckCircle className="w-5 h-5" />
+                    {approvingPayments ? 'Mengesahkan...' : approvalMode === 'whole_month' ? 'Sahkan Semua Pembayaran Bulan Ini' : 'Sahkan Pembayaran untuk Tarikh Terpilih'}
+                  </button>
+                </div>
+
+                {/* Monthly Report Confirmation Section */}
+                {selectedReport.confirmation?.status !== 'confirmed' && (
+                  <div className="border-t pt-6 mt-6">
+                    <h3 className="text-lg font-semibold mb-4">Pengesahan Laporan Bulanan</h3>
+                    <div className="space-y-4">
                       <div className="flex gap-3">
                         <button
                           onClick={() => handleConfirm(selectedReport.bulan, selectedReport.tahun, 'confirmed')}
                           disabled={confirming}
-                          className="flex-1 bg-green-600 text-white px-6 py-3 rounded-md font-medium hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                          className="flex-1 bg-blue-600 text-white px-6 py-3 rounded-md font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                         >
                           <CheckCircle className="w-5 h-5" />
-                          {confirming ? 'Mengesahkan...' : 'Sahkan Laporan'}
+                          {confirming ? 'Mengesahkan...' : 'Sahkan Laporan Bulanan'}
                         </button>
                         <button
                           onClick={() => handleConfirm(selectedReport.bulan, selectedReport.tahun, 'rejected')}

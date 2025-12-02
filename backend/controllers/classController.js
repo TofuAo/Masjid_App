@@ -29,8 +29,10 @@ export const getAllClasses = async (req, res) => {
     
     const queryParams = [];
     
-    // If user is a teacher, only show their classes
-    if (req.user && req.user.role === 'teacher') {
+    // Allow teachers to see all classes, but they can filter by guru_id if needed
+    // Teachers can differentiate their classes visually in the frontend
+    // If a teacher wants to filter to only their classes, they can use the guru_id query param
+    if (req.user && req.user.role === 'teacher' && req.query.my_classes_only === 'true') {
       query += ` AND c.guru_ic = ?`;
       queryParams.push(req.user.ic);
     }
@@ -66,8 +68,8 @@ export const getAllClasses = async (req, res) => {
     `;
     const countParams = [];
     
-    // If user is a teacher, only count their classes
-    if (req.user && req.user.role === 'teacher') {
+    // Allow teachers to see all classes count, but they can filter if needed
+    if (req.user && req.user.role === 'teacher' && req.query.my_classes_only === 'true') {
       countQuery += ` AND c.guru_ic = ?`;
       countParams.push(req.user.ic);
     }

@@ -80,7 +80,7 @@ const LayoutContent = ({ children, user, onLogout, onRoleChange }) => {
   const getRoleLabel = (role) => {
     const roleLabels = {
       'ib': 'IB (Pengesah Pembayaran)',
-      'admin': 'Admin Sistem',
+      'admin': 'Pentadbir',
       'teacher': 'Guru',
       'student': 'Pelajar',
       'pic': 'PIC Masjid',
@@ -94,7 +94,11 @@ const LayoutContent = ({ children, user, onLogout, onRoleChange }) => {
     { icon: <MessageSquare className="w-5 h-5" />, label: 'Hubungi Kami', link: '/contact' },
   ];
 
-  if (effectiveRole === 'admin') {
+  // Admin menu - show for admin role OR IB users who have admin role and selected it
+  const isAdminMode = effectiveRole === 'admin' || 
+    (effectiveRole === 'ib' && availableRoles.includes('admin') && user?.activeRole === 'admin');
+  
+  if (isAdminMode) {
     menuItems = [
       ...menuItems,
       { icon: <Megaphone className="w-5 h-5" />, label: 'Pengumuman', link: '/announcements' },
@@ -145,6 +149,7 @@ const LayoutContent = ({ children, user, onLogout, onRoleChange }) => {
   } else if (effectiveRole === 'student') {
     menuItems = [
       ...menuItems,
+      { icon: <User className="w-5 h-5" />, label: 'Akaun Saya', link: '/account' },
       { icon: <Megaphone className="w-5 h-5" />, label: 'Pengumuman', link: '/announcements' },
       { icon: <Calendar className="w-5 h-5" />, label: 'Kehadiran', link: '/kehadiran' },
       { icon: <FileText className="w-5 h-5" />, label: 'Keputusan', link: '/keputusan' },
@@ -154,6 +159,7 @@ const LayoutContent = ({ children, user, onLogout, onRoleChange }) => {
   } else if (effectiveRole === 'ib') {
     menuItems = [
       ...menuItems,
+      { icon: <User className="w-5 h-5" />, label: 'Akaun IB', link: '/ib-account' },
       { icon: <FileCheck className="w-5 h-5" />, label: 'Dashboard IB', link: '/ib-dashboard' },
       { icon: <Megaphone className="w-5 h-5" />, label: 'Pengumuman', link: '/announcements' },
       { icon: <BarChart3 className="w-5 h-5" />, label: 'Laporan', link: '/laporan' },

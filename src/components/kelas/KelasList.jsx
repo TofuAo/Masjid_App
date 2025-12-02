@@ -3,11 +3,24 @@ import { Search, Plus, Edit, Eye, Trash2, BookOpen, Users } from 'lucide-react';
 
 const KelasList = ({ kelass = [], onEdit, onView, onDelete, onAdd, gurus = [], user }) => {
   const [searchTerm, setSearchTerm] = useState('');
+  const [showMyClassesOnly, setShowMyClassesOnly] = useState(false);
+
+  // Check if a class belongs to the current teacher
+  const isMyClass = (kelas) => {
+    if (!user || user.role !== 'teacher') return false;
+    return kelas.guru_ic === user.ic;
+  };
 
   const filteredKelass = kelass.filter(kelas => {
     const lowerSearchTerm = searchTerm.toLowerCase();
     const matchesSearch = (kelas.nama_kelas || kelas.class_name || '').toLowerCase().includes(lowerSearchTerm) ||
                          (kelas.level || '').toLowerCase().includes(lowerSearchTerm);
+    
+    // If teacher and "My Classes Only" filter is enabled
+    if (user?.role === 'teacher' && showMyClassesOnly) {
+      return matchesSearch && isMyClass(kelas);
+    }
+    
     return matchesSearch;
   });
 
@@ -40,6 +53,19 @@ const KelasList = ({ kelass = [], onEdit, onView, onDelete, onAdd, gurus = [], u
               className="input-mosque w-full pl-10"
             />
           </div>
+          {user?.role === 'teacher' && (
+            <div className="flex items-center gap-2">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={showMyClassesOnly}
+                  onChange={(e) => setShowMyClassesOnly(e.target.checked)}
+                  className="w-4 h-4 text-mosque-primary-600 border-mosque-primary-300 rounded focus:ring-mosque-primary-500"
+                />
+                <span className="text-sm text-mosque-neutral-700 font-medium">Kelas Saya Sahaja</span>
+              </label>
+            </div>
+          )}
         </div>
 
         <div className="overflow-x-auto -mx-4 sm:mx-0">
@@ -56,15 +82,33 @@ const KelasList = ({ kelass = [], onEdit, onView, onDelete, onAdd, gurus = [], u
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-mosque-primary-100">
-              {filteredKelass.map((kelas) => (
-                <tr key={kelas.id} className="hover:bg-mosque-primary-50 transition-colors duration-200">
+              {filteredKelass.map((kelas) => {
+                const isMyClassRow = isMyClass(kelas);
+                return (
+                <tr 
+                  key={kelas.id} 
+                  className={`transition-colors duration-200 ${
+                    isMyClassRow 
+                      ? 'bg-emerald-50 hover:bg-emerald-100 border-l-4 border-emerald-500' 
+                      : 'hover:bg-mosque-primary-50'
+                  }`}
+                >
                   <td className="px-3 sm:px-6 py-3 sm:py-4">
                     <div className="flex items-center">
-                      <div className="flex-shrink-0 h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
-                        <BookOpen className="h-5 w-5 text-blue-600" />
+                      <div className={`flex-shrink-0 h-10 w-10 rounded-full flex items-center justify-center ${
+                        isMyClassRow ? 'bg-emerald-200' : 'bg-blue-100'
+                      }`}>
+                        <BookOpen className={`h-5 w-5 ${isMyClassRow ? 'text-emerald-700' : 'text-blue-600'}`} />
                       </div>
-                      <div className="ml-4">
-                        <div className="text-sm font-medium text-mosque-neutral-900">{kelas.nama_kelas || kelas.class_name || ''}</div>
+                      <div className="ml-4 flex-1">
+                        <div className="flex items-center gap-2">
+                          <div className="text-sm font-medium text-mosque-neutral-900">{kelas.nama_kelas || kelas.class_name || ''}</div>
+                          {isMyClassRow && (
+                            <span className="px-2 py-0.5 text-xs font-semibold bg-emerald-500 text-white rounded-full">
+                              Kelas Saya
+                            </span>
+                          )}
+                        </div>
                         <div className="text-sm text-mosque-neutral-500 flex items-center">
                           <Users size={12} className="mr-1" />
                           {kelas.student_count || 0} pelajar / {Number(kelas.kapasiti) || 0} tempat
@@ -146,7 +190,8 @@ const KelasList = ({ kelass = [], onEdit, onView, onDelete, onAdd, gurus = [], u
                     </div>
                   </td>
                 </tr>
-              ))}
+              );
+              })}
             </tbody>
           </table>
         </div>

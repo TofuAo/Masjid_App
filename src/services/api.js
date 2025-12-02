@@ -308,6 +308,7 @@ export const attendanceAPI = {
   delete: (id) => api.delete(`/attendance/${id}`),
   getStats: (params) => api.get('/attendance/stats', { params }),
   getStudentHistory: (id, params) => api.get(`/attendance/student/${id}`, { params }),
+  confirmDocument: (id, data) => api.post(`/attendance/${id}/confirm-document`, data),
 };
 
 // Fees API
@@ -328,6 +329,7 @@ export const feesAPI = {
   markAsPaid: (id, data) => api.put(`/fees/${id}/mark-paid`, data),
   delete: (id) => api.delete(`/fees/${id}`),
   getStats: (params) => api.get('/fees/stats', { params }),
+  confirmDocument: (id, data) => api.post(`/fees/${id}/confirm-document`, data),
 };
 
 // Results API
@@ -538,6 +540,10 @@ export const ibAPI = {
   getAvailableReports: () => api.get('/ib/reports'),
   getMonthlyReport: (params) => api.get('/ib/report', { params }),
   confirmMonthlyPayment: (data) => api.post('/ib/confirm', data),
+  getClassDocuments: (params) => api.get('/ib/class-documents', { params }),
+  confirmClassAttendance: (data) => api.post('/ib/confirm-class-attendance', data),
+  confirmClassFees: (data) => api.post('/ib/confirm-class-fees', data),
+  approvePaymentsByDate: (data) => api.post('/ib/approve-payments-by-date', data),
 };
 
 export default api;

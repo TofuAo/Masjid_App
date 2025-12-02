@@ -29,6 +29,9 @@ export const getMonthlyPaymentReport = async (req, res) => {
         f.cara_bayar,
         f.no_resit,
         f.resit_img,
+        f.document_confirmed,
+        f.confirmed_by,
+        f.confirmed_at,
         f.created_at
       FROM fees f
       INNER JOIN users u ON f.student_ic = u.ic
@@ -273,6 +276,348 @@ export const getAvailableMonthlyReports = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Gagal mendapatkan senarai laporan bulanan',
+      error: error.message
+    });
+  }
+};
+
+// Bulk confirm attendance documents by class
+export const confirmClassAttendance = async (req, res) => {
+  try {
+    const { class_id, exclude_student_ics = [], notes = '', confirmed = true } = req.body;
+    const confirmedBy = req.user?.ic;
+
+    if (!confirmedBy) {
+      return res.status(401).json({
+        success: false,
+        message: 'Unauthorized'
+      });
+    }
+
+    if (!class_id) {
+      return res.status(400).json({
+        success: false,
+        message: 'Class ID is required'
+      });
+    }
+
+    // Get all attendance records for the class that have proof images and are not yet confirmed
+    let query = `
+      SELECT a.id, a.student_ic, a.proof_image, a.document_confirmed
+      FROM attendance a
+      WHERE a.class_id = ? 
+        AND a.proof_image IS NOT NULL 
+        AND a.proof_image != ''
+    `;
+    const queryParams = [class_id];
+
+    // Exclude specific students if provided
+    if (exclude_student_ics && exclude_student_ics.length > 0) {
+      const placeholders = exclude_student_ics.map(() => '?').join(',');
+      query += ` AND a.student_ic NOT IN (${placeholders})`;
+      queryParams.push(...exclude_student_ics);
+    }
+
+    const [attendanceRecords] = await pool.execute(query, queryParams);
+
+    if (attendanceRecords.length === 0) {
+      return res.json({
+        success: true,
+        message: 'No attendance records found to confirm',
+        data: {
+          confirmed: 0,
+          total: 0
+        }
+      });
+    }
+
+    const isConfirmed = confirmed === true || confirmed === 1 || confirmed === '1';
+    const recordIds = attendanceRecords.map(r => r.id);
+    const placeholders = recordIds.map(() => '?').join(',');
+
+    // Bulk update confirmation status
+    await pool.execute(
+      `UPDATE attendance 
+       SET document_confirmed = ?,
+           confirmed_by = ?,
+           confirmed_at = ${isConfirmed ? 'CURRENT_TIMESTAMP' : 'NULL'},
+           confirmation_notes = ?,
+           updated_at = CURRENT_TIMESTAMP
+       WHERE id IN (${placeholders})`,
+      [isConfirmed ? 1 : 0, isConfirmed ? confirmedBy : null, notes || null, ...recordIds]
+    );
+
+    res.json({
+      success: true,
+      message: `Successfully ${isConfirmed ? 'confirmed' : 'unconfirmed'} ${attendanceRecords.length} attendance document(s)`,
+      data: {
+        confirmed: attendanceRecords.length,
+        total: attendanceRecords.length,
+        excluded: exclude_student_ics.length
+      }
+    });
+  } catch (error) {
+    console.error('Error confirming class attendance:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: error.message
+    });
+  }
+};
+
+// Bulk confirm fee documents by class
+export const confirmClassFees = async (req, res) => {
+  try {
+    const { class_id, exclude_student_ics = [], notes = '', confirmed = true } = req.body;
+    const confirmedBy = req.user?.ic;
+
+    if (!confirmedBy) {
+      return res.status(401).json({
+        success: false,
+        message: 'Unauthorized'
+      });
+    }
+
+    if (!class_id) {
+      return res.status(400).json({
+        success: false,
+        message: 'Class ID is required'
+      });
+    }
+
+    // Get all fee records for students in the class that have receipt images and are not yet confirmed
+    let query = `
+      SELECT f.id, f.student_ic, f.resit_img, f.document_confirmed
+      FROM fees f
+      INNER JOIN students s ON f.student_ic = s.user_ic
+      WHERE s.kelas_id = ? 
+        AND f.resit_img IS NOT NULL 
+        AND f.resit_img != ''
+    `;
+    const queryParams = [class_id];
+
+    // Exclude specific students if provided
+    if (exclude_student_ics && exclude_student_ics.length > 0) {
+      const placeholders = exclude_student_ics.map(() => '?').join(',');
+      query += ` AND f.student_ic NOT IN (${placeholders})`;
+      queryParams.push(...exclude_student_ics);
+    }
+
+    const [feeRecords] = await pool.execute(query, queryParams);
+
+    if (feeRecords.length === 0) {
+      return res.json({
+        success: true,
+        message: 'No fee records found to confirm',
+        data: {
+          confirmed: 0,
+          total: 0
+        }
+      });
+    }
+
+    const isConfirmed = confirmed === true || confirmed === 1 || confirmed === '1';
+    const recordIds = feeRecords.map(r => r.id);
+    const placeholders = recordIds.map(() => '?').join(',');
+
+    // Bulk update confirmation status
+    await pool.execute(
+      `UPDATE fees 
+       SET document_confirmed = ?,
+           confirmed_by = ?,
+           confirmed_at = ${isConfirmed ? 'CURRENT_TIMESTAMP' : 'NULL'},
+           confirmation_notes = ?,
+           updated_at = CURRENT_TIMESTAMP
+       WHERE id IN (${placeholders})`,
+      [isConfirmed ? 1 : 0, isConfirmed ? confirmedBy : null, notes || null, ...recordIds]
+    );
+
+    res.json({
+      success: true,
+      message: `Successfully ${isConfirmed ? 'confirmed' : 'unconfirmed'} ${feeRecords.length} fee document(s)`,
+      data: {
+        confirmed: feeRecords.length,
+        total: feeRecords.length,
+        excluded: exclude_student_ics.length
+      }
+    });
+  } catch (error) {
+    console.error('Error confirming class fees:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: error.message
+    });
+  }
+};
+
+// Get class documents for confirmation (attendance and fees)
+export const getClassDocuments = async (req, res) => {
+  try {
+    const { class_id } = req.query;
+
+    if (!class_id) {
+      return res.status(400).json({
+        success: false,
+        message: 'Class ID is required'
+      });
+    }
+
+    // Get attendance records with documents
+    const [attendanceRecords] = await pool.execute(
+      `SELECT 
+        a.id,
+        a.student_ic,
+        a.tarikh,
+        a.status,
+        a.proof_image,
+        a.document_confirmed,
+        a.confirmed_by,
+        a.confirmed_at,
+        u.nama as pelajar_nama,
+        c.nama_kelas
+      FROM attendance a
+      INNER JOIN users u ON a.student_ic = u.ic
+      INNER JOIN classes c ON a.class_id = c.id
+      WHERE a.class_id = ? 
+        AND a.proof_image IS NOT NULL 
+        AND a.proof_image != ''
+      ORDER BY a.tarikh DESC, u.nama ASC`,
+      [class_id]
+    );
+
+    // Get fee records with documents
+    const [feeRecords] = await pool.execute(
+      `SELECT 
+        f.id,
+        f.student_ic,
+        f.tarikh,
+        f.bulan,
+        f.tahun,
+        f.jumlah,
+        f.status,
+        f.resit_img,
+        f.document_confirmed,
+        f.confirmed_by,
+        f.confirmed_at,
+        u.nama as pelajar_nama,
+        c.nama_kelas
+      FROM fees f
+      INNER JOIN students s ON f.student_ic = s.user_ic
+      INNER JOIN classes c ON s.kelas_id = c.id
+      INNER JOIN users u ON f.student_ic = u.ic
+      WHERE s.kelas_id = ? 
+        AND f.resit_img IS NOT NULL 
+        AND f.resit_img != ''
+      ORDER BY f.tahun DESC, f.bulan DESC, u.nama ASC`,
+      [class_id]
+    );
+
+    res.json({
+      success: true,
+      data: {
+        attendance: attendanceRecords,
+        fees: feeRecords,
+        class_id: parseInt(class_id)
+      }
+    });
+  } catch (error) {
+    console.error('Error getting class documents:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: error.message
+    });
+  }
+};
+
+// Approve payments by date range within a month
+export const approvePaymentsByDateRange = async (req, res) => {
+  try {
+    const { bulan, tahun, start_date, end_date, exclude_payment_ids = [], notes = '' } = req.body;
+    const confirmedBy = req.user?.ic;
+
+    if (!confirmedBy) {
+      return res.status(401).json({
+        success: false,
+        message: 'Unauthorized'
+      });
+    }
+
+    if (!bulan || !tahun) {
+      return res.status(400).json({
+        success: false,
+        message: 'Bulan dan tahun diperlukan'
+      });
+    }
+
+    // Build query to get payments in the date range
+    let query = `
+      SELECT f.id, f.student_ic, f.resit_img, f.document_confirmed
+      FROM fees f
+      WHERE f.bulan = ? AND f.tahun = ?
+        AND f.resit_img IS NOT NULL 
+        AND f.resit_img != ''
+        AND f.status IN ('terbayar', 'Bayar')
+    `;
+    const queryParams = [bulan, tahun];
+
+    // Add date range filter if provided
+    if (start_date && end_date) {
+      query += ` AND DATE(f.tarikh_bayar) >= DATE(?) AND DATE(f.tarikh_bayar) <= DATE(?)`;
+      queryParams.push(start_date, end_date);
+    }
+
+    // Exclude specific payment IDs if provided
+    if (exclude_payment_ids && exclude_payment_ids.length > 0) {
+      const placeholders = exclude_payment_ids.map(() => '?').join(',');
+      query += ` AND f.id NOT IN (${placeholders})`;
+      queryParams.push(...exclude_payment_ids);
+    }
+
+    const [payments] = await pool.execute(query, queryParams);
+
+    if (payments.length === 0) {
+      return res.json({
+        success: true,
+        message: 'No payments found to confirm',
+        data: {
+          confirmed: 0,
+          total: 0
+        }
+      });
+    }
+
+    const paymentIds = payments.map(p => p.id);
+    const placeholders = paymentIds.map(() => '?').join(',');
+
+    // Bulk update confirmation status
+    await pool.execute(
+      `UPDATE fees 
+       SET document_confirmed = 1,
+           confirmed_by = ?,
+           confirmed_at = CURRENT_TIMESTAMP,
+           confirmation_notes = ?,
+           updated_at = CURRENT_TIMESTAMP
+       WHERE id IN (${placeholders})`,
+      [confirmedBy, notes || null, ...paymentIds]
+    );
+
+    res.json({
+      success: true,
+      message: `Successfully confirmed ${payments.length} payment document(s)`,
+      data: {
+        confirmed: payments.length,
+        total: payments.length,
+        excluded: exclude_payment_ids.length
+      }
+    });
+  } catch (error) {
+    console.error('Error approving payments by date range:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
       error: error.message
     });
   }

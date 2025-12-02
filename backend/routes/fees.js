@@ -7,7 +7,8 @@ import {
   updateFee,
   markAsPaid,
   deleteFee,
-  getFeeStats
+  getFeeStats,
+  confirmFeeDocument
 } from '../controllers/feeController.js';
 import { authenticateToken, requireRole } from '../middleware/auth.js';
 import { normalizeICMiddleware } from '../middleware/normalizeIC.js';
@@ -74,5 +75,6 @@ router.post('/', requireRole(['admin', 'staff']), feeValidation, normalizeICMidd
 router.put('/:id', requireRole(['admin', 'staff']), idValidation, feeValidation, normalizeICMiddleware, updateFee);
 router.put('/:id/mark-paid', requireRole(['admin', 'staff']), idValidation, markPaidValidation, markAsPaid);
 router.delete('/:id', requireRole(['admin']), idValidation, deleteFee);
+router.post('/:id/confirm-document', requireRole(['admin', 'pic', 'ib']), idValidation, confirmFeeDocument);
 
 export default router;

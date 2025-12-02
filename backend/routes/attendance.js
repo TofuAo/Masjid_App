@@ -7,7 +7,8 @@ import {
   bulkMarkAttendanceWithProof,
   getAttendanceStats,
   getStudentAttendanceHistory,
-  deleteAttendance
+  deleteAttendance,
+  confirmAttendanceDocument
 } from '../controllers/attendanceController.js';
 import { authenticateToken, requireRole } from '../middleware/auth.js';
 import { isValidICFormat } from '../utils/icNormalizer.js';
@@ -80,5 +81,6 @@ router.post('/bulk', requireRole(['admin', 'staff', 'teacher', 'pic']), bulkAtte
 router.post('/bulk-with-proof', requireRole(['admin', 'staff', 'teacher', 'pic']), uploadAttendanceProof, normalizeICMiddleware, bulkMarkAttendanceWithProof);
 router.put('/:id', requireRole(['admin', 'pic']), attendanceValidation, normalizeICMiddleware, markAttendance);
 router.delete('/:id', requireRole(['admin', 'pic']), normalizeICMiddleware, deleteAttendance);
+router.post('/:id/confirm-document', requireRole(['admin', 'pic', 'ib']), param('id').isInt(), confirmAttendanceDocument);
 
 export default router;

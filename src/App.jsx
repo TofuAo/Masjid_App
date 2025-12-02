@@ -38,6 +38,8 @@ import Admins from './pages/Admins';
 import Contact from './pages/Contact';
 import IbDashboard from './pages/IbDashboard';
 import Hierarchy from './pages/Hierarchy';
+import Account from './pages/Account';
+import IbAccount from './pages/IbAccount';
 import { PreferencesProvider, usePreferences } from './contexts/PreferencesContext';
 import { LanguageProvider } from './contexts/LanguageContext';
 
@@ -206,6 +208,8 @@ function AppContent() {
                 <Route path="/payment-method-settings" element={<PaymentMethodSettings />} />
                 <Route path="/toyyibpay-settings" element={<ToyyibPaySettings />} />
                 <Route path="/personal-settings" element={<PersonalSettings />} />
+                <Route path="/account" element={<Account />} />
+                <Route path="/ib-account" element={<IbAccount />} />
                 <Route path="/announcements" element={<Announcements user={user} />} />
                 <Route path="/admin-actions" element={<AdminActions user={user} />} />
                 <Route path="/staff-checkin" element={<StaffCheckIn user={user} />} />

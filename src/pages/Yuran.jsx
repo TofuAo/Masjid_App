@@ -7,7 +7,7 @@ import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import Badge from '../components/ui/Badge';
 import LoadingSkeleton from '../components/ui/LoadingSkeleton';
-import { CreditCard, DollarSign, CheckCircle, XCircle, Clock, Plus, Search, Filter, QrCode, Settings, Upload, Link as LinkIcon, Save, ChevronDown, ChevronUp, AlertCircle } from 'lucide-react';
+import { CreditCard, DollarSign, CheckCircle, XCircle, Clock, Plus, Search, Filter, QrCode, Settings, Upload, Link as LinkIcon, Save, ChevronDown, ChevronUp, AlertCircle, FileCheck, Eye } from 'lucide-react';
 import { getEffectiveRole } from '../utils/userRoles';
 
 const PAYMENT_TRACKER_STORAGE_KEY = 'yuran_payment_tracker_v1';
@@ -163,6 +163,26 @@ const Yuran = () => {
         <span>{config.label}</span>
       </Badge>
     );
+  };
+
+  const handleConfirmDocument = async (id, confirmed, notes = '') => {
+    if (!window.confirm(confirmed ? 'Adakah anda pasti ingin mengesahkan dokumen ini?' : 'Adakah anda pasti ingin membatalkan pengesahan dokumen ini?')) {
+      return;
+    }
+
+    try {
+      await feesAPI.confirmDocument(id, { confirmed, notes });
+      toast.success(confirmed ? 'Dokumen berjaya disahkan!' : 'Pengesahan dokumen dibatalkan.');
+      fetchFees({
+        limit: 1000,
+        search: searchTerm,
+        status: statusFilter === 'semua' ? '' : statusFilter,
+        bulan: monthFilter === 'semua' ? '' : monthFilter,
+      });
+    } catch (error) {
+      console.error('Error confirming document:', error);
+      toast.error('Gagal mengesahkan dokumen.');
+    }
   };
 
   const updateYuranStatus = async (id, newStatus, studentIC = null) => {
@@ -528,6 +548,11 @@ const Yuran = () => {
                     <th className="px-6 py-3 text-left text-xs font-medium text-black uppercase tracking-wider">
                       Tarikh Bayar
                     </th>
+                    {(userRole === 'admin' || userRole === 'pic') && (
+                      <th className="px-6 py-3 text-left text-xs font-medium text-black uppercase tracking-wider">
+                        Status Dokumen
+                      </th>
+                    )}
                     <th className="px-6 py-3 text-left text-xs font-medium text-black uppercase tracking-wider">
                       Tindakan
                     </th>
@@ -556,6 +581,25 @@ const Yuran = () => {
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-black">
                         {y.tarikh_bayar ? new Date(y.tarikh_bayar).toLocaleDateString('ms-MY') : '-'}
                       </td>
+                      {(userRole === 'admin' || userRole === 'pic') && (
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          {y.resit_img ? (
+                            y.document_confirmed ? (
+                              <Badge variant="success" className="flex items-center space-x-1">
+                                <CheckCircle className="w-4 h-4" />
+                                <span>Telah Disahkan</span>
+                              </Badge>
+                            ) : (
+                              <Badge variant="warning" className="flex items-center space-x-1">
+                                <Clock className="w-4 h-4" />
+                                <span>Menunggu</span>
+                              </Badge>
+                            )
+                          ) : (
+                            <span className="text-sm text-gray-400">Tiada dokumen</span>
+                          )}
+                        </td>
+                      )}
                       {userRole !== 'student' ? (
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                           <div className="flex space-x-2">
@@ -572,6 +616,42 @@ const Yuran = () => {
                               <div className="text-xs text-black flex items-center">
                                 <CheckCircle className="w-3 h-3 mr-1 text-green-600" />
                                 {y.no_resit ? `Resit: ${y.no_resit}` : 'Terbayar'}
+                              </div>
+                            )}
+                            {y.resit_img && (userRole === 'admin' || userRole === 'pic') && (
+                              <div className="flex space-x-2 mt-2">
+                                <button
+                                  onClick={() => {
+                                    const imageUrl = y.resit_img.startsWith('http') 
+                                      ? y.resit_img 
+                                      : `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/${y.resit_img}`;
+                                    window.open(imageUrl, '_blank');
+                                  }}
+                                  className="text-xs text-blue-600 hover:text-blue-800 flex items-center space-x-1"
+                                  title="Lihat resit"
+                                >
+                                  <Eye className="w-3 h-3" />
+                                  <span>Lihat</span>
+                                </button>
+                                {!y.document_confirmed ? (
+                                  <button
+                                    onClick={() => handleConfirmDocument(y.id, true)}
+                                    className="text-xs text-emerald-600 hover:text-emerald-800 flex items-center space-x-1"
+                                    title="Sahkan dokumen"
+                                  >
+                                    <FileCheck className="w-3 h-3" />
+                                    <span>Sahkan</span>
+                                  </button>
+                                ) : (
+                                  <button
+                                    onClick={() => handleConfirmDocument(y.id, false)}
+                                    className="text-xs text-red-600 hover:text-red-800 flex items-center space-x-1"
+                                    title="Batal pengesahan"
+                                  >
+                                    <XCircle className="w-3 h-3" />
+                                    <span>Batal</span>
+                                  </button>
+                                )}
                               </div>
                             )}
                           </div>

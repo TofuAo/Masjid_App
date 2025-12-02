@@ -318,6 +318,15 @@ export const requireRole = (roles) => {
     if (effectiveRole && !availableRoles.includes(effectiveRole)) {
       availableRoles.push(effectiveRole);
     }
+    
+    // Special case: IB users with admin role should have admin access
+    // If user has 'ib' as primary role but 'admin' in availableRoles and activeRole is 'admin', grant admin access
+    if (primaryRole === 'ib' && availableRoles.includes('admin') && effectiveRole === 'admin') {
+      // Allow access if admin is required
+      if (requiredRoles.includes('admin')) {
+        return next();
+      }
+    }
 
     // CRITICAL: Allow admin to bypass role check if they have admin role (even if not currently active)
     // This allows admins with multiple roles to access admin endpoints regardless of their active role
@@ -364,8 +373,10 @@ export const requireRole = (roles) => {
       });
     }
 
-    // Check if the effective role matches any required role
-    const hasRequiredRole = requiredRoles.includes(effectiveRole);
+    // Check if the effective role or any available role matches any required role
+    const hasRequiredRole = requiredRoles.includes(effectiveRole) || 
+                           requiredRoles.some(role => availableRoles.includes(role)) ||
+                           requiredRoles.includes(primaryRole);
 
     if (!hasRequiredRole) {
       // Only log if it's not a common permission check (reduce log noise)
