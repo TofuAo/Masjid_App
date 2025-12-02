@@ -35,11 +35,16 @@ export const resolveApiBaseUrl = () => {
     // For Cloudflare deployments, require environment variable
     // This prevents fallback to localhost which won't work
     if (isCloudflareDomain(hostname)) {
-      console.error(
-        'VITE_API_BASE_URL environment variable is not set. ' +
-        'Please set VITE_API_BASE_URL in your Cloudflare Pages/Workers environment variables ' +
-        'to point to your backend API URL (e.g., https://your-backend-domain.com/api)'
-      );
+      const errorMsg = 
+        '❌ CONFIGURATION ERROR: VITE_API_BASE_URL environment variable is not set!\n\n' +
+        'Your Cloudflare-deployed app needs to know where your backend API is located.\n\n' +
+        'SOLUTION:\n' +
+        '1. Go to Cloudflare Dashboard → Pages → Your Project → Settings → Environment Variables\n' +
+        '2. Add: VITE_API_BASE_URL = https://your-backend-server.com/api\n' +
+        '3. Redeploy your site\n\n' +
+        'See CLOUDFLARE_FIX_IMMEDIATE.md for detailed instructions.';
+      
+      console.error(errorMsg);
       // Return a placeholder that will fail gracefully
       // The error message will guide the user to fix the configuration
       return 'https://api-backend-not-configured.com/api';
