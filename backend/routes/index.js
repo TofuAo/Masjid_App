@@ -2,6 +2,7 @@ import { Router } from 'express';
 import authRoutes from './auth.js';
 import studentRoutes from './students.js';
 import teacherRoutes from './teachers.js';
+import adminRoutes from './admins.js';
 import classRoutes from './classes.js';
 import attendanceRoutes from './attendance.js';
 import examRoutes from './exams.js';
@@ -16,12 +17,20 @@ import exportRoutes from './export.js';
 import adminActionRoutes from './adminActions.js';
 import pendingPicChangeRoutes from './pendingPicChanges.js';
 import picUserRoutes from './picUsers.js';
-
+import archiveRoutes from './archive.js';
+import paymentRoutes from './payments.js';
+import paymentMethodSettingsRoutes from './paymentMethodSettings.js';
+import paymentGatewaySettingsRoutes from './paymentGatewaySettings.js';
+import toyyibPayRoutes from './toyyibpay.js';
+import contactRoutes from './contact.js';
+import ibRoutes from './ib.js';
 const router = Router();
 
 router.use('/auth', authRoutes);
 router.use('/students', studentRoutes);
+// Teacher registration route is now handled INSIDE teacherRoutes (before auth middleware)
 router.use('/teachers', teacherRoutes);
+router.use('/admins', adminRoutes);
 router.use('/classes', classRoutes);
 router.use('/attendance', attendanceRoutes);
 router.use('/exams', examRoutes);
@@ -36,5 +45,12 @@ router.use('/export', exportRoutes);
 router.use('/admin-actions', adminActionRoutes);
 router.use('/pending-pic-changes', pendingPicChangeRoutes);
 router.use('/pic-users', picUserRoutes);
+router.use('/archive', archiveRoutes);
+router.use('/payments', paymentRoutes);
+router.use('/payment-methods', paymentMethodSettingsRoutes);
+router.use('/payment-gateways', paymentGatewaySettingsRoutes);
+router.use('/toyyibpay', toyyibPayRoutes);
+router.use('/contact', contactRoutes);
+router.use('/ib', ibRoutes);
 
 export default router;

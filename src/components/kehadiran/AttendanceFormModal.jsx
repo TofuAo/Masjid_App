@@ -4,7 +4,7 @@ import Button from '../ui/Button';
 import { studentsAPI, attendanceAPI } from '../../services/api';
 import { toast } from 'react-toastify';
 
-const AttendanceFormModal = ({ isOpen, onClose, classId, className, selectedDate }) => {
+const AttendanceFormModal = ({ isOpen, onClose, classId, className, selectedDate, onFormSubmit }) => {
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -12,26 +12,27 @@ const AttendanceFormModal = ({ isOpen, onClose, classId, className, selectedDate
   const [proofImage, setProofImage] = useState(null);
   const [proofImagePreview, setProofImagePreview] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [attendanceDate, setAttendanceDate] = useState(selectedDate || new Date().toISOString().split('T')[0]);
 
   useEffect(() => {
     if (isOpen && classId && classId !== 'semua') {
       fetchStudents();
+      // Reset date to selectedDate when modal opens
+      setAttendanceDate(selectedDate || new Date().toISOString().split('T')[0]);
     }
-  }, [isOpen, classId]);
+  }, [isOpen, classId, selectedDate]);
 
   const fetchStudents = async () => {
     try {
       setLoading(true);
       const response = await studentsAPI.getAll({ kelas_id: classId, limit: 1000 });
       const studentsList = Array.isArray(response) ? response : (response?.data || []);
-      setStudents(studentsList.filter(s => s.status === 'aktif'));
+      setStudents(studentsList);
       
       // Initialize attendance data - default all to 'Hadir'
       const initialData = {};
       studentsList.forEach(student => {
-        if (student.status === 'aktif') {
-          initialData[student.ic] = 'Hadir';
-        }
+        initialData[student.ic] = 'Hadir';
       });
       setAttendanceData(initialData);
     } catch (error) {
@@ -98,7 +99,7 @@ const AttendanceFormModal = ({ isOpen, onClose, classId, className, selectedDate
       // Create FormData for file upload
       const formData = new FormData();
       formData.append('class_id', classId);
-      formData.append('tarikh', selectedDate);
+      formData.append('tarikh', attendanceDate);
       formData.append('attendance_data', JSON.stringify(attendanceArray));
       
       if (proofImage) {
@@ -118,6 +119,13 @@ const AttendanceFormModal = ({ isOpen, onClose, classId, className, selectedDate
       
       // Close modal and let parent refresh data
       onClose();
+      // If parent provided onFormSubmit callback, call it
+      if (onFormSubmit && typeof onFormSubmit === 'function') {
+        // Call parent's form submit handler which will refresh data
+        setTimeout(() => {
+          onFormSubmit({ tarikh: attendanceDate, attendance_data: attendanceArray });
+        }, 100);
+      }
     } catch (error) {
       console.error('Error submitting attendance:', error);
       toast.error(error.response?.data?.message || 'Gagal menyimpan data kehadiran');
@@ -153,11 +161,28 @@ const AttendanceFormModal = ({ isOpen, onClose, classId, className, selectedDate
       <div className="mosque-card w-full max-w-4xl max-h-[90vh] flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
-          <div>
+          <div className="flex-1">
             <h2 className="text-xl font-semibold text-black">Ambil Kehadiran - {className}</h2>
-            <p className="text-sm text-black mt-1">
-              Tarikh: {new Date(selectedDate).toLocaleDateString('ms-MY')}
-            </p>
+            <div className="mt-3 flex items-center gap-4">
+              <label className="text-sm font-medium text-black flex items-center gap-2">
+                Tarikh:
+                <input
+                  type="date"
+                  value={attendanceDate}
+                  onChange={(e) => setAttendanceDate(e.target.value)}
+                  className="px-3 py-1.5 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-sm"
+                  disabled={submitting}
+                />
+              </label>
+              <span className="text-sm text-gray-600">
+                {new Date(attendanceDate).toLocaleDateString('ms-MY', { 
+                  weekday: 'long', 
+                  day: 'numeric', 
+                  month: 'long', 
+                  year: 'numeric' 
+                })}
+              </span>
+            </div>
           </div>
           <button
             onClick={onClose}

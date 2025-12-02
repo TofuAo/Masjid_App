@@ -6,6 +6,8 @@ import 'react-toastify/dist/ReactToastify.css';
 import Layout from './Layout';
 import Login from './components/auth/Login';
 import Register from './components/auth/Register';
+import StudentRegistration from './pages/StudentRegistration';
+import TeacherRegistration from './pages/TeacherRegistration';
 import Dashboard from './pages/Dashboard';
 import Pelajar from './pages/Pelajar';
 import Guru from './pages/Guru';
@@ -17,8 +19,13 @@ import Keputusan from './pages/Keputusan';
 import Laporan from './pages/Laporan';
 import Settings from './pages/Settings';
 import PersonalSettings from './pages/PersonalSettings';
+import PaymentMethodSettings from './pages/PaymentMethodSettings';
+import PaymentReturn from './pages/PaymentReturn';
+import ToyyibPaySettings from './pages/ToyyibPaySettings';
 import ForgotPassword from './pages/ForgotPassword';
+import ChooseResetMethod from './pages/ChooseResetMethod';
 import ResetPassword from './pages/ResetPassword';
+import ResetPasswordCode from './pages/ResetPasswordCode';
 import Announcements from './pages/Announcements';
 import AdminActions from './pages/AdminActions';
 import StaffCheckIn from './pages/StaffCheckIn';
@@ -27,6 +34,10 @@ import CompleteProfile from './pages/CompleteProfile';
 import PendingRegistrations from './pages/PendingRegistrations';
 import PicApprovals from './pages/PicApprovals';
 import PicUsers from './pages/PicUsers';
+import Admins from './pages/Admins';
+import Contact from './pages/Contact';
+import IbDashboard from './pages/IbDashboard';
+import Hierarchy from './pages/Hierarchy';
 import { PreferencesProvider, usePreferences } from './contexts/PreferencesContext';
 import { LanguageProvider } from './contexts/LanguageContext';
 
@@ -81,6 +92,10 @@ function AppContent() {
     if (storedUser && token) {
       try {
         const parsedUser = JSON.parse(storedUser);
+        if (!parsedUser.activeRole) {
+          const fallbackRole = parsedUser.roles?.[0] || parsedUser.role;
+          parsedUser.activeRole = fallbackRole;
+        }
         setUser(parsedUser);
         setAuthToken(token); // Set the auth token
         
@@ -102,6 +117,14 @@ function AppContent() {
     // Check profile completeness after login
     setCheckingProfile(true);
     await checkProfileComplete();
+  };
+
+  const handleRoleChange = (role) => {
+    if (!user) return;
+    const updatedUser = { ...user, activeRole: role };
+    localStorage.setItem('user', JSON.stringify(updatedUser));
+    // Reload the page to apply the new role and refresh all components
+    window.location.reload();
   };
 
   const handleLogout = () => {
@@ -135,9 +158,13 @@ function AppContent() {
         <>
           <Routes>
             <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/choose-reset-method" element={<ChooseResetMethod />} />
             <Route path="/reset-password" element={<ResetPassword />} />
+            <Route path="/reset-password-code" element={<ResetPasswordCode />} />
             <Route path="/quick-checkin" element={<QuickStaffCheckIn />} />
             <Route path="/register" element={<Register onRegister={handleLogin} />} />
+            <Route path="/student-register" element={<StudentRegistration />} />
+            <Route path="/teacher-register" element={<TeacherRegistration />} />
             <Route path="/login" element={<Login onLogin={handleLogin} />} />
             <Route path="*" element={<Login onLogin={handleLogin} />} />
           </Routes>
@@ -158,7 +185,8 @@ function AppContent() {
           
           {/* If profile is complete, show normal app */}
           {profileComplete === true && (
-            <Layout user={user} onLogout={handleLogout}>
+            <Layout user={user} onLogout={handleLogout} onRoleChange={handleRoleChange}>
+              <div className="fade-in">
               <Routes>
                 <Route path="/" element={<Dashboard />} />
                 <Route 
@@ -171,9 +199,12 @@ function AppContent() {
                 <Route path="/kehadiran" element={<Kehadiran />} />
                 <Route path="/yuran" element={<Yuran />} />
                 <Route path="/pay-yuran/:id" element={<PayYuran />} />
+                <Route path="/payment/return" element={<PaymentReturn />} />
                 <Route path="/keputusan" element={<Keputusan />} />
                 <Route path="/laporan" element={<Laporan />} />
                 <Route path="/settings" element={<Settings />} />
+                <Route path="/payment-method-settings" element={<PaymentMethodSettings />} />
+                <Route path="/toyyibpay-settings" element={<ToyyibPaySettings />} />
                 <Route path="/personal-settings" element={<PersonalSettings />} />
                 <Route path="/announcements" element={<Announcements user={user} />} />
                 <Route path="/admin-actions" element={<AdminActions user={user} />} />
@@ -181,8 +212,13 @@ function AppContent() {
                 <Route path="/pending-registrations" element={<PendingRegistrations />} />
                 <Route path="/pic-approvals" element={<PicApprovals user={user} />} />
                 <Route path="/pic-users" element={<PicUsers />} />
+                <Route path="/admins" element={<Admins />} />
+                <Route path="/contact" element={<Contact user={user} />} />
+                <Route path="/ib-dashboard" element={<IbDashboard />} />
+                <Route path="/hierarchy" element={<Hierarchy user={user} />} />
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
+              </div>
             </Layout>
           )}
           <ToastContainer position="top-right" />

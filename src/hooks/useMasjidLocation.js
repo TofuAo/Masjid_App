@@ -7,18 +7,28 @@ import resolveApiBaseUrl from '../utils/apiBaseUrl';
  * Provides real-time sync across all components
  * Automatically refetches when window gains focus or periodically
  */
+const DEFAULT_LOCATION = {
+  latitude: 3.808236,
+  longitude: 103.328054,
+  radius: 100
+};
+
+const sanitizeNumber = (value, fallback, min = -Infinity, max = Infinity) => {
+  const parsed = parseFloat(value);
+  if (Number.isNaN(parsed)) {
+    return fallback;
+  }
+  return Math.min(Math.max(parsed, min), max);
+};
+
 export const useMasjidLocation = (options = {}) => {
-  const { 
-    autoRefresh = true, 
+  const {
+    autoRefresh = true,
     refreshInterval = 30000, // 30 seconds
-    refetchOnFocus = true 
+    refetchOnFocus = true
   } = options;
 
-  const [masjidLocation, setMasjidLocation] = useState({
-    latitude: 3.807829297637092,
-    longitude: 103.32799643765418,
-    radius: 100
-  });
+  const [masjidLocation, setMasjidLocation] = useState({ ...DEFAULT_LOCATION });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -33,32 +43,24 @@ export const useMasjidLocation = (options = {}) => {
         // Explicitly don't send Authorization header - remove any default
         validateStatus: (status) => status < 500 // Don't throw on 401, handle it
       });
-      
+
       // Handle axios response structure
       const data = response.data;
       if (data.success && data.data) {
         setMasjidLocation({
-          latitude: data.data.latitude || 3.807829297637092,
-          longitude: data.data.longitude || 103.32799643765418,
-          radius: data.data.radius || 100
+          latitude: sanitizeNumber(data.data.latitude, DEFAULT_LOCATION.latitude, -90, 90),
+          longitude: sanitizeNumber(data.data.longitude, DEFAULT_LOCATION.longitude, -180, 180),
+          radius: sanitizeNumber(data.data.radius, DEFAULT_LOCATION.radius, 1, 10000)
         });
       } else {
         // Use defaults
-        setMasjidLocation({
-          latitude: 3.807829297637092,
-          longitude: 103.32799643765418,
-          radius: 100
-        });
+        setMasjidLocation({ ...DEFAULT_LOCATION });
       }
     } catch (err) {
       console.error('Failed to fetch masjid location:', err);
       setError(err);
       // Use defaults on error
-      setMasjidLocation({
-        latitude: 3.807829297637092,
-        longitude: 103.32799643765418,
-        radius: 100
-      });
+      setMasjidLocation({ ...DEFAULT_LOCATION });
     } finally {
       setLoading(false);
     }

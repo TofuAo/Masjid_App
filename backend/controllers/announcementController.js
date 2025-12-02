@@ -182,15 +182,16 @@ export const createAnnouncement = async (req, res) => {
       });
     }
 
+    const { title, content, status, priority, target_audience } = req.body;
+
     const result = await createAnnouncementRecord(
       {
       title, 
       content, 
         status,
         priority,
-        target_audience,
-        start_date,
-        end_date
+        target_audience
+        // start_date and end_date are automatically set when status is 'published'
       },
       { actorIc: req.user.ic }
     );
@@ -223,7 +224,7 @@ export const updateAnnouncement = async (req, res) => {
     }
 
     const { id } = req.params;
-    const { title, content, status, priority, target_audience, start_date, end_date } = req.body;
+    const { title, content, status, priority, target_audience } = req.body;
 
     // Check if announcement exists
     try {
@@ -234,9 +235,8 @@ export const updateAnnouncement = async (req, res) => {
       content, 
       status, 
       priority, 
-      target_audience, 
-          start_date,
-          end_date
+          target_audience
+          // start_date and end_date are automatically set when status changes to 'published'
         },
         { actorIc: req.user.ic }
       );

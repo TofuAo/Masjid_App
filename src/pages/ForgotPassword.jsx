@@ -1,15 +1,21 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
-import { authAPI } from '../services/api';
+import { Link, useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
-import { CreditCard, ArrowLeft, CheckCircle } from 'lucide-react';
+import { CreditCard, ArrowLeft } from 'lucide-react';
+import { formatIC, isValidIC } from '../utils/icUtils';
 
 const ForgotPassword = () => {
   const [icNumber, setIcNumber] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [sent, setSent] = useState(false);
+  const navigate = useNavigate();
+
+  const handleICChange = (e) => {
+    const value = e.target.value;
+    // Auto-format IC with hyphens as user types
+    const formatted = formatIC(value, true);
+    setIcNumber(formatted);
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -19,52 +25,16 @@ const ForgotPassword = () => {
       return;
     }
 
-    try {
-      setLoading(true);
-      const response = await authAPI.forgotPassword({ icNumber });
-      
-      if (response?.success) {
-        setSent(true);
-        toast.success('Pautan reset kata laluan telah dihantar ke emel pendaftaran anda!');
-      } else {
-        toast.error(response?.message || 'Gagal menghantar emel reset kata laluan.');
-      }
-    } catch (error) {
-      console.error('Forgot password error:', error);
-      toast.error(error?.message || 'Gagal menghantar emel reset kata laluan.');
-    } finally {
-      setLoading(false);
+    // Validate IC format
+    if (!isValidIC(icNumber)) {
+      toast.error('Sila masukkan nombor kad pengenalan yang sah (12 digit).');
+      return;
     }
-  };
 
-  if (sent) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-emerald-50 to-teal-100 p-4">
-        <Card className="max-w-md w-full">
-          <Card.Content className="text-center py-8">
-            <div className="mb-6">
-              <CheckCircle className="w-16 h-16 text-green-600 mx-auto mb-4" />
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">Emel Dihantar!</h2>
-              <p className="text-gray-600">
-                Kami telah menghantar pautan reset kata laluan ke emel pendaftaran anda yang dikaitkan dengan nombor kad pengenalan <strong>{icNumber}</strong>
-              </p>
-            </div>
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-              <p className="text-sm text-blue-800">
-                <strong>Perhatian:</strong> Sila semak folder spam/junk jika anda tidak menerima emel dalam beberapa minit.
-              </p>
-            </div>
-            <Link to="/login">
-              <Button variant="outline" className="w-full">
-                <ArrowLeft className="w-4 h-4 mr-2" />
-                Kembali ke Log Masuk
-              </Button>
-            </Link>
-          </Card.Content>
-        </Card>
-      </div>
-    );
-  }
+    // Navigate to choose reset method page with IC number
+    const normalizedIC = icNumber.replace(/\D/g, '');
+    navigate(`/choose-reset-method?ic=${normalizedIC}`);
+  };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-emerald-50 to-teal-100 p-4">
@@ -74,7 +44,7 @@ const ForgotPassword = () => {
         </Card.Header>
         <Card.Content>
           <p className="text-gray-600 text-center mb-6">
-            Masukkan nombor kad pengenalan anda dan kami akan menghantar pautan untuk menetapkan semula kata laluan anda ke emel pendaftaran anda.
+            Masukkan nombor kad pengenalan anda dan pilih kaedah untuk menetapkan semula kata laluan anda.
           </p>
           
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -87,8 +57,9 @@ const ForgotPassword = () => {
                 <input
                   type="text"
                   value={icNumber}
-                  onChange={(e) => setIcNumber(e.target.value)}
-                  placeholder="Contoh: 123456789012"
+                  onChange={handleICChange}
+                  placeholder="Contoh: 123456-78-9012"
+                  maxLength={14}
                   required
                   className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                 />
@@ -97,10 +68,9 @@ const ForgotPassword = () => {
 
             <Button
               type="submit"
-              disabled={loading}
               className="w-full"
             >
-              {loading ? 'Menghantar...' : 'Hantar Pautan Reset'}
+              Hantar Pautan Reset
             </Button>
           </form>
 

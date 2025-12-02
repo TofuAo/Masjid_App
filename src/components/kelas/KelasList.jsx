@@ -1,31 +1,15 @@
 import React, { useState } from 'react';
-import { Search, Plus, Edit, Eye, Trash2, Filter, BookOpen, Users } from 'lucide-react';
+import { Search, Plus, Edit, Eye, Trash2, BookOpen, Users } from 'lucide-react';
 
 const KelasList = ({ kelass = [], onEdit, onView, onDelete, onAdd, gurus = [], user }) => {
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState('semua');
 
   const filteredKelass = kelass.filter(kelas => {
     const lowerSearchTerm = searchTerm.toLowerCase();
     const matchesSearch = (kelas.nama_kelas || kelas.class_name || '').toLowerCase().includes(lowerSearchTerm) ||
                          (kelas.level || '').toLowerCase().includes(lowerSearchTerm);
-    const matchesStatus = statusFilter === 'semua' || kelas.status === statusFilter;
-    return matchesSearch && matchesStatus;
+    return matchesSearch;
   });
-
-  const getStatusBadge = (status) => {
-    const statusConfig = {
-      aktif: 'bg-green-100 text-green-800',
-      tidak_aktif: 'bg-red-100 text-red-800',
-      penuh: 'bg-yellow-100 text-yellow-800'
-    };
-    const config = statusConfig[status] || 'bg-gray-100 text-gray-800';
-    return (
-      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${config}`}>
-        {(status || '').replace('_', ' ')}
-      </span>
-    );
-  };
 
   const getGuruName = (guruIc) => {
     if (!guruIc) return 'Tiada Guru';
@@ -56,26 +40,13 @@ const KelasList = ({ kelass = [], onEdit, onView, onDelete, onAdd, gurus = [], u
               className="input-mosque w-full pl-10"
             />
           </div>
-          <div className="flex items-center gap-2">
-            <Filter className="text-mosque-neutral-400" size={18} />
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="input-mosque"
-            >
-              <option value="semua">Semua Status</option>
-              <option value="aktif">Aktif</option>
-              <option value="tidak_aktif">Tidak Aktif</option>
-              <option value="penuh">Penuh</option>
-            </select>
-          </div>
         </div>
 
         <div className="overflow-x-auto -mx-4 sm:mx-0">
           <table className="min-w-full divide-y divide-mosque-primary-100">
             <thead className="bg-mosque-primary-50">
               <tr>
-                {['Kelas', 'Level', 'Sesi', 'Guru', 'Yuran', 'Status', 'Tindakan'].map(header => (
+                {['Kelas', 'Level', 'Sesi', 'Guru', 'Yuran', 'Tindakan'].map(header => (
                   <th key={header} className={`px-3 sm:px-6 py-2 sm:py-3 text-left text-xs font-bold text-mosque-primary-700 uppercase tracking-wider ${
                     header === 'Sesi' || header === 'Guru' ? 'hidden md:table-cell' : ''
                   }`}>
@@ -157,7 +128,6 @@ const KelasList = ({ kelass = [], onEdit, onView, onDelete, onAdd, gurus = [], u
                   </td>
                   <td className="px-3 sm:px-6 py-3 sm:py-4 text-sm text-mosque-neutral-700 hidden md:table-cell">{kelas.guru_nama || getGuruName(kelas.guru_ic)}</td>
                   <td className="px-3 sm:px-6 py-3 sm:py-4 text-sm text-mosque-neutral-700">RM {Number(kelas.yuran) || 0}</td>
-                  <td className="px-3 sm:px-6 py-3 sm:py-4">{getStatusBadge(kelas.status)}</td>
                   <td className="px-3 sm:px-6 py-3 sm:py-4 text-sm font-medium">
                     <div className="flex space-x-3">
                       <button onClick={() => onView(kelas)} className="text-mosque-primary-600 hover:text-mosque-primary-800" title="Lihat Detail">

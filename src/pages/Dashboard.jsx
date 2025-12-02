@@ -2,15 +2,17 @@ import React, { useState, useEffect, useCallback } from 'react';
 import StatCard from '../components/dashboard/StatCard';
 import RecentActivity from '../components/dashboard/RecentActivity';
 import QuickStats from '../components/dashboard/QuickStats';
-import { Users, GraduationCap, BookOpen, CreditCard, Calendar, AlertCircle, Megaphone, CheckCircle, XCircle, Clock } from 'lucide-react';
+import LoadingSkeleton from '../components/ui/LoadingSkeleton';
+import { Users, GraduationCap, BookOpen, CreditCard, AlertCircle, Megaphone, CheckCircle, XCircle, Clock, Calendar } from 'lucide-react';
 import { studentsAPI, teachersAPI, classesAPI, feesAPI, examsAPI, announcementsAPI, attendanceAPI } from '../services/api';
 import { toast } from 'react-toastify';
 import { Link } from 'react-router-dom';
 import Badge from '../components/ui/Badge';
+import FeaturedClasses from '../components/kelas/FeaturedClasses';
+import { getEffectiveRole } from '../utils/userRoles';
 
 const Dashboard = () => {
   const [mainStats, setMainStats] = useState([]);
-  const [todaySchedule, setTodaySchedule] = useState([]);
   const [outstandingFeesCount, setOutstandingFeesCount] = useState(0);
   const [upcomingExamsCount, setUpcomingExamsCount] = useState(0);
   const [newStudentsCount, setNewStudentsCount] = useState(0);
@@ -34,9 +36,10 @@ const Dashboard = () => {
       if (userStr) {
         try {
           const user = JSON.parse(userStr);
-          currentUserRole = user.role;
+          const effectiveRole = getEffectiveRole(user);
+          currentUserRole = effectiveRole || user.role;
           currentUserIC = user.ic;
-          setUserRole(user.role);
+          setUserRole(currentUserRole);
           setUserIC(user.ic);
         } catch (e) {
           console.error('Error parsing user:', e);
@@ -118,9 +121,9 @@ const Dashboard = () => {
         setMainStats([]);
       } else {
         // Main Stats - use actual database counts (for non-students)
-        const totalActiveStudents = safeStudents.filter(s => s?.status === 'aktif').length;
-        const totalActiveTeachers = safeTeachers.filter(t => t?.status === 'aktif').length;
-        const totalRunningClasses = safeClasses.filter(c => c?.status === 'aktif').length;
+        const totalActiveStudents = safeStudents.length;
+        const totalActiveTeachers = safeTeachers.length;
+        const totalRunningClasses = safeClasses.length;
 
         setMainStats([
           {
@@ -174,86 +177,8 @@ const Dashboard = () => {
         ]);
       }
 
-      // Today's Schedule
-      const today = new Date();
-      const dayMapping = {
-        0: 'Sunday',
-        1: 'Monday',
-        2: 'Tuesday',
-        3: 'Wednesday',
-        4: 'Thursday',
-        5: 'Friday',
-        6: 'Saturday'
-      };
-      const todayDayName = dayMapping[today.getDay()];
-      const currentHour = today.getHours();
-
-      const filteredSchedule = safeClasses
-        .filter(c => {
-          if (!c?.sessions || !Array.isArray(c.sessions)) return false;
-          return c.sessions.some(s => {
-            if (!s?.days || !Array.isArray(s.days)) return false;
-            return s.days.includes(todayDayName);
-          });
-        })
-        .map(c => {
-          const teacher = safeTeachers.find(t => t?.ic === c?.guru_ic);
-          const studentsInClass = safeStudents.filter(s => s?.kelas_id === c?.id).length;
-          const relevantSession = (c?.sessions || []).find(s => {
-            if (!s?.days || !Array.isArray(s.days)) return false;
-            return s.days.includes(todayDayName);
-          });
-          
-          // Handle sessions - check if it's JSON string or array
-          let sessions = c.sessions;
-          if (typeof sessions === 'string') {
-            try {
-              sessions = JSON.parse(sessions);
-            } catch {
-              sessions = [];
-            }
-          }
-          
-          // Get times from session or use default
-          const sortedTimes = relevantSession && Array.isArray(relevantSession?.times) 
-            ? [...relevantSession.times].sort() 
-            : [];
-
-          return sortedTimes.map(time => {
-            try {
-              const [hour, minute] = (time || '00:00').split(':').map(Number);
-              const classTime = new Date(today.getFullYear(), today.getMonth(), today.getDate(), hour || 0, minute || 0);
-              const isUpcoming = classTime > today;
-
-              return {
-                time: time || '00:00',
-                class: c?.nama_kelas || c?.class_name || 'Nama Kelas Tidak Diketahui',
-                teacher: teacher?.nama || 'N/A',
-                students: studentsInClass,
-                isUpcoming: isUpcoming,
-              };
-            } catch (err) {
-              console.error('Error processing schedule time:', err);
-              return null;
-            }
-          }).filter(item => item !== null);
-        })
-        .flat()
-        .filter(item => item !== null)
-        .sort((a, b) => {
-          try {
-            const [h1, m1] = (a?.time || '00:00').split(':').map(Number);
-            const [h2, m2] = (b?.time || '00:00').split(':').map(Number);
-            if (h1 !== h2) return h1 - h2;
-            return m1 - m2;
-          } catch {
-            return 0;
-          }
-        });
-
-      setTodaySchedule(filteredSchedule);
-
       // Alerts and Notifications
+      const today = new Date();
       setOutstandingFeesCount(outstandingFees.length);
       setUpcomingExamsCount(safeExams.filter(e => {
         if (!e?.tarikh_exam) return false;
@@ -349,11 +274,32 @@ const Dashboard = () => {
   }, [mainStats, loading, error]);
 
   if (loading) {
-    return <div className="text-center py-8">Memuatkan papan pemuka...</div>;
+    return (
+      <div className="space-y-6 animate-fade-in">
+        <LoadingSkeleton type="stat" count={4} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6" />
+        <LoadingSkeleton type="card" count={2} className="space-y-4" />
+      </div>
+    );
   }
 
   if (error) {
-    return <div className="text-center py-8 text-red-600">Ralat: {error.message || 'Gagal memuatkan data.'}</div>;
+    return (
+      <div className="text-center py-12">
+        <div className="flex justify-center mb-4">
+          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center">
+            <AlertCircle className="w-8 h-8 text-red-600" />
+          </div>
+        </div>
+        <h3 className="text-lg font-semibold text-gray-900 mb-2">Ralat Memuatkan Data</h3>
+        <p className="text-red-600 mb-4">{error.message || 'Gagal memuatkan data papan pemuka.'}</p>
+        <button
+          onClick={() => window.location.reload()}
+          className="px-4 py-2 bg-emerald-600 text-white rounded-md hover:bg-emerald-700 transition-colors"
+        >
+          Muat Semula
+        </button>
+      </div>
+    );
   }
 
   // Render monthly attendance for students
@@ -483,9 +429,14 @@ const Dashboard = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-fade-in">
       {/* Main Statistics - Only show for non-students */}
-      {userRole !== 'student' && <QuickStats stats={mainStats} />}
+          {userRole !== 'student' && <QuickStats stats={mainStats} />}
+          {userRole !== 'student' && (
+            <div className="mt-6">
+              <FeaturedClasses />
+            </div>
+          )}
       
       {/* Monthly Attendance - Only show for students */}
       {userRole === 'student' && renderMonthlyAttendance()}
@@ -495,53 +446,8 @@ const Dashboard = () => {
         <RecentActivity activities={activityFeed} />
       </div>
 
-      {/* Two-column grid for:  left: Schedule, right: Alerts/Tasks */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Today's Schedule (left column) */}
-        <div className="bg-white/80 backdrop-blur-sm border border-white/20 rounded-xl shadow-lg p-6">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl font-bold text-black flex items-center">
-              <Calendar className="w-5 h-5 mr-2 text-emerald-600" />
-              Jadual Hari Ini
-            </h2>
-            <span className="text-sm text-black">
-              {new Date().toLocaleDateString('ms-MY', { 
-                weekday: 'long', 
-                day: 'numeric', 
-                month: 'long' 
-              })}
-            </span>
-          </div>
-          <div className="space-y-4">
-            {todaySchedule.length > 0 ? (
-              todaySchedule.map((schedule, index) => (
-                <div key={index} className="flex items-center justify-between p-4 bg-white/50 rounded-lg border border-white/20">
-                  <div className="flex items-center space-x-4">
-                    <div className="w-12 h-12 bg-emerald-100 rounded-lg flex items-center justify-center">
-                      <span className="text-emerald-700 font-bold text-sm">{schedule.time}</span>
-                    </div>
-                    <div>
-                      <h3 className="font-semibold text-black">{schedule.class}</h3>
-                      <p className="text-sm text-black">{schedule.teacher}</p>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-sm font-medium text-black">{schedule.students} pelajar</p>
-                    <div className="flex items-center mt-1">
-                      <div className={`w-2 h-2 ${schedule.isUpcoming ? 'bg-blue-500' : 'bg-emerald-500'} rounded-full mr-2`}></div>
-                      <span className="text-xs text-black">{schedule.isUpcoming ? 'Akan Datang' : 'Aktif'}</span>
-                    </div>
-                  </div>
-                </div>
-              ))
-            ) : (
-              <div className="text-center py-4 text-black">Tiada jadual kelas untuk hari ini.</div>
-            )}
-          </div>
-        </div>
-
-        {/* Alerts and Tasks (right column) */}
-        <div className="space-y-6">
+      {/* Alerts and Tasks */}
+      <div className="space-y-6">
           <div className="bg-white/80 backdrop-blur-sm border border-white/20 rounded-xl shadow-lg p-6">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-black flex items-center">
@@ -628,7 +534,6 @@ const Dashboard = () => {
             </div>
           </div>
         </div>
-      </div>
     </div>
   );
 };

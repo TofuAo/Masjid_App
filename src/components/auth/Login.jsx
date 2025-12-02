@@ -1,14 +1,53 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import api, { staffCheckInAPI, setAuthToken } from '../../services/api';
-import { Eye, EyeOff, Lock, User, AlertCircle, Key, LockKeyhole, MapPin, LogIn, LogOut, Clock, CheckCircle, XCircle } from 'lucide-react';
+import { Eye, EyeOff, Lock, User, AlertCircle, Key, LockKeyhole, MapPin, LogIn, LogOut, Clock, CheckCircle, XCircle, UserPlus, ChevronDown } from 'lucide-react';
 import { formatIC } from '../../utils/icUtils';
 import { calculateDistance } from '../../utils/distanceUtils';
 import { useMasjidLocation } from '../../hooks/useMasjidLocation';
 
+const roleOptions = [
+  { id: 'ib', label: 'IB (Pengesah Pembayaran)', description: 'Pengesahan dokumentasi pembayaran bulanan' },
+  { id: 'admin', label: 'Pentadbir', description: 'Akses pentadbiran penuh' },
+  { id: 'pic', label: 'PIC Masjid', description: 'Pengurusan PIC dan tugas khas' },
+  { id: 'staff-teacher', label: 'Staff / Guru', description: 'Check-in, kelas, dan kehadiran' }
+];
+
+const optionIdForRole = (role) => {
+  if (role === 'admin') return 'admin';
+  if (role === 'pic') return 'pic';
+  if (role === 'ib') return 'ib';
+  if (role === 'staff' || role === 'teacher') return 'staff-teacher';
+  return 'staff-teacher';
+};
+
+const mapOptionToActiveRole = (optionId, availableRoles = []) => {
+  const normalized = availableRoles.map((r) => r?.toLowerCase());
+  if (optionId === 'admin') {
+    if (normalized.includes('admin')) return 'admin';
+  } else if (optionId === 'pic') {
+    if (normalized.includes('pic')) return 'pic';
+  } else if (optionId === 'ib') {
+    if (normalized.includes('ib')) return 'ib';
+  } else if (optionId === 'staff-teacher') {
+    if (normalized.includes('staff')) return 'staff';
+    if (normalized.includes('teacher')) return 'teacher';
+  }
+
+  // fallback to first available role
+  return normalized[0] || availableRoles[0] || 'staff';
+};
+
+const getOptionLabel = (optionId) => {
+  const option = roleOptions.find((opt) => opt.id === optionId);
+  return option?.label || 'Staff / Guru';
+};
+
 const Login = ({ onLogin }) => {
-  const [activeTab, setActiveTab] = useState('login'); // 'login', 'checkin', 'checkin-shift'
+  const [activeTab, setActiveTab] = useState('login'); // 'login', 'checkin', 'student-login'
   const [formData, setFormData] = useState({ icNumber: '', password: '' });
+  const [selectedRoleId, setSelectedRoleId] = useState('staff-teacher');
+  const [showRoleOptions, setShowRoleOptions] = useState(false);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -23,7 +62,7 @@ const Login = ({ onLogin }) => {
   
   // Use custom hook for masjid location with auto-refresh
   const { masjidLocation } = useMasjidLocation({
-    autoRefresh: activeTab === 'checkin' || activeTab === 'checkin-shift',
+    autoRefresh: activeTab === 'checkin',
     refreshInterval: 30000, // Refresh every 30 seconds
     refetchOnFocus: true
   });
@@ -40,6 +79,12 @@ const Login = ({ onLogin }) => {
     }
   }, [routeLocation.state]);
 
+  useEffect(() => {
+    if (activeTab !== 'login') {
+      setShowRoleOptions(false);
+    }
+  }, [activeTab]);
+
   // Update time every second
   useEffect(() => {
     const timer = setInterval(() => {
@@ -48,9 +93,9 @@ const Login = ({ onLogin }) => {
     return () => clearInterval(timer);
   }, []);
 
-  // Get location when check-in tabs are active
+  // Get location when check-in tab is active
   useEffect(() => {
-    if (activeTab === 'checkin' || activeTab === 'checkin-shift') {
+    if (activeTab === 'checkin') {
       getCurrentLocation();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -135,6 +180,16 @@ const Login = ({ onLogin }) => {
     }, 5000);
   };
 
+  const handleRoleSelect = (role) => {
+    setSelectedRoleId(role.id);
+    setShowRoleOptions(false);
+    showMessage(`Peranan ${role.label} dipilih`, 'info');
+  };
+
+  const toggleRoleOptions = () => {
+    setShowRoleOptions((prev) => !prev);
+  };
+
   const formatDateTime = (date) => {
     const days = ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'];
     const dayName = days[date.getDay()];
@@ -156,7 +211,8 @@ const Login = ({ onLogin }) => {
     try {
       const response = await api.post('/auth/login', {
         icNumber: formData.icNumber,
-        password: formData.password
+        password: formData.password,
+        requestedRole: selectedRoleId
       });
       
       let token, user;
@@ -199,15 +255,136 @@ const Login = ({ onLogin }) => {
       }
 
       setAuthToken(token, expiresAtMs || undefined);
-      localStorage.setItem('user', JSON.stringify(user));
-      if (typeof onLogin === 'function') onLogin(user);
+      const normalizedRoles = Array.from(new Set(
+        [
+          ...(Array.isArray(user.roles) ? user.roles : []),
+          user.role,
+          user.activeRole
+        ].filter(Boolean)
+      ));
+
+      // Prefer the activeRole decided by backend (token role)
+      const chosenActiveRole =
+        (user.activeRole && normalizedRoles.includes(user.activeRole))
+          ? user.activeRole
+          : mapOptionToActiveRole(selectedRoleId, normalizedRoles);
+      const persistedUser = {
+        ...user,
+        roles: normalizedRoles,
+        activeRole: chosenActiveRole
+      };
+      const updatedOptionId = optionIdForRole(chosenActiveRole);
+      setSelectedRoleId(updatedOptionId);
+      localStorage.setItem('user', JSON.stringify(persistedUser));
+      if (typeof onLogin === 'function') onLogin(persistedUser);
       
-      navigate('/');
+      if (chosenActiveRole === 'teacher' || chosenActiveRole === 'staff') {
+        navigate('/guru');
+      } else if (chosenActiveRole === 'pic') {
+        // PIC: go straight to staff check-in dashboard
+        navigate('/staff-checkin');
+      } else if (chosenActiveRole === 'ib') {
+        // IB: go to IB dashboard for payment confirmation
+        navigate('/ib-dashboard');
+      } else {
+        // Admin or any other role: main dashboard
+        navigate('/');
+      }
     } catch (err) {
       console.error('Login error:', err);
       let errorMessage = err.message || err.response?.data?.message || 'IC Number atau kata laluan salah.';
       
       // Handle specific account status errors
+      if (err.response?.data?.accountStatus === 'pending') {
+        errorMessage = err.response.data.message || 'Akaun anda sedang menunggu kelulusan daripada pentadbir.';
+      } else if (err.response?.data?.accountStatus === 'tidak_aktif') {
+        errorMessage = err.response.data.message || 'Akaun anda telah dinyahaktifkan.';
+      } else if (err.response?.data?.accountStatus === 'student_restricted') {
+        errorMessage = err.response.data.message || 'Pelajar mesti menggunakan Student Login.';
+        // Auto-switch to student login tab
+        setTimeout(() => {
+          setActiveTab('student-login');
+          setFormData({ icNumber: formData.icNumber, password: '' });
+        }, 1500);
+      }
+      
+      setError(errorMessage);
+      showMessage(errorMessage, 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Student Login (IC only)
+  const handleStudentLogin = async (e) => {
+    e.preventDefault();
+    setError(null);
+    setLoading(true);
+
+    if (!formData.icNumber) {
+      showMessage('Sila masukkan IC Number', 'error');
+      setLoading(false);
+      return;
+    }
+
+    try {
+      const response = await api.post('/auth/student-login', {
+        icNumber: formData.icNumber
+      });
+      
+      let token, user;
+      
+      if (response.success && response.data) {
+        token = response.data.token;
+        user = response.data.user;
+      } else if (response.token && response.user) {
+        token = response.token;
+        user = response.user;
+      } else if (response.data && response.data.token) {
+        token = response.data.token;
+        user = response.data.user;
+      } else {
+        throw new Error(response.message || 'Login failed');
+      }
+      
+      if (!token || !user) {
+        throw new Error('Invalid response from server');
+      }
+
+      // Ensure only students can use this login
+      if (user.role !== 'student') {
+        throw new Error('Hanya pelajar boleh menggunakan Student Login');
+      }
+
+      const rawExpiresAt =
+        response.data?.expiresAt ||
+        response.expiresAt ||
+        (response.data?.expiresIn ? Date.now() + response.data.expiresIn * 1000 : null);
+
+      let expiresAtMs = null;
+      if (typeof rawExpiresAt === 'string') {
+        const parsed = Date.parse(rawExpiresAt);
+        if (!Number.isNaN(parsed)) {
+          expiresAtMs = parsed;
+        }
+      } else if (typeof rawExpiresAt === 'number' && Number.isFinite(rawExpiresAt)) {
+        expiresAtMs = rawExpiresAt;
+      }
+
+      setAuthToken(token, expiresAtMs || undefined);
+      const persistedUser = {
+        ...user,
+        roles: ['student'],
+        activeRole: 'student'
+      };
+      localStorage.setItem('user', JSON.stringify(persistedUser));
+      if (typeof onLogin === 'function') onLogin(persistedUser);
+      
+      navigate('/');
+    } catch (err) {
+      console.error('Student login error:', err);
+      let errorMessage = err.message || err.response?.data?.message || 'IC Number tidak ditemui.';
+      
       if (err.response?.data?.accountStatus === 'pending') {
         errorMessage = err.response.data.message || 'Akaun anda sedang menunggu kelulusan daripada pentadbir.';
       } else if (err.response?.data?.accountStatus === 'tidak_aktif') {
@@ -237,11 +414,7 @@ const Login = ({ onLogin }) => {
 
     setLoading(true);
     try {
-      const endpoint = activeTab === 'checkin-shift' 
-        ? '/staff-checkin/quick-check-in-shift' 
-        : '/staff-checkin/quick-check-in';
-      
-      const response = await api.post(endpoint, {
+      const response = await api.post('/staff-checkin/quick-check-in', {
         icNumber: formData.icNumber,
         password: formData.password,
         latitude: location.latitude,
@@ -286,11 +459,7 @@ const Login = ({ onLogin }) => {
 
     setLoading(true);
     try {
-      const endpoint = activeTab === 'checkin-shift' 
-        ? '/staff-checkin/quick-check-out-shift' 
-        : '/staff-checkin/quick-check-out';
-      
-      const response = await api.post(endpoint, {
+      const response = await api.post('/staff-checkin/quick-check-out', {
         icNumber: formData.icNumber,
         password: formData.password,
         latitude: location.latitude,
@@ -319,7 +488,7 @@ const Login = ({ onLogin }) => {
     }
   };
 
-  const handleSubmit = activeTab === 'login' ? handleLogin : handleQuickCheckIn;
+  const handleSubmit = activeTab === 'login' ? handleLogin : activeTab === 'student-login' ? handleStudentLogin : handleQuickCheckIn;
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 py-8 px-4 sm:px-6 lg:px-8">
@@ -333,8 +502,8 @@ const Login = ({ onLogin }) => {
               className="mx-auto h-20 w-auto object-contain"
             />
           </div>
-          <h2 className="mt-2 text-xl font-bold text-black">Masjid Negeri Sultan Ahmad 1</h2>
-          <p className="mt-1 text-sm text-black">e-SKP</p>
+          <h2 className="mt-2 text-xl font-bold text-black">e-Quran</h2>
+          <p className="mt-1 text-sm text-black">Masjid Negeri Sultan Ahmad 1</p>
         </div>
 
         {/* Top Action Buttons */}
@@ -360,14 +529,14 @@ const Login = ({ onLogin }) => {
             Check In / Out
           </button>
           <button
-            onClick={() => setActiveTab('checkin-shift')}
+            onClick={() => setActiveTab('student-login')}
             className={`py-2 px-3 rounded-md text-sm font-medium transition-colors ${
-              activeTab === 'checkin-shift'
-                ? 'bg-teal-600 text-white'
+              activeTab === 'student-login'
+                ? 'bg-purple-600 text-white'
                 : 'bg-white text-black border border-gray-300 hover:bg-gray-50'
             }`}
           >
-            Check In / Out (Shift)
+            Student Login
           </button>
         </div>
 
@@ -462,8 +631,116 @@ const Login = ({ onLogin }) => {
                   'Login'
                 )}
               </button>
+
+              <div className="relative mt-2">
+                <button
+                  type="button"
+                  onClick={toggleRoleOptions}
+                  className="w-full flex items-center justify-between px-4 py-2 rounded-md border border-gray-200 bg-white text-sm text-gray-700 hover:border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+                >
+                  <span>
+                    Pilih Peranan: <strong>{getOptionLabel(selectedRoleId)}</strong>
+                  </span>
+                  <ChevronDown className="w-4 h-4 text-gray-500" />
+                </button>
+                {showRoleOptions && (
+                  <div className="absolute z-10 left-0 right-0 mt-2 bg-white border border-gray-200 rounded-md shadow-lg divide-y divide-gray-100">
+                    {roleOptions.map((role) => (
+                      <button
+                        key={role.id}
+                        type="button"
+                        onClick={() => handleRoleSelect(role)}
+                        className="w-full text-left py-3 px-4 text-sm hover:bg-gray-50 transition-colors"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="font-semibold text-gray-800">{role.label}</p>
+                            <p className="text-xs text-gray-500">{role.description}</p>
+                          </div>
+                          {selectedRoleId === role.id && (
+                            <CheckCircle className="w-4 h-4 text-emerald-500" />
+                          )}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
             </form>
-                 ) : (
+          ) : activeTab === 'student-login' ? (
+            <form onSubmit={handleStudentLogin} className="space-y-4">
+              {error && (
+                <div className="bg-red-50 border-l-4 border-red-500 text-red-700 p-3 rounded-md" role="alert">
+                  <div className="flex items-start">
+                    <AlertCircle className="h-5 w-5 text-red-500 mr-2 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-semibold text-sm">Login Gagal</p>
+                      <p className="text-xs mt-1">{error}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* IC Number Input */}
+              <div>
+                <label htmlFor="student-icNumber" className="block text-sm font-medium text-gray-700 mb-1">
+                  Nombor IC Pelajar
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <User className="h-5 w-5 text-gray-400" />
+                  </div>
+                  <input
+                    id="student-icNumber"
+                    name="icNumber"
+                    type="text"
+                    autoComplete="username"
+                    value={formData.icNumber}
+                    onChange={handleChange}
+                    maxLength={14}
+                    className="block w-full pl-10 pr-20 py-2.5 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                    placeholder="Masukkan IC Number"
+                    required
+                  />
+                  <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                    <span className="text-black text-sm">@masjid.com</span>
+                  </div>
+                </div>
+                <p className="text-xs text-gray-500 mt-1">Hanya untuk pelajar - Masukkan nombor IC sahaja</p>
+              </div>
+
+              {/* Student Login Button */}
+              <button 
+                type="submit" 
+                disabled={loading || !formData.icNumber}
+                className="w-full flex justify-center items-center py-2.5 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                {loading ? (
+                  <div className="flex items-center">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    Memproses...
+                  </div>
+                ) : (
+                  <>
+                    <LogIn className="h-4 w-4 mr-2" />
+                    Student Login
+                  </>
+                )}
+              </button>
+
+              {/* Student Registration Link */}
+              <div className="text-center pt-2">
+                <p className="text-xs text-gray-600 mb-2">Belum ada akaun?</p>
+                <Link 
+                  to="/student-register" 
+                  className="text-sm text-purple-600 hover:text-purple-800 font-medium inline-flex items-center"
+                >
+                  <UserPlus className="h-4 w-4 mr-1" />
+                  Daftar Sebagai Pelajar
+                </Link>
+              </div>
+            </form>
+          ) : (
                    <form onSubmit={(e) => { e.preventDefault(); handleQuickCheckIn(e); }} className="space-y-4" autoComplete="off">
                      {/* Hidden username field for accessibility */}
                      <input type="text" name="username" autoComplete="username" style={{ display: 'none' }} tabIndex="-1" aria-hidden="true" />
@@ -676,11 +953,11 @@ const Login = ({ onLogin }) => {
                   Lupa kata laluan?
                 </Link>
                 <Link 
-                  to="/register" 
+                  to="/teacher-register" 
                   className="flex items-center text-sm text-blue-600 hover:text-blue-800"
                 >
                   <Key className="h-4 w-4 mr-2" />
-                  First Time Login
+                  Register
                 </Link>
               </div>
 
@@ -695,7 +972,7 @@ const Login = ({ onLogin }) => {
         {/* Footer */}
         <div className="text-center">
           <p className="text-sm text-black">
-            © 2025 Masjid Negeri Sultan Ahmad 1. Hak Cipta Terpelihara.
+            © 2025 e-Quran. Hak Cipta Terpelihara.
           </p>
         </div>
       </div>

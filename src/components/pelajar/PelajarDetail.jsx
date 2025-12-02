@@ -1,23 +1,12 @@
 import React from 'react';
 import Card from '../ui/Card';
 import Button from '../ui/Button';
-import Badge from '../ui/Badge';
 import BackButton from '../ui/BackButton';
 import { User, Phone, MapPin, Calendar, BookOpen, Edit } from 'lucide-react';
+import { formatIC } from '../../utils/icUtils';
 
 const PelajarDetail = ({ pelajar, onEdit, onClose }) => {
   if (!pelajar) return null;
-
-  const getStatusBadge = (status) => {
-    const statusConfig = {
-      aktif: { variant: 'success', label: 'Aktif' },
-      tidak_aktif: { variant: 'danger', label: 'Tidak Aktif' },
-      cuti: { variant: 'warning', label: 'Cuti' },
-      tamat: { variant: 'secondary', label: 'Tamat' }
-    };
-    const config = statusConfig[status] || { variant: 'default', label: status };
-    return <Badge variant={config.variant}>{config.label}</Badge>;
-  };
 
   const getKelasName = (kelasId) => {
     const kelasNames = {
@@ -68,17 +57,11 @@ const PelajarDetail = ({ pelajar, onEdit, onClose }) => {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-500">Nombor IC</label>
-                  <p className="mt-1 text-sm text-gray-900">{pelajar.IC}</p>
+                  <p className="mt-1 text-sm text-gray-900">{(pelajar.IC || pelajar.ic) ? formatIC(pelajar.IC || pelajar.ic, true) : '-'}</p>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-500">Umur</label>
                   <p className="mt-1 text-sm text-gray-900">{pelajar.umur} tahun</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-500">Status</label>
-                  <div className="mt-1">
-                    {getStatusBadge(pelajar.status)}
-                  </div>
                 </div>
               </div>
             </Card.Content>

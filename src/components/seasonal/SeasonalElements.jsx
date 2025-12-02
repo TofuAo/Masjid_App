@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import CartoonTree from './CartoonTree';
 
 // Sakura Tree Component (Spring) - Pink theme with image-style illustration
 const SakuraTree = ({ colors }) => {
@@ -459,6 +460,20 @@ const SeasonalElements = ({ scheme }) => {
       return <AutumnTree colors={colors} />;
     case 'snow':
       return <WinterTree colors={colors} />;
+    case 'cartoon':
+      // Determine season based on current month or scheme
+      const currentMonth = new Date().getMonth() + 1;
+      let season = 'spring';
+      if (currentMonth >= 3 && currentMonth <= 5) season = 'spring';
+      else if (currentMonth >= 6 && currentMonth <= 8) season = 'summer';
+      else if (currentMonth >= 9 && currentMonth <= 11) season = 'autumn';
+      else season = 'winter';
+      
+      return (
+        <div className="absolute bottom-0 left-0 right-0 pointer-events-none overflow-visible flex items-end justify-center" style={{ height: '100%', minHeight: '300px', zIndex: 1 }}>
+          <CartoonTree season={season} enableFallingLeaves={true} leafInterval={400} />
+        </div>
+      );
     default:
       return null;
   }

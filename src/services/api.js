@@ -22,10 +22,11 @@ const isTokenExpired = () => {
 // Create axios instance with base configuration
 const api = axios.create({
   baseURL: resolveApiBaseUrl(),
-  timeout: 10000,
+  timeout: 30000, // Increased timeout for slower connections
   headers: {
     'Content-Type': 'application/json',
   },
+  withCredentials: false, // Don't send cookies
 });
 
 // Request interceptor to add auth token
@@ -40,10 +41,8 @@ api.interceptors.request.use(
     }
 
     const token = localStorage.getItem('authToken');
-    // Only log token status for debugging, skip for public endpoints
-    if (config.url && !config.url.includes('/auth/register') && !config.url.includes('/auth/self-register') && !config.url.includes('/auth/login') && !config.url.includes('/auth/forgot-password') && !config.url.includes('/auth/reset-password') && !config.url.includes('/settings/masjid-location')) {
-      console.log('API Request:', config.url, 'Token:', token ? 'Present' : 'Missing');
-    }
+    // Don't log successful API requests to reduce console noise
+    // Only log if there's an issue (handled in response interceptor)
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -57,29 +56,55 @@ api.interceptors.request.use(
 // Response interceptor to handle errors
 api.interceptors.response.use(
   (response) => {
-    // Only log for non-public endpoints
-    if (response.config.url && !response.config.url.includes('/auth/register') && !response.config.url.includes('/auth/self-register') && !response.config.url.includes('/auth/login')) {
-      console.log('API Response:', response.config.url, 'Status:', response.status);
-    }
+    // Don't log successful responses to reduce console noise
+    // Only log errors (handled in error handler below)
+    // Return full response.data (which may contain adminLimit for /admins endpoint)
     return response.data;
   },
   (error) => {
-    // Don't log auth errors to reduce console noise
+    // Handle network errors (connection issues)
+    if (!error.response) {
+      if (error.code === 'ECONNABORTED') {
+        console.error('API Error: Request timeout -', error.config?.url);
+        return Promise.reject({ 
+          message: 'Permintaan mengambil masa terlalu lama. Sila cuba lagi.',
+          status: 408,
+          isNetworkError: true
+        });
+      } else if (error.message === 'Network Error' || error.code === 'ERR_NETWORK') {
+        console.error('API Error: Network connection failed -', error.config?.url);
+        return Promise.reject({ 
+          message: 'Tidak dapat menyambung ke pelayan. Sila semak sambungan internet anda.',
+          status: 0,
+          isNetworkError: true
+        });
+      } else {
+        console.error('API Error (no response):', error.message, error.config?.url);
+        return Promise.reject({ 
+          message: 'Ralat sambungan. Sila cuba lagi.',
+          status: 0,
+          isNetworkError: true
+        });
+      }
+    }
+
+    // Don't log auth/permission errors to reduce console noise
     const isAuthError = error.response?.status === 401 || error.response?.status === 403;
     const errorMessage = error.response?.data?.message || '';
     const isTokenError = errorMessage.includes('token') || errorMessage.includes('Token') || errorMessage.includes('expired') || errorMessage.includes('invalid');
+    const isPermissionError = errorMessage.includes('permissions') || errorMessage.includes('Insufficient');
     
-    if (isAuthError && isTokenError) {
-      // Silently handle token errors - don't spam console
-      removeStoredAuth();
-    } else {
-      // Log other errors for debugging
-    if (error.response) {
+    if (isAuthError && (isTokenError || isPermissionError)) {
+      // Silently handle token and permission errors - don't spam console
+      // These are expected when user doesn't have access to certain endpoints
+      if (isTokenError) {
+        removeStoredAuth();
+      }
+      // Don't log permission errors - they're handled by the UI
+    } else if (error.response && error.response.status >= 500) {
+      // Only log server errors (500+)
       console.error('API Error:', error.config?.url, 'Status:', error.response?.status);
       console.error('Error Response Data:', error.response?.data);
-    } else {
-      console.error('API Error (no response):', error.message);
-    }
     }
     
     // Return error with proper message structure
@@ -87,7 +112,7 @@ api.interceptors.response.use(
     
     // If errorData is a string, wrap it in an object
     if (typeof errorData === 'string') {
-      return Promise.reject({ message: errorData });
+      return Promise.reject({ message: errorData, status: error.response?.status });
     }
     
     // If errorData doesn't have message, try to extract it
@@ -117,8 +142,25 @@ export const authAPI = {
   changePassword: (data) => api.put('/auth/change-password', data),
   adminChangePassword: (data) => api.put('/auth/admin/change-password', data),
   forgotPassword: (data) => api.post('/auth/forgot-password', data),
+  checkResetOptions: (data) => api.post('/auth/check-reset-options', data),
+  requestPasswordResetEmail: (data) => api.post('/auth/request-reset-email', data),
+  requestPasswordResetPhone: (data) => api.post('/auth/request-reset-phone', data),
   resetPassword: (data) => api.post('/auth/reset-password', data),
-  getPendingRegistrations: () => api.get('/auth/pending-registrations'),
+  getPendingRegistrations: async () => {
+    try {
+      const response = await api.get('/auth/pending-registrations');
+      return response?.success ? response : { success: true, data: response?.data || response || [] };
+    } catch (error) {
+      // Enhanced error handling with connection recovery
+      if (error.isNetworkError || error.status === 0) {
+        throw { ...error, message: 'Tidak dapat menyambung ke pelayan. Sila semak sambungan internet anda.' };
+      }
+      if (error.status === 403) {
+        throw { ...error, message: error.message || 'Anda tidak mempunyai kebenaran untuk mengakses halaman ini. Sila log masuk sebagai pentadbir.' };
+      }
+      throw error;
+    }
+  },
   approveRegistration: (user_ic) => api.post('/auth/approve-registration', { user_ic }),
   rejectRegistration: (user_ic) => api.post('/auth/reject-registration', { user_ic }),
   getPreferences: () => api.get('/auth/preferences'),
@@ -168,6 +210,7 @@ export const teachersAPI = {
   },
   getById: (id) => api.get(`/teachers/${id}`),
   create: (data) => api.post('/teachers', data),
+  register: (data) => api.post('/teachers/register', data), // Public registration endpoint
   update: (id, data) => api.put(`/teachers/${id}`, data),
   delete: (id) => api.delete(`/teachers/${id}`),
   getStats: async () => {
@@ -186,30 +229,23 @@ export const classesAPI = {
   getAll: async (params) => {
     try {
       const response = await api.get('/classes', { params });
-      console.log('classesAPI.getAll - response type:', typeof response);
-      console.log('classesAPI.getAll - is array:', Array.isArray(response));
-      
-      // Handle different response structures:
-      // 1. Direct array: [...]
-      // 2. Object with data: { success: true, data: [...] }
-      // 3. Object with nested data: { data: [...] }
+      // The interceptor already returns response.data, so response is the data object
+      // Backend returns: { success: true, data: [...], pagination: {...} }
+      // After interceptor: { success: true, data: [...], pagination: {...} }
       if (Array.isArray(response)) {
-        console.log('Returning array directly, length:', response.length);
         return response;
-      } else if (response?.data && Array.isArray(response.data)) {
-        console.log('Returning response.data, length:', response.data.length);
-        return response.data;
-      } else if (response?.success && Array.isArray(response.data)) {
-        console.log('Returning response.data (with success flag), length:', response.data.length);
-        return response.data;
-      } else {
-        console.warn('Unexpected response format, returning empty array');
-        return [];
       }
+      // If it's an object with data property, return the data array
+      if (response?.data && Array.isArray(response.data)) {
+        return response.data;
+      }
+      // If it's an object but no data property, return empty array
+      return [];
     } catch (error) {
       console.error('Error fetching classes:', error);
-      console.error('Error details:', JSON.stringify(error, null, 2));
-      throw error;
+      // Ensure error is properly formatted
+      const errorMessage = error?.response?.data?.message || error?.message || 'Gagal memuatkan data kelas.';
+      throw { ...error, message: errorMessage };
     }
   },
   getById: (id) => api.get(`/classes/${id}`),
@@ -231,9 +267,29 @@ export const classesAPI = {
 export const attendanceAPI = {
   getAll: async (params) => {
     try {
-      const response = await api.get('/attendance', { params });
-      // Handle both array responses and object responses with data property
-      return Array.isArray(response) ? response : (response?.data || []);
+      // Filter out undefined/null values from params to avoid sending them as query strings
+      const cleanParams = {};
+      if (params) {
+        Object.keys(params).forEach(key => {
+          if (params[key] !== undefined && params[key] !== null && params[key] !== 'undefined') {
+            cleanParams[key] = params[key];
+          }
+        });
+      }
+      // Removed console.log to reduce console noise
+      const response = await api.get('/attendance', { params: cleanParams });
+      // The interceptor already returns response.data, so response is the data object
+      // Backend returns: { success: true, data: [...], pagination: {...} }
+      // After interceptor: { success: true, data: [...], pagination: {...} }
+      if (Array.isArray(response)) {
+        return response;
+      }
+      // If it's an object with data property, return the data array
+      if (response?.data && Array.isArray(response.data)) {
+        return response.data;
+      }
+      // If it's an object but no data property, return empty array
+      return [];
     } catch (error) {
       console.error('Error fetching attendance:', error);
       throw error;
@@ -248,6 +304,8 @@ export const attendanceAPI = {
       },
     });
   },
+  update: (id, data) => api.put(`/attendance/${id}`, data),
+  delete: (id) => api.delete(`/attendance/${id}`),
   getStats: (params) => api.get('/attendance/stats', { params }),
   getStudentHistory: (id, params) => api.get(`/attendance/student/${id}`, { params }),
 };
@@ -278,10 +336,17 @@ export const resultsAPI = {
     try {
       const response = await api.get('/results', { params });
       // Handle both array responses and object responses with data property
-      return Array.isArray(response) ? response : (response?.data || []);
+      if (Array.isArray(response)) {
+        return response;
+      }
+      if (response?.data && Array.isArray(response.data)) {
+        return response.data;
+      }
+      return [];
     } catch (error) {
       console.error('Error fetching results:', error);
-      throw error;
+      const errorMessage = error?.response?.data?.message || error?.message || 'Gagal memuatkan data keputusan.';
+      throw { ...error, message: errorMessage };
     }
   },
   getById: (id) => api.get(`/results/${id}`),
@@ -298,10 +363,17 @@ export const examsAPI = {
     try {
       const response = await api.get('/exams', { params });
       // Handle both array responses and object responses with data property
-      return Array.isArray(response) ? response : (response?.data || []);
+      if (Array.isArray(response)) {
+        return response;
+      }
+      if (response?.data && Array.isArray(response.data)) {
+        return response.data;
+      }
+      return [];
     } catch (error) {
       console.error('Error fetching exams:', error);
-      throw error;
+      const errorMessage = error?.response?.data?.message || error?.message || 'Gagal memuatkan data peperiksaan.';
+      throw { ...error, message: errorMessage };
     }
   },
   getById: (id) => api.get(`/exams/${id}`),
@@ -338,6 +410,7 @@ export const clearAuth = () => {
 export const settingsAPI = {
   getAll: () => api.get('/settings'),
   getByKey: (key) => api.get(`/settings?key=${key}`),
+  getMasjidLocation: () => api.get('/settings/masjid-location'),
   getQRCode: () => api.get('/settings/qr-code'),
   getGradeRanges: () => api.get('/settings/grade-ranges'),
   updateGradeRanges: (data) => api.put('/settings/grade-ranges', data),
@@ -373,6 +446,36 @@ export const picUsersAPI = {
   delete: (ic) => api.delete(`/pic-users/${encodeURIComponent(ic)}`)
 };
 
+export const adminsAPI = {
+  getAll: async (params) => {
+    try {
+      const response = await api.get('/admins', { params });
+      // Backend returns { success: true, data: [...], adminLimit: {...} }
+      if (response?.success && Array.isArray(response.data)) {
+        return response.data;
+      }
+      return Array.isArray(response) ? response : [];
+    } catch (error) {
+      console.error('Error fetching admins:', error);
+      throw error;
+    }
+  },
+  getWithLimit: async (params) => {
+    try {
+      const response = await api.get('/admins', { params });
+      // Return full response including adminLimit
+      return response;
+    } catch (error) {
+      console.error('Error fetching admins with limit:', error);
+      throw error;
+    }
+  },
+  getById: (ic) => api.get(`/admins/${encodeURIComponent(ic)}`),
+  create: (data) => api.post('/admins', data),
+  update: (ic, data) => api.put(`/admins/${encodeURIComponent(ic)}`, data),
+  delete: (ic) => api.delete(`/admins/${encodeURIComponent(ic)}`)
+};
+
 export const pendingPicChangesAPI = {
   list: (params) => api.get('/pending-pic-changes', { params }),
   getById: (id) => api.get(`/pending-pic-changes/${id}`),
@@ -401,6 +504,7 @@ export const staffCheckInAPI = {
 
 export const exportAPI = {
   triggerDatabaseBackup: (payload) => api.post('/export/database', payload),
+  archiveYearData: (payload) => api.post('/export/archive-year', payload),
   getHistory: (params) => api.get('/export/history', { params }),
   download: (fileName) =>
     api.get(`/export/download/${encodeURIComponent(fileName)}`, {
@@ -408,5 +512,32 @@ export const exportAPI = {
     }),
 };
 
+// Payment Method Settings API
+export const paymentMethodSettingsAPI = {
+  getAll: () => api.get('/payment-methods'),
+  getEnabled: () => api.get('/payment-methods/enabled'),
+  update: (methodCode, data) => api.put(`/payment-methods/${methodCode}`, data),
+  bulkUpdate: (methods) => api.put('/payment-methods/bulk', { methods }),
+};
+
+// Payment Gateway Settings API
+export const paymentGatewaySettingsAPI = {
+  getAll: () => api.get('/payment-gateways'),
+  getActive: () => api.get('/payment-gateways/active'),
+  update: (gatewayName, data) => api.put(`/payment-gateways/${gatewayName}`, data),
+};
+
+// Contact API
+export const contactAPI = {
+  submit: (data) => api.post('/contact', data),
+  getSubmissions: (params) => api.get('/contact/submissions', { params }),
+};
+
+// IB (Internal Auditor) API
+export const ibAPI = {
+  getAvailableReports: () => api.get('/ib/reports'),
+  getMonthlyReport: (params) => api.get('/ib/report', { params }),
+  confirmMonthlyPayment: (data) => api.post('/ib/confirm', data),
+};
 
 export default api;

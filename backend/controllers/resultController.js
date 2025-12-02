@@ -10,7 +10,7 @@ export const getAllResults = async (req, res) => {
     const { search, exam_id, gred, year, semester, page = 1, limit = 1000 } = req.query;
     
     let query = `
-      SELECT r.*, u.nama as pelajar_nama, u.ic as pelajar_ic, c.nama_kelas, e.subject as exam_subject, e.tarikh_exam as exam_date
+      SELECT r.*, u.nama as pelajar_nama, u.ic as pelajar_ic, c.nama_kelas as kelas_nama, e.subject as exam_subject, e.tarikh_exam as exam_date
       FROM results r
       JOIN users u ON r.student_ic = u.ic
       LEFT JOIN students s ON u.ic = s.user_ic
@@ -64,6 +64,8 @@ export const getAllResults = async (req, res) => {
       SELECT COUNT(*) as total
       FROM results r
       JOIN users u ON r.student_ic = u.ic
+      LEFT JOIN students s ON u.ic = s.user_ic
+      LEFT JOIN classes c ON s.kelas_id = c.id
       JOIN exams e ON r.exam_id = e.id
       WHERE 1=1
     `;
@@ -127,7 +129,7 @@ export const getResultById = async (req, res) => {
     const { id } = req.params;
 
     let query = `
-      SELECT r.*, u.nama as pelajar_nama, u.ic as pelajar_ic, c.nama_kelas, e.subject as exam_subject, e.tarikh_exam as exam_date
+      SELECT r.*, u.nama as pelajar_nama, u.ic as pelajar_ic, c.nama_kelas as kelas_nama, e.subject as exam_subject, e.tarikh_exam as exam_date
       FROM results r
       JOIN users u ON r.student_ic = u.ic
       LEFT JOIN students s ON u.ic = s.user_ic
@@ -220,7 +222,7 @@ export const createResult = async (req, res) => {
     `, [student_ic, exam_id, sanitizedMarkah, computedGrade, slip_img, catatan || null]);
     
     const [newResult] = await pool.execute(`
-      SELECT r.*, u.nama as pelajar_nama, u.ic as pelajar_ic, c.nama_kelas, e.subject as exam_subject, e.tarikh_exam as exam_date
+      SELECT r.*, u.nama as pelajar_nama, u.ic as pelajar_ic, c.nama_kelas as kelas_nama, e.subject as exam_subject, e.tarikh_exam as exam_date
       FROM results r
       JOIN users u ON r.student_ic = u.ic
       LEFT JOIN students s ON u.ic = s.user_ic
@@ -293,7 +295,7 @@ export const updateResult = async (req, res) => {
     `, [student_ic, exam_id, sanitizedMarkah, computedGrade, slip_img, catatan || null, id]);
     
     const [updatedResult] = await pool.execute(`
-      SELECT r.*, u.nama as pelajar_nama, u.ic as pelajar_ic, c.nama_kelas, e.subject as exam_subject, e.tarikh_exam as exam_date
+      SELECT r.*, u.nama as pelajar_nama, u.ic as pelajar_ic, c.nama_kelas as kelas_nama, e.subject as exam_subject, e.tarikh_exam as exam_date
       FROM results r
       JOIN users u ON r.student_ic = u.ic
       LEFT JOIN students s ON u.ic = s.user_ic
@@ -398,7 +400,7 @@ export const getTopPerformers = async (req, res) => {
     queryParams.push(parseInt(limit));
     
     const [topPerformers] = await pool.execute(`
-      SELECT r.*, u.nama as pelajar_nama, u.ic as pelajar_ic, c.nama_kelas, e.subject as exam_subject
+      SELECT r.*, u.nama as pelajar_nama, u.ic as pelajar_ic, c.nama_kelas as kelas_nama, e.subject as exam_subject
       FROM results r
       JOIN users u ON r.student_ic = u.ic
       LEFT JOIN students s ON u.ic = s.user_ic

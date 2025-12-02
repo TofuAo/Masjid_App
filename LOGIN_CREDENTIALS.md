@@ -5,10 +5,18 @@
 You can login with any of these accounts to test different roles:
 
 ### 👨‍💼 ADMIN
-- **IC Number:** `990101010101` (or `990101-01-0101`)
-- **Password:** `123456`
-- **Name:** Admin Sistem
-- **Email:** admin@madrasah.com
+
+**USTAZ AMIR HASIF BIN HATA:**
+- **IC Number:** `920312065113` (or `920312-06-5113`)
+- **Password:** `Amir920313`
+
+**USTAZ MUHAMAD KHAIRUL MUSTAKIM BIN CHE AZIZ:**
+- **IC Number:** `951220065759` (or `951220-06-5759`)
+- **Password:** `Khai951259`
+
+**USTAZ MUHAMMAD SYAIFUL IZZHAR BIN ZULKIFLI:**
+- **IC Number:** `941218075641` (or `941218-07-5641`)
+- **Password:** `Izz941241`
 
 ### 👨‍🏫 TEACHER
 **Ustaz Rahim:**
@@ -41,14 +49,15 @@ You can login with any of these accounts to test different roles:
 
 ## Quick Login Examples
 
-- **Admin:** IC: `990101010101`, Password: `123456`
+- **Admin 1:** IC: `920312065113`, Password: `Amir920313`
+- **Admin 2:** IC: `951220065759`, Password: `Khai951259`
+- **Admin 3:** IC: `941218075641`, Password: `Izz941241`
 - **Teacher:** IC: `820503060229`, Password: `123456`  
 - **Student:** IC: `051003060229`, Password: `123456`
 
 ## Notes
 
 ✅ IC numbers can be entered with or without hyphens - the system handles both formats
-✅ All passwords have been standardized to `123456` for easy testing
 ✅ Passwords are case-sensitive
 ⚠️ For production, change all passwords after first login
 

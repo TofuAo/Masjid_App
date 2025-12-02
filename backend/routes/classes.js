@@ -41,9 +41,6 @@ const classValidation = [
   body('kapasiti')
     .isInt({ min: 1, max: 50 })
     .withMessage('Capacity must be between 1 and 50'),
-  body('status')
-    .isIn(['aktif', 'tidak_aktif', 'penuh'])
-    .withMessage('Invalid status selected'),
   body('guru_ic')
     .notEmpty()
     .withMessage('Teacher IC is required')

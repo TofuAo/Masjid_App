@@ -87,7 +87,11 @@ const updateValidation = [
   body('status')
     .optional()
     .isIn(statusOptions)
-    .withMessage(`Status mesti salah satu daripada: ${statusOptions.join(', ')}`)
+    .withMessage(`Status mesti salah satu daripada: ${statusOptions.join(', ')}`),
+  body('role')
+    .optional()
+    .isIn(['pic', 'admin'])
+    .withMessage('Peranan mesti sama ada "pic" atau "admin".')
 ];
 
 router.use(authenticateToken);

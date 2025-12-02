@@ -2,7 +2,7 @@ import React from 'react';
 
 const Card = ({ children, className = '', ...props }) => {
   return (
-    <div className={`glass-card p-6 overflow-hidden ${className}`} {...props}>
+    <div className={`glass-card p-6 overflow-hidden animate-fade-in-up ${className}`} {...props}>
       {children}
     </div>
   );

@@ -1,6 +1,10 @@
 import { pool } from '../config/database.js';
 import bcrypt from 'bcryptjs';
 import { validationResult } from 'express-validator';
+import {
+  fetchMasjidLocationFromSettings,
+  DEFAULT_MASJID_RADIUS
+} from '../utils/masjidLocation.js';
 
 const DEFAULT_HISTORY_MONTHS = 3;
 const isStaffRole = (role) => role === 'teacher' || role === 'admin' || role === 'pic';
@@ -38,44 +42,20 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
   return R * c; // Distance in meters
 }
 
-// Get masjid location from settings
-// Coordinates are static and cannot be changed
-async function getMasjidLocation() {
-  try {
-    // Only fetch radius from settings (coordinates are static)
-    const [settings] = await pool.execute(
-      `SELECT setting_key, setting_value FROM settings WHERE setting_key = 'masjid_checkin_radius'`
-    );
-
-    // Static coordinates - cannot be changed
-    const location = {
-      latitude: 3.807829297637092, // Static
-      longitude: 103.32799643765418, // Static
-      radius: 100 // Default
-    };
-
-    // Only update radius from settings
-    settings.forEach(setting => {
-      if (setting.setting_key === 'masjid_checkin_radius') {
-        location.radius = parseFloat(setting.setting_value) || 100;
-      }
-    });
-
-    return location;
-  } catch (error) {
-    console.error('Error getting masjid location:', error);
-    // Return static coordinates on error
-    return { latitude: 3.807829297637092, longitude: 103.32799643765418, radius: 100 };
-  }
-}
+const getMasjidLocation = () => fetchMasjidLocationFromSettings();
 
 // Check if user is within radius
-async function isWithinRadius(userLat, userLon) {
+async function isWithinRadius(userLat, userLon, userAccuracy = 0) {
   const masjidLocation = await getMasjidLocation();
   
   if (!masjidLocation.latitude || !masjidLocation.longitude) {
     return { within: false, distance: null, message: 'Masjid location not configured' };
   }
+
+  const baseRadius = Number(masjidLocation.radius) || DEFAULT_MASJID_RADIUS;
+  const accuracyValue = Math.max(parseFloat(userAccuracy) || 0, 0);
+  const accuracyBuffer = Math.min(accuracyValue, baseRadius * 2);
+  const effectiveRadius = baseRadius + accuracyBuffer;
 
   const distance = calculateDistance(
     masjidLocation.latitude,
@@ -85,21 +65,31 @@ async function isWithinRadius(userLat, userLon) {
   );
 
   const roundedDistance = Math.round(distance);
-  const roundedRadius = Math.round(masjidLocation.radius);
+  const roundedRadius = Math.round(baseRadius);
+  const roundedEffective = Math.round(effectiveRadius);
+  const roundedBuffer = Math.round(accuracyBuffer);
+  const bufferText =
+    accuracyBuffer > 0
+      ? ` (effective radius ${roundedEffective}m with accuracy buffer ±${roundedBuffer}m)`
+      : '';
   
   return {
-    within: distance <= masjidLocation.radius,
+    within: distance <= effectiveRadius,
     distance: distance,
-    message: distance <= masjidLocation.radius 
-      ? `Check-in success! You are ${roundedDistance}m away from the masjid.` 
-      : `You are too far. You are ${roundedDistance}m away. You must be within ${roundedRadius}m to check in.`
+    effectiveRadius,
+    accuracyBuffer,
+    radius: baseRadius,
+    message:
+      distance <= effectiveRadius
+        ? `Check-in success! You are ${roundedDistance}m away from the masjid${bufferText}.`
+        : `You are too far. You are ${roundedDistance}m away. You must be within ${roundedRadius}m${bufferText} to check in.`
   };
 }
 
 // Staff Check-In
 export const checkIn = async (req, res) => {
   try {
-    const { latitude, longitude } = req.body;
+    const { latitude, longitude, accuracy } = req.body;
     const staffIc = req.user.ic;
 
     // Validate geolocation
@@ -119,12 +109,14 @@ export const checkIn = async (req, res) => {
     }
 
     // Check if within radius
-    const locationCheck = await isWithinRadius(latitude, longitude);
+    const locationCheck = await isWithinRadius(latitude, longitude, accuracy);
     if (!locationCheck.within) {
       return res.status(400).json({
         success: false,
         message: locationCheck.message,
-        distance: locationCheck.distance
+        distance: locationCheck.distance,
+        effectiveRadius: locationCheck.effectiveRadius,
+        accuracyBuffer: locationCheck.accuracyBuffer
       });
     }
 
@@ -164,7 +156,9 @@ export const checkIn = async (req, res) => {
       success: true,
       message: 'Check-in successful',
       data: checkInRecord[0],
-      distance: locationCheck.distance
+      distance: locationCheck.distance,
+      effectiveRadius: locationCheck.effectiveRadius,
+      accuracyBuffer: locationCheck.accuracyBuffer
     });
   } catch (error) {
     console.error('Check-in error:', error);
@@ -178,7 +172,7 @@ export const checkIn = async (req, res) => {
 // Staff Check-Out
 export const checkOut = async (req, res) => {
   try {
-    const { latitude, longitude } = req.body;
+    const { latitude, longitude, accuracy } = req.body;
     const staffIc = req.user.ic;
 
     // Validate geolocation
@@ -198,12 +192,14 @@ export const checkOut = async (req, res) => {
     }
 
     // Check if within radius
-    const locationCheck = await isWithinRadius(latitude, longitude);
+    const locationCheck = await isWithinRadius(latitude, longitude, accuracy);
     if (!locationCheck.within) {
       return res.status(400).json({
         success: false,
         message: locationCheck.message,
-        distance: locationCheck.distance
+        distance: locationCheck.distance,
+        effectiveRadius: locationCheck.effectiveRadius,
+        accuracyBuffer: locationCheck.accuracyBuffer
       });
     }
 
@@ -247,7 +243,9 @@ export const checkOut = async (req, res) => {
       success: true,
       message: 'Check-out successful',
       data: checkOutRecord[0],
-      distance: locationCheck.distance
+      distance: locationCheck.distance,
+      effectiveRadius: locationCheck.effectiveRadius,
+      accuracyBuffer: locationCheck.accuracyBuffer
     });
   } catch (error) {
     console.error('Check-out error:', error);
@@ -414,7 +412,7 @@ export const quickCheckIn = async (req, res) => {
       });
     }
 
-    const { icNumber, password, latitude, longitude } = req.body;
+    const { icNumber, password, latitude, longitude, accuracy } = req.body;
 
     // Validate inputs
     if (!icNumber || !password) {
@@ -465,12 +463,14 @@ export const quickCheckIn = async (req, res) => {
     }
 
     // Check if within radius
-    const locationCheck = await isWithinRadius(latitude, longitude);
+    const locationCheck = await isWithinRadius(latitude, longitude, accuracy);
     if (!locationCheck.within) {
       return res.status(400).json({
         success: false,
         message: locationCheck.message,
-        distance: locationCheck.distance
+        distance: locationCheck.distance,
+        effectiveRadius: locationCheck.effectiveRadius,
+        accuracyBuffer: locationCheck.accuracyBuffer
       });
     }
 
@@ -514,7 +514,9 @@ export const quickCheckIn = async (req, res) => {
         ...checkInRecord[0],
         nama: user.nama
       },
-      distance: locationCheck.distance
+      distance: locationCheck.distance,
+      effectiveRadius: locationCheck.effectiveRadius,
+      accuracyBuffer: locationCheck.accuracyBuffer
     });
   } catch (error) {
     console.error('Quick check-in error:', error);
@@ -635,7 +637,7 @@ export const quickCheckInShift = async (req, res) => {
       });
     }
 
-    const { icNumber, password, latitude, longitude } = req.body;
+    const { icNumber, password, latitude, longitude, accuracy } = req.body;
 
     // Validate inputs
     if (!icNumber || !password) {
@@ -686,12 +688,14 @@ export const quickCheckInShift = async (req, res) => {
     }
 
     // Check if within radius
-    const locationCheck = await isWithinRadius(latitude, longitude);
+    const locationCheck = await isWithinRadius(latitude, longitude, accuracy);
     if (!locationCheck.within) {
       return res.status(400).json({
         success: false,
         message: locationCheck.message,
-        distance: locationCheck.distance
+        distance: locationCheck.distance,
+        effectiveRadius: locationCheck.effectiveRadius,
+        accuracyBuffer: locationCheck.accuracyBuffer
       });
     }
 
@@ -735,7 +739,9 @@ export const quickCheckInShift = async (req, res) => {
         ...checkInRecord[0],
         nama: user.nama
       },
-      distance: locationCheck.distance
+      distance: locationCheck.distance,
+      effectiveRadius: locationCheck.effectiveRadius,
+      accuracyBuffer: locationCheck.accuracyBuffer
     });
   } catch (error) {
     console.error('Quick check-in shift error:', error);
@@ -758,7 +764,7 @@ export const quickCheckOutShift = async (req, res) => {
       });
     }
 
-    const { icNumber, password, latitude, longitude } = req.body;
+    const { icNumber, password, latitude, longitude, accuracy } = req.body;
 
     // Validate inputs
     if (!icNumber || !password) {
@@ -809,12 +815,14 @@ export const quickCheckOutShift = async (req, res) => {
     }
 
     // Check if within radius
-    const locationCheck = await isWithinRadius(latitude, longitude);
+    const locationCheck = await isWithinRadius(latitude, longitude, accuracy);
     if (!locationCheck.within) {
       return res.status(400).json({
         success: false,
         message: locationCheck.message,
-        distance: locationCheck.distance
+        distance: locationCheck.distance,
+        effectiveRadius: locationCheck.effectiveRadius,
+        accuracyBuffer: locationCheck.accuracyBuffer
       });
     }
 
@@ -862,7 +870,9 @@ export const quickCheckOutShift = async (req, res) => {
         ...checkOutRecord[0],
         nama: user.nama
       },
-      distance: locationCheck.distance
+      distance: locationCheck.distance,
+      effectiveRadius: locationCheck.effectiveRadius,
+      accuracyBuffer: locationCheck.accuracyBuffer
     });
   } catch (error) {
     console.error('Quick check-out shift error:', error);
@@ -885,7 +895,7 @@ export const quickCheckOut = async (req, res) => {
       });
     }
 
-    const { icNumber, password, latitude, longitude } = req.body;
+    const { icNumber, password, latitude, longitude, accuracy } = req.body;
 
     // Validate inputs
     if (!icNumber || !password) {
@@ -936,12 +946,14 @@ export const quickCheckOut = async (req, res) => {
     }
 
     // Check if within radius
-    const locationCheck = await isWithinRadius(latitude, longitude);
+    const locationCheck = await isWithinRadius(latitude, longitude, accuracy);
     if (!locationCheck.within) {
       return res.status(400).json({
         success: false,
         message: locationCheck.message,
-        distance: locationCheck.distance
+        distance: locationCheck.distance,
+        effectiveRadius: locationCheck.effectiveRadius,
+        accuracyBuffer: locationCheck.accuracyBuffer
       });
     }
 
@@ -989,7 +1001,9 @@ export const quickCheckOut = async (req, res) => {
         ...checkOutRecord[0],
         nama: user.nama
       },
-      distance: locationCheck.distance
+      distance: locationCheck.distance,
+      effectiveRadius: locationCheck.effectiveRadius,
+      accuracyBuffer: locationCheck.accuracyBuffer
     });
   } catch (error) {
     console.error('Quick check-out error:', error);

@@ -6,7 +6,8 @@ import {
   createTeacher,
   updateTeacher,
   deleteTeacher,
-  getTeacherStats
+  getTeacherStats,
+  registerTeacher
 } from '../controllers/teacherController.js';
 import { authenticateToken, requireRole } from '../middleware/auth.js';
 import { isValidICFormat } from '../utils/icNormalizer.js';
@@ -16,8 +17,60 @@ import { normalizePhoneMiddleware } from '../middleware/normalizePhone.js';
 
 const router = express.Router();
 
-// Validation rules
-const teacherValidation = [
+// IMPORTANT: Register route MUST be defined first, before any middleware
+// This ensures Express matches the route handler before applying middleware
+
+// Validation rules for public teacher registration (no auth required)
+export const registerTeacherValidation = [
+  body('nama')
+    .notEmpty()
+    .withMessage('Name is required')
+    .isLength({ min: 2, max: 100 })
+    .withMessage('Name must be between 2 and 100 characters')
+    .trim(),
+  body('ic')
+    .notEmpty()
+    .withMessage('IC number is required')
+    .custom((value) => {
+      if (!isValidICFormat(value)) {
+        throw new Error('IC must be 12 digits (format: 123456-78-9012 or 123456789012)');
+      }
+      return true;
+    }),
+  body('telefon')
+    .optional({ checkFalsy: true })
+    .custom((value) => {
+      if (value && !isValidPhoneFormat(value)) {
+        throw new Error('Phone must be a valid Malaysian mobile number (format: 012-3456789 or 0123456789)');
+      }
+      return true;
+    }),
+  body('kepakaran')
+    .isArray({ min: 1 })
+    .withMessage('At least one expertise is required'),
+  body('kepakaran.*')
+    .isIn(['Al-Quran', 'Tajwid', 'Fardhu Ain', 'Hadith', 'Fiqh', 'Seerah', 'Tafsir', 'Bahasa Arab', 'Akidah', 'Tasawwuf'])
+    .withMessage('Invalid expertise selected'),
+  body('email')
+    .optional()
+    .custom((value) => {
+      // Only validate if email is provided
+      if (value !== undefined && value !== null && value !== '') {
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+          throw new Error('Must be a valid email');
+        }
+      }
+      return true;
+    }),
+  body('password')
+    .notEmpty()
+    .withMessage('Password is required for teacher registration')
+    .isLength({ min: 5 })
+    .withMessage('Password must be at least 5 characters long')
+];
+
+// Validation rules for creating teacher (password required, authenticated admin/teacher only)
+const createTeacherValidation = [
   body('nama')
     .notEmpty()
     .withMessage('Name is required')
@@ -50,8 +103,81 @@ const teacherValidation = [
   body('status')
     .isIn(['aktif', 'tidak_aktif', 'cuti'])
     .withMessage('Status must be one of: aktif, tidak_aktif, cuti'),
-  body('email').isEmail().withMessage('Must be a valid email'),
-  body('password').isLength({ min: 5 }).withMessage('Password must be at least 5 chars long')
+  body('email')
+    .optional()
+    .custom((value) => {
+      // Only validate if email is provided
+      if (value !== undefined && value !== null && value !== '') {
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+          throw new Error('Must be a valid email');
+        }
+      }
+      return true;
+    }),
+  body('password')
+    .notEmpty()
+    .withMessage('Password is required for new teachers')
+    .isLength({ min: 5 })
+    .withMessage('Password must be at least 5 chars long')
+];
+
+// Validation rules for updating teacher (password and email optional, IC required)
+const updateTeacherValidation = [
+  body('nama')
+    .optional()
+    .isLength({ min: 2, max: 100 })
+    .withMessage('Name must be between 2 and 100 characters'),
+  body('ic')
+    .notEmpty()
+    .withMessage('IC number is required')
+    .custom((value) => {
+      if (!isValidICFormat(value)) {
+        throw new Error('IC must be 12 digits (format: 123456-78-9012 or 123456789012)');
+      }
+      return true;
+    }),
+  body('telefon')
+    .optional()
+    .custom((value) => {
+      if (value && !isValidPhoneFormat(value)) {
+        throw new Error('Phone must be a valid Malaysian mobile number (format: 012-3456789 or 0123456789)');
+      }
+      return true;
+    }),
+  body('kepakaran')
+    .optional()
+    .isArray({ min: 1 })
+    .withMessage('At least one expertise is required'),
+  body('kepakaran.*')
+    .optional()
+    .isIn(['Al-Quran', 'Tajwid', 'Fardhu Ain', 'Hadith', 'Fiqh', 'Seerah', 'Tafsir', 'Bahasa Arab', 'Akidah', 'Tasawwuf'])
+    .withMessage('Invalid expertise selected'),
+  body('status')
+    .optional({ checkFalsy: true })
+    .isIn(['aktif', 'tidak_aktif', 'cuti'])
+    .withMessage('Status must be one of: aktif, tidak_aktif, cuti'),
+  body('email')
+    .optional()
+    .custom((value) => {
+      // Only validate if email is provided
+      if (value !== undefined && value !== null && value !== '') {
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+          throw new Error('Must be a valid email');
+        }
+      }
+      return true;
+    }),
+  body('password')
+    .optional()
+    .custom((value) => {
+      // Only validate if password is provided
+      if (value !== undefined && value !== null && value !== '') {
+        if (String(value).trim().length < 5) {
+          throw new Error('Password must be at least 5 chars long');
+        }
+      }
+      return true;
+    })
 ];
 
 const icValidation = [
@@ -64,15 +190,23 @@ const icValidation = [
     })
 ];
 
-// Apply authentication to all routes
-router.use(authenticateToken);
+// PUBLIC ROUTE: Teacher registration (NO AUTH REQUIRED)
+// MUST be defined FIRST before any auth middleware
+// Add explicit middleware to mark this as a public route
+router.post('/register', (req, res, next) => {
+  // Explicitly mark this route as public - set flag BEFORE any other middleware
+  req.skipAuth = true;
+  req._skipAuthForTeacherRegister = true;
+  console.log('✅ Teacher registration route matched - setting skipAuth flags');
+  next();
+}, registerTeacherValidation, normalizeICMiddleware, normalizePhoneMiddleware, registerTeacher);
 
-// Routes
-router.get('/', getAllTeachers);
-router.get('/stats', getTeacherStats);
-router.get('/:ic', icValidation, normalizeICMiddleware, getTeacherById);
-router.post('/', requireRole(['admin', 'teacher']), teacherValidation, normalizeICMiddleware, normalizePhoneMiddleware, createTeacher);
-router.put('/:ic', requireRole(['admin', 'teacher']), icValidation, teacherValidation, normalizeICMiddleware, normalizePhoneMiddleware, updateTeacher);
-router.delete('/:ic', requireRole(['admin']), icValidation, normalizeICMiddleware, deleteTeacher);
+// Routes - Apply authentication to each route individually (NOT using router.use to avoid affecting /register)
+router.get('/', authenticateToken, getAllTeachers);
+router.get('/stats', authenticateToken, getTeacherStats);
+router.get('/:ic', authenticateToken, icValidation, normalizeICMiddleware, getTeacherById);
+router.post('/', authenticateToken, requireRole(['admin', 'teacher']), createTeacherValidation, normalizeICMiddleware, normalizePhoneMiddleware, createTeacher);
+router.put('/:ic', authenticateToken, requireRole(['admin', 'teacher']), icValidation, updateTeacherValidation, normalizeICMiddleware, normalizePhoneMiddleware, updateTeacher);
+router.delete('/:ic', authenticateToken, requireRole(['admin']), icValidation, normalizeICMiddleware, deleteTeacher);
 
 export default router;

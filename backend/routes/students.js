@@ -15,12 +15,13 @@ import { isValidPhoneFormat } from '../utils/phoneNormalizer.js';
 import { normalizePhoneMiddleware } from '../middleware/normalizePhone.js';
 import { requirePicApproval } from '../middleware/picApproval.js';
 import { pool } from '../config/database.js';
+import { fetchStudentByIc } from '../services/studentService.js';
 
 const normalizeIcForQuery = (value) => (typeof value === 'string' ? value.replace(/-/g, '') : value);
 
 const router = express.Router();
 
-// Validation rules
+// Validation rules for creating students
 const studentValidation = [
   body('nama')
     .notEmpty()
@@ -62,13 +63,77 @@ const studentValidation = [
     })
     .withMessage('Class ID must be a valid integer or empty'),
   body('status')
-    .isIn(['aktif', 'tidak_aktif', 'cuti'])
-    .withMessage('Status must be one of: aktif, tidak_aktif, cuti'),
+    .optional()
+    .isIn(['aktif', 'tidak_aktif'])
+    .withMessage('Status must be one of: aktif, tidak_aktif'),
   body('tarikh_daftar')
     .isISO8601()
     .withMessage('Registration date must be a valid date'),
   body('email').isEmail().withMessage('Must be a valid email'),
   body('password').isLength({ min: 5 }).withMessage('Password must be at least 5 chars long')
+];
+
+// Validation rules for updating students (all fields optional except password validation if provided)
+const studentUpdateValidation = [
+  body('nama')
+    .optional()
+    .isLength({ min: 2, max: 100 })
+    .withMessage('Name must be between 2 and 100 characters'),
+  body('ic')
+    .optional()
+    .custom((value) => {
+      if (value && !isValidICFormat(value)) {
+        throw new Error('IC must be 12 digits (format: 123456-78-9012 or 123456789012)');
+      }
+      return true;
+    }),
+  body('umur')
+    .optional()
+    .isInt({ min: 5, max: 100 })
+    .withMessage('Age must be between 5 and 100'),
+  body('alamat')
+    .optional({ nullable: true, checkFalsy: true })
+    .isLength({ min: 10, max: 500 })
+    .withMessage('Address must be between 10 and 500 characters'),
+  body('telefon')
+    .optional({ nullable: true, checkFalsy: true })
+    .custom((value) => {
+      if (value && !isValidPhoneFormat(value)) {
+        throw new Error('Phone must be a valid Malaysian mobile number (format: 012-3456789 atau 0123456789)');
+      }
+      return true;
+    }),
+  body('kelas_id')
+    .optional({ nullable: true, checkFalsy: true })
+    .custom((value) => {
+      if (value === null || value === undefined || value === '') {
+        return true;
+      }
+      return Number.isInteger(Number(value));
+    })
+    .withMessage('Class ID must be a valid integer or empty'),
+  // Status validation removed - status field no longer in form
+  body('tarikh_daftar')
+    .optional()
+    .isISO8601()
+    .withMessage('Registration date must be a valid date'),
+  body('email')
+    .optional({ nullable: true, checkFalsy: true })
+    .custom((value) => {
+      // Allow empty string, null, or undefined
+      if (!value || value.trim() === '') {
+        return true;
+      }
+      // If provided, must be valid email
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(value)) {
+        throw new Error('Must be a valid email');
+      }
+      return true;
+    })
+    .withMessage('Must be a valid email'),
+  // Password validation removed from update route - handled in controller
+  // Password is optional for updates and will only be validated if provided
 ];
 
 const icValidation = [
@@ -112,7 +177,7 @@ router.put(
   '/:ic',
   requireRole(['admin', 'staff', 'pic']),
   icValidation,
-  studentValidation,
+  studentUpdateValidation,
   normalizeICMiddleware,
   normalizePhoneMiddleware,
   requirePicApproval({
@@ -120,27 +185,49 @@ router.put(
     entityType: 'student',
     message: 'Permintaan kemaskini pelajar dihantar untuk kelulusan admin.',
     prepare: async (req) => {
-      const cleanedIc = normalizeIcForQuery(req.params.ic);
-      const [rows] = await pool.execute(
-        `SELECT u.ic, u.nama, u.email, u.telefon, u.status, s.kelas_id, s.tarikh_daftar
-         FROM users u
-         JOIN students s ON u.ic = s.user_ic
-         WHERE REPLACE(u.ic, '-', '') = ?`,
-        [cleanedIc]
-      );
-      if (rows.length === 0) {
+      console.log('requirePicApproval prepare: IC from params:', req.params.ic);
+      // Use the same fetchStudentByIc function to ensure consistency
+      // IC in params might be normalized by normalizeICMiddleware, but we'll handle all formats
+      let student = await fetchStudentByIc(req.params.ic);
+      
+      // If not found, try with original IC before normalization
+      if (!student && req.params.ic) {
+        // Try with cleaned version
+        const cleanedIc = normalizeIcForQuery(req.params.ic);
+        if (cleanedIc !== req.params.ic) {
+          student = await fetchStudentByIc(cleanedIc);
+        }
+      }
+      
+      // If still not found, try with normalized format
+      if (!student && req.params.ic) {
+        const cleanedIc = normalizeIcForQuery(req.params.ic);
+        if (cleanedIc.length === 12) {
+          const normalizedIc = `${cleanedIc.substring(0, 6)}-${cleanedIc.substring(6, 8)}-${cleanedIc.substring(8, 12)}`;
+          if (normalizedIc !== req.params.ic) {
+            student = await fetchStudentByIc(normalizedIc);
+          }
+        }
+      }
+      
+      if (!student) {
+        console.error('requirePicApproval: Student not found after all attempts. IC:', req.params.ic);
         const error = new Error('Pelajar tidak dijumpai.');
         error.status = 404;
         throw error;
       }
+      
+      console.log('requirePicApproval: Found student:', student.ic, student.nama);
+      const cleanedIc = normalizeIcForQuery(student.ic || req.params.ic);
+      
       return {
         entityId: cleanedIc,
         metadata: {
-          summary: `Kemaskini pelajar ${rows[0].nama}`,
-          current: rows[0],
+          summary: `Kemaskini pelajar ${student.nama}`,
+          current: student,
           requested: {
             ...req.body,
-            ic: normalizeIcForQuery(req.body?.ic || cleanedIc)
+            ic: normalizeIcForQuery(req.body?.ic || student.ic || cleanedIc)
           }
         }
       };
@@ -160,7 +247,7 @@ router.delete(
     prepare: async (req) => {
       const cleanedIc = normalizeIcForQuery(req.params.ic);
       const [rows] = await pool.execute(
-        `SELECT u.ic, u.nama, u.email, u.telefon, u.status, s.kelas_id, s.tarikh_daftar
+        `SELECT u.ic, u.nama, u.email, u.telefon, s.kelas_id, s.tarikh_daftar
          FROM users u
          JOIN students s ON u.ic = s.user_ic
          WHERE REPLACE(u.ic, '-', '') = ?`,

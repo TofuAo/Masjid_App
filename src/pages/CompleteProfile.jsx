@@ -1,31 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
-import { authAPI, classesAPI } from '../services/api';
-import { User, Mail, Phone, Calendar, BookOpen, GraduationCap } from 'lucide-react';
+import { authAPI, clearAuth } from '../services/api';
+import { User, Mail, Phone, BookOpen, GraduationCap } from 'lucide-react';
 
 const CompleteProfile = ({ user, onComplete }) => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
-  const [loadingClasses, setLoadingClasses] = useState(false);
-  const [classes, setClasses] = useState([]);
   const [formData, setFormData] = useState({
     umur: '',
     ic: '',
     telefon: '',
     email: '',
-    kelas_id: '',
-    tarikh_daftar: '',
     kepakaran: []
   });
   const [errors, setErrors] = useState({});
 
   useEffect(() => {
-    // Fetch classes if user is a student
-    if (user?.role === 'student') {
-      fetchClasses();
-    }
-
     // Pre-fill IC if available
     if (user?.ic) {
       setFormData(prev => ({
@@ -35,28 +26,6 @@ const CompleteProfile = ({ user, onComplete }) => {
     }
   }, [user]);
 
-  const fetchClasses = async () => {
-    setLoadingClasses(true);
-    try {
-      const response = await classesAPI.getAll({ status: 'aktif', limit: 999 });
-      let classesList = [];
-      
-      if (Array.isArray(response)) {
-        classesList = response;
-      } else if (response?.data && Array.isArray(response.data)) {
-        classesList = response.data;
-      } else if (response?.success && Array.isArray(response.data)) {
-        classesList = response.data;
-      }
-      
-      setClasses(classesList);
-    } catch (error) {
-      console.error('Error fetching classes:', error);
-      toast.error('Gagal memuatkan senarai kelas');
-    } finally {
-      setLoadingClasses(false);
-    }
-  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -96,24 +65,19 @@ const CompleteProfile = ({ user, onComplete }) => {
       newErrors.umur = 'Sila masukkan umur';
     }
 
-    if (!formData.telefon || formData.telefon.trim() === '') {
-      newErrors.telefon = 'Sila masukkan nombor telefon';
+    // Telefon is optional - only validate format if provided
+    if (formData.telefon && formData.telefon.trim() !== '') {
+      // Optional: Add phone format validation if needed
     }
 
-    if (!formData.email || formData.email.trim() === '') {
-      newErrors.email = 'Sila masukkan emel';
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      newErrors.email = 'Format emel tidak sah';
+    // Email is optional - only validate format if provided
+    if (formData.email && formData.email.trim() !== '') {
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+        newErrors.email = 'Format emel tidak sah';
+      }
     }
 
-    if (user?.role === 'student') {
-      if (!formData.kelas_id) {
-        newErrors.kelas_id = 'Sila pilih kelas';
-      }
-      if (!formData.tarikh_daftar) {
-        newErrors.tarikh_daftar = 'Sila masukkan tarikh pendaftaran';
-      }
-    }
+    // Class and registration date are assigned by admin, not by students
 
     if (user?.role === 'teacher') {
       if (!formData.kepakaran || formData.kepakaran.length === 0) {
@@ -136,15 +100,18 @@ const CompleteProfile = ({ user, onComplete }) => {
     setLoading(true);
     try {
       const payload = {
-        umur: parseInt(formData.umur),
-        telefon: formData.telefon.trim(),
-        email: formData.email.trim()
+        umur: parseInt(formData.umur)
       };
 
-      if (user?.role === 'student') {
-        payload.kelas_id = parseInt(formData.kelas_id);
-        payload.tarikh_daftar = formData.tarikh_daftar;
+      // Only include telefon and email if they are provided
+      if (formData.telefon && formData.telefon.trim() !== '') {
+        payload.telefon = formData.telefon.trim();
       }
+      if (formData.email && formData.email.trim() !== '') {
+        payload.email = formData.email.trim();
+      }
+
+      // Class and registration date are assigned by admin, not by students
 
       if (user?.role === 'teacher') {
         payload.kepakaran = formData.kepakaran;
@@ -159,13 +126,51 @@ const CompleteProfile = ({ user, onComplete }) => {
         const updatedUser = { ...user, ...response.data };
         localStorage.setItem('user', JSON.stringify(updatedUser));
         
-        // Notify parent component that profile is complete
-        if (onComplete) {
-          onComplete();
+        // Re-check profile completeness to ensure backend recognizes it as complete
+        try {
+          const checkResponse = await authAPI.checkProfileComplete();
+          if (checkResponse.success && checkResponse.data.isComplete) {
+            // Notify parent component that profile is complete FIRST
+            // This updates the profileComplete state in App.jsx
+            if (onComplete) {
+              onComplete();
+            }
+            
+            // Wait a moment for state to update, then navigate
+            // Use window.location to force a full reload which will re-check profile status
+            setTimeout(() => {
+              window.location.href = '/';
+            }, 100);
+          } else {
+            // If still not complete, show error with details
+            const missingFields = checkResponse.data?.missingFields || [];
+            console.error('Profile still incomplete:', missingFields);
+            // If the missing fields are only kelas_id and tarikh_daftar, ignore them (admin-assigned)
+            const relevantMissingFields = missingFields.filter(field => 
+              field !== 'kelas_id' && field !== 'tarikh_daftar'
+            );
+            if (relevantMissingFields.length === 0) {
+              // Only kelas_id/tarikh_daftar missing - treat as complete
+              if (onComplete) {
+                onComplete();
+              }
+              setTimeout(() => {
+                window.location.href = '/';
+              }, 100);
+            } else {
+              toast.error('Profil masih tidak lengkap. Sila semak semula maklumat anda.');
+            }
+          }
+        } catch (checkError) {
+          console.error('Error checking profile complete:', checkError);
+          // Still proceed - call onComplete and reload
+          if (onComplete) {
+            onComplete();
+          }
+          setTimeout(() => {
+            window.location.href = '/';
+          }, 100);
         }
-        
-        // Redirect to dashboard
-        navigate('/');
       } else {
         toast.error(response.message || 'Gagal mengemaskini profil');
       }
@@ -206,7 +211,11 @@ const CompleteProfile = ({ user, onComplete }) => {
             <div className="mt-4">
               <button
                 type="button"
-                onClick={() => navigate('/login')}
+                onClick={() => {
+                  clearAuth();
+                  navigate('/login');
+                  window.location.reload(); // Force reload to clear user state
+                }}
                 className="text-sm font-medium text-emerald-600 hover:text-emerald-700 underline underline-offset-4 transition-colors"
               >
                 Pergi ke Laman Log Masuk
@@ -261,7 +270,7 @@ const CompleteProfile = ({ user, onComplete }) => {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   <Phone className="inline w-4 h-4 mr-1" />
-                  Telefon *
+                  Telefon
                 </label>
                 <input
                   type="tel"
@@ -282,7 +291,7 @@ const CompleteProfile = ({ user, onComplete }) => {
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 <Mail className="inline w-4 h-4 mr-1" />
-                Emel *
+                Emel
               </label>
               <input
                 type="email"
@@ -299,62 +308,22 @@ const CompleteProfile = ({ user, onComplete }) => {
               )}
             </div>
 
-            {/* Student-specific fields */}
+            {/* Student-specific note */}
             {user?.role === 'student' && (
-              <>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <div className="flex items-start">
+                  <GraduationCap className="h-5 w-5 text-blue-600 mr-2 mt-0.5 flex-shrink-0" />
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      <GraduationCap className="inline w-4 h-4 mr-1" />
-                      Kelas *
-                    </label>
-                    {loadingClasses ? (
-                      <div className="flex items-center space-x-2">
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-emerald-500"></div>
-                        <p className="text-sm text-gray-500">Memuatkan kelas...</p>
-                      </div>
-                    ) : (
-                      <select
-                        name="kelas_id"
-                        value={formData.kelas_id}
-                        onChange={handleChange}
-                        className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 ${
-                          errors.kelas_id ? 'border-red-500' : 'border-gray-300'
-                        }`}
-                      >
-                        <option value="">Pilih Kelas</option>
-                        {classes.map(kelas => (
-                          <option key={kelas.id} value={kelas.id}>
-                            {kelas.nama_kelas}
-                          </option>
-                        ))}
-                      </select>
-                    )}
-                    {errors.kelas_id && (
-                      <p className="text-red-500 text-xs mt-1">{errors.kelas_id}</p>
-                    )}
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      <Calendar className="inline w-4 h-4 mr-1" />
-                      Tarikh Pendaftaran *
-                    </label>
-                    <input
-                      type="date"
-                      name="tarikh_daftar"
-                      value={formData.tarikh_daftar}
-                      onChange={handleChange}
-                      className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 ${
-                        errors.tarikh_daftar ? 'border-red-500' : 'border-gray-300'
-                      }`}
-                    />
-                    {errors.tarikh_daftar && (
-                      <p className="text-red-500 text-xs mt-1">{errors.tarikh_daftar}</p>
-                    )}
+                    <p className="text-sm font-medium text-blue-800 mb-1">
+                      Nota Penting untuk Pelajar
+                    </p>
+                    <p className="text-xs text-blue-700">
+                      Kelas dan tarikh pendaftaran anda akan ditetapkan oleh pentadbir selepas kelulusan. 
+                      Sila lengkapkan maklumat peribadi di atas terlebih dahulu.
+                    </p>
                   </div>
                 </div>
-              </>
+              </div>
             )}
 
             {/* Teacher-specific fields */}

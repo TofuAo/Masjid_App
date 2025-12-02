@@ -6,7 +6,12 @@ import { toast } from 'react-toastify';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import Badge from '../components/ui/Badge';
-import { CreditCard, DollarSign, CheckCircle, XCircle, Clock, Plus, Search, Filter, QrCode, Settings, Upload, Link as LinkIcon, Save, ChevronDown, ChevronUp } from 'lucide-react';
+import LoadingSkeleton from '../components/ui/LoadingSkeleton';
+import { CreditCard, DollarSign, CheckCircle, XCircle, Clock, Plus, Search, Filter, QrCode, Settings, Upload, Link as LinkIcon, Save, ChevronDown, ChevronUp, AlertCircle } from 'lucide-react';
+import { getEffectiveRole } from '../utils/userRoles';
+
+const PAYMENT_TRACKER_STORAGE_KEY = 'yuran_payment_tracker_v1';
+const PAYMENT_METHOD_OPTIONS = ['Tunai', 'FPX / Online', 'Bank Transfer', 'Credit Card'];
 
 const Yuran = () => {
   const navigate = useNavigate();
@@ -33,9 +38,10 @@ const Yuran = () => {
 
   useEffect(() => {
     const user = JSON.parse(localStorage.getItem('user'));
-    if (user && user.role) {
-      setUserRole(user.role);
-      if (user.role === 'admin') {
+    const effectiveRole = getEffectiveRole(user);
+    if (effectiveRole) {
+      setUserRole(effectiveRole);
+      if (effectiveRole === 'admin') {
         fetchQRSettings();
       }
     }
@@ -399,7 +405,21 @@ const Yuran = () => {
       </Card>
 
       {error && (
-        <div className="text-center py-8 text-red-600">Ralat: {error.message || 'Gagal memuatkan data.'}</div>
+        <div className="text-center py-12">
+          <div className="flex justify-center mb-4">
+            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center">
+              <AlertCircle className="w-8 h-8 text-red-600" />
+            </div>
+          </div>
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">Ralat Memuatkan Data</h3>
+          <p className="text-red-600 mb-4">{error.message || 'Gagal memuatkan data yuran.'}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-4 py-2 bg-emerald-600 text-white rounded-md hover:bg-emerald-700 transition-colors"
+          >
+            Muat Semula
+          </button>
+        </div>
       )}
 
       {/* Statistics Cards */}
@@ -482,7 +502,7 @@ const Yuran = () => {
         </Card.Header>
         <Card.Content>
           {loading ? (
-            <div className="text-center py-8">Memuatkan yuran...</div>
+            <LoadingSkeleton type="table" />
           ) : (
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">
@@ -592,6 +612,346 @@ const Yuran = () => {
             </div>
           )}
         </Card.Content>
+      </Card>
+      <PaymentTrackerPanel />
+    </div>
+  );
+};
+
+const PaymentTrackerPanel = () => {
+  const [studentName, setStudentName] = useState('');
+  const [studentId, setStudentId] = useState('');
+  const [classInfo, setClassInfo] = useState('');
+  const [totalFee, setTotalFee] = useState(0);
+  const [paymentDate, setPaymentDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [amountPaid, setAmountPaid] = useState(0);
+  const [method, setMethod] = useState(PAYMENT_METHOD_OPTIONS[0]);
+  const [payments, setPayments] = useState([]);
+  const [lastSaved, setLastSaved] = useState('-');
+  const [receiptContent, setReceiptContent] = useState('Pilih atau tambah bayaran untuk melihat resit di sini.');
+  const [trackerLoaded, setTrackerLoaded] = useState(false);
+
+  useEffect(() => {
+    const raw = localStorage.getItem(PAYMENT_TRACKER_STORAGE_KEY);
+    if (raw) {
+      try {
+        const parsed = JSON.parse(raw);
+        setStudentName(parsed.student?.name || '');
+        setStudentId(parsed.student?.id || '');
+        setClassInfo(parsed.student?.class || '');
+        setTotalFee(Number(parsed.totalFee) || 0);
+        setPaymentDate(parsed.paymentDate || new Date().toISOString().slice(0, 10));
+        setPayments(Array.isArray(parsed.payments) ? parsed.payments : []);
+        setMethod(parsed.method || PAYMENT_METHOD_OPTIONS[0]);
+        setLastSaved(parsed.lastSaved || '-');
+      } catch (error) {
+        console.warn('Invalid tracker state', error);
+      }
+    }
+    setTrackerLoaded(true);
+  }, []);
+
+  useEffect(() => {
+    if (!trackerLoaded) return;
+    const payload = {
+      student: { name: studentName, id: studentId, class: classInfo },
+      totalFee,
+      payments,
+      paymentDate,
+      method,
+      lastSaved
+    };
+    localStorage.setItem(PAYMENT_TRACKER_STORAGE_KEY, JSON.stringify(payload));
+  }, [studentName, studentId, classInfo, totalFee, payments, paymentDate, method, lastSaved, trackerLoaded]);
+
+  const currency = (value) => `RM ${Number(value || 0).toFixed(2)}`;
+
+  const addPayment = () => {
+    const amount = Number(amountPaid);
+    if (!amount || amount <= 0) {
+      alert('Masukkan jumlah bayaran yang sah.');
+      return;
+    }
+    const total = Number(totalFee) || 0;
+    const paidSoFar = payments.reduce((sum, p) => sum + Number(p.amount), 0);
+    if (paidSoFar + amount > total + 0.0001) {
+      if (!window.confirm('Jumlah bayaran melebihi baki. Teruskan?')) {
+        return;
+      }
+    }
+    const newPayment = {
+      amount,
+      method,
+      date: paymentDate || new Date().toISOString().slice(0, 10),
+      note: classInfo
+    };
+    setPayments((prev) => [...prev, newPayment]);
+    setAmountPaid(0);
+    setLastSaved(new Date().toLocaleString());
+    showReceipt(payments.length);
+  };
+
+  const showReceipt = (index) => {
+    const p = payments[index];
+    if (!p) return;
+    const total = Number(totalFee) || 0;
+    const cumulative = payments.slice(0, index + 1).reduce((sum, x) => sum + Number(x.amount), 0);
+    const left = Math.max(0, total - cumulative);
+    const student = studentName || 'Pelajar Tidak Diketahui';
+    const receipt = `
+MASJID NEGERI SULTAN AHMAD 1
+
+Resit Pembayaran Yuran
+------------------------------
+Nama Pelajar : ${student}
+ID / No.     : ${studentId || '-'}
+Kelas / Nota : ${p.note || classInfo || '-'}
+Tarikh       : ${p.date}
+Kaedah       : ${p.method}
+
+Jumlah Dibayar                     : ${currency(p.amount)}
+Jumlah Dibayar (Sehingga sekarang) : ${currency(cumulative)}
+Jumlah Yuran (Total)               : ${currency(total)}
+Baki Selepas Transaksi             : ${currency(left)}
+
+Terima kasih.
+------------------------------
+Tandatangan: ____________________
+`;
+    setReceiptContent(receipt);
+    if (typeof window === 'undefined') return;
+    const popup = window.open('', '_blank', 'width=600,height=640');
+    if (!popup) return;
+    const doc = popup.document;
+    doc.write(`<pre style="font-family:monospace;font-size:14px;line-height:1.4;">${receipt}</pre>`);
+    doc.close();
+    popup.focus();
+    const printBtn = doc.createElement('button');
+    printBtn.textContent = 'Print / Save as PDF';
+    printBtn.style.padding = '10px 14px';
+    printBtn.style.marginTop = '12px';
+    printBtn.style.borderRadius = '8px';
+    printBtn.style.border = 'none';
+    printBtn.style.background = '#2563eb';
+    printBtn.style.color = '#fff';
+    printBtn.style.cursor = 'pointer';
+    printBtn.onclick = () => popup.print();
+    doc.body.appendChild(printBtn);
+  };
+
+  const exportData = () => {
+    const payload = {
+      student: { name: studentName, id: studentId, class: classInfo },
+      totalFee,
+      payments,
+      generatedAt: new Date().toISOString()
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `${studentId || 'payment'}_export.json`;
+    a.click();
+  };
+
+  const clearAll = () => {
+    if (!window.confirm('Kosongkan semua rekod dari komputer ini?')) return;
+    setStudentName('');
+    setStudentId('');
+    setClassInfo('');
+    setTotalFee(0);
+    setAmountPaid(0);
+    setPayments([]);
+    setReceiptContent('Pilih atau tambah bayaran untuk melihat resit di sini.');
+    setLastSaved('-');
+    localStorage.removeItem(PAYMENT_TRACKER_STORAGE_KEY);
+  };
+
+  const totalNumber = Number(totalFee) || 0;
+  const paidAmount = payments.reduce((sum, p) => sum + Number(p.amount), 0);
+  const leftAmount = Math.max(0, totalNumber - paidAmount);
+
+  const displayedPayments = payments.slice().reverse();
+
+  return (
+    <div className="space-y-4">
+      <Card>
+        <div className="grid gap-6 lg:grid-cols-[1.6fr_1.1fr]">
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold text-gray-900">Yuran Payment Tracker</h3>
+            <p className="text-sm text-gray-500">
+              Isi maklumat pelajar, tambahkan bayaran, dan cetak resit secara tempatan.
+            </p>
+            <div className="space-y-3">
+              <label className="text-xs font-semibold uppercase tracking-wide text-gray-500">Nama Pelajar</label>
+              <input
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg"
+                value={studentName}
+                onChange={(e) => setStudentName(e.target.value)}
+                placeholder="Contoh: Ahmad Bin Ali"
+              />
+            </div>
+            <div className="space-y-3">
+              <label className="text-xs font-semibold uppercase tracking-wide text-gray-500">No. Matrik / ID</label>
+              <input
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg"
+                value={studentId}
+                onChange={(e) => setStudentId(e.target.value)}
+                placeholder="Contoh: A2025-001"
+              />
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-3">
+                <label className="text-xs font-semibold uppercase tracking-wide text-gray-500">Jumlah Yuran (RM)</label>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg"
+                  value={totalFee}
+                  onChange={(e) => setTotalFee(Number(e.target.value))}
+                />
+              </div>
+              <div className="space-y-3">
+                <label className="text-xs font-semibold uppercase tracking-wide text-gray-500">Tarikh</label>
+                <input
+                  type="date"
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg"
+                  value={paymentDate}
+                  onChange={(e) => setPaymentDate(e.target.value)}
+                />
+              </div>
+            </div>
+            <div className="space-y-3">
+              <label className="text-xs font-semibold uppercase tracking-wide text-gray-500">Catatan / Kelas</label>
+              <input
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg"
+                value={classInfo}
+                onChange={(e) => setClassInfo(e.target.value)}
+                placeholder="Contoh: Kelas Subuh - Masjid Negeri"
+              />
+            </div>
+            <div className="space-y-3">
+              <label className="text-xs font-semibold uppercase tracking-wide text-gray-500">Jumlah Bayaran (RM)</label>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg"
+                value={amountPaid}
+                onChange={(e) => setAmountPaid(e.target.value)}
+              />
+            </div>
+            <div className="grid gap-3 sm:grid-cols-[1.2fr_auto]">
+              <div className="space-y-3">
+                <label className="text-xs font-semibold uppercase tracking-wide text-gray-500">Kaedah Pembayaran</label>
+                <select
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-white"
+                  value={method}
+                  onChange={(e) => setMethod(e.target.value)}
+                >
+                  {PAYMENT_METHOD_OPTIONS.map((opt) => (
+                    <option key={opt}>{opt}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex items-end">
+                <button
+                  type="button"
+                  onClick={addPayment}
+                  className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg shadow hover:bg-blue-700 transition-colors"
+                >
+                  Tambah Bayaran
+                </button>
+              </div>
+            </div>
+            <div className="rounded-xl border border-dashed border-gray-200 p-4 grid gap-4 sm:grid-cols-3">
+              <div>
+                <p className="text-xs text-gray-500">Jumlah Yuran</p>
+                <p className="text-lg font-semibold text-gray-900">{currency(totalNumber)}</p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-500">Jumlah Dibayar</p>
+                <p className="text-lg font-semibold text-gray-900">{currency(paidAmount)}</p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-500">Baki</p>
+                <p className="text-lg font-semibold text-gray-900">{currency(leftAmount)}</p>
+              </div>
+            </div>
+            <p className="text-xs text-gray-500">
+              Rekod disimpan secara tempatan (LocalStorage). Last saved: {lastSaved}
+            </p>
+          </div>
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-gray-900">Senarai Bayaran</h3>
+              <span className="text-xs text-gray-500">{payments.length} rekod</span>
+            </div>
+            <div className="max-h-64 overflow-auto">
+              {payments.length === 0 ? (
+                <div className="text-center text-sm text-gray-500 py-6 border border-dashed border-gray-200 rounded-lg">
+                  Tiada rekod bayaran.
+                </div>
+              ) : (
+                <table className="w-full text-left text-sm">
+                  <thead>
+                    <tr className="text-gray-500 text-[11px] uppercase tracking-wide">
+                      <th className="pb-2">Tarikh</th>
+                      <th className="pb-2">Jumlah</th>
+                      <th className="pb-2">Kaedah</th>
+                      <th className="pb-2">Catatan</th>
+                      <th className="pb-2"></th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {displayedPayments.map((payment, index) => {
+                      const originalIndex = payments.length - 1 - index;
+                      return (
+                        <tr key={`${payment.date}-${index}`}>
+                          <td className="py-2 text-xs text-gray-600">{payment.date}</td>
+                          <td className="py-2 font-semibold text-gray-900">{currency(payment.amount)}</td>
+                          <td className="py-2 text-xs text-gray-600">{payment.method}</td>
+                          <td className="py-2 text-xs text-gray-600">{payment.note || '-'}</td>
+                          <td className="py-2">
+                            <button
+                              type="button"
+                              onClick={() => showReceipt(originalIndex)}
+                              className="text-xs text-blue-600 hover:text-blue-800"
+                            >
+                              Print Resit
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              )}
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900">Resit (Preview)</h3>
+              <div className="receipt rounded-lg border border-dashed border-blue-100 bg-gradient-to-b from-white to-blue-50 mt-2">
+                <pre className="text-xs text-gray-700 whitespace-pre-wrap">{receiptContent}</pre>
+              </div>
+              <div className="flex justify-end gap-3 mt-3">
+                <button
+                  type="button"
+                  onClick={exportData}
+                  className="px-3 py-2 text-xs border border-gray-300 rounded-lg text-gray-600 hover:border-gray-400"
+                >
+                  Eksport JSON
+                </button>
+                <button
+                  type="button"
+                  onClick={clearAll}
+                  className="px-3 py-2 text-xs bg-blue-600 text-white rounded-lg"
+                >
+                  Kosongkan Semua
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       </Card>
     </div>
   );

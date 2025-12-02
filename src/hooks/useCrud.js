@@ -169,10 +169,43 @@ const useCrud = (api, itemName) => {
 
   const resolveIdentifier = (item) => {
     if (!item) return undefined;
+    
+    // For teachers/students, prioritize IC field and ensure it's valid
     const candidateKeys = ['id', 'ic', 'IC', 'uuid', 'slug', 'code'];
-    for (const key of candidateKeys) {
+    
+    // First, try to find a valid IC (must be 12 digits)
+    for (const key of ['ic', 'IC']) {
       const value = item[key];
       if (value !== undefined && value !== null && value !== '') {
+        if (typeof value === 'string') {
+          const normalized = value.replace(/\D/g, '');
+          // Only return if it's a valid 12-digit IC
+          if (normalized.length === 12) {
+            return normalized;
+          }
+        }
+      }
+    }
+    
+    // If no valid IC found, try other identifier fields
+    for (const key of candidateKeys) {
+      // Skip IC fields (already checked above)
+      if (key === 'ic' || key === 'IC') continue;
+      
+      const value = item[key];
+      if (value !== undefined && value !== null && value !== '') {
+        // Reject values that look like phone numbers (start with 'T' or '0' followed by digits)
+        if (typeof value === 'string') {
+          const trimmed = value.trim();
+          // Reject if it starts with 'T' followed by digits (likely phone number)
+          if (/^T\d+$/.test(trimmed)) {
+            continue;
+          }
+          // Reject if it's a phone number pattern (starts with 01 and has 9-10 digits)
+          if (/^01\d{7,9}$/.test(trimmed.replace(/\D/g, ''))) {
+            continue;
+          }
+        }
         return value;
       }
     }
@@ -187,6 +220,7 @@ const useCrud = (api, itemName) => {
         if (identifier === undefined) {
           throw new Error('Identifier untuk kemaskini tidak ditemui.');
         }
+        console.log(`[${itemName}] Updating with identifier:`, identifier, 'Current item:', currentItem);
         response = await api.update(identifier, formData);
         if (response?.pendingApproval) {
           toast.info(

@@ -75,7 +75,7 @@ const Laporan = () => {
 
     // Use stats from API if available, otherwise calculate from arrays
     const totalPelajars = studentsStats?.total || studentsArray.length;
-    const aktifPelajars = studentsStats?.active || studentsArray.filter(s => s.status === 'aktif').length;
+    const aktifPelajars = studentsStats?.total || studentsArray.length;
     const totalGurus = teachersStats?.total || teachersArray.length;
     const totalKelass = classesStats?.total || classesArray.length;
     const totalYuranCollected = feesArray.filter(f => f.status === 'terbayar' || f.status === 'Bayar').reduce((sum, f) => sum + (Number(f.jumlah) || 0), 0);
@@ -226,7 +226,6 @@ const Laporan = () => {
           IC: s.ic,
           Nama: s.nama,
           Telefon: s.telefon,
-          Status: s.status,
           Kelas: s.kelas_nama || s.nama_kelas || '',
           Tarikh_Daftar: s.tarikh_daftar || ''
         }));
@@ -318,7 +317,7 @@ const Laporan = () => {
 
     const children = [
       new Paragraph({
-        text: 'MASJID APP - SISTEM PENGURUSAN KELAS',
+        text: 'e-QURAN - SISTEM PENGURUSAN KELAS',
         heading: HeadingLevel.HEADING_1,
         alignment: AlignmentType.CENTER,
         spacing: { after: 200 }

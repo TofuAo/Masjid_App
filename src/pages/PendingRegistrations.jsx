@@ -12,18 +12,33 @@ const PendingRegistrations = () => {
     fetchPendingRegistrations();
   }, []);
 
-  const fetchPendingRegistrations = async () => {
+  const fetchPendingRegistrations = async (retryCount = 0) => {
     setLoading(true);
     try {
       const response = await authAPI.getPendingRegistrations();
       if (response.success) {
         setPendingUsers(response.data || []);
       } else {
-        toast.error('Gagal memuatkan pendaftaran menunggu kelulusan');
+        toast.error(response.message || 'Gagal memuatkan pendaftaran menunggu kelulusan');
       }
     } catch (error) {
       console.error('Error fetching pending registrations:', error);
-      toast.error('Gagal memuatkan pendaftaran menunggu kelulusan');
+      
+      // Handle specific error cases
+      if (error.status === 403) {
+        toast.error(error.message || 'Anda tidak mempunyai kebenaran untuk mengakses halaman ini. Sila log masuk sebagai pentadbir.');
+      } else if (error.isNetworkError || error.status === 0) {
+        // Retry on network errors (max 2 retries)
+        if (retryCount < 2) {
+          setTimeout(() => {
+            fetchPendingRegistrations(retryCount + 1);
+          }, 2000 * (retryCount + 1)); // Exponential backoff
+          return;
+        }
+        toast.error('Tidak dapat menyambung ke pelayan. Sila semak sambungan internet anda.');
+      } else {
+        toast.error(error.message || 'Gagal memuatkan pendaftaran menunggu kelulusan');
+      }
     } finally {
       setLoading(false);
     }

@@ -16,12 +16,13 @@ const normalizeIcForQuery = (ic) => {
 
 export const getAllStudents = async (req, res) => {
   try {
-    const { search, status, kelas_id, page = 1, limit } = req.query;
+    const { search, kelas_id, page = 1, limit } = req.query;
     // Default to a large limit to show all students, or use pagination if specified
     const defaultLimit = limit ? parseInt(limit) : 1000;
     
     // Include user role in cache key to prevent teachers seeing admin cache
-    const cacheKey = `students:${req.user?.role || 'guest'}:${search}:${status}:${kelas_id}:${page}:${limit}`;
+    // Status removed from cache key
+    const cacheKey = `students:${req.user?.role || 'guest'}:${search}:${kelas_id}:${page}:${limit}`;
 
     // Check if data is in cache (but skip cache for teachers to ensure filtered results)
     if (!req.user || req.user.role !== 'teacher') {
@@ -31,10 +32,11 @@ export const getAllStudents = async (req, res) => {
       }
     }
 
+    // Only show active students (those with entries in students table, not archived)
     let query = `
-      SELECT u.ic, u.nama, u.email, u.telefon, u.umur, u.status, s.kelas_id, s.tarikh_daftar, c.nama_kelas
+      SELECT u.ic, u.nama, u.email, u.telefon, u.umur, s.kelas_id, s.tarikh_daftar, c.nama_kelas
       FROM users u
-      LEFT JOIN students s ON u.ic = s.user_ic
+      INNER JOIN students s ON u.ic = s.user_ic
       LEFT JOIN classes c ON s.kelas_id = c.id
       WHERE u.role = 'student'
     `;
@@ -51,11 +53,6 @@ export const getAllStudents = async (req, res) => {
       query += ` AND (u.nama LIKE ? OR u.ic LIKE ?)`;
       const searchTerm = `%${search}%`;
       queryParams.push(searchTerm, searchTerm);
-    }
-
-    if (status) {
-      query += ` AND u.status = ?`;
-      queryParams.push(status);
     }
 
     if (kelas_id) {
@@ -80,10 +77,11 @@ export const getAllStudents = async (req, res) => {
     }));
 
     // Get total count for pagination
+    // Only count active students (those with entries in students table)
     let countQuery = `
       SELECT COUNT(*) as total
       FROM users u
-      LEFT JOIN students s ON u.ic = s.user_ic
+      INNER JOIN students s ON u.ic = s.user_ic
       LEFT JOIN classes c ON s.kelas_id = c.id
       WHERE u.role = 'student'
     `;
@@ -99,11 +97,6 @@ export const getAllStudents = async (req, res) => {
       countQuery += ` AND (u.nama LIKE ? OR u.ic LIKE ?)`;
       const searchTerm = `%${search}%`;
       countParams.push(searchTerm, searchTerm);
-    }
-
-    if (status) {
-      countQuery += ` AND u.status = ?`;
-      countParams.push(status);
     }
 
     if (kelas_id) {
@@ -228,6 +221,18 @@ export const createStudent = async (req, res) => {
 
 export const updateStudent = async (req, res) => {
   try {
+    // Validate password if provided
+    if (req.body.password !== undefined && req.body.password !== null && req.body.password !== '') {
+      const passwordStr = String(req.body.password).trim();
+      if (passwordStr.length > 0 && passwordStr.length < 5) {
+        return res.status(400).json({
+          success: false,
+          message: 'Validation failed',
+          errors: [{ type: 'field', msg: 'Password must be at least 5 chars long', path: 'password', location: 'body' }]
+        });
+      }
+    }
+
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       return res.status(400).json({
@@ -307,14 +312,16 @@ export const getStudentStats = async (req, res) => {
       return res.json(studentCache.get(cacheKey));
     }
 
+    // Only count active students (those with entries in students table, not archived)
     const [stats] = await pool.execute(`
       SELECT 
         COUNT(*) as total,
-        SUM(CASE WHEN u.status = 'aktif' THEN 1 ELSE 0 END) as active,
-        SUM(CASE WHEN u.status = 'tidak_aktif' THEN 1 ELSE 0 END) as inactive,
-        SUM(CASE WHEN u.status = 'cuti' THEN 1 ELSE 0 END) as on_leave,
+        COUNT(*) as active,
+        0 as inactive,
+        0 as on_leave,
         SUM(CASE WHEN DATE(u.created_at) >= DATE_SUB(CURDATE(), INTERVAL 1 MONTH) THEN 1 ELSE 0 END) as new_this_month
       FROM users u
+      INNER JOIN students s ON u.ic = s.user_ic
       WHERE u.role = 'student'
     `);
     
@@ -323,8 +330,8 @@ export const getStudentStats = async (req, res) => {
       data: {
         total: stats[0].total || 0,
         active: stats[0].active || 0,
-        inactive: stats[0].inactive || 0,
-        on_leave: stats[0].on_leave || 0,
+        inactive: 0,
+        on_leave: 0,
         new_this_month: stats[0].new_this_month || 0
       }
     };

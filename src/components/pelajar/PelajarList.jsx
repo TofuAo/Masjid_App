@@ -2,11 +2,11 @@ import React, { useState } from 'react';
 import Card from '../ui/Card';
 import Button from '../ui/Button';
 import Badge from '../ui/Badge';
-import { Search, Plus, Edit, Eye, Trash2, Filter } from 'lucide-react';
+import { Search, Plus, Edit, Eye, Trash2, Users } from 'lucide-react';
+import { formatIC } from '../../utils/icUtils';
 
 const PelajarList = ({ pelajars = [], onEdit, onView, onDelete, onAdd, user }) => {
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState('semua');
 
   let filteredPelajars = pelajars;
 
@@ -17,21 +17,9 @@ const PelajarList = ({ pelajars = [], onEdit, onView, onDelete, onAdd, user }) =
       const matchesSearch = (pelajar.nama || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
                            (pelajar.IC || pelajar.ic || '').includes(searchTerm) ||
                            (pelajar.telefon || '').includes(searchTerm);
-      const matchesStatus = statusFilter === 'semua' || pelajar.status === statusFilter;
-      return matchesSearch && matchesStatus;
+      return matchesSearch;
     });
   }
-
-  const getStatusBadge = (status) => {
-    const statusConfig = {
-      aktif: { variant: 'success', label: 'Aktif' },
-      tidak_aktif: { variant: 'danger', label: 'Tidak Aktif' },
-      cuti: { variant: 'warning', label: 'Cuti' },
-      tamat: { variant: 'secondary', label: 'Tamat' }
-    };
-    const config = statusConfig[status] || { variant: 'default', label: status };
-    return <Badge variant={config.variant}>{config.label}</Badge>;
-  };
 
   const getKelasName = (kelasId, namaKelas) => {
     // Use nama_kelas from database if available, otherwise fallback to hardcoded names
@@ -78,20 +66,6 @@ const PelajarList = ({ pelajars = [], onEdit, onView, onDelete, onAdd, user }) =
                 />
               </div>
             </div>
-            <div className="flex items-center space-x-2">
-              <Filter className="w-4 h-4 text-gray-400" />
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-              >
-                <option value="semua">Semua Status</option>
-                <option value="aktif">Aktif</option>
-                <option value="tidak_aktif">Tidak Aktif</option>
-                <option value="cuti">Cuti</option>
-                <option value="tamat">Tamat</option>
-              </select>
-            </div>
           </div>
         )}
 
@@ -112,9 +86,6 @@ const PelajarList = ({ pelajars = [], onEdit, onView, onDelete, onAdd, user }) =
                 <th className="px-3 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden md:table-cell">
                   Kelas
                 </th>
-                <th className="px-3 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Status
-                </th>
                 {user?.role !== 'student' && (
                   <th className="px-3 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Tindakan
@@ -123,8 +94,8 @@ const PelajarList = ({ pelajars = [], onEdit, onView, onDelete, onAdd, user }) =
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {filteredPelajars.map((pelajar) => (
-                <tr key={pelajar.ic || pelajar.IC}>
+              {filteredPelajars.map((pelajar, index) => (
+                <tr key={pelajar.ic || pelajar.IC} className="fade-in" style={{ animationDelay: `${index * 0.05}s` }}>
                   <td className="px-3 sm:px-6 py-3 sm:py-4">
                     <div>
                       <div className="text-sm font-medium text-gray-900">{pelajar.nama}</div>
@@ -132,16 +103,13 @@ const PelajarList = ({ pelajars = [], onEdit, onView, onDelete, onAdd, user }) =
                     </div>
                   </td>
                   <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-sm text-gray-900 hidden sm:table-cell">
-                    {pelajar.IC || pelajar.ic || '-'}
+                    {(pelajar.IC || pelajar.ic) ? formatIC(pelajar.IC || pelajar.ic, true) : '-'}
                   </td>
                   <td className="px-3 sm:px-6 py-3 sm:py-4 text-sm text-gray-900">
                     {pelajar.umur ? `${pelajar.umur} tahun` : '-'}
                   </td>
                   <td className="px-3 sm:px-6 py-3 sm:py-4 text-sm text-gray-900 hidden md:table-cell">
                     {getKelasName(pelajar.kelas_id, pelajar.nama_kelas)}
-                  </td>
-                  <td className="px-3 sm:px-6 py-3 sm:py-4">
-                    {getStatusBadge(pelajar.status)}
                   </td>
                   {user?.role !== 'student' && (
                     <td className="px-3 sm:px-6 py-3 sm:py-4 text-sm font-medium">
@@ -181,8 +149,20 @@ const PelajarList = ({ pelajars = [], onEdit, onView, onDelete, onAdd, user }) =
         </div>
 
         {filteredPelajars.length === 0 && (
-          <div className="text-center py-8">
-            <p className="text-gray-500">Tiada pelajar ditemui</p>
+          <div className="text-center py-12">
+            <div className="flex justify-center mb-4">
+              <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center">
+                <Users className="w-8 h-8 text-gray-400" />
+              </div>
+            </div>
+            <p className="text-gray-500 text-lg font-medium mb-2">
+              {searchTerm ? 'Tiada pelajar ditemui' : 'Tiada pelajar dalam senarai'}
+            </p>
+            {searchTerm && (
+              <p className="text-sm text-gray-400">
+                Cuba cari dengan kata kunci lain
+              </p>
+            )}
           </div>
         )}
       </Card.Content>

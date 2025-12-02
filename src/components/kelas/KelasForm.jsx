@@ -8,7 +8,7 @@ const SESSION_TIMES_OPTIONS = ["05:00 - 06:30", "21:00 - 22:30"];
 
 const KelasForm = ({ kelas = null, onSubmit, onCancel, gurus = [] }) => {
   const [formData, setFormData] = useState({
-    nama_kelas: '', level: '', sessions: [{ days: [], times: [] }], yuran: 0, guru_ic: '', kapasiti: 1, status: 'aktif'
+    nama_kelas: '', level: '', sessions: [{ days: [], times: [] }], yuran: 0, guru_ic: '', kapasiti: 1
   });
   const [validationErrors, setValidationErrors] = useState({});
 
@@ -20,8 +20,7 @@ const KelasForm = ({ kelas = null, onSubmit, onCancel, gurus = [] }) => {
         sessions: kelas.sessions || [{ days: [], times: [] }],
         yuran: parseFloat(kelas.yuran) || 0,
         guru_ic: kelas.guru_ic || '',
-        kapasiti: parseInt(kelas.kapasiti) || 1,
-        status: kelas.status || 'aktif'
+        kapasiti: parseInt(kelas.kapasiti) || 1
       });
     }
   }, [kelas]);
@@ -124,12 +123,6 @@ const KelasForm = ({ kelas = null, onSubmit, onCancel, gurus = [] }) => {
     onSubmit(formData);
   };
 
-  const statusOptions = [
-    { value: 'aktif', label: 'Aktif' },
-    { value: 'tidak_aktif', label: 'Tidak Aktif' },
-    { value: 'penuh', label: 'Penuh' }
-  ];
-
   return (
     <div className="mosque-card">
       <div className="p-6 border-b border-mosque-primary-100">
@@ -160,15 +153,9 @@ const KelasForm = ({ kelas = null, onSubmit, onCancel, gurus = [] }) => {
               <label className="form-label">Guru *</label>
               <select name="guru_ic" value={formData.guru_ic} onChange={handleChange} required className={`input-mosque w-full ${validationErrors.guru_ic ? 'border-red-500' : ''}`}>
                 <option value="">Pilih Guru</option>
-                {gurus.filter(g => g.status === 'aktif').map(g => <option key={g.ic} value={g.ic}>{g.nama}</option>)}
+                {gurus.map(g => <option key={g.ic} value={g.ic}>{g.nama}</option>)}
               </select>
               {validationErrors.guru_ic && <p className="text-red-500 text-xs mt-1">{validationErrors.guru_ic}</p>}
-            </div>
-            <div>
-              <label className="form-label">Status *</label>
-              <select name="status" value={formData.status} onChange={handleChange} required className="input-mosque w-full">
-                {statusOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
-              </select>
             </div>
             <div>
               <label className="form-label">Level *</label>

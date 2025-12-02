@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Card from '../ui/Card';
 import Button from '../ui/Button';
 import Badge from '../ui/Badge';
@@ -6,20 +6,53 @@ import BackButton from '../ui/BackButton';
 import { classesAPI } from '../../services/api';
 import { formatIC } from '../../utils/icUtils';
 import { formatPhone } from '../../utils/phoneUtils';
+import { RotateCcw } from 'lucide-react';
+
+// Helper function to convert date to yyyy-MM-dd format
+const formatDateForInput = (dateValue) => {
+  if (!dateValue) return new Date().toISOString().split('T')[0];
+  if (typeof dateValue === 'string') {
+    // If it's already in yyyy-MM-dd format, return as is
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dateValue)) {
+      return dateValue;
+    }
+    // If it's an ISO datetime string, extract just the date part
+    if (dateValue.includes('T')) {
+      return dateValue.split('T')[0];
+    }
+    // Try to parse and format
+    try {
+      const date = new Date(dateValue);
+      if (!isNaN(date.getTime())) {
+        return date.toISOString().split('T')[0];
+      }
+    } catch (e) {
+      console.error('Error parsing date:', e);
+    }
+  }
+  // If it's a Date object
+  if (dateValue instanceof Date) {
+    return dateValue.toISOString().split('T')[0];
+  }
+  return new Date().toISOString().split('T')[0];
+};
 
 const PelajarForm = ({ pelajar = null, onSubmit, onCancel }) => {
-  const [formData, setFormData] = useState({
+  // Store original data for reset functionality
+  const getInitialFormData = () => ({
     nama: pelajar?.nama || '',
     ic: pelajar?.ic ? formatIC(pelajar.ic, true) : '',
     umur: pelajar?.umur || 5,
     alamat: pelajar?.alamat || '',
     telefon: pelajar?.telefon || '',
     kelas_id: pelajar?.kelas_id || null,
-    status: pelajar?.status || 'aktif',
-    tarikh_daftar: pelajar?.tarikh_daftar || new Date().toISOString().split('T')[0],
+    tarikh_daftar: formatDateForInput(pelajar?.tarikh_daftar),
     email: pelajar?.email || '',
     password: ''
   });
+
+  const [formData, setFormData] = useState(getInitialFormData());
+  const originalDataRef = useRef(getInitialFormData()); // Store original for reset using ref
   const [classes, setClasses] = useState([]);
   const [loadingClasses, setLoadingClasses] = useState(true);
   const [errorClasses, setErrorClasses] = useState(null);
@@ -30,19 +63,28 @@ const PelajarForm = ({ pelajar = null, onSubmit, onCancel }) => {
 
   useEffect(() => {
     if (!pelajar) return;
-    setFormData({
+    const newFormData = {
       nama: pelajar.nama || '',
       ic: pelajar.ic ? formatIC(pelajar.ic, true) : '',
       umur: pelajar.umur || 5,
       alamat: pelajar.alamat || '',
       telefon: pelajar.telefon || '',
       kelas_id: pelajar.kelas_id || null,
-      status: pelajar.status || 'aktif',
-      tarikh_daftar: pelajar.tarikh_daftar || new Date().toISOString().split('T')[0],
+      tarikh_daftar: formatDateForInput(pelajar.tarikh_daftar),
       email: pelajar.email || '',
       password: ''
-    });
+    };
+    setFormData(newFormData);
+    // Update original data ref when pelajar changes
+    originalDataRef.current = { ...newFormData };
   }, [pelajar]);
+  
+  // Reset form to original values
+  const handleReset = () => {
+    if (window.confirm('Adakah anda pasti mahu memulihkan semua perubahan? Semua perubahan yang belum disimpan akan hilang.')) {
+      setFormData({ ...originalDataRef.current });
+    }
+  };
 
   const fetchClasses = async () => {
     setLoadingClasses(true);
@@ -58,7 +100,7 @@ const PelajarForm = ({ pelajar = null, onSubmit, onCancel }) => {
       console.log('Auth token exists:', !!localStorage.getItem('authToken'));
       
       // Try fetching active classes first
-      let response = await classesAPI.getAll({ status: 'aktif', limit: 999 });
+      let response = await classesAPI.getAll({ limit: 999 });
       console.log('Initial response:', response);
       console.log('Response type:', typeof response);
       console.log('Is array:', Array.isArray(response));
@@ -144,24 +186,63 @@ const PelajarForm = ({ pelajar = null, onSubmit, onCancel }) => {
       ...formData,
       kelas_id: formData.kelas_id === '' || formData.kelas_id === null ? null : formData.kelas_id
     };
+    
+    // Normalize IC: Remove hyphens for backend consistency (backend will normalize it)
+    // But we keep the formatIC utility for display - backend expects either format
+    if (submitData.ic) {
+      // Backend accepts IC with or without hyphens, but we'll send it normalized
+      // The backend normalizeICMiddleware will handle it
+      submitData.ic = submitData.ic.replace(/-/g, '');
+    }
+    
+    // Format tarikh_daftar to yyyy-MM-dd format (ensure it's not ISO datetime)
+    if (submitData.tarikh_daftar) {
+      submitData.tarikh_daftar = formatDateForInput(submitData.tarikh_daftar);
+    }
+    
+    // When editing, remove IC (identifier is in URL), empty password field, empty email, and status from submitData
+    if (pelajar) {
+      // Remove IC - it's the identifier in the URL, not part of the update body
+      delete submitData.ic;
+      // Remove password if it's empty, null, undefined, or only whitespace
+      if (!submitData.password || (typeof submitData.password === 'string' && submitData.password.trim() === '')) {
+        delete submitData.password;
+      }
+      // Remove email if it's empty (optional for updates)
+      if (!submitData.email || (typeof submitData.email === 'string' && submitData.email.trim() === '')) {
+        delete submitData.email;
+      }
+      // Remove status field - no longer in form
+      delete submitData.status;
+    }
+    
     console.log('Submitting student data:', submitData);
     onSubmit(submitData);
   };
 
-  const statusOptions = [
-    { value: 'aktif', label: 'Aktif', color: 'success' },
-    { value: 'tidak_aktif', label: 'Tidak Aktif', color: 'danger' },
-    { value: 'cuti', label: 'Cuti', color: 'warning' },
-  ];
 
   return (
     <Card>
       <Card.Header>
-        <div className="flex items-center space-x-3">
-          <BackButton onClick={onCancel} />
-          <Card.Title>
-            {pelajar ? 'Kemaskini Maklumat Pelajar' : 'Tambah Pelajar Baru'}
-          </Card.Title>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <BackButton onClick={onCancel} />
+            <Card.Title>
+              {pelajar ? 'Kemaskini Maklumat Pelajar' : 'Tambah Pelajar Baru'}
+            </Card.Title>
+          </div>
+          {pelajar && (
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={handleReset}
+              className="flex items-center space-x-2"
+              title="Pulihkan semua perubahan kepada nilai asal"
+            >
+              <RotateCcw className="w-4 h-4" />
+              <span>Pulihkan</span>
+            </Button>
+          )}
         </div>
       </Card.Header>
       <Card.Content>
@@ -186,17 +267,22 @@ const PelajarForm = ({ pelajar = null, onSubmit, onCancel }) => {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Nombor IC *
+                Nombor IC {!pelajar && '*'}
+                {pelajar && <span className="text-gray-400 text-xs font-normal ml-1">(Tidak boleh diubah)</span>}
               </label>
               <input
                 type="text"
                 name="ic"
                 value={formData.ic}
                 onChange={handleChange}
-                required
+                required={!pelajar}
+                disabled={!!pelajar}
+                readOnly={!!pelajar}
                 maxLength={14}
                 autoComplete="off"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 ${
+                  pelajar ? 'bg-gray-100 cursor-not-allowed' : ''
+                }`}
                 placeholder="Contoh: 123456-78-9012 atau 123456789012"
               />
               <p className="text-xs text-gray-500 mt-1">Format: 12 digit (dengan atau tanpa sempang)</p>
@@ -283,7 +369,7 @@ const PelajarForm = ({ pelajar = null, onSubmit, onCancel }) => {
                     <option value="">{classes.length === 0 ? 'Tiada kelas tersedia' : 'Pilih Kelas'}</option>
                     {classes.map(kelas => (
                       <option key={kelas.id} value={kelas.id}>
-                        {kelas.nama_kelas} {kelas.status && `(${kelas.status})`}
+                        {kelas.nama_kelas}
                       </option>
                     ))}
                   </select>
@@ -301,7 +387,7 @@ const PelajarForm = ({ pelajar = null, onSubmit, onCancel }) => {
                   ) : (
                     classes.map(kelas => (
                       <option key={kelas.id} value={kelas.id}>
-                        {kelas.nama_kelas} {kelas.level && `- ${kelas.level}`} {kelas.status && kelas.status !== 'aktif' && `(${kelas.status})`}
+                        {kelas.nama_kelas} {kelas.level && `- ${kelas.level}`}
                       </option>
                     ))
                   )}
@@ -309,36 +395,18 @@ const PelajarForm = ({ pelajar = null, onSubmit, onCancel }) => {
               )}
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Status *
-              </label>
-              <select
-                name="status"
-                value={formData.status}
-                onChange={handleChange}
-                required
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-              >
-                {statusOptions.map(option => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </div>
           </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Tarikh Daftar *
+              Tarikh Daftar {!pelajar && '*'}
             </label>
             <input
               type="date"
               name="tarikh_daftar"
               value={formData.tarikh_daftar}
               onChange={handleChange}
-              required
+              required={!pelajar}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
             />
           </div>
@@ -346,34 +414,36 @@ const PelajarForm = ({ pelajar = null, onSubmit, onCancel }) => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Email *
+                Email {!pelajar && '*'}
+                {pelajar && <span className="text-gray-400 text-xs font-normal ml-1">(Pilihan)</span>}
               </label>
               <input
                 type="email"
                 name="email"
                 value={formData.email}
                 onChange={handleChange}
-                required
+                required={!pelajar}
                 autoComplete="email"
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                placeholder="Masukkan email"
+                placeholder={pelajar ? "Masukkan email (Pilihan)" : "Masukkan email"}
               />
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Password *
+                Password {!pelajar && '*'}
+                {pelajar && <span className="text-gray-400 text-xs font-normal ml-1">(Tinggalkan kosong untuk tidak menukar)</span>}
               </label>
               <input
                 type="password"
                 name="password"
                 value={formData.password}
                 onChange={handleChange}
-                required
-                minLength={5}
+                required={!pelajar}
+                minLength={!pelajar ? 5 : undefined}
                 autoComplete="new-password"
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                placeholder="Masukkan password"
+                placeholder={pelajar ? "Kosongkan jika tidak mahu menukar" : "Masukkan password (min 5 aksara)"}
               />
             </div>
           </div>

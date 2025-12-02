@@ -5,8 +5,9 @@ import { toast } from 'react-toastify';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import Badge from '../components/ui/Badge';
-import { QrCode, ArrowLeft, CheckCircle, XCircle, Clock, CreditCard } from 'lucide-react';
+import { QrCode, ArrowLeft, CheckCircle, XCircle, Clock, CreditCard, Smartphone, Wallet, ChevronRight } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
+import PaymentCheckout from './PaymentCheckout';
 
 const PayYuran = () => {
   const { id } = useParams();
@@ -15,6 +16,10 @@ const PayYuran = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [qrSettings, setQrSettings] = useState(null);
+  const [showPaymentMethodSelection, setShowPaymentMethodSelection] = useState(false);
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState(null);
+  const [showPaymentCheckout, setShowPaymentCheckout] = useState(false);
+  const [showDirectQR, setShowDirectQR] = useState(false);
 
   useEffect(() => {
     const fetchFee = async () => {
@@ -168,8 +173,169 @@ const PayYuran = () => {
         </Card.Content>
       </Card>
 
-      {/* QR Code Payment */}
-      {!isPaid && (
+      {/* Payment Method Selection - Show initially if not paid */}
+      {/* QR Code Payment (Default/Direct) - Show when user selects direct QR or skips payment method */}
+      {!isPaid && !showPaymentMethodSelection && !showPaymentCheckout && showDirectQR && (
+        <Card>
+          <Card.Header>
+            <Card.Title className="flex items-center space-x-2">
+              <CreditCard className="w-5 h-5" />
+              <span>Pilih Kaedah Pembayaran</span>
+            </Card.Title>
+          </Card.Header>
+          <Card.Content>
+            <div className="space-y-4">
+              <p className="text-sm text-gray-600 mb-4">
+                Sila pilih kaedah pembayaran yang anda mahu gunakan. Anda juga boleh terus menggunakan QR Code tanpa memilih kaedah.
+              </p>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {/* Direct QR Code Option */}
+                <button
+                  onClick={() => {
+                    // Show QR code directly, hide payment method selection
+                    setShowDirectQR(true);
+                    setShowPaymentMethodSelection(false);
+                    setShowPaymentCheckout(false);
+                  }}
+                  className="p-4 border-2 border-emerald-200 rounded-lg hover:border-emerald-400 hover:bg-emerald-50 transition-all text-left"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-3">
+                      <QrCode className="w-6 h-6 text-emerald-600" />
+                      <div>
+                        <p className="font-medium text-gray-900">QR Code Langsung</p>
+                        <p className="text-xs text-gray-500">Imbas QR code untuk bayar</p>
+                      </div>
+                    </div>
+                    <ChevronRight className="w-5 h-5 text-gray-400" />
+                  </div>
+                </button>
+
+                {/* Online Payment Gateway Option */}
+                <button
+                  onClick={() => setShowPaymentMethodSelection(true)}
+                  className="p-4 border-2 border-gray-200 rounded-lg hover:border-emerald-400 hover:bg-emerald-50 transition-all text-left"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-3">
+                      <CreditCard className="w-6 h-6 text-emerald-600" />
+                      <div>
+                        <p className="font-medium text-gray-900">Pembayaran Online</p>
+                        <p className="text-xs text-gray-500">FPX, DuitNow, E-Wallet</p>
+                      </div>
+                    </div>
+                    <ChevronRight className="w-5 h-5 text-gray-400" />
+                  </div>
+                </button>
+              </div>
+            </div>
+          </Card.Content>
+        </Card>
+      )}
+
+      {/* Payment Method Selection Details */}
+      {!isPaid && showPaymentMethodSelection && !showPaymentCheckout && (
+        <Card>
+          <Card.Header>
+            <Card.Title className="flex items-center space-x-2">
+              <CreditCard className="w-5 h-5" />
+              <span>Pilih Kaedah Pembayaran Online</span>
+            </Card.Title>
+          </Card.Header>
+          <Card.Content>
+            <div className="space-y-4">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowPaymentMethodSelection(false);
+                  setSelectedPaymentMethod(null);
+                }}
+                className="mb-4"
+              >
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Kembali
+              </Button>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {/* FPX */}
+                <button
+                  onClick={() => {
+                    setSelectedPaymentMethod('fpx');
+                    setShowPaymentCheckout(true);
+                  }}
+                  className="p-4 border-2 border-gray-200 rounded-lg hover:border-emerald-400 hover:bg-emerald-50 transition-all text-left"
+                >
+                  <CreditCard className="w-6 h-6 text-emerald-600 mb-2" />
+                  <p className="font-medium text-gray-900">FPX</p>
+                  <p className="text-xs text-gray-500">Bank Transfer</p>
+                </button>
+
+                {/* DuitNow QR */}
+                <button
+                  onClick={() => {
+                    setSelectedPaymentMethod('duitnow_qr');
+                    setShowPaymentCheckout(true);
+                  }}
+                  className="p-4 border-2 border-gray-200 rounded-lg hover:border-emerald-400 hover:bg-emerald-50 transition-all text-left"
+                >
+                  <QrCode className="w-6 h-6 text-emerald-600 mb-2" />
+                  <p className="font-medium text-gray-900">DuitNow QR</p>
+                  <p className="text-xs text-gray-500">Imbas QR Code</p>
+                </button>
+
+                {/* DuitNow Request */}
+                <button
+                  onClick={() => {
+                    setSelectedPaymentMethod('duitnow_request');
+                    setShowPaymentCheckout(true);
+                  }}
+                  className="p-4 border-2 border-gray-200 rounded-lg hover:border-emerald-400 hover:bg-emerald-50 transition-all text-left"
+                >
+                  <Smartphone className="w-6 h-6 text-emerald-600 mb-2" />
+                  <p className="font-medium text-gray-900">DuitNow Request</p>
+                  <p className="text-xs text-gray-500">Terima permintaan bayaran</p>
+                </button>
+
+                {/* E-Wallets */}
+                <button
+                  onClick={() => {
+                    setSelectedPaymentMethod('ewallet');
+                    setShowPaymentCheckout(true);
+                  }}
+                  className="p-4 border-2 border-gray-200 rounded-lg hover:border-emerald-400 hover:bg-emerald-50 transition-all text-left"
+                >
+                  <Wallet className="w-6 h-6 text-emerald-600 mb-2" />
+                  <p className="font-medium text-gray-900">E-Wallet</p>
+                  <p className="text-xs text-gray-500">Touch'n Go, Boost, GrabPay</p>
+                </button>
+              </div>
+            </div>
+          </Card.Content>
+        </Card>
+      )}
+
+      {/* Payment Checkout Component */}
+      {!isPaid && showPaymentCheckout && (
+        <PaymentCheckout
+          amount={fee.jumlah}
+          description={`Yuran ${fee.bulan || ''} ${fee.tahun || ''} - ${fee.pelajar_nama || ''}`}
+          feeId={fee.id}
+          onSuccess={(paymentData) => {
+            toast.success('Pembayaran berjaya!');
+            // Refresh fee data
+            window.location.reload();
+          }}
+          onCancel={() => {
+            setShowPaymentCheckout(false);
+            setShowPaymentMethodSelection(false);
+            setSelectedPaymentMethod(null);
+          }}
+        />
+      )}
+
+      {/* QR Code Payment (Default/Direct) - Show when user selects direct QR or skips payment method */}
+      {!isPaid && !showPaymentMethodSelection && !showPaymentCheckout && showDirectQR && (
         <Card>
           <Card.Header>
             <Card.Title className="flex items-center space-x-2">

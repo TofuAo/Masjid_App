@@ -74,14 +74,14 @@ export const ensureCheckInTable = async () => {
     if (!existingKeys.includes('masjid_latitude')) {
       await pool.execute(`
         INSERT INTO settings (setting_key, setting_value, setting_type, description)
-        VALUES ('masjid_latitude', '3.807829297637092', 'text', 'Masjid latitude coordinate for geolocation check-in')
+        VALUES ('masjid_latitude', '3.808236', 'text', 'Masjid latitude coordinate for geolocation check-in')
       `);
     }
     
     if (!existingKeys.includes('masjid_longitude')) {
       await pool.execute(`
         INSERT INTO settings (setting_key, setting_value, setting_type, description)
-        VALUES ('masjid_longitude', '103.32799643765418', 'text', 'Masjid longitude coordinate for geolocation check-in')
+        VALUES ('masjid_longitude', '103.328054', 'text', 'Masjid longitude coordinate for geolocation check-in')
       `);
     }
     

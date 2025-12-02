@@ -1,15 +1,18 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import useCrud from '../hooks/useCrud';
 import KelasList from '../components/kelas/KelasList';
 import KelasForm from '../components/kelas/KelasForm';
 import Card from '../components/ui/Card';
 import Badge from '../components/ui/Badge';
 import BackButton from '../components/ui/BackButton';
+import LoadingSkeleton from '../components/ui/LoadingSkeleton';
 import { BookOpen, Users, Clock, DollarSign, AlertCircle } from 'lucide-react';
 import { classesAPI, teachersAPI } from '../services/api';
 import { toast } from 'react-toastify';
 
 const Kelas = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [user, setUser] = React.useState(null);
   
   React.useEffect(() => {
@@ -47,6 +50,20 @@ const Kelas = () => {
     cancel: handleCancel,
   } = handlers;
 
+  // Handle URL parameter for viewing a specific class
+  useEffect(() => {
+    const viewId = searchParams.get('view');
+    if (viewId && kelass.length > 0) {
+      const kelas = kelass.find(k => k.id === parseInt(viewId));
+      if (kelas) {
+        handleView(kelas);
+        // Remove the view parameter from URL after setting the view
+        setSearchParams({}, { replace: true });
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, kelass.length, handleView, setSearchParams]);
+
   const [gurus, setGurus] = useState([]);
 
   const fetchGurus = useCallback(async () => {
@@ -67,9 +84,6 @@ const Kelas = () => {
   // Statistics from API
   const [stats, setStats] = useState({
     total: 0,
-    aktif: 0,
-    tidak_aktif: 0,
-    penuh: 0,
     total_kapasiti: 0,
     average_yuran: 0
   });
@@ -82,9 +96,6 @@ const Kelas = () => {
         if (response?.success && response?.data) {
           setStats({
             total: response.data.total || 0,
-            aktif: response.data.aktif || 0,
-            tidak_aktif: response.data.tidak_aktif || 0,
-            penuh: response.data.penuh || 0,
             total_kapasiti: response.data.total_kapasiti || 0,
             average_yuran: response.data.average_yuran || 0
           });
@@ -95,9 +106,6 @@ const Kelas = () => {
         const kelassArray = Array.isArray(kelass) ? kelass : [];
         setStats({
           total: kelassArray.length,
-          aktif: kelassArray.filter(k => k.status === 'aktif').length,
-          tidak_aktif: kelassArray.filter(k => k.status === 'tidak_aktif').length,
-          penuh: kelassArray.filter(k => k.status === 'penuh').length,
           total_kapasiti: kelassArray.reduce((sum, k) => sum + (Number(k.kapasiti) || 0), 0),
           average_yuran: kelassArray.length > 0 ? (kelassArray.reduce((sum, k) => sum + (Number(k.yuran) || 0), 0) / kelassArray.length) : 0
         });
@@ -107,19 +115,37 @@ const Kelas = () => {
   }, [kelass.length]);
 
   const totalKelass = stats.total;
-  const aktifKelass = stats.aktif;
-  const tidakAktifKelass = stats.tidak_aktif;
-  const penuhKelass = stats.penuh;
   const totalKapasiti = stats.total_kapasiti;
   const averageYuran = stats.average_yuran ? Number(stats.average_yuran).toFixed(2) : '0.00';
 
   const renderContent = () => {
     if (loading) {
-      return <div className="text-center py-8">Memuatkan data...</div>;
+      return (
+        <div className="space-y-6">
+          <LoadingSkeleton type="stat" count={4} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4" />
+          <LoadingSkeleton type="card" />
+        </div>
+      );
     }
 
     if (error) {
-      return <div className="text-center py-8 text-red-600">Ralat: {error.message || 'Gagal memuatkan data.'}</div>;
+      return (
+        <div className="text-center py-12">
+          <div className="flex justify-center mb-4">
+            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center">
+              <AlertCircle className="w-8 h-8 text-red-600" />
+            </div>
+          </div>
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">Ralat Memuatkan Data</h3>
+          <p className="text-red-600 mb-4">{error.message || 'Gagal memuatkan data kelas.'}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-4 py-2 bg-emerald-600 text-white rounded-md hover:bg-emerald-700 transition-colors"
+          >
+            Muat Semula
+          </button>
+        </div>
+      );
     }
 
     switch (currentView) {
@@ -235,14 +261,6 @@ const Kelas = () => {
                         <label className="block text-sm font-medium text-gray-500">Guru</label>
                         <p className="mt-1 text-sm text-gray-900">{selectedKelas.guru_nama || gurus.find(g => g.ic === selectedKelas.guru_ic)?.nama || 'Tiada Guru'}</p>
                       </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-500">Status</label>
-                        <div className="mt-1">
-                          <Badge variant={selectedKelas.status === 'aktif' ? 'success' : selectedKelas.status === 'penuh' ? 'warning' : 'danger'}>
-                            {selectedKelas.status === 'aktif' ? 'Aktif' : selectedKelas.status === 'penuh' ? 'Penuh' : 'Tidak Aktif'}
-                          </Badge>
-                        </div>
-                      </div>
                     </div>
                   </Card.Content>
                 </Card>
@@ -319,19 +337,6 @@ const Kelas = () => {
                 </div>
               </Card>
 
-              <Card>
-                <div className="flex items-center">
-                  <div className="flex-shrink-0">
-                    <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
-                      <Users className="w-5 h-5 text-green-600" />
-                    </div>
-                  </div>
-                  <div className="ml-4">
-                    <p className="text-sm font-medium text-gray-600">Kelas Aktif</p>
-                    <p className="text-2xl font-bold text-gray-900">{aktifKelass}</p>
-                  </div>
-                </div>
-              </Card>
 
               <Card>
                 <div className="flex items-center">
@@ -361,29 +366,6 @@ const Kelas = () => {
                 </div>
               </Card>
             </div>
-
-            {/* Status Overview */}
-            <Card>
-              <Card.Header>
-                <Card.Title>Status Kelas</Card.Title>
-              </Card.Header>
-              <Card.Content>
-                <div className="flex flex-wrap gap-4">
-                  <div className="flex items-center space-x-2">
-                    <Badge variant="success">Aktif</Badge>
-                    <span className="text-sm text-gray-600">{aktifKelass} kelas</span>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <Badge variant="danger">Tidak Aktif</Badge>
-                    <span className="text-sm text-gray-600">{tidakAktifKelass} kelas</span>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <Badge variant="warning">Penuh</Badge>
-                    <span className="text-sm text-gray-600">{penuhKelass} kelas</span>
-                  </div>
-                </div>
-              </Card.Content>
-            </Card>
 
             {/* Kelas List */}
             <KelasList

@@ -4,7 +4,8 @@ import {
   Users, 
   GraduationCap, 
   BookOpen, 
-  Calendar, 
+  Calendar,
+  Clock as ClockIcon, 
   CreditCard, 
   FileText, 
   BarChart3,
@@ -20,14 +21,22 @@ import {
   History,
   ShieldCheck,
   UserCog,
+  Wallet,
+  MessageSquare,
+  CheckCircle,
+  Network,
+  FileCheck,
 } from 'lucide-react';
 import { SidebarProvider, useSidebar } from './components/ui/SidebarProvider';
 import { usePreferences } from './hooks/usePreferences';
 import { getScheme } from './config/seasonalSchemes';
 import SeasonalElements from './components/seasonal/SeasonalElements';
 import SidebarThemeAnimation from './components/seasonal/SidebarThemeAnimation';
+import AnimatedForestBackground from './components/seasonal/AnimatedForestBackground';
+import GlobalClickSpark from './components/ui/GlobalClickSpark';
+import { getAvailableRoles, getEffectiveRole } from './utils/userRoles';
 
-const LayoutContent = ({ children, user, onLogout }) => {
+const LayoutContent = ({ children, user, onLogout, onRoleChange }) => {
   const location = useLocation();
   const { isOpen, toggleSidebar } = useSidebar();
   const [userMenuOpen, setUserMenuOpen] = useState(false);
@@ -35,6 +44,8 @@ const LayoutContent = ({ children, user, onLogout }) => {
   const { preferences } = usePreferences();
   // Get color scheme - this will update when preferences change
   const colorScheme = getScheme(preferences?.colorScheme || 'summer');
+  const effectiveRole = getEffectiveRole(user) || 'admin';
+  const availableRoles = getAvailableRoles(user);
   
   // Force re-render when preferences change - use the actual color scheme value
   const colorSchemeKey = preferences?.colorScheme || 'summer';
@@ -43,9 +54,8 @@ const LayoutContent = ({ children, user, onLogout }) => {
   const [, forceUpdate] = useState(0);
   
   useEffect(() => {
-    // Log color scheme changes for debugging
-    console.log('Layout: Color scheme changed to:', colorSchemeKey, 'Colors:', colorScheme.colors);
     // Force a re-render to ensure colors update
+    // Removed console.log to reduce console noise
     forceUpdate(prev => prev + 1);
   }, [colorSchemeKey, colorScheme.colors.primaryDark]);
 
@@ -69,19 +79,22 @@ const LayoutContent = ({ children, user, onLogout }) => {
   // Get role label in Bahasa Malaysia
   const getRoleLabel = (role) => {
     const roleLabels = {
+      'ib': 'IB (Pengesah Pembayaran)',
       'admin': 'Admin Sistem',
       'teacher': 'Guru',
       'student': 'Pelajar',
-      'pic': 'PIC Masjid'
+      'pic': 'PIC Masjid',
+      'staff': 'Staff'
     };
     return roleLabels[role] || role;
   };
 
   let menuItems = [
     { icon: <Home className="w-5 h-5" />, label: 'Dashboard', link: '/' },
+    { icon: <MessageSquare className="w-5 h-5" />, label: 'Hubungi Kami', link: '/contact' },
   ];
 
-  if (user?.role === 'admin') {
+  if (effectiveRole === 'admin') {
     menuItems = [
       ...menuItems,
       { icon: <Megaphone className="w-5 h-5" />, label: 'Pengumuman', link: '/announcements' },
@@ -89,7 +102,9 @@ const LayoutContent = ({ children, user, onLogout }) => {
       { icon: <UserCheck className="w-5 h-5" />, label: 'Kelulusan Pendaftaran', link: '/pending-registrations' },
       { icon: <ShieldCheck className="w-5 h-5" />, label: 'Kelulusan PIC', link: '/pic-approvals' },
       { icon: <UserCog className="w-5 h-5" />, label: 'Pengguna PIC', link: '/pic-users' },
+      { icon: <ShieldCheck className="w-5 h-5" />, label: 'Pengurusan Admin', link: '/admins' },
       { icon: <History className="w-5 h-5" />, label: 'Tindakan Admin', link: '/admin-actions' },
+      { icon: <Network className="w-5 h-5" />, label: 'Hierarki Sistem', link: '/hierarchy' },
       { icon: <Users className="w-5 h-5" />, label: 'Pelajar', link: '/pelajar' },
       { icon: <GraduationCap className="w-5 h-5" />, label: 'Guru', link: '/guru' },
       { icon: <BookOpen className="w-5 h-5" />, label: 'Kelas', link: '/kelas' },
@@ -98,12 +113,15 @@ const LayoutContent = ({ children, user, onLogout }) => {
       { icon: <FileText className="w-5 h-5" />, label: 'Keputusan', link: '/keputusan' },
       { icon: <BarChart3 className="w-5 h-5" />, label: 'Laporan', link: '/laporan' },
       { icon: <Settings className="w-5 h-5" />, label: 'Tetapan', link: '/settings' },
+      { icon: <Wallet className="w-5 h-5" />, label: 'Kaedah Pembayaran', link: '/payment-method-settings' },
+      { icon: <CreditCard className="w-5 h-5" />, label: 'Tetapan ToyyibPay', link: '/toyyibpay-settings' },
     ];
-  } else if (user?.role === 'pic') {
+  } else if (effectiveRole === 'pic') {
     menuItems = [
       ...menuItems,
       { icon: <Megaphone className="w-5 h-5" />, label: 'Pengumuman', link: '/announcements' },
       { icon: <Clock className="w-5 h-5" />, label: 'Check In / Out', link: '/staff-checkin' },
+      { icon: <Network className="w-5 h-5" />, label: 'Hierarki Sistem', link: '/hierarchy' },
       { icon: <Users className="w-5 h-5" />, label: 'Pelajar', link: '/pelajar' },
       { icon: <GraduationCap className="w-5 h-5" />, label: 'Guru', link: '/guru' },
       { icon: <BookOpen className="w-5 h-5" />, label: 'Kelas', link: '/kelas' },
@@ -112,25 +130,33 @@ const LayoutContent = ({ children, user, onLogout }) => {
       { icon: <FileText className="w-5 h-5" />, label: 'Keputusan', link: '/keputusan' },
       { icon: <BarChart3 className="w-5 h-5" />, label: 'Laporan', link: '/laporan' },
     ];
-  } else if (user?.role === 'teacher') {
+  } else if (effectiveRole === 'teacher') {
     menuItems = [
       ...menuItems,
       { icon: <Megaphone className="w-5 h-5" />, label: 'Pengumuman', link: '/announcements' },
       { icon: <Clock className="w-5 h-5" />, label: 'Check In / Out', link: '/staff-checkin' },
-      { icon: <UserCheck className="w-5 h-5" />, label: 'Kelulusan Pendaftaran', link: '/pending-registrations' },
+      { icon: <Network className="w-5 h-5" />, label: 'Hierarki Sistem', link: '/hierarchy' },
       { icon: <Users className="w-5 h-5" />, label: 'Pelajar', link: '/pelajar' },
       { icon: <BookOpen className="w-5 h-5" />, label: 'Kelas', link: '/kelas' },
       { icon: <Calendar className="w-5 h-5" />, label: 'Kehadiran', link: '/kehadiran' },
       { icon: <FileText className="w-5 h-5" />, label: 'Keputusan', link: '/keputusan' },
       { icon: <Settings className="w-5 h-5" />, label: 'Tetapan', link: '/personal-settings' },
     ];
-  } else if (user?.role === 'student') {
+  } else if (effectiveRole === 'student') {
     menuItems = [
       ...menuItems,
       { icon: <Megaphone className="w-5 h-5" />, label: 'Pengumuman', link: '/announcements' },
       { icon: <Calendar className="w-5 h-5" />, label: 'Kehadiran', link: '/kehadiran' },
       { icon: <FileText className="w-5 h-5" />, label: 'Keputusan', link: '/keputusan' },
       { icon: <CreditCard className="w-5 h-5" />, label: 'Yuran', link: '/yuran' },
+      { icon: <Settings className="w-5 h-5" />, label: 'Tetapan', link: '/personal-settings' },
+    ];
+  } else if (effectiveRole === 'ib') {
+    menuItems = [
+      ...menuItems,
+      { icon: <FileCheck className="w-5 h-5" />, label: 'Dashboard IB', link: '/ib-dashboard' },
+      { icon: <Megaphone className="w-5 h-5" />, label: 'Pengumuman', link: '/announcements' },
+      { icon: <BarChart3 className="w-5 h-5" />, label: 'Laporan', link: '/laporan' },
       { icon: <Settings className="w-5 h-5" />, label: 'Tetapan', link: '/personal-settings' },
     ];
   }
@@ -143,6 +169,15 @@ const LayoutContent = ({ children, user, onLogout }) => {
         transition: 'background 0.5s ease'
       }}
     >
+      {/* Global Click Spark Effect */}
+      <GlobalClickSpark
+        sparkColor={colorScheme.colors.primary || '#10b981'}
+        sparkSize={8}
+        sparkRadius={20}
+        sparkCount={12}
+        duration={500}
+        onlyOnButtons={true}
+      />
       {/* Seasonal Elements removed from main area - only in sidebar */}
       {/* Mobile Overlay */}
       {isOpen && (
@@ -168,6 +203,16 @@ const LayoutContent = ({ children, user, onLogout }) => {
           color: 'white'
         }}
       >
+        {/* Animated Forest Background - Parallax layers with moving trees */}
+        <div 
+          className="absolute inset-0 pointer-events-none overflow-hidden"
+          style={{ 
+            zIndex: 0
+          }}
+        >
+          <AnimatedForestBackground />
+        </div>
+        
         {/* Seasonal Tree Elements in Sidebar - Visible with Animation */}
         <div 
           className="absolute inset-0 pointer-events-none overflow-visible transition-opacity duration-500"
@@ -215,7 +260,7 @@ const LayoutContent = ({ children, user, onLogout }) => {
                   className="h-12 w-auto object-contain flex-shrink-0"
                 />
                 <div className="flex-1 min-w-0">
-                  <h1 className="text-sm font-bold truncate">e-SKP</h1>
+                  <h1 className="text-sm font-bold truncate">e-Quran</h1>
                   <p className="text-xs truncate opacity-80">Masjid Negeri Sultan Ahmad 1</p>
                 </div>
               </div>
@@ -248,13 +293,13 @@ const LayoutContent = ({ children, user, onLogout }) => {
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 overflow-y-auto relative z-10">
-          <ul className={`space-y-2 ${isOpen ? 'p-4' : 'p-2'}`}>
+        <nav className="flex-1 overflow-y-auto relative z-10 scroll-smooth">
+          <ul className={`space-y-2 ${isOpen ? 'p-4' : 'p-2'} transition-all duration-300`}>
             {menuItems.map((item) => (
               <li key={item.label}>
                 <Link
                   to={item.link}
-                  className={`flex items-center rounded-xl transition-all duration-200 font-medium ${
+                  className={`flex items-center rounded-xl transition-all duration-200 ease-out font-medium ${
                     isOpen 
                       ? 'gap-3 px-4 py-3' 
                       : 'justify-center px-2 py-3'
@@ -310,7 +355,7 @@ const LayoutContent = ({ children, user, onLogout }) => {
         >
           {isOpen ? (
             <div className="text-xs text-center opacity-80">
-              <p className="truncate">© 2025 Masjid Negeri Sultan Ahmad 1</p>
+              <p className="truncate">© 2025 e-Quran</p>
             </div>
           ) : (
             <div className="w-full flex justify-center">
@@ -325,12 +370,12 @@ const LayoutContent = ({ children, user, onLogout }) => {
       {/* Main Content */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Top Header - idMe Style */}
-        <header className="bg-white border-b border-gray-200 shadow-sm">
+        <header className="bg-white border-b border-gray-200 shadow-sm transition-all duration-300">
           <div className="flex items-center justify-between px-4 md:px-6 py-3">
             {/* Left Section: Text Instead of Logo */}
             <div className="flex items-center gap-3 md:gap-4">
               <h1 className="text-lg md:text-xl lg:text-2xl font-semibold text-black">
-                e-SKP
+                e-Quran
               </h1>
             </div>
 
@@ -339,10 +384,10 @@ const LayoutContent = ({ children, user, onLogout }) => {
               {/* Hamburger Menu */}
               <button
                 onClick={toggleSidebar}
-                className="p-2 rounded-md hover:bg-gray-100 transition-colors"
+                className="p-2 rounded-md hover:bg-gray-100 transition-all duration-200 ease-out active:scale-95"
                 aria-label="Toggle menu"
               >
-                <Menu className="w-5 h-5 text-black" />
+                <Menu className="w-5 h-5 text-black transition-transform duration-200" />
               </button>
 
 
@@ -350,11 +395,11 @@ const LayoutContent = ({ children, user, onLogout }) => {
               <div className="flex items-center gap-3 md:gap-4 relative" ref={userMenuRef}>
                 <button
                   onClick={() => setUserMenuOpen(!userMenuOpen)}
-                  className="flex items-center gap-3 md:gap-4 hover:opacity-80 transition-opacity"
+                  className="flex items-center gap-3 md:gap-4 hover:opacity-80 transition-all duration-200 ease-out active:scale-95"
                 >
                   <div className="hidden lg:block text-right">
                     <p className="text-sm font-medium text-black">
-                      {getRoleLabel(user?.role) || 'Admin Masjid'}
+                      {getRoleLabel(effectiveRole) || 'Admin Masjid'}
                     </p>
                   </div>
                   <div className="relative">
@@ -373,7 +418,7 @@ const LayoutContent = ({ children, user, onLogout }) => {
 
                 {/* User Dropdown Menu */}
                 {userMenuOpen && (
-                  <div className="absolute top-full right-0 mt-2 w-72 bg-white rounded-lg shadow-xl border border-gray-200 z-50 overflow-hidden">
+                  <div className="absolute top-full right-0 mt-2 w-72 bg-white rounded-lg shadow-xl border border-gray-200 z-50 overflow-hidden animate-fade-in-up">
                     {/* User Info Section */}
                     <div className="p-4 bg-gray-50 border-b border-gray-200">
                       <div className="flex justify-center mb-3">
@@ -405,6 +450,33 @@ const LayoutContent = ({ children, user, onLogout }) => {
                       </div>
                     </div>
 
+                    {availableRoles.length > 1 && onRoleChange && (
+                      <div className="px-4 py-3 bg-white border-b border-gray-200 space-y-2">
+                        <p className="text-xs uppercase tracking-wide text-gray-500">Peranan aktif</p>
+                        <div className="flex flex-wrap gap-2">
+                          {availableRoles.map((roleOption) => (
+                            <button
+                              key={roleOption}
+                              type="button"
+                              onClick={() => {
+                                onRoleChange(roleOption);
+                                setUserMenuOpen(false);
+                              }}
+                              className={`flex items-center gap-2 text-xs font-semibold px-3 py-1 rounded-full transition-colors ${
+                                effectiveRole === roleOption
+                                  ? 'bg-emerald-500 text-white'
+                                  : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
+                              }`}
+                            >
+                              {effectiveRole === roleOption && (
+                                <CheckCircle className="w-4 h-4" />
+                              )}
+                              {getRoleLabel(roleOption)}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                     {/* Menu Items */}
                     <div className="py-2">
                       <Link
@@ -444,10 +516,12 @@ const LayoutContent = ({ children, user, onLogout }) => {
   );
 };
 
-const Layout = ({ children, user, onLogout }) => {
+const Layout = ({ children, user, onLogout, onRoleChange }) => {
   return (
     <SidebarProvider>
-      <LayoutContent user={user} onLogout={onLogout}>{children}</LayoutContent>
+      <LayoutContent user={user} onLogout={onLogout} onRoleChange={onRoleChange}>
+        {children}
+      </LayoutContent>
     </SidebarProvider>
   );
 };

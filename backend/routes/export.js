@@ -1,6 +1,12 @@
 import { Router } from 'express';
 import { authenticateToken, requireRole } from '../middleware/auth.js';
-import { exportDatabase, getExportHistory, downloadExportFile } from '../controllers/exportController.js';
+import {
+  exportDatabase,
+  getExportHistory,
+  downloadExportFile,
+  archiveYearData,
+  verifyBackupIntegrity,
+} from '../controllers/exportController.js';
 
 const router = Router();
 
@@ -9,6 +15,20 @@ router.post(
   authenticateToken,
   requireRole(['admin']),
   exportDatabase
+);
+
+router.post(
+  '/archive-year',
+  authenticateToken,
+  requireRole(['admin']),
+  archiveYearData
+);
+
+router.post(
+  '/verify-integrity',
+  authenticateToken,
+  requireRole(['admin']),
+  verifyBackupIntegrity
 );
 
 router.get(

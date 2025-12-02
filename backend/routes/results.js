@@ -50,8 +50,8 @@ router.get('/', getAllResults);
 router.get('/stats', getResultStats);
 router.get('/top-performers', getTopPerformers);
 router.get('/:id', idValidation, getResultById);
-router.post('/', requireRole(['admin', 'staff', 'teacher']), resultValidation, createResult);
-router.put('/:id', requireRole(['admin', 'staff', 'teacher']), idValidation, resultValidation, updateResult);
+router.post('/', requireRole(['admin', 'staff']), resultValidation, createResult);
+router.put('/:id', requireRole(['admin', 'staff']), idValidation, resultValidation, updateResult);
 router.delete('/:id', requireRole(['admin']), idValidation, deleteResult);
 
 export default router;

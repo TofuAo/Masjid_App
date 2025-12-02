@@ -1,71 +1,26 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { MapPin, LogIn, LogOut, Eye, EyeOff, User, Lock, AlertCircle, CheckCircle, History } from 'lucide-react';
 import api from '../services/api';
 import { formatIC } from '../utils/icUtils';
+import { useAccurateGPS } from '../hooks/useAccurateGPS';
 
 const QuickStaffCheckIn = () => {
   const [formData, setFormData] = useState({ icNumber: '', password: '' });
-  const [location, setLocation] = useState({ latitude: null, longitude: null });
-  const [locationError, setLocationError] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [checkingLocation, setCheckingLocation] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [message, setMessage] = useState(null);
   const [messageType, setMessageType] = useState(null); // 'success' or 'error'
   const [lastAction, setLastAction] = useState(null);
   const [checkingLastAction, setCheckingLastAction] = useState(false);
 
-  // Get current location automatically on page load
-  useEffect(() => {
-    getCurrentLocation();
-  }, []);
-
-  // Get current location
-  const getCurrentLocation = () => {
-    setCheckingLocation(true);
-    setLocationError(null);
-
-    if (!navigator.geolocation) {
-      setLocationError('Geolocation is not supported by your browser');
-      setCheckingLocation(false);
-      return;
-    }
-
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        setLocation({
-          latitude: position.coords.latitude,
-          longitude: position.coords.longitude
-        });
-        setLocationError(null);
-        setCheckingLocation(false);
-      },
-      (error) => {
-        let errorMessage = 'Unable to retrieve your location';
-        switch (error.code) {
-          case error.PERMISSION_DENIED:
-            errorMessage = 'Location access denied. Please enable location permissions.';
-            break;
-          case error.POSITION_UNAVAILABLE:
-            errorMessage = 'Location information unavailable.';
-            break;
-          case error.TIMEOUT:
-            errorMessage = 'Location request timed out.';
-            break;
-          default:
-            errorMessage = 'An unknown error occurred.';
-            break;
-        }
-        setLocationError(errorMessage);
-        setCheckingLocation(false);
-      },
-      {
-        enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 0
-      }
-    );
-  };
+  // Use accurate GPS hook with coordinate averaging
+  const { location, locationError, checkingLocation, getCurrentLocation } = useAccurateGPS({
+    sampleCount: 5, // Collect 5 readings for averaging
+    sampleInterval: 1000, // 1 second between readings
+    maxAccuracy: 50, // Accept readings with accuracy up to 50m
+    timeout: 15000, // 15 second timeout
+    autoGetOnMount: true // Auto-get location on page load
+  });
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -159,7 +114,8 @@ const QuickStaffCheckIn = () => {
         icNumber: formData.icNumber,
         password: formData.password,
         latitude: location.latitude,
-        longitude: location.longitude
+        longitude: location.longitude,
+        accuracy: location.accuracy ?? null
       });
 
       if (response.success) {
@@ -208,7 +164,8 @@ const QuickStaffCheckIn = () => {
         icNumber: formData.icNumber,
         password: formData.password,
         latitude: location.latitude,
-        longitude: location.longitude
+        longitude: location.longitude,
+        accuracy: location.accuracy ?? null
       });
 
       if (response.success) {
@@ -274,6 +231,9 @@ const QuickStaffCheckIn = () => {
             {location.latitude && location.longitude && !locationError && (
               <div className="p-2 bg-green-50 border border-green-200 rounded text-xs text-green-700">
                 Lokasi diperoleh: {location.latitude.toFixed(6)}, {location.longitude.toFixed(6)}
+                {location.accuracy && (
+                  <span className="block mt-1">Ketepatan: ±{Math.round(location.accuracy)}m (Purata dari beberapa bacaan)</span>
+                )}
               </div>
             )}
             <button
@@ -462,7 +422,7 @@ const QuickStaffCheckIn = () => {
         {/* Footer */}
         <div className="text-center">
           <p className="text-sm text-gray-600">
-            © 2025 Masjid Negeri Sultan Ahmad 1. Hak Cipta Terpelihara.
+            © 2025 e-Quran. Hak Cipta Terpelihara.
           </p>
         </div>
       </div>

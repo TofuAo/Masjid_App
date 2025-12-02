@@ -6,7 +6,8 @@ import {
   bulkMarkAttendance,
   bulkMarkAttendanceWithProof,
   getAttendanceStats,
-  getStudentAttendanceHistory
+  getStudentAttendanceHistory,
+  deleteAttendance
 } from '../controllers/attendanceController.js';
 import { authenticateToken, requireRole } from '../middleware/auth.js';
 import { isValidICFormat } from '../utils/icNormalizer.js';
@@ -74,8 +75,10 @@ router.use(authenticateToken);
 router.get('/', getAttendance);
 router.get('/stats', getAttendanceStats);
 router.get('/student/:student_ic', icValidation, normalizeICMiddleware, getStudentAttendanceHistory);
-router.post('/', requireRole(['admin', 'staff', 'teacher']), attendanceValidation, normalizeICMiddleware, markAttendance);
-router.post('/bulk', requireRole(['admin', 'staff', 'teacher']), bulkAttendanceValidation, normalizeICMiddleware, bulkMarkAttendance);
-router.post('/bulk-with-proof', requireRole(['admin', 'staff', 'teacher']), uploadAttendanceProof, normalizeICMiddleware, bulkMarkAttendanceWithProof);
+router.post('/', requireRole(['admin', 'staff', 'teacher', 'pic']), attendanceValidation, normalizeICMiddleware, markAttendance);
+router.post('/bulk', requireRole(['admin', 'staff', 'teacher', 'pic']), bulkAttendanceValidation, normalizeICMiddleware, bulkMarkAttendance);
+router.post('/bulk-with-proof', requireRole(['admin', 'staff', 'teacher', 'pic']), uploadAttendanceProof, normalizeICMiddleware, bulkMarkAttendanceWithProof);
+router.put('/:id', requireRole(['admin', 'pic']), attendanceValidation, normalizeICMiddleware, markAttendance);
+router.delete('/:id', requireRole(['admin', 'pic']), normalizeICMiddleware, deleteAttendance);
 
 export default router;

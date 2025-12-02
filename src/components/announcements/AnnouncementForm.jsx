@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Card from '../ui/Card';
 import Button from '../ui/Button';
-import { Calendar, X } from 'lucide-react';
+import { X, AlertCircle } from 'lucide-react';
 
 const AnnouncementForm = ({ announcement, onSubmit, onCancel }) => {
   const [formData, setFormData] = useState({
@@ -9,42 +9,18 @@ const AnnouncementForm = ({ announcement, onSubmit, onCancel }) => {
     content: '',
     status: 'published',
     priority: 'normal',
-    target_audience: 'all',
-    start_date: '',
-    end_date: ''
+    target_audience: 'all'
   });
   const [errors, setErrors] = useState({});
 
   useEffect(() => {
     if (announcement) {
-      const formatDateTime = (dateString) => {
-        if (!dateString) return '';
-        try {
-          // Parse the date string - it might be in UTC or local time
-          const date = new Date(dateString);
-          
-          // Get local time components (not UTC) to preserve the intended time
-          const year = date.getFullYear();
-          const month = String(date.getMonth() + 1).padStart(2, '0');
-          const day = String(date.getDate()).padStart(2, '0');
-          const hours = String(date.getHours()).padStart(2, '0');
-          const minutes = String(date.getMinutes()).padStart(2, '0');
-          
-          // Return in datetime-local format (YYYY-MM-DDTHH:mm)
-          return `${year}-${month}-${day}T${hours}:${minutes}`;
-        } catch {
-          return '';
-        }
-      };
-
       setFormData({
         title: announcement.title || '',
         content: announcement.content || '',
         status: announcement.status || 'published',
         priority: announcement.priority || 'normal',
-        target_audience: announcement.target_audience || 'all',
-        start_date: formatDateTime(announcement.start_date),
-        end_date: formatDateTime(announcement.end_date)
+        target_audience: announcement.target_audience || 'all'
       });
     }
   }, [announcement]);
@@ -77,14 +53,6 @@ const AnnouncementForm = ({ announcement, onSubmit, onCancel }) => {
       newErrors.content = 'Kandungan diperlukan';
     } else if (formData.content.length < 10) {
       newErrors.content = 'Kandungan mesti sekurang-kurangnya 10 aksara';
-    }
-    
-    if (formData.start_date && formData.end_date) {
-      const start = new Date(formData.start_date);
-      const end = new Date(formData.end_date);
-      if (end < start) {
-        newErrors.end_date = 'Tarikh tamat mesti selepas tarikh mula';
-      }
     }
 
     setErrors(newErrors);
@@ -200,36 +168,14 @@ const AnnouncementForm = ({ announcement, onSubmit, onCancel }) => {
             </select>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                <Calendar className="w-4 h-4 inline mr-1" />
-                Tarikh Mula (Pilihan)
-              </label>
-              <input
-                type="datetime-local"
-                name="start_date"
-                value={formData.start_date}
-                onChange={handleChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                <Calendar className="w-4 h-4 inline mr-1" />
-                Tarikh Tamat (Pilihan)
-              </label>
-              <input
-                type="datetime-local"
-                name="end_date"
-                value={formData.end_date}
-                onChange={handleChange}
-                className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500 ${
-                  errors.end_date ? 'border-red-500' : 'border-gray-300'
-                }`}
-              />
-              {errors.end_date && <p className="mt-1 text-sm text-red-500">{errors.end_date}</p>}
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <div className="flex items-start">
+              <AlertCircle className="w-5 h-5 text-blue-600 mr-2 mt-0.5" />
+              <div>
+                <p className="text-sm text-blue-800">
+                  <strong>Nota:</strong> Apabila admin meluluskan pengumuman, pengumuman akan mula secara automatik dan tamat selepas 1 bulan.
+                </p>
+              </div>
             </div>
           </div>
 

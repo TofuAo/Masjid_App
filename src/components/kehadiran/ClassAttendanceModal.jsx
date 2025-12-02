@@ -1,8 +1,9 @@
 import React from 'react';
-import { X, CheckCircle, XCircle, Clock, AlertCircle, Calendar } from 'lucide-react';
+import { X, CheckCircle, XCircle, Clock, AlertCircle, Calendar, Edit, Trash2 } from 'lucide-react';
 import Badge from '../ui/Badge';
+import Button from '../ui/Button';
 
-const ClassAttendanceModal = ({ isOpen, onClose, className, attendanceDate, students }) => {
+const ClassAttendanceModal = ({ isOpen, onClose, className, attendanceDate, students, userRole, onUpdate, onDelete }) => {
   if (!isOpen) return null;
 
   const getStatusBadge = (status) => {
@@ -111,8 +112,30 @@ const ClassAttendanceModal = ({ isOpen, onClose, className, attendanceDate, stud
                       </div>
                     ) : null}
                   </div>
-                  <div className="ml-4">
+                  <div className="flex items-center gap-3">
                     {getStatusBadge(student.status)}
+                    {(userRole === 'admin' || userRole === 'pic') && (
+                      <div className="flex items-center gap-2">
+                        <select
+                          value={student.status || ''}
+                          onChange={(e) => onUpdate && onUpdate(student.id, e.target.value)}
+                          className="text-xs px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                        >
+                          <option value="Hadir">Hadir</option>
+                          <option value="Tidak Hadir">Tidak Hadir</option>
+                          <option value="Lewat">Lewat</option>
+                          <option value="Sakit">Sakit</option>
+                          <option value="Cuti">Cuti</option>
+                        </select>
+                        <button
+                          onClick={() => onDelete && onDelete(student.id)}
+                          className="text-red-600 hover:text-red-800 p-1"
+                          title="Padam"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
               ))

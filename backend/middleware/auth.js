@@ -1,21 +1,90 @@
 import jwt from 'jsonwebtoken';
 import { pool, testConnection } from '../config/database.js';
 import { logUnauthorizedAccess, logSuspiciousActivity } from './securityLogger.js';
+import { fetchUserRoles } from '../services/userRoleService.js';
 
-export const authenticateToken = async (req, res, next) => {
-  // Skip authentication for public masjid location endpoint
-  // Check if request has skipAuth flag
-  if (req.skipAuth || req._skipAuthForMasjidLocation) {
-    return next();
+const attachRolesToUser = async (user, dbPrimaryRole = null) => {
+  // Use dbPrimaryRole if provided, otherwise use user.role
+  // This ensures we fetch all roles based on the database primary role, not the session role
+  const primaryRoleForFetch = dbPrimaryRole || user.role;
+  const roles = await fetchUserRoles(user.ic, primaryRoleForFetch);
+  
+  // Normalize all roles to lowercase
+  let normalizedRoles = roles.length > 0 
+    ? roles.map(r => (r || '').toLowerCase())
+    : [];
+  
+  // CRITICAL: Always include the primary role from database
+  const normalizedPrimary = (primaryRoleForFetch || '').toLowerCase();
+  if (normalizedPrimary && !normalizedRoles.includes(normalizedPrimary)) {
+    normalizedRoles.push(normalizedPrimary);
   }
   
-  // Check both path (relative to router) and originalUrl (full path)
+  // Also ensure user.role is included (might be different from primaryRoleForFetch)
+  const userRoleNormalized = (user.role || '').toLowerCase();
+  if (userRoleNormalized && !normalizedRoles.includes(userRoleNormalized)) {
+    normalizedRoles.push(userRoleNormalized);
+  }
+  
+  // If still no roles, use primary role as fallback
+  if (normalizedRoles.length === 0 && normalizedPrimary) {
+    normalizedRoles.push(normalizedPrimary);
+  }
+  
+  user.roles = normalizedRoles;
+
+  const preferred = user.preferredRole && normalizedRoles.includes((user.preferredRole || '').toLowerCase())
+    ? (user.preferredRole || '').toLowerCase()
+    : null;
+
+  user.activeRole = preferred || (normalizedRoles.includes(userRoleNormalized) ? userRoleNormalized : (normalizedRoles[0] || userRoleNormalized));
+};
+
+export const authenticateToken = async (req, res, next) => {
+  // Get path values first
   const path = req.path || '';
   const originalUrl = req.originalUrl || '';
   const url = req.url || '';
   const baseUrl = req.baseUrl || '';
   
-  // Check if this is the masjid-location endpoint (multiple ways to catch it)
+  // ============================================
+  // CRITICAL: PUBLIC ENDPOINTS - NO AUTH REQUIRED
+  // ============================================
+  // Skip authentication for registration endpoints - CHECK FIRST before anything else
+  
+  // ULTIMATE CHECK: If it's a POST request to any registration endpoint, skip auth
+  // Check in the simplest way possible - if path or originalUrl contains "register", skip auth
+  if (req.method === 'POST') {
+    // Simple string check - if ANY of these contain "register", skip auth
+    const pathStr = String(path || '').toLowerCase();
+    const originalUrlStr = String(originalUrl || '').toLowerCase();
+    const urlStr = String(url || '').toLowerCase();
+    const baseUrlStr = String(baseUrl || '').toLowerCase();
+    
+    if (pathStr.includes('register') || 
+        originalUrlStr.includes('register') || 
+        urlStr.includes('register') ||
+        baseUrlStr.includes('register') ||
+        (baseUrlStr + pathStr).includes('register')) {
+      // COMPLETELY SKIP AUTHENTICATION
+      return next();
+    }
+  }
+  
+  // Skip authentication for public endpoints
+  // Check if request has skipAuth flag (set by route middleware)
+  if (req.skipAuth || req._skipAuthForMasjidLocation || req._skipAuthForTeacherRegister) {
+    console.log('✅ Auth skipped - flag set:', {
+      skipAuth: req.skipAuth,
+      _skipAuthForMasjidLocation: req._skipAuthForMasjidLocation,
+      _skipAuthForTeacherRegister: req._skipAuthForTeacherRegister,
+      path,
+      originalUrl
+    });
+    return next();
+  }
+  
+  // Check if this is the masjid-location endpoint (public endpoint)
   const isMasjidLocation = 
     path === '/masjid-location' ||
     path.includes('masjid-location') || 
@@ -25,6 +94,7 @@ export const authenticateToken = async (req, res, next) => {
     (baseUrl + path).includes('masjid-location');
   
   if (isMasjidLocation) {
+    console.log('✅ Auth skipped - Masjid location endpoint');
     return next();
   }
 
@@ -57,6 +127,62 @@ export const authenticateToken = async (req, res, next) => {
     }
 
     const user = users[0];
+    // Store the database primary role before overriding (normalize it)
+    const dbPrimaryRole = (user.role || '').toLowerCase();
+    user.dbPrimaryRole = dbPrimaryRole; // Store for later use in requireRole
+    
+    // IMPORTANT: Store the original database role separately
+    // user.role will remain as the database primary role for permission checks
+    const originalDbRole = user.role;
+    
+    // Fetch all roles using the database primary role (not the token role)
+    // This ensures we get all roles including admin if user has admin in database
+    await attachRolesToUser(user, dbPrimaryRole);
+    
+    // Restore user.role to database primary role (in case attachRolesToUser changed it)
+    user.role = originalDbRole;
+    
+    // Now set active role from token (session-selected role)
+    // But keep user.role as database primary role for permission checks
+    if (decoded.role) {
+      const tokenRole = (decoded.role || '').toLowerCase();
+      user.preferredRole = tokenRole;
+      user.activeRole = tokenRole;
+    } else {
+      // If no role in token, use database primary role
+      user.activeRole = dbPrimaryRole;
+    }
+    
+    // Ensure database primary role is always in available roles for admin access check
+    // Normalize all roles for comparison
+    let normalizedRoles = (user.roles || []).map(r => (r || '').toLowerCase());
+    if (dbPrimaryRole && !normalizedRoles.includes(dbPrimaryRole)) {
+      normalizedRoles.push(dbPrimaryRole);
+    }
+    // Also ensure the active role from token is in available roles
+    if (user.activeRole && !normalizedRoles.includes(user.activeRole)) {
+      normalizedRoles.push(user.activeRole);
+    }
+    // CRITICAL: Always ensure the original database role is in the roles array
+    // This is the most reliable source of truth
+    if (originalDbRole) {
+      const normalizedOriginal = (originalDbRole || '').toLowerCase();
+      if (!normalizedRoles.includes(normalizedOriginal)) {
+        normalizedRoles.push(normalizedOriginal);
+      }
+    }
+    // Update user.roles to use normalized versions
+    user.roles = normalizedRoles;
+    
+    // Debug: Log roles for all requests (to help diagnose admin access issues)
+    console.log('[AUTH] User authenticated:', {
+      ic: user.ic,
+      dbPrimaryRole,
+      originalDbRole,
+      activeRole: user.activeRole,
+      availableRoles: normalizedRoles.join(', '),
+      rolesFromDB: user.roles?.join(', ') || 'none'
+    });
 
     // Fetch related data based on user role
     if (user.role === 'teacher') {
@@ -127,7 +253,30 @@ export const optionalAuth = async (req, res, next) => {
     );
 
     if (users.length > 0) {
-      req.user = users[0];
+      const user = users[0];
+      const dbPrimaryRole = (user.role || '').toLowerCase();
+      user.dbPrimaryRole = dbPrimaryRole;
+      
+      // Fetch all roles using the database primary role
+      await attachRolesToUser(user, dbPrimaryRole);
+      
+      if (decoded.role) {
+        const tokenRole = (decoded.role || '').toLowerCase();
+        user.preferredRole = tokenRole;
+        user.activeRole = tokenRole;
+      }
+      
+      // Ensure all roles are normalized
+      let normalizedRoles = (user.roles || []).map(r => (r || '').toLowerCase());
+      if (dbPrimaryRole && !normalizedRoles.includes(dbPrimaryRole)) {
+        normalizedRoles.push(dbPrimaryRole);
+      }
+      if (user.activeRole && !normalizedRoles.includes(user.activeRole)) {
+        normalizedRoles.push(user.activeRole);
+      }
+      user.roles = normalizedRoles;
+      
+      req.user = user;
     }
     
     next();
@@ -146,13 +295,84 @@ export const requireRole = (roles) => {
       });
     }
 
-    // Allow admin to bypass role check
-    if (req.user.role === 'admin') {
-      return next();
+    // Normalize roles array for comparison
+    const requiredRoles = roles.map(r => (r || '').toLowerCase());
+    const effectiveRole = (req.user.activeRole || req.user.role || '').toLowerCase();
+    let availableRoles = (req.user.roles || []).map(r => (r || '').toLowerCase());
+    
+    // Ensure primary role (from database) is included in available roles
+    const primaryRole = (req.user.role || '').toLowerCase();
+    if (primaryRole && !availableRoles.includes(primaryRole)) {
+      availableRoles.push(primaryRole);
+    }
+    
+    // Also check the original database role if stored
+    if (req.user.dbPrimaryRole) {
+      const dbRole = (req.user.dbPrimaryRole || '').toLowerCase();
+      if (dbRole && !availableRoles.includes(dbRole)) {
+        availableRoles.push(dbRole);
+      }
+    }
+    
+    // Ensure active role is in available roles
+    if (effectiveRole && !availableRoles.includes(effectiveRole)) {
+      availableRoles.push(effectiveRole);
     }
 
-    if (!roles.includes(req.user.role)) {
-      logUnauthorizedAccess(req, `Insufficient permissions. User role: ${req.user.role}, Required: ${roles.join(', ')}`);
+    // CRITICAL: Allow admin to bypass role check if they have admin role (even if not currently active)
+    // This allows admins with multiple roles to access admin endpoints regardless of their active role
+    // Check all possible role sources - be very permissive for admin access
+    const hasAdminRole = availableRoles.includes('admin') || 
+                        primaryRole === 'admin' || 
+                        effectiveRole === 'admin' ||
+                        (req.user.dbPrimaryRole && req.user.dbPrimaryRole.toLowerCase() === 'admin') ||
+                        (req.user.role && (req.user.role || '').toLowerCase() === 'admin');
+    
+    // Always log admin access attempts for debugging
+    if (requiredRoles.includes('admin')) {
+      console.log('[AUTH] Admin endpoint access check:', {
+        path: req.path,
+        userIc: req.user.ic,
+        effectiveRole,
+        primaryRole,
+        dbPrimaryRole: req.user.dbPrimaryRole,
+        availableRoles: availableRoles.join(', '),
+        hasAdminRole,
+        willAllow: hasAdminRole
+      });
+    }
+    
+    if (hasAdminRole) {
+      // Admin has access - allow through
+      return next();
+    }
+    
+    // Debug logging for permission issues (always log for admin endpoints to help diagnose)
+    if (requiredRoles.includes('admin')) {
+      console.log('[AUTH DEBUG] Permission check failed for admin endpoint:', {
+        path: req.path,
+        effectiveRole,
+        primaryRole,
+        availableRoles: availableRoles.join(', '),
+        requiredRoles: requiredRoles.join(', '),
+        dbPrimaryRole: req.user.dbPrimaryRole,
+        userRole: req.user.role,
+        activeRole: req.user.activeRole,
+        userIc: req.user.ic,
+        hasAdminRole: false,
+        allUserRoles: JSON.stringify(req.user.roles || [])
+      });
+    }
+
+    // Check if the effective role matches any required role
+    const hasRequiredRole = requiredRoles.includes(effectiveRole);
+
+    if (!hasRequiredRole) {
+      // Only log if it's not a common permission check (reduce log noise)
+      // Most 403s are expected when non-admin users try to access admin endpoints
+      if (!requiredRoles.includes('admin') || availableRoles.length > 1) {
+        logUnauthorizedAccess(req, `Insufficient permissions. Active role: ${effectiveRole}, Available roles: ${availableRoles.join(', ')}, Required: ${requiredRoles.join(', ')}`);
+      }
       return res.status(403).json({ 
         success: false, 
         message: 'Insufficient permissions' 

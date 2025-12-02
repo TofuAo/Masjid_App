@@ -5,15 +5,21 @@ import rateLimit from 'express-rate-limit';
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { testConnection } from './config/database.js';
+import { testConnection, pool } from './config/database.js';
 import routes from './routes/index.js';
+import { handlePaymentWebhook } from './controllers/webhookController.js';
 import { sanitizeInput } from './middleware/sanitize.js';
 import { ensureCheckInTable } from './utils/ensureCheckInTable.js';
 import { ensurePendingStatus } from './utils/ensurePendingStatus.js';
 import { ensurePendingPicTable } from './utils/pendingPicChanges.js';
 import { ensurePicRole } from './utils/ensurePicRole.js';
+import createArchivedStudentsTable from './scripts/create_archived_students_table.js';
+import { ensureAdminAccounts } from './utils/ensureAdminAccounts.js';
+import { ensureIbRole } from './utils/ensureIbRole.js';
 import { scheduleAnnualDatabaseBackup } from './schedulers/annualBackupJob.js';
 import { scheduleAnnouncementCleanup } from './schedulers/announcementCleanupJob.js';
+import { schedulePaymentReconciliation } from './schedulers/paymentReconciliationJob.js';
+import { errorHandler } from './middleware/errorHandler.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -79,20 +85,24 @@ const corsOptions = {
     // Check if origin is in allowed list
     const isAllowed = allowedOrigins.includes(origin) || 
                       origin.startsWith('http://localhost') ||
-                      origin.startsWith('https://localhost');
+                      origin.startsWith('https://localhost') ||
+                      origin.includes('localhost');
     
     if (isAllowed) {
       callback(null, true);
     } else {
+      // Log blocked origin for debugging
+      console.warn('CORS blocked origin:', origin);
       callback(new Error('Not allowed by CORS'));
     }
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
   exposedHeaders: ['Content-Range', 'X-Content-Range'],
   preflightContinue: false,
-  optionsSuccessStatus: 204
+  optionsSuccessStatus: 204,
+  maxAge: 86400 // Cache preflight requests for 24 hours
 };
 
 // Apply CORS middleware
@@ -167,6 +177,17 @@ app.use('/api/auth/profile/complete', preferencesLimiter);
 // Apply general rate limiting to all routes (after CORS and specific limiters)
 app.use('/api', generalLimiter);
 
+// Webhook endpoint (needs raw body for signature verification)
+app.post('/api/webhook/payment', express.raw({ type: 'application/json', limit: '10mb' }), (req, res, next) => {
+  // Parse JSON body after raw body is received
+  try {
+    req.body = JSON.parse(req.body.toString());
+  } catch (e) {
+    req.body = {};
+  }
+  next();
+}, handlePaymentWebhook);
+
 // Body parser with size limits to prevent DoS attacks
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
@@ -185,20 +206,52 @@ try {
   process.exit(1);
 }
 
-// Health check endpoint
-app.get('/health', (req, res) => {
-  res.status(200).json({
-    status: 'healthy',
-    timestamp: new Date().toISOString(),
-    uptime: process.uptime(),
-    environment: process.env.NODE_ENV || 'development'
-  });
+// Health check endpoint with connection verification
+app.get('/health', async (req, res) => {
+  try {
+    // Test database connection
+    const [dbTest] = await pool.execute('SELECT 1 as test');
+    const dbHealthy = dbTest && dbTest[0] && dbTest[0].test === 1;
+    
+    res.status(dbHealthy ? 200 : 503).json({
+      status: dbHealthy ? 'healthy' : 'degraded',
+      timestamp: new Date().toISOString(),
+      database: dbHealthy ? 'connected' : 'disconnected',
+      uptime: process.uptime(),
+      environment: process.env.NODE_ENV || 'development'
+    });
+  } catch (error) {
+    res.status(503).json({
+      status: 'unhealthy',
+      timestamp: new Date().toISOString(),
+      database: 'error',
+      error: error.message,
+      uptime: process.uptime(),
+      environment: process.env.NODE_ENV || 'development'
+    });
+  }
 });
 
 // Serve static files from uploads directory
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
+// Root endpoint
+app.get('/', (req, res) => {
+  res.json({ 
+    status: 'ok', 
+    message: 'Masjid App API Server',
+    version: '1.0.0',
+    endpoints: {
+      health: '/health',
+      api: '/api'
+    }
+  });
+});
+
 app.use('/api', routes);
+
+// Global error handler (must be last)
+app.use(errorHandler);
 
 // Ensure check-in table exists on startup
 ensureCheckInTable().catch(err => {
@@ -220,16 +273,34 @@ ensurePicRole().catch(err => {
   console.error('Failed to ensure PIC role:', err);
 });
 
-const PORT = process.env.PORT || 5001;
+// Ensure archived_students table exists
+createArchivedStudentsTable().catch(err => {
+  console.error('Failed to ensure archived_students table:', err);
+});
+
+// Ensure admin accounts exist with correct passwords
+ensureAdminAccounts().catch(err => {
+  console.error('Failed to ensure admin accounts:', err);
+});
+
+// Ensure IB role and payment confirmation system exists
+ensureIbRole().catch(err => {
+  console.error('Failed to ensure IB role:', err);
+});
+
+const PORT = process.env.PORT || 5000;
 
 // Ensure check-in table and pending status exist before starting server
-Promise.all([ensureCheckInTable(), ensurePendingStatus(), ensurePendingPicTable(), ensurePicRole()]).then(() => {
+Promise.all([ensureCheckInTable(), ensurePendingStatus(), ensurePendingPicTable(), ensurePicRole(), createArchivedStudentsTable(), ensureAdminAccounts(), ensureIbRole(), testConnection()]).then(() => {
   app.listen(PORT, "0.0.0.0", () => {
     logger.success(`Server running on port ${theme.data(PORT)}`);
     logger.info(`Environment: ${theme.data(process.env.NODE_ENV || 'development')}`);
+    logger.info(`Database: ${process.env.DB_HOST || 'mysql'}:${process.env.DB_PORT || 3306}/${process.env.DB_NAME || 'masjid_app'}`);
     logger.info(`Health check: http://localhost:${PORT}/health`);
+    logger.info(`API Base: http://localhost:${PORT}/api`);
     scheduleAnnualDatabaseBackup();
     scheduleAnnouncementCleanup();
+    schedulePaymentReconciliation();
   });
 }).catch(err => {
   console.error('Failed to ensure database tables:', err);
@@ -237,9 +308,13 @@ Promise.all([ensureCheckInTable(), ensurePendingStatus(), ensurePendingPicTable(
   app.listen(PORT, "0.0.0.0", () => {
     logger.success(`Server running on port ${theme.data(PORT)}`);
     logger.info(`Environment: ${theme.data(process.env.NODE_ENV || 'development')}`);
+    logger.info(`Database: ${process.env.DB_HOST || 'mysql'}:${process.env.DB_PORT || 3306}/${process.env.DB_NAME || 'masjid_app'}`);
     logger.info(`Health check: http://localhost:${PORT}/health`);
+    logger.info(`API Base: http://localhost:${PORT}/api`);
+    logger.error('⚠️  Database connection may have issues - check logs above');
     scheduleAnnualDatabaseBackup();
     scheduleAnnouncementCleanup();
+    schedulePaymentReconciliation();
   });
 });
 

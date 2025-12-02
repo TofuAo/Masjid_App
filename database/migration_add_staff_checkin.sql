@@ -22,11 +22,11 @@ CREATE TABLE IF NOT EXISTS staff_checkin (
 );
 
 -- Insert masjid location settings (default coordinates - should be updated by admin)
--- Masjid coordinates: lat = 3.807829297637092, lng = 103.32799643765418, radius = 100 meters
+-- Masjid coordinates: lat = 3.808236, lng = 103.328054, radius = 100 meters
 INSERT INTO settings (setting_key, setting_value, setting_type, description)
 VALUES 
-    ('masjid_latitude', '3.807829297637092', 'text', 'Masjid latitude coordinate for geolocation check-in'),
-    ('masjid_longitude', '103.32799643765418', 'text', 'Masjid longitude coordinate for geolocation check-in'),
+    ('masjid_latitude', '3.808236', 'text', 'Masjid latitude coordinate for geolocation check-in'),
+    ('masjid_longitude', '103.328054', 'text', 'Masjid longitude coordinate for geolocation check-in'),
     ('masjid_checkin_radius', '100', 'text', 'Maximum allowed distance from masjid for check-in (in meters)')
 ON DUPLICATE KEY UPDATE setting_key = setting_key;
 

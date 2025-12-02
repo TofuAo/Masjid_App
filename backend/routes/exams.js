@@ -20,11 +20,11 @@ const examValidation = [
 
 router.route('/')
   .get(protect, getAllExams)
-  .post(protect, authorize(['admin', 'teacher']), examValidation, createExam);
+  .post(protect, authorize(['admin']), examValidation, createExam);
 
 router.route('/:id')
   .get(protect, getExamById)
-  .put(protect, authorize(['admin', 'teacher']), examValidation, updateExam)
+  .put(protect, authorize(['admin']), examValidation, updateExam)
   .delete(protect, authorize(['admin']), deleteExam);
 
 export default router;

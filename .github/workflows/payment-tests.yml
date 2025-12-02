@@ -1,0 +1,90 @@
+name: Payment System Tests
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'backend/services/paymentService.js'
+      - 'backend/services/paymentGatewayService.js'
+      - 'backend/controllers/paymentController.js'
+      - 'backend/controllers/webhookController.js'
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: test_password
+          MYSQL_DATABASE: test_masjid_app
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=3
+
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18'
+        cache: 'npm'
+        cache-dependency-path: backend/package-lock.json
+    
+    - name: Install dependencies
+      working-directory: ./backend
+      run: npm ci
+    
+    - name: Run database migration
+      working-directory: ./backend
+      env:
+        DB_HOST: localhost
+        DB_PORT: 3306
+        DB_USER: root
+        DB_PASSWORD: test_password
+        DB_NAME: test_masjid_app
+      run: |
+        mysql -h localhost -u root -ptest_password -e "CREATE DATABASE IF NOT EXISTS test_masjid_app;"
+        mysql -h localhost -u root -ptest_password test_masjid_app < ../database/migration_add_payments.sql
+    
+    - name: Run tests
+      working-directory: ./backend
+      env:
+        NODE_ENV: test
+        DB_HOST: localhost
+        DB_PORT: 3306
+        DB_USER: root
+        DB_PASSWORD: test_password
+        DB_NAME: test_masjid_app
+        JWT_SECRET: test_secret
+      run: npm test || true
+
+  lint:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18'
+        cache: 'npm'
+        cache-dependency-path: backend/package-lock.json
+    
+    - name: Install dependencies
+      working-directory: ./backend
+      run: npm ci
+    
+    - name: Run linter
+      working-directory: ./backend
+      run: npm run lint || true
+

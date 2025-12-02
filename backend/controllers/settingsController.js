@@ -1,6 +1,18 @@
 import { pool } from '../config/database.js';
 import { validationResult } from 'express-validator';
 import {
+  fetchMasjidLocationFromSettings,
+  DEFAULT_MASJID_LATITUDE,
+  DEFAULT_MASJID_LONGITUDE,
+  DEFAULT_MASJID_RADIUS
+} from '../utils/masjidLocation.js';
+
+const MASJID_SETTING_LIMITS = {
+  masjid_latitude: { min: -90, max: 90, fixed: 6 },
+  masjid_longitude: { min: -180, max: 180, fixed: 6 },
+  masjid_checkin_radius: { min: 1, max: 10000 }
+};
+import {
   getGradeRangesFromSettings,
   saveGradeRangesToSettings,
   validateGradeRangesPayload
@@ -71,6 +83,33 @@ export const updateSetting = async (req, res) => {
 
     const { key } = req.params;
     let { value, type, description } = req.body;
+
+    // Normalize masjid location settings
+    if (MASJID_SETTING_LIMITS[key]) {
+      const limit = MASJID_SETTING_LIMITS[key];
+      const numericValue = parseFloat(value);
+
+      if (Number.isNaN(numericValue)) {
+        return res.status(400).json({
+          success: false,
+          message: `Nilai ${key.replace(/_/g, ' ')} mesti nombor sah.`
+        });
+      }
+
+      if (numericValue < limit.min || numericValue > limit.max) {
+        return res.status(400).json({
+          success: false,
+          message: `Nilai ${key.replace(/_/g, ' ')} mesti di antara ${limit.min} dan ${limit.max}.`
+        });
+      }
+
+      if (key === 'masjid_checkin_radius') {
+        value = numericValue.toString();
+      } else {
+        const decimals = typeof limit.fixed === 'number' ? limit.fixed : 6;
+        value = numericValue.toFixed(decimals);
+      }
+    }
 
     // Convert empty string to null for database
     if (value === '' || value === undefined) {
@@ -205,43 +244,21 @@ export const updateGradeRanges = async (req, res) => {
   }
 };
 
-// Get masjid location settings (public endpoint for check-in)
-// Coordinates are static and cannot be changed
 export const getMasjidLocationSettings = async (req, res) => {
   try {
-    // Only fetch radius from settings (coordinates are static)
-    const [settings] = await pool.execute(
-      `SELECT setting_key, setting_value 
-       FROM settings 
-       WHERE setting_key = 'masjid_checkin_radius'`
-    );
-
-    const locationSettings = {
-      latitude: 3.807829297637092, // Static - cannot be changed
-      longitude: 103.32799643765418, // Static - cannot be changed
-      radius: 100 // Default
-    };
-
-    // Only update radius from settings
-    settings.forEach(setting => {
-      if (setting.setting_key === 'masjid_checkin_radius') {
-        locationSettings.radius = parseFloat(setting.setting_value) || 100;
-      }
-    });
-
+    const locationSettings = await fetchMasjidLocationFromSettings();
     res.json({
       success: true,
       data: locationSettings
     });
   } catch (error) {
     console.error('Get masjid location settings error:', error);
-    // Return static coordinates on error
     res.json({
       success: true,
       data: {
-        latitude: 3.807829297637092,
-        longitude: 103.32799643765418,
-        radius: 100
+        latitude: DEFAULT_MASJID_LATITUDE,
+        longitude: DEFAULT_MASJID_LONGITUDE,
+        radius: DEFAULT_MASJID_RADIUS
       }
     });
   }

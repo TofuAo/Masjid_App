@@ -3,6 +3,7 @@ import { MapPin, Clock, CheckCircle, XCircle, RefreshCw, AlertCircle, LogIn, Log
 import { staffCheckInAPI } from '../services/api';
 import { calculateDistance } from '../utils/distanceUtils';
 import { useMasjidLocation } from '../hooks/useMasjidLocation';
+import { useAccurateGPS } from '../hooks/useAccurateGPS';
 
 const formatDateParam = (date) => {
   if (!date) return null;
@@ -15,15 +16,23 @@ const formatDateParam = (date) => {
 };
 
 const StaffCheckIn = ({ user }) => {
-  const [location, setLocation] = useState({ latitude: null, longitude: null });
-  const [locationError, setLocationError] = useState(null);
+  // Use accurate GPS hook with coordinate averaging
+  const { location, locationError, checkingLocation, getCurrentLocation } = useAccurateGPS({
+    sampleCount: 5, // Collect 5 readings for averaging
+    sampleInterval: 1000, // 1 second between readings
+    maxAccuracy: 50, // Accept readings with accuracy up to 50m
+    timeout: 15000, // 15 second timeout
+    autoGetOnMount: false // Don't auto-get on mount, wait for user action
+  });
+
   const [todayStatus, setTodayStatus] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [checkingLocation, setCheckingLocation] = useState(false);
   const [history, setHistory] = useState([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [distance, setDistance] = useState(null);
   const [isWithinRadius, setIsWithinRadius] = useState(false);
+  const [effectiveRadius, setEffectiveRadius] = useState(null);
+  const [accuracyBuffer, setAccuracyBuffer] = useState(null);
   const [staffList, setStaffList] = useState([]);
   const [staffListLoading, setStaffListLoading] = useState(false);
   const activeRangeRef = useRef({
@@ -140,100 +149,6 @@ const StaffCheckIn = ({ user }) => {
     refetchOnFocus: true
   });
 
-  // Get current location
-  const getCurrentLocation = useCallback(() => {
-    setCheckingLocation(true);
-    setLocationError(null);
-
-    if (!navigator.geolocation) {
-      setLocationError('Geolocation is not supported by your browser');
-      setCheckingLocation(false);
-      return;
-    }
-
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        setLocation({
-          latitude: position.coords.latitude,
-          longitude: position.coords.longitude
-        });
-        setLocationError(null);
-        setCheckingLocation(false);
-      },
-      (error) => {
-        let errorMessage = 'Unable to retrieve your location';
-        switch (error.code) {
-          case error.PERMISSION_DENIED:
-            errorMessage = 'Location access denied. Please enable location permissions.';
-            break;
-          case error.POSITION_UNAVAILABLE:
-            errorMessage = 'Location information unavailable.';
-            break;
-          case error.TIMEOUT:
-            errorMessage = 'Location request timed out.';
-            break;
-          default:
-            errorMessage = 'An unknown error occurred.';
-            break;
-        }
-        setLocationError(errorMessage);
-        setCheckingLocation(false);
-      },
-      {
-        enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 0
-      }
-    );
-  }, []);
-
-  useEffect(() => {
-    let permissionStatusRef;
-
-    const requestInitialLocation = async () => {
-      if (!navigator.geolocation) {
-        setLocationError('Geolocation is not supported by your browser');
-        return;
-      }
-
-      try {
-        if (navigator.permissions && navigator.permissions.query) {
-          const permissionStatus = await navigator.permissions.query({ name: 'geolocation' });
-          permissionStatusRef = permissionStatus;
-
-          if (permissionStatus.state === 'granted') {
-            getCurrentLocation();
-          } else if (permissionStatus.state === 'prompt') {
-            getCurrentLocation();
-          } else if (permissionStatus.state === 'denied') {
-            setLocationError('Location permission denied. Sila benarkan akses lokasi untuk menggunakan fungsi check-in.');
-          }
-
-          permissionStatus.onchange = () => {
-            if (permissionStatus.state === 'granted') {
-              getCurrentLocation();
-            } else if (permissionStatus.state === 'denied') {
-              setLocationError('Location permission denied. Sila benarkan akses lokasi untuk menggunakan fungsi check-in.');
-            }
-          };
-        } else {
-          getCurrentLocation();
-        }
-      } catch (error) {
-        console.error('Permission query failed:', error);
-        getCurrentLocation();
-      }
-    };
-
-    requestInitialLocation();
-
-    return () => {
-      if (permissionStatusRef) {
-        permissionStatusRef.onchange = null;
-      }
-    };
-  }, [getCurrentLocation]);
-
   // Get today's status
   const fetchTodayStatus = async () => {
     try {
@@ -309,7 +224,8 @@ const StaffCheckIn = ({ user }) => {
     try {
       const response = await staffCheckInAPI.checkIn({
         latitude: location.latitude,
-        longitude: location.longitude
+        longitude: location.longitude,
+        accuracy: location.accuracy ?? null
       });
 
       if (response.success) {
@@ -340,7 +256,8 @@ const StaffCheckIn = ({ user }) => {
     try {
       const response = await staffCheckInAPI.checkOut({
         latitude: location.latitude,
-        longitude: location.longitude
+        longitude: location.longitude,
+        accuracy: location.accuracy ?? null
       });
 
       if (response.success) {
@@ -394,10 +311,20 @@ const StaffCheckIn = ({ user }) => {
         masjidLocation.longitude
       );
       setDistance(calculatedDistance);
-      setIsWithinRadius(calculatedDistance <= masjidLocation.radius);
+      const baseRadius = Number(masjidLocation.radius) || 0;
+      const buffer =
+        location.accuracy && baseRadius > 0
+          ? Math.min(Math.max(location.accuracy, 0), baseRadius * 2)
+          : 0;
+      const allowedRadius = baseRadius + buffer;
+      setAccuracyBuffer(buffer);
+      setEffectiveRadius(allowedRadius);
+      setIsWithinRadius(calculatedDistance <= allowedRadius);
     } else {
       setDistance(null);
       setIsWithinRadius(false);
+      setAccuracyBuffer(null);
+      setEffectiveRadius(null);
     }
   }, [location, masjidLocation]);
 
@@ -653,6 +580,11 @@ const StaffCheckIn = ({ user }) => {
                 <p className={`text-sm ${isWithinRadius ? 'text-green-800' : 'text-red-800'}`}>
                   <strong>Longitude:</strong> {location.longitude.toFixed(6)}
                 </p>
+                {location.accuracy && (
+                  <p className={`text-xs mt-1 ${isWithinRadius ? 'text-green-700' : 'text-red-700'}`}>
+                    <strong>Accuracy:</strong> ±{Math.round(location.accuracy)}m (Averaged from multiple readings)
+                  </p>
+                )}
               </div>
               {distance !== null && (
                 <div className={`ml-4 ${isWithinRadius ? 'text-green-600' : 'text-red-600'}`}>
@@ -665,15 +597,36 @@ const StaffCheckIn = ({ user }) => {
               )}
             </div>
             {distance !== null && (
-              <p className={`text-sm mt-2 font-medium ${
-                isWithinRadius ? 'text-green-800' : 'text-red-800'
-              }`}>
-                <strong>Distance from Masjid:</strong> {Math.round(distance)}m
-                {isWithinRadius 
-                  ? ` (Within ${masjidLocation.radius}m radius)` 
-                  : ` (Outside ${masjidLocation.radius}m radius)`
-                }
-              </p>
+              <>
+                <p
+                  className={`text-sm mt-2 font-medium ${
+                    isWithinRadius ? 'text-green-800' : 'text-red-800'
+                  }`}
+                >
+                  <strong>Distance from Masjid:</strong> {Math.round(distance)}m{' '}
+                  {isWithinRadius
+                    ? `(Within effective radius ${Math.round(
+                        effectiveRadius || masjidLocation.radius || 0
+                      )}m${
+                        accuracyBuffer
+                          ? `, accuracy buffer ±${Math.round(accuracyBuffer)}m applied`
+                          : ''
+                      })`
+                    : `(Outside base radius ${Math.round(masjidLocation.radius || 0)}m${
+                        accuracyBuffer
+                          ? `, even after applying accuracy buffer ±${Math.round(
+                              accuracyBuffer
+                            )}m (effective ${Math.round(effectiveRadius || 0)}m)`
+                          : ''
+                      })`}
+                </p>
+                {accuracyBuffer ? (
+                  <p className="text-xs mt-1 text-gray-600">
+                    Accuracy buffer applied to radius because GPS accuracy was ±
+                    {Math.round(location.accuracy || accuracyBuffer)}m.
+                  </p>
+                ) : null}
+              </>
             )}
           </div>
         )}

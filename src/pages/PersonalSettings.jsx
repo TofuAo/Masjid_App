@@ -1,13 +1,15 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
-import { Settings as SettingsIcon, Palette, Globe, Type, Save, Sparkles } from 'lucide-react';
+import { Settings as SettingsIcon, Palette, Globe, Type, Save, Sparkles, Key, Mail, Phone, User, Eye, EyeOff } from 'lucide-react';
 import { usePreferences } from '../hooks/usePreferences';
 import { useLanguage } from '../contexts/LanguageContext';
 import { seasonalSchemes, getScheme } from '../config/seasonalSchemes';
 import SeasonalElements from '../components/seasonal/SeasonalElements';
+import { authAPI } from '../services/api';
+import { formatPhone, isValidPhone } from '../utils/phoneUtils';
 
 const PersonalSettings = () => {
   const location = useLocation();
@@ -16,6 +18,41 @@ const PersonalSettings = () => {
   const [saving, setSaving] = useState(false);
   const [localPreferences, setLocalPreferences] = useState(() => savedPreferences);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  
+  // Get current user from localStorage
+  const [currentUser, setCurrentUser] = useState(null);
+  
+  useEffect(() => {
+    const storedUser = localStorage.getItem('user');
+    if (storedUser) {
+      try {
+        setCurrentUser(JSON.parse(storedUser));
+      } catch (e) {
+        console.error('Error parsing user:', e);
+      }
+    }
+  }, []);
+  
+  // Profile management state
+  const [profileData, setProfileData] = useState({
+    email: '',
+    telefon: ''
+  });
+  const [loadingProfile, setLoadingProfile] = useState(true);
+  const [savingProfile, setSavingProfile] = useState(false);
+  
+  // Password change state
+  const [passwordData, setPasswordData] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: ''
+  });
+  const [showPasswords, setShowPasswords] = useState({
+    current: false,
+    new: false,
+    confirm: false
+  });
+  const [changingPassword, setChangingPassword] = useState(false);
 
   // Sync local preferences when saved preferences change (from backend)
   // Use a ref to track initial mount and prevent unnecessary updates
@@ -48,6 +85,117 @@ const PersonalSettings = () => {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Only run cleanup on unmount, not on every change
+
+  // Fetch user profile data
+  useEffect(() => {
+    fetchProfile();
+  }, []);
+
+  const fetchProfile = async () => {
+    try {
+      setLoadingProfile(true);
+      const response = await authAPI.getProfile();
+      if (response?.success && response?.data) {
+        setProfileData({
+          email: response.data.email || '',
+          telefon: response.data.telefon || ''
+        });
+      }
+    } catch (error) {
+      console.error('Failed to fetch profile:', error);
+    } finally {
+      setLoadingProfile(false);
+    }
+  };
+
+  const handleProfileUpdate = async () => {
+    try {
+      // Validate email if provided
+      if (profileData.email && profileData.email.trim() !== '') {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(profileData.email.trim())) {
+          toast.error('Sila masukkan emel yang sah.');
+          return;
+        }
+      }
+
+      // Validate phone if provided
+      if (profileData.telefon && profileData.telefon.trim() !== '') {
+        if (!isValidPhone(profileData.telefon)) {
+          toast.error('Sila masukkan nombor telefon yang sah (contoh: 012-3456789).');
+          return;
+        }
+      }
+
+      setSavingProfile(true);
+      const response = await authAPI.updateProfile({
+        email: profileData.email.trim() || null,
+        telefon: profileData.telefon.trim() || null
+      });
+
+      if (response?.success) {
+        toast.success('Profil berjaya dikemaskini.');
+        // Update user in localStorage
+        const storedUser = localStorage.getItem('user');
+        if (storedUser) {
+          const user = JSON.parse(storedUser);
+          user.email = response.data?.email || profileData.email;
+          user.telefon = response.data?.telefon || profileData.telefon;
+          localStorage.setItem('user', JSON.stringify(user));
+        }
+      } else {
+        toast.error(response?.message || 'Gagal mengemaskini profil.');
+      }
+    } catch (error) {
+      console.error('Failed to update profile:', error);
+      toast.error(error?.response?.data?.message || 'Gagal mengemaskini profil.');
+    } finally {
+      setSavingProfile(false);
+    }
+  };
+
+  const handlePasswordChange = async () => {
+    try {
+      // Validate passwords
+      if (!passwordData.currentPassword) {
+        toast.error('Sila masukkan kata laluan semasa.');
+        return;
+      }
+
+      if (!passwordData.newPassword || passwordData.newPassword.length < 6) {
+        toast.error('Kata laluan baru mesti sekurang-kurangnya 6 aksara.');
+        return;
+      }
+
+      if (passwordData.newPassword !== passwordData.confirmPassword) {
+        toast.error('Kata laluan baru dan pengesahan tidak sepadan.');
+        return;
+      }
+
+      setChangingPassword(true);
+      const response = await authAPI.changePassword({
+        currentPassword: passwordData.currentPassword,
+        newPassword: passwordData.newPassword
+      });
+
+      if (response?.success) {
+        toast.success('Kata laluan berjaya ditukar.');
+        // Clear password fields
+        setPasswordData({
+          currentPassword: '',
+          newPassword: '',
+          confirmPassword: ''
+        });
+      } else {
+        toast.error(response?.message || 'Gagal menukar kata laluan.');
+      }
+    } catch (error) {
+      console.error('Failed to change password:', error);
+      toast.error(error?.response?.data?.message || 'Gagal menukar kata laluan.');
+    } finally {
+      setChangingPassword(false);
+    }
+  };
 
   const handleSave = async () => {
     try {
@@ -328,16 +476,204 @@ const PersonalSettings = () => {
         </Card.Content>
       </Card>
 
+      {/* Profile Management Section */}
+      <Card>
+        <Card.Header>
+          <Card.Title className="flex items-center space-x-2">
+            <User className="w-5 h-5" />
+            <span>{localPreferences.language === 'ms' ? 'Maklumat Profil' : 'Profile Information'}</span>
+          </Card.Title>
+        </Card.Header>
+        <Card.Content>
+          {loadingProfile ? (
+            <div className="flex items-center justify-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600"></div>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {/* Email Field */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  <Mail className="w-4 h-4 inline mr-1" />
+                  {localPreferences.language === 'ms' ? 'Emel' : 'Email'}
+                </label>
+                <input
+                  type="email"
+                  value={profileData.email}
+                  onChange={(e) => setProfileData({ ...profileData, email: e.target.value })}
+                  placeholder={localPreferences.language === 'ms' ? 'contoh@email.com' : 'example@email.com'}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                />
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  {localPreferences.language === 'ms'
+                    ? 'Emel digunakan untuk reset kata laluan dan notifikasi.'
+                    : 'Email is used for password reset and notifications.'}
+                </p>
+              </div>
+
+              {/* Phone Field */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  <Phone className="w-4 h-4 inline mr-1" />
+                  {localPreferences.language === 'ms' ? 'Nombor Telefon' : 'Phone Number'}
+                </label>
+                <input
+                  type="tel"
+                  value={profileData.telefon}
+                  onChange={(e) => {
+                    const formatted = formatPhone(e.target.value, true);
+                    setProfileData({ ...profileData, telefon: formatted });
+                  }}
+                  placeholder={localPreferences.language === 'ms' ? '012-3456789' : '012-3456789'}
+                  maxLength={12}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                />
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  {localPreferences.language === 'ms'
+                    ? 'Nombor telefon digunakan untuk reset kata laluan melalui SMS.'
+                    : 'Phone number is used for password reset via SMS.'}
+                </p>
+              </div>
+
+              <Button
+                onClick={handleProfileUpdate}
+                disabled={savingProfile}
+                className="w-full"
+              >
+                <Save className="w-4 h-4 mr-2" />
+                {savingProfile 
+                  ? (localPreferences.language === 'ms' ? 'Menyimpan...' : 'Saving...')
+                  : (localPreferences.language === 'ms' ? 'Simpan Profil' : 'Save Profile')
+                }
+              </Button>
+            </div>
+          )}
+        </Card.Content>
+      </Card>
+
+      {/* Password Change Section - Hidden for students */}
+      {currentUser && currentUser.role !== 'student' && (
+        <Card>
+          <Card.Header>
+            <Card.Title className="flex items-center space-x-2">
+              <Key className="w-5 h-5" />
+              <span>{localPreferences.language === 'ms' ? 'Tukar Kata Laluan' : 'Change Password'}</span>
+            </Card.Title>
+          </Card.Header>
+          <Card.Content>
+          <div className="space-y-4">
+            {/* Current Password */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                {localPreferences.language === 'ms' ? 'Kata Laluan Semasa' : 'Current Password'}
+              </label>
+              <div className="relative">
+                <input
+                  type={showPasswords.current ? 'text' : 'password'}
+                  value={passwordData.currentPassword}
+                  onChange={(e) => setPasswordData({ ...passwordData, currentPassword: e.target.value })}
+                  placeholder={localPreferences.language === 'ms' ? 'Masukkan kata laluan semasa' : 'Enter current password'}
+                  className="w-full px-3 py-2 pr-10 border border-gray-300 dark:border-gray-700 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPasswords({ ...showPasswords, current: !showPasswords.current })}
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                >
+                  {showPasswords.current ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                </button>
+              </div>
+            </div>
+
+            {/* New Password */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                {localPreferences.language === 'ms' ? 'Kata Laluan Baru' : 'New Password'}
+              </label>
+              <div className="relative">
+                <input
+                  type={showPasswords.new ? 'text' : 'password'}
+                  value={passwordData.newPassword}
+                  onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
+                  placeholder={localPreferences.language === 'ms' ? 'Sekurang-kurangnya 6 aksara' : 'At least 6 characters'}
+                  className="w-full px-3 py-2 pr-10 border border-gray-300 dark:border-gray-700 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPasswords({ ...showPasswords, new: !showPasswords.new })}
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                >
+                  {showPasswords.new ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                </button>
+              </div>
+            </div>
+
+            {/* Confirm Password */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                {localPreferences.language === 'ms' ? 'Sahkan Kata Laluan Baru' : 'Confirm New Password'}
+              </label>
+              <div className="relative">
+                <input
+                  type={showPasswords.confirm ? 'text' : 'password'}
+                  value={passwordData.confirmPassword}
+                  onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
+                  placeholder={localPreferences.language === 'ms' ? 'Masukkan semula kata laluan baru' : 'Re-enter new password'}
+                  className="w-full px-3 py-2 pr-10 border border-gray-300 dark:border-gray-700 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPasswords({ ...showPasswords, confirm: !showPasswords.confirm })}
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                >
+                  {showPasswords.confirm ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                </button>
+              </div>
+            </div>
+
+            {passwordData.newPassword && passwordData.confirmPassword && passwordData.newPassword !== passwordData.confirmPassword && (
+              <p className="text-red-600 text-sm">{localPreferences.language === 'ms' ? 'Kata laluan tidak sepadan.' : 'Passwords do not match.'}</p>
+            )}
+
+            <Button
+              onClick={handlePasswordChange}
+              disabled={changingPassword || !passwordData.currentPassword || !passwordData.newPassword || passwordData.newPassword !== passwordData.confirmPassword || passwordData.newPassword.length < 6}
+              className="w-full"
+            >
+              <Key className="w-4 h-4 mr-2" />
+              {changingPassword
+                ? (localPreferences.language === 'ms' ? 'Menukar...' : 'Changing...')
+                : (localPreferences.language === 'ms' ? 'Tukar Kata Laluan' : 'Change Password')
+              }
+            </Button>
+          </div>
+        </Card.Content>
+      </Card>
+      )}
+
       {/* Save Button */}
       <Card>
         <Card.Content>
           <Button
             onClick={handleSave}
-            disabled={saving}
+            disabled={saving || !hasUnsavedChanges}
             className="w-full"
+            style={saving || !hasUnsavedChanges ? { 
+              opacity: saving ? 0.9 : 1,
+              color: 'white',
+              cursor: saving ? 'not-allowed' : 'default'
+            } : {}}
           >
-            <Save className="w-4 h-4 mr-2" />
-            {saving ? t('loading') : t('saveSettings')}
+            <Save className="w-4 h-4 mr-2" style={{ opacity: 1 }} />
+            <span style={{ 
+              fontWeight: 600, 
+              fontSize: '0.9375rem',
+              letterSpacing: '0.025em',
+              opacity: 1,
+              color: 'white'
+            }}>
+              {saving ? t('loading') : t('saveSettings')}
+            </span>
           </Button>
         </Card.Content>
       </Card>

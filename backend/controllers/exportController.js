@@ -1,4 +1,10 @@
-import { createAndUploadDatabaseBackup, getBackupHistory } from '../services/databaseBackupService.js'
+import {
+  createAndUploadDatabaseBackup,
+  getBackupHistory,
+  createAndUploadYearlyArchive,
+  getBackupLogByFileName,
+  verifyBackupFileIntegrity,
+} from '../services/databaseBackupService.js'
 import path from 'path'
 import fs from 'fs'
 import { fileURLToPath } from 'url'
@@ -65,6 +71,70 @@ export async function downloadExportFile(req, res) {
   } catch (error) {
     console.error('Failed to download export file:', error)
     res.status(500).json({ success: false, message: 'Failed to download export file' })
+  }
+}
+
+export async function verifyBackupIntegrity(req, res) {
+  try {
+    const { fileName } = req.body;
+    if (!fileName) {
+      return res.status(400).json({
+        success: false,
+        message: 'File name is required to verify a backup.',
+      });
+    }
+
+    const log = await getBackupLogByFileName(fileName);
+    if (!log) {
+      return res.status(404).json({
+        success: false,
+        message: 'Backup log not found for the specified file.',
+      });
+    }
+
+    const verification = await verifyBackupFileIntegrity({
+      fileName,
+      expectedSignature: log.integritySignature,
+      expectedChecksum: log.fileChecksum,
+    });
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        ...log,
+        verification,
+      },
+    });
+  } catch (error) {
+    console.error('Failed to verify backup integrity:', error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to verify backup integrity',
+    });
+  }
+}
+
+export async function archiveYearData(req, res) {
+  try {
+    const result = await createAndUploadYearlyArchive({
+      triggerType: req.body?.triggerType || 'yearly-archive',
+      triggeredBy: req.user?.ic || req.user?.user_ic || req.user?.id || null,
+    })
+
+    return res.status(200).json({
+      success: true,
+      message: 'Yearly archive generated and uploaded successfully.',
+      data: {
+        ...result,
+        createdAt: new Date().toISOString(),
+      },
+    })
+  } catch (error) {
+    console.error('Failed to archive year data:', error)
+    return res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to archive year data',
+    })
   }
 }
 

@@ -333,7 +333,40 @@ const ResultFormModal = ({
                 <label className="form-label">Peperiksaan</label>
                 <select name="exam_id" value={formData.exam_id} onChange={handleChange} required className="input-mosque w-full">
                   <option value="">Pilih Peperiksaan</option>
-                  {exams.map(e => <option key={e.id} value={e.id}>{e.subject || e.nama_exam || `Exam ${e.id}`}</option>)}
+                  {(() => {
+                    // Get selected student's class
+                    const selectedStudent = students.find(s => {
+                      const studentIc = s.ic || s.IC || s.user_ic || '';
+                      return studentIc === formData.student_ic;
+                    });
+                    const studentClassId = selectedStudent?.kelas_id || selectedStudent?.class_id;
+                    
+                    // Filter exams: if student is selected, show only their class exams; otherwise show all unique subjects
+                    let filteredExams = exams;
+                    if (studentClassId) {
+                      filteredExams = exams.filter(e => e.class_id === studentClassId);
+                    } else {
+                      // Group by subject to show unique exam types
+                      const seenSubjects = new Set();
+                      filteredExams = exams.filter(e => {
+                        const subject = e.subject || e.nama_exam || '';
+                        if (seenSubjects.has(subject)) {
+                          return false;
+                        }
+                        seenSubjects.add(subject);
+                        return true;
+                      });
+                    }
+                    
+                    return filteredExams.map(e => {
+                      const subject = e.subject || e.nama_exam || `Exam ${e.id}`;
+                      const className = e.nama_kelas || e.class_name || '';
+                      const displayText = className ? `${subject} - ${className}` : subject;
+                      return (
+                        <option key={e.id} value={e.id}>{displayText}</option>
+                      );
+                    });
+                  })()}
                 </select>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">

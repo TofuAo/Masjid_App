@@ -38,7 +38,7 @@ export const getAllFees = async (req, res) => {
           GROUP BY student_ic
         ) f2 ON f1.student_ic = f2.student_ic AND f1.created_at = f2.max_created
       ) f ON u.ic = f.student_ic
-      WHERE u.role = 'student' AND u.status = 'aktif'
+      WHERE u.role = 'student'
     `;
     
     const queryParams = [];
@@ -46,6 +46,12 @@ export const getAllFees = async (req, res) => {
     // If user is a student, only show their own fees
     if (req.user && req.user.role === 'student') {
       query += ` AND u.ic = ?`;
+      queryParams.push(req.user.ic);
+    }
+    
+    // If user is a teacher, only show fees for students in their classes
+    if (req.user && req.user.role === 'teacher') {
+      query += ` AND c.guru_ic = ?`;
       queryParams.push(req.user.ic);
     }
 
@@ -94,13 +100,20 @@ export const getAllFees = async (req, res) => {
       SELECT COUNT(*) as total
       FROM users u
       LEFT JOIN students s ON u.ic = s.user_ic
-      WHERE u.role = 'student' AND u.status = 'aktif'
+      LEFT JOIN classes c ON s.kelas_id = c.id
+      WHERE u.role = 'student'
     `;
     const countParams = [];
 
     // If user is a student, only count their own fees
     if (req.user && req.user.role === 'student') {
       countQuery += ` AND u.ic = ?`;
+      countParams.push(req.user.ic);
+    }
+    
+    // If user is a teacher, only count fees for students in their classes
+    if (req.user && req.user.role === 'teacher') {
+      countQuery += ` AND c.guru_ic = ?`;
       countParams.push(req.user.ic);
     }
     
@@ -164,7 +177,7 @@ export const getFeeById = async (req, res) => {
     const { id } = req.params;
 
     let query = `
-      SELECT f.*, u.nama as pelajar_nama, u.ic as pelajar_ic, c.nama_kelas
+      SELECT f.*, u.nama as pelajar_nama, u.ic as pelajar_ic, c.nama_kelas, c.guru_ic
       FROM fees f
       JOIN users u ON f.student_ic = u.ic
       LEFT JOIN students s ON u.ic = s.user_ic
@@ -182,9 +195,27 @@ export const getFeeById = async (req, res) => {
       });
     }
     
+    const fee = fees[0];
+    
+    // If user is a student, only allow access to their own fee
+    if (req.user && req.user.role === 'student' && fee.pelajar_ic !== req.user.ic) {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied: You can only view your own fee records'
+      });
+    }
+    
+    // If user is a teacher, only allow access to fees for students in their classes
+    if (req.user && req.user.role === 'teacher' && fee.guru_ic !== req.user.ic) {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied: You can only view fee records for students in your classes'
+      });
+    }
+    
     res.json({
       success: true,
-      data: fees[0]
+      data: fee
     });
   } catch (error) {
     console.error('Get fee error:', error);

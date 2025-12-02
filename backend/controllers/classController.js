@@ -4,7 +4,7 @@ import { safeParseJSON } from '../utils/jsonParser.js';
 
 export const getAllClasses = async (req, res) => {
   try {
-    const { search, status, guru_id, page = 1, limit } = req.query;
+    const { search, guru_id, page = 1, limit } = req.query;
     // Default to a large limit to show all classes, or use pagination if specified
     const defaultLimit = limit ? parseInt(limit) : 1000;
     
@@ -39,11 +39,6 @@ export const getAllClasses = async (req, res) => {
       query += ` AND (c.nama_kelas LIKE ? OR u.nama LIKE ?)`;
       const searchTerm = `%${search}%`;
       queryParams.push(searchTerm, searchTerm);
-    }
-    
-    if (status) {
-      query += ` AND c.status = ?`;
-      queryParams.push(status);
     }
     
     if (guru_id) {
@@ -81,11 +76,6 @@ export const getAllClasses = async (req, res) => {
       countQuery += ` AND (c.nama_kelas LIKE ?)`;
       const searchTerm = `%${search}%`;
       countParams.push(searchTerm);
-    }
-    
-    if (status) {
-      countQuery += ` AND c.status = ?`;
-      countParams.push(status);
     }
     
     if (guru_id) {
@@ -188,7 +178,7 @@ export const createClass = async (req, res) => {
       });
     }
 
-    const { nama_kelas, level, sessions, yuran, guru_ic, kapasiti, status } = req.body;
+    const { nama_kelas, level, sessions, yuran, guru_ic, kapasiti } = req.body;
     
     // Check if teacher exists and is active
     const [teachers] = await pool.execute(
@@ -208,8 +198,8 @@ export const createClass = async (req, res) => {
     
     const [result] = await pool.execute(`
       INSERT INTO classes (nama_kelas, level, sessions, yuran, guru_ic, kapasiti, status)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
-    `, [nama_kelas, level, sessionsJson, yuran, guru_ic, kapasiti, status]);
+      VALUES (?, ?, ?, ?, ?, ?, 'aktif')
+    `, [nama_kelas, level, sessionsJson, yuran, guru_ic, kapasiti]);
     
     const [newClass] = await pool.execute(`
       SELECT c.id, c.nama_kelas, c.level, c.sessions, c.yuran, c.guru_ic, c.kapasiti, c.status, u.nama as guru_nama
@@ -249,7 +239,7 @@ export const updateClass = async (req, res) => {
     }
 
     const { id } = req.params;
-    const { nama_kelas, level, sessions, yuran, guru_ic, kapasiti, status } = req.body;
+    const { nama_kelas, level, sessions, yuran, guru_ic, kapasiti } = req.body;
     
     // Check if class exists
     const [existingClasses] = await pool.execute(
@@ -282,9 +272,9 @@ export const updateClass = async (req, res) => {
     
     await pool.execute(`
       UPDATE classes 
-      SET nama_kelas = ?, level = ?, sessions = ?, yuran = ?, guru_ic = ?, kapasiti = ?, status = ?, updated_at = CURRENT_TIMESTAMP
+      SET nama_kelas = ?, level = ?, sessions = ?, yuran = ?, guru_ic = ?, kapasiti = ?, updated_at = CURRENT_TIMESTAMP
       WHERE id = ?
-    `, [nama_kelas, level, sessionsJson, yuran, guru_ic, kapasiti, status, id]);
+    `, [nama_kelas, level, sessionsJson, yuran, guru_ic, kapasiti, id]);
     
     const [updatedClass] = await pool.execute(`
       SELECT c.id, c.nama_kelas, c.level, c.sessions, c.yuran, c.guru_ic, c.kapasiti, c.status, u.nama as guru_nama
@@ -371,9 +361,6 @@ export const getClassStats = async (req, res) => {
     const [stats] = await pool.execute(`
       SELECT 
         COUNT(*) as total,
-        SUM(CASE WHEN status = 'aktif' THEN 1 ELSE 0 END) as aktif,
-        SUM(CASE WHEN status = 'tidak_aktif' THEN 1 ELSE 0 END) as tidak_aktif,
-        SUM(CASE WHEN status = 'penuh' THEN 1 ELSE 0 END) as penuh,
         COALESCE(SUM(kapasiti), 0) as total_kapasiti,
         COALESCE(AVG(yuran), 0) as average_yuran
       FROM classes
@@ -420,11 +407,10 @@ export const getDashboardStats = async (req, res) => {
     `);
     const feesOutstanding = feesRows[0]?.count || 0;
 
-    // Kelas Aktif (active classes)
+    // Kelas Aktif (active classes - count all classes)
     const [classRows] = await pool.execute(`
       SELECT COUNT(*) as count
       FROM classes
-      WHERE status = 'aktif'
     `);
     const classesActive = classRows[0]?.count || 0;
 

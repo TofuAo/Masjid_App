@@ -4,20 +4,13 @@ import Button from '../ui/Button';
 import { formatIC, isValidIC } from '../../utils/icUtils';
 import { formatPhone, isValidPhone } from '../../utils/phoneUtils';
 
-const statusOptions = [
-  { value: 'aktif', label: 'Aktif' },
-  { value: 'tidak_aktif', label: 'Tidak Aktif' },
-  { value: 'cuti', label: 'Cuti' },
-  { value: 'pending', label: 'Menunggu' }
-];
-
 const initialState = {
   nama: '',
   ic: '',
   email: '',
   telefon: '',
   password: '',
-  status: 'aktif'
+  role: 'pic'
 };
 
 const PicUserForm = ({ picUser, onSubmit, onCancel }) => {
@@ -32,7 +25,7 @@ const PicUserForm = ({ picUser, onSubmit, onCancel }) => {
         email: picUser.email || '',
         telefon: picUser.telefon ? formatPhone(picUser.telefon, true) : '',
         password: '',
-        status: picUser.status || 'aktif'
+        role: picUser.role || 'pic'
       });
     } else {
       setFormData(initialState);
@@ -100,16 +93,25 @@ const PicUserForm = ({ picUser, onSubmit, onCancel }) => {
       nama: formData.nama.trim(),
       ic: normalizedIc,
       email: formData.email?.trim() || null,
-      telefon: normalizedPhone,
-      status: formData.status
+      telefon: normalizedPhone
     };
 
     if (formData.password && formData.password.trim()) {
       payload.password = formData.password.trim();
     }
 
+    // Only include role if editing (not creating new PIC)
+    if (picUser && formData.role) {
+      payload.role = formData.role;
+    }
+
+    // Remove IC from payload when editing (IC is in URL params)
     if (picUser) {
+      console.log('[PicUserForm] Editing PIC user:', picUser.ic, 'Payload (before removing IC):', payload);
       delete payload.ic;
+      console.log('[PicUserForm] Payload (after removing IC):', payload);
+    } else {
+      console.log('[PicUserForm] Creating new PIC user. Payload:', payload);
     }
 
     if (typeof onSubmit === 'function') {
@@ -202,6 +204,7 @@ const PicUserForm = ({ picUser, onSubmit, onCancel }) => {
                 name="password"
                 value={formData.password}
                 onChange={handleChange}
+                autoComplete={picUser ? "new-password" : "current-password"}
                 className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500 ${
                   errors.password ? 'border-red-500' : 'border-gray-300'
                 }`}
@@ -210,21 +213,25 @@ const PicUserForm = ({ picUser, onSubmit, onCancel }) => {
               {errors.password && <p className="mt-1 text-xs text-red-500">{errors.password}</p>}
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
-              <select
-                name="status"
-                value={formData.status}
-                onChange={handleChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              >
-                {statusOptions.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </div>
+            {picUser && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Peranan
+                </label>
+                <select
+                  name="role"
+                  value={formData.role}
+                  onChange={handleChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                >
+                  <option value="pic">PIC</option>
+                  <option value="admin">Admin</option>
+                </select>
+                <p className="mt-1 text-xs text-gray-500">
+                  Tukar peranan PIC kepada Admin. Nota: Had maksimum 5 admin.
+                </p>
+              </div>
+            )}
           </div>
 
           <div className="flex justify-end">

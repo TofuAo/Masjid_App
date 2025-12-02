@@ -1,15 +1,7 @@
 import React from 'react';
 import Card from '../ui/Card';
 import Button from '../ui/Button';
-import Badge from '../ui/Badge';
 import { Plus, Edit, Trash2, Mail, Phone, Shield } from 'lucide-react';
-
-const statusConfig = {
-  aktif: { label: 'Aktif', variant: 'success' },
-  tidak_aktif: { label: 'Tidak Aktif', variant: 'warning' },
-  cuti: { label: 'Cuti', variant: 'secondary' },
-  pending: { label: 'Menunggu', variant: 'outline' }
-};
 
 const PicUserList = ({ picUsers = [], onAdd, onEdit, onDelete, loading }) => {
   return (
@@ -36,7 +28,6 @@ const PicUserList = ({ picUsers = [], onAdd, onEdit, onDelete, loading }) => {
         ) : (
           <div className="space-y-4">
             {picUsers.map((pic) => {
-              const status = statusConfig[pic.status] || statusConfig.pending;
               return (
                 <div
                   key={pic.ic}
@@ -46,7 +37,6 @@ const PicUserList = ({ picUsers = [], onAdd, onEdit, onDelete, loading }) => {
                     <div>
                       <div className="flex items-center gap-2">
                         <h3 className="text-lg font-semibold text-gray-900">{pic.nama}</h3>
-                        <Badge variant={status.variant}>{status.label}</Badge>
                       </div>
                       <p className="text-sm text-gray-500 mt-1">IC: {pic.ic_formatted || pic.ic}</p>
                       <div className="flex flex-wrap items-center gap-3 mt-2 text-sm text-gray-600">

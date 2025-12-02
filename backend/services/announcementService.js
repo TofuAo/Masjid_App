@@ -49,6 +49,23 @@ export const createAnnouncementRecord = async (
 
   const author = authorIc ?? actorIc;
 
+  // Automatically set dates when status is 'published' (when admin approves)
+  let finalStartDate = formatDateTimeForDB(start_date);
+  let finalEndDate = formatDateTimeForDB(end_date);
+  
+  if (status === 'published') {
+    // Set start_date to current time when published
+    if (!finalStartDate) {
+      finalStartDate = new Date().toISOString().slice(0, 19).replace('T', ' ');
+    }
+    // Set end_date to 1 month from now if not provided
+    if (!finalEndDate) {
+      const oneMonthLater = new Date();
+      oneMonthLater.setMonth(oneMonthLater.getMonth() + 1);
+      finalEndDate = oneMonthLater.toISOString().slice(0, 19).replace('T', ' ');
+    }
+  }
+
   const [result] = await executor.execute(
     `
     INSERT INTO announcements (title, content, author_ic, status, priority, target_audience, start_date, end_date)
@@ -61,8 +78,8 @@ export const createAnnouncementRecord = async (
       status,
       priority,
       target_audience,
-      formatDateTimeForDB(start_date),
-      formatDateTimeForDB(end_date)
+      finalStartDate,
+      finalEndDate
     ]
   );
 
@@ -123,6 +140,32 @@ export const updateAnnouncementRecord = async (id, input, { actorIc, requestedBy
     actorIc
   });
 
+  // Automatically set dates when status changes to 'published' (when admin approves)
+  let finalStartDate = formatDateTimeForDB(input.start_date);
+  let finalEndDate = formatDateTimeForDB(input.end_date);
+  
+  // If status is changing to 'published' and dates are not set, auto-set them
+  if (input.status === 'published' && previousRecord.status !== 'published') {
+    // Set start_date to current time when published
+    if (!finalStartDate) {
+      finalStartDate = new Date().toISOString().slice(0, 19).replace('T', ' ');
+    }
+    // Set end_date to 1 month from now if not provided
+    if (!finalEndDate) {
+      const oneMonthLater = new Date();
+      oneMonthLater.setMonth(oneMonthLater.getMonth() + 1);
+      finalEndDate = oneMonthLater.toISOString().slice(0, 19).replace('T', ' ');
+    }
+  } else if (input.status === 'published' && previousRecord.status === 'published') {
+    // If already published, keep existing dates if new ones not provided
+    if (!finalStartDate) {
+      finalStartDate = previousRecord.start_date;
+    }
+    if (!finalEndDate) {
+      finalEndDate = previousRecord.end_date;
+    }
+  }
+
   await executor.execute(
     `
     UPDATE announcements
@@ -135,8 +178,8 @@ export const updateAnnouncementRecord = async (id, input, { actorIc, requestedBy
       input.status,
       input.priority,
       input.target_audience,
-      formatDateTimeForDB(input.start_date),
-      formatDateTimeForDB(input.end_date),
+      finalStartDate,
+      finalEndDate,
       id
     ]
   );

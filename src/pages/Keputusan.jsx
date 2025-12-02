@@ -4,6 +4,7 @@ import { resultsAPI, examsAPI, settingsAPI } from '../services/api';
 import { toast } from 'react-toastify';
 import ResultFormModal from '../components/keputusan/ResultFormModal';
 import GradeSettingsModal from '../components/keputusan/GradeSettingsModal';
+import StudentResultDetailModal from '../components/keputusan/StudentResultDetailModal';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import Badge from '../components/ui/Badge';
@@ -15,6 +16,7 @@ import {
   extractGradeOptions,
   getStatusFromGrade
 } from '../utils/grades';
+import { getEffectiveRole } from '../utils/userRoles';
 
 const Keputusan = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -29,6 +31,8 @@ const Keputusan = () => {
   const [gradeRanges, setGradeRanges] = useState(() => cloneDefaultGradeRanges());
   const [isGradeModalOpen, setIsGradeModalOpen] = useState(false);
   const [gradeRangesLoading, setGradeRangesLoading] = useState(false);
+  const [isStudentDetailModalOpen, setIsStudentDetailModalOpen] = useState(false);
+  const [selectedStudent, setSelectedStudent] = useState(null);
 
   const {
     items: keputusan,
@@ -95,8 +99,9 @@ const Keputusan = () => {
 
   useEffect(() => {
     const user = JSON.parse(localStorage.getItem('user'));
-    if (user && user.role) {
-      setUserRole(user.role);
+    const effectiveRole = getEffectiveRole(user);
+    if (effectiveRole) {
+      setUserRole(effectiveRole);
     }
     fetchResults({
       search: searchTerm,
@@ -157,6 +162,15 @@ const Keputusan = () => {
         toast.error('Gagal memadam keputusan.');
       }
     }
+  };
+
+  const handleViewStudentResults = (result) => {
+    setSelectedStudent({
+      ic: result.pelajar_ic || result.student_ic,
+      name: result.pelajar_nama,
+      className: result.kelas_nama
+    });
+    setIsStudentDetailModalOpen(true);
   };
 
   const getGradeBadge = (gred) => {
@@ -241,12 +255,26 @@ const Keputusan = () => {
                   className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                 >
                   <option value="semua">Semua Peperiksaan</option>
-                  {(Array.isArray(exams) ? exams : []).map(exam => (
-                    <option key={exam.id} value={exam.id}>
-                      {exam.subject || exam.nama_exam || `Exam ${exam.id}`}
-                      {exam.tarikh_exam ? ` (${new Date(exam.tarikh_exam).toLocaleDateString('ms-MY')})` : ''}
-                    </option>
-                  ))}
+                  {(() => {
+                    const examsArray = Array.isArray(exams) ? exams : [];
+                    // Filter to show only unique exam subjects
+                    const seenSubjects = new Set();
+                    const uniqueExams = examsArray.filter(exam => {
+                      const subject = exam.subject || exam.nama_exam || '';
+                      if (!subject || seenSubjects.has(subject)) {
+                        return false;
+                      }
+                      seenSubjects.add(subject);
+                      return true;
+                    });
+                    
+                    return uniqueExams.map(exam => (
+                      <option key={exam.id} value={exam.id}>
+                        {exam.subject || exam.nama_exam || `Exam ${exam.id}`}
+                        {exam.tarikh_exam ? ` (${new Date(exam.tarikh_exam).toLocaleDateString('ms-MY')})` : ''}
+                      </option>
+                    ));
+                  })()}
                 </select>
               </div>
               <div className="flex items-center space-x-2">
@@ -298,12 +326,14 @@ const Keputusan = () => {
                   </Button>
                 </div>
               )}
-              <div className="flex items-end">
-                <Button className="flex items-center" onClick={handleAddResult}>
-                  <Plus className="w-4 h-4 mr-2" />
-                  Tambah Keputusan
-                </Button>
-              </div>
+              {userRole !== 'teacher' && (
+                <div className="flex items-end">
+                  <Button className="flex items-center" onClick={handleAddResult}>
+                    <Plus className="w-4 h-4 mr-2" />
+                    Tambah Keputusan
+                  </Button>
+                </div>
+              )}
             </div>
           )}
         </Card.Content>
@@ -415,9 +445,6 @@ const Keputusan = () => {
                       Kelas
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-black uppercase tracking-wider">
-                      Peperiksaan
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-black uppercase tracking-wider">
                       Tarikh Peperiksaan
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-black uppercase tracking-wider">
@@ -432,7 +459,7 @@ const Keputusan = () => {
                       <th className="px-6 py-3 text-left text-xs font-medium text-black uppercase tracking-wider">
                         Catatan
                       </th>
-                      {userRole !== 'student' && (
+                      {userRole !== 'student' && userRole !== 'teacher' && (
                         <th className="px-6 py-3 text-left text-xs font-medium text-black uppercase tracking-wider">
                           Tindakan
                         </th>
@@ -441,17 +468,18 @@ const Keputusan = () => {
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {keputusanWithStatus.map((k) => (
-                    <tr key={k.id} className="hover:bg-gray-50">
+                    <tr 
+                      key={k.id} 
+                      className="hover:bg-gray-50 cursor-pointer"
+                      onClick={() => handleViewStudentResults(k)}
+                    >
                       {userRole !== 'student' && (
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm font-medium text-black">{k.pelajar_nama}</div>
                         </td>
                       )}
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-black">
-                        {k.kelas_nama}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-black">
-                        {k.peperiksaan_nama || k.exam_subject || k.subject || '-'}
+                        {k.kelas_nama || '-'}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-black">
                         {k.exam_date ? new Date(k.exam_date).toLocaleDateString('ms-MY') : '-'}
@@ -468,8 +496,8 @@ const Keputusan = () => {
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-black">
                         {k.catatan || '-'}
                       </td>
-                      {userRole !== 'student' && (
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                      {userRole !== 'student' && userRole !== 'teacher' && (
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium" onClick={(e) => e.stopPropagation()}>
                           <div className="flex items-center space-x-2">
                             <Button variant="ghost" size="sm" onClick={() => handleEditResult(k)}>
                               Edit
@@ -510,6 +538,16 @@ const Keputusan = () => {
         initialRanges={gradeRanges}
         onSave={handleSaveGradeRanges}
         isSaving={gradeRangesLoading}
+      />
+      <StudentResultDetailModal
+        isOpen={isStudentDetailModalOpen}
+        onClose={() => {
+          setIsStudentDetailModalOpen(false);
+          setSelectedStudent(null);
+        }}
+        studentIc={selectedStudent?.ic}
+        studentName={selectedStudent?.name}
+        className={selectedStudent?.className}
       />
     </div>
   );
