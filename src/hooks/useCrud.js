@@ -168,9 +168,15 @@ const useCrud = (api, itemName) => {
   };
 
   const resolveIdentifier = (item) => {
-    if (!item) return undefined;
+    if (!item) {
+      console.warn('[useCrud] resolveIdentifier called with null/undefined item.');
+      return undefined;
+    }
     
-    // For PIC and Admin, prioritize IC field and ensure it's valid
+    console.log('[useCrud] Resolving identifier for item:', item);
+    console.log('[useCrud] Available keys:', Object.keys(item));
+    
+    // For Teachers, PIC, and Admin, prioritize IC field and ensure it's valid
     const candidateKeys = ['id', 'ic', 'IC', 'uuid', 'slug', 'code'];
     
     // First, try to find a valid IC (must be 12 digits)
@@ -184,14 +190,18 @@ const useCrud = (api, itemName) => {
           const normalized = value.replace(/\D/g, '');
           // Only return if it's a valid 12-digit IC
           if (normalized.length === 12) {
+            console.log(`[useCrud] Resolved identifier '${key}': ${value}`);
             // Return the original value (with or without hyphens) as the API can handle both
             // The API uses encodeURIComponent and normalizeICMiddleware, so it will handle any format
             return value;
+          } else {
+            console.log(`[useCrud] IC field '${key}' found but not 12 digits: ${value} (normalized: ${normalized})`);
           }
         } else if (typeof value === 'number') {
           // Handle numeric IC (shouldn't happen, but just in case)
           const normalized = String(value).replace(/\D/g, '');
           if (normalized.length === 12) {
+            console.log(`[useCrud] Resolved identifier '${key}': ${value}`);
             return String(value);
           }
         }
@@ -203,7 +213,10 @@ const useCrud = (api, itemName) => {
     if (item.ic !== undefined && item.ic !== null && item.ic !== '') {
       const normalized = String(item.ic).replace(/\D/g, '');
       if (normalized.length === 12) {
+        console.log(`[useCrud] Resolved identifier from ic field: ${item.ic}`);
         return item.ic; // Return original format
+      } else {
+        console.warn(`[useCrud] IC field found but not 12 digits: ${item.ic} (normalized: ${normalized})`);
       }
     }
     
@@ -219,16 +232,22 @@ const useCrud = (api, itemName) => {
           const trimmed = value.trim();
           // Reject if it starts with 'T' followed by digits (likely phone number)
           if (/^T\d+$/.test(trimmed)) {
+            console.log(`[useCrud] Rejecting phone number format: ${trimmed}`);
             continue;
           }
           // Reject if it's a phone number pattern (starts with 01 and has 9-10 digits)
           if (/^01\d{7,9}$/.test(trimmed.replace(/\D/g, ''))) {
+            console.log(`[useCrud] Rejecting phone number pattern: ${trimmed}`);
             continue;
           }
         }
+        console.log(`[useCrud] Resolved identifier '${key}': ${value}`);
         return value;
       }
     }
+    
+    console.error('[useCrud] Failed to resolve identifier for item:', item);
+    console.error('[useCrud] Available keys:', Object.keys(item));
     return undefined;
   };
 
@@ -236,9 +255,33 @@ const useCrud = (api, itemName) => {
     try {
       let response;
       if (currentItem) {
-        const identifier = resolveIdentifier(currentItem);
+        // Try to get identifier from currentItem first
+        let identifier = resolveIdentifier(currentItem);
+        
+        // If not found in currentItem, try to get from formData (for teachers, IC is in formData)
+        if (identifier === undefined && formData.ic) {
+          const normalizedIC = String(formData.ic).replace(/\D/g, '');
+          if (normalizedIC.length === 12) {
+            identifier = formData.ic; // Use the IC from formData
+            console.log(`[${itemName}] Using IC from formData:`, identifier);
+          }
+        }
+        
+        // If still not found, try to get from currentItem's IC or IC field
+        if (identifier === undefined) {
+          const itemIC = currentItem.ic || currentItem.IC;
+          if (itemIC) {
+            const normalizedIC = String(itemIC).replace(/\D/g, '');
+            if (normalizedIC.length === 12) {
+              identifier = itemIC;
+              console.log(`[${itemName}] Using IC from currentItem:`, identifier);
+            }
+          }
+        }
+        
         if (identifier === undefined) {
           console.error(`[${itemName}] Failed to resolve identifier. Current item:`, currentItem);
+          console.error(`[${itemName}] Form data:`, formData);
           console.error(`[${itemName}] Available keys:`, Object.keys(currentItem || {}));
           throw new Error('Identifier untuk kemaskini tidak ditemui. Sila pastikan item mempunyai IC atau ID yang sah.');
         }
