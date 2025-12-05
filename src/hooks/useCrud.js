@@ -170,27 +170,47 @@ const useCrud = (api, itemName) => {
   const resolveIdentifier = (item) => {
     if (!item) return undefined;
     
-    // For teachers/students, prioritize IC field and ensure it's valid
+    // For PIC and Admin, prioritize IC field and ensure it's valid
     const candidateKeys = ['id', 'ic', 'IC', 'uuid', 'slug', 'code'];
     
     // First, try to find a valid IC (must be 12 digits)
-    for (const key of ['ic', 'IC']) {
+    // Check both 'ic' and 'IC' fields, and also check if ic_formatted exists
+    const icFields = ['ic', 'IC', 'ic_formatted'];
+    
+    for (const key of icFields) {
       const value = item[key];
       if (value !== undefined && value !== null && value !== '') {
         if (typeof value === 'string') {
           const normalized = value.replace(/\D/g, '');
           // Only return if it's a valid 12-digit IC
           if (normalized.length === 12) {
-            return normalized;
+            // Return the original value (with or without hyphens) as the API can handle both
+            // The API uses encodeURIComponent and normalizeICMiddleware, so it will handle any format
+            return value;
+          }
+        } else if (typeof value === 'number') {
+          // Handle numeric IC (shouldn't happen, but just in case)
+          const normalized = String(value).replace(/\D/g, '');
+          if (normalized.length === 12) {
+            return String(value);
           }
         }
+      }
+    }
+    
+    // If we have an ic field but it wasn't 12 digits, try to extract from it anyway
+    // This handles edge cases where the IC might be in an unexpected format
+    if (item.ic !== undefined && item.ic !== null && item.ic !== '') {
+      const normalized = String(item.ic).replace(/\D/g, '');
+      if (normalized.length === 12) {
+        return item.ic; // Return original format
       }
     }
     
     // If no valid IC found, try other identifier fields
     for (const key of candidateKeys) {
       // Skip IC fields (already checked above)
-      if (key === 'ic' || key === 'IC') continue;
+      if (key === 'ic' || key === 'IC' || key === 'ic_formatted') continue;
       
       const value = item[key];
       if (value !== undefined && value !== null && value !== '') {
@@ -218,7 +238,9 @@ const useCrud = (api, itemName) => {
       if (currentItem) {
         const identifier = resolveIdentifier(currentItem);
         if (identifier === undefined) {
-          throw new Error('Identifier untuk kemaskini tidak ditemui.');
+          console.error(`[${itemName}] Failed to resolve identifier. Current item:`, currentItem);
+          console.error(`[${itemName}] Available keys:`, Object.keys(currentItem || {}));
+          throw new Error('Identifier untuk kemaskini tidak ditemui. Sila pastikan item mempunyai IC atau ID yang sah.');
         }
         console.log(`[${itemName}] Updating with identifier:`, identifier, 'Current item:', currentItem);
         response = await api.update(identifier, formData);
