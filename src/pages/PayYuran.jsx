@@ -174,8 +174,8 @@ const PayYuran = () => {
       </Card>
 
       {/* Payment Method Selection - Show initially if not paid */}
-      {/* QR Code Payment (Default/Direct) - Show when user selects direct QR or skips payment method */}
-      {!isPaid && !showPaymentMethodSelection && !showPaymentCheckout && showDirectQR && (
+      {/* Show payment method selection by default when fee is not paid and nothing else is selected */}
+      {!isPaid && !showPaymentMethodSelection && !showPaymentCheckout && !showDirectQR && (
         <Card>
           <Card.Header>
             <Card.Title className="flex items-center space-x-2">

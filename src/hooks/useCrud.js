@@ -295,6 +295,8 @@ const useCrud = (api, itemName) => {
         showSuccessWithUndo(`Maklumat ${itemName} berjaya dikemaskini!`, response);
         }
       } else {
+        // Log the formData being sent for debugging
+        console.log(`[${itemName}] Creating with formData:`, JSON.stringify(formData, null, 2));
         response = await api.create(formData);
         if (response?.pendingApproval) {
           toast.info(

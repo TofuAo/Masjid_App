@@ -29,10 +29,10 @@ export const initiateToyyibPayPayment = async (req, res) => {
 
     const {
       amount,
-      description = 'Payment',
-      customerName,
-      customerEmail,
-      customerPhone,
+      description: initialDescription = 'Payment',
+      customerName: initialCustomerName,
+      customerEmail: initialCustomerEmail,
+      customerPhone: initialCustomerPhone,
       feeId // Optional: Link payment to a fee (yuran) record
     } = req.body;
 
@@ -46,6 +46,12 @@ export const initiateToyyibPayPayment = async (req, res) => {
 
     // Get user information
     const userIc = req.user?.ic || req.user?.userId || 'anonymous';
+    
+    // Initialize variables that can be modified
+    let description = initialDescription;
+    let customerName = initialCustomerName;
+    let customerEmail = initialCustomerEmail;
+    let customerPhone = initialCustomerPhone;
     
     // If feeId is provided, fetch fee details for description
     let feeDetails = null;

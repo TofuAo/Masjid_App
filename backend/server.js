@@ -19,6 +19,7 @@ import { ensureIbRole } from './utils/ensureIbRole.js';
 import { scheduleAnnualDatabaseBackup } from './schedulers/annualBackupJob.js';
 import { scheduleAnnouncementCleanup } from './schedulers/announcementCleanupJob.js';
 import { schedulePaymentReconciliation } from './schedulers/paymentReconciliationJob.js';
+import { scheduleAdminActionCleanup } from './schedulers/adminActionCleanupJob.js';
 import { errorHandler } from './middleware/errorHandler.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -344,6 +345,7 @@ Promise.all([ensureCheckInTable(), ensurePendingStatus(), ensurePendingPicTable(
     scheduleAnnualDatabaseBackup();
     scheduleAnnouncementCleanup();
     schedulePaymentReconciliation();
+    scheduleAdminActionCleanup();
   });
 }).catch(err => {
   console.error('Failed to ensure database tables:', err);
@@ -358,6 +360,7 @@ Promise.all([ensureCheckInTable(), ensurePendingStatus(), ensurePendingPicTable(
     scheduleAnnualDatabaseBackup();
     scheduleAnnouncementCleanup();
     schedulePaymentReconciliation();
+    scheduleAdminActionCleanup();
   });
 });
 

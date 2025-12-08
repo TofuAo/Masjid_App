@@ -8,6 +8,7 @@ import { sendPasswordResetSMS, generateResetCode } from '../utils/smsService.js'
 import { formatICWithHyphen } from '../utils/icFormatter.js';
 import { logFailedAuthAttempt, logSuspiciousActivity } from '../middleware/securityLogger.js';
 import { fetchUserRoles } from '../services/userRoleService.js';
+import { createSnapshot, SNAPSHOT_TTL_HOURS } from '../utils/adminActionSnapshots.js';
 
 const SESSION_DURATION_SECONDS = 24 * 60 * 60; // 24 hours
 const normalizeIcForQuery = (ic) => {
@@ -1417,6 +1418,24 @@ export const approveRegistration = async (req, res) => {
       return res.status(400).json({
         success: false,
         message: `User status is ${user.status}, not pending. Cannot approve.`
+      });
+    }
+
+    // Log admin action before update
+    if (req.user && req.user.role === 'admin') {
+      await createSnapshot({
+        entityType: 'student',
+        entityId: 0,
+        entityIdentifier: user_ic,
+        operation: 'update',
+        data: { ...user, previous_status: 'pending' },
+        metadata: {
+          title: user.nama,
+          nama: user.nama,
+          operationLabel: 'Kelulusan pendaftaran',
+          redirectPath: '/pending-registrations'
+        },
+        actorIc: req.user.ic
       });
     }
 

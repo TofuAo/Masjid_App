@@ -13,9 +13,8 @@ import { authenticateToken, requireRole } from '../middleware/auth.js';
 
 const router = express.Router();
 
-// All IB routes require authentication and IB or admin role
+// All IB routes require authentication
 router.use(authenticateToken);
-router.use(requireRole(['ib', 'admin'])); // Allow IB users and admins
 
 // Validation for confirmation
 const confirmValidation = [
@@ -35,20 +34,21 @@ const confirmValidation = [
     .withMessage('Nota tidak boleh melebihi 1000 aksara')
 ];
 
-// Get available monthly reports for confirmation
-router.get('/reports', getAvailableMonthlyReports);
+// Get available monthly reports for confirmation (IB and admin can view)
+router.get('/reports', requireRole(['ib', 'admin']), getAvailableMonthlyReports);
 
-// Get detailed monthly payment report
-router.get('/report', getMonthlyPaymentReport);
+// Get detailed monthly payment report (IB and admin can view)
+router.get('/report', requireRole(['ib', 'admin']), getMonthlyPaymentReport);
 
-// Confirm monthly payment report
-router.post('/confirm', confirmValidation, confirmMonthlyPayment);
+// Confirm monthly payment report - IB ONLY
+router.post('/confirm', requireRole(['ib']), confirmValidation, confirmMonthlyPayment);
 
-// Get class documents for confirmation
-router.get('/class-documents', getClassDocuments);
+// Get class documents for confirmation (IB and admin can view)
+router.get('/class-documents', requireRole(['ib', 'admin']), getClassDocuments);
 
-// Bulk confirm class attendance documents
-router.post('/confirm-class-attendance', 
+// Bulk confirm class attendance documents - IB ONLY
+router.post('/confirm-class-attendance',
+  requireRole(['ib']),
   body('class_id').isInt().withMessage('Class ID must be a valid integer'),
   body('exclude_student_ics').optional().isArray().withMessage('Exclude student ICs must be an array'),
   body('notes').optional().isString().withMessage('Notes must be a string'),
@@ -56,8 +56,9 @@ router.post('/confirm-class-attendance',
   confirmClassAttendance
 );
 
-// Bulk confirm class fee documents
+// Bulk confirm class fee documents - IB ONLY
 router.post('/confirm-class-fees',
+  requireRole(['ib']),
   body('class_id').isInt().withMessage('Class ID must be a valid integer'),
   body('exclude_student_ics').optional().isArray().withMessage('Exclude student ICs must be an array'),
   body('notes').optional().isString().withMessage('Notes must be a string'),
@@ -65,8 +66,9 @@ router.post('/confirm-class-fees',
   confirmClassFees
 );
 
-// Approve payments by date range
+// Approve payments by date range - IB ONLY
 router.post('/approve-payments-by-date',
+  requireRole(['ib']),
   body('bulan').notEmpty().withMessage('Bulan diperlukan'),
   body('tahun').isInt({ min: 2020, max: 2100 }).withMessage('Tahun mesti antara 2020 dan 2100'),
   body('start_date').optional().isISO8601().withMessage('Start date must be a valid date'),

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import useCrud from '../hooks/useCrud';
 import { teachersAPI } from '../services/api';
 import GuruList from '../components/guru/GuruList';
@@ -6,9 +7,11 @@ import GuruForm from '../components/guru/GuruForm';
 import Card from '../components/ui/Card';
 import Badge from '../components/ui/Badge';
 import BackButton from '../components/ui/BackButton';
-import { GraduationCap } from 'lucide-react';
+import { GraduationCap, ExternalLink, Edit, BookOpen } from 'lucide-react';
 
 const Guru = () => {
+  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [user, setUser] = React.useState(null);
   
   React.useEffect(() => {
@@ -79,6 +82,20 @@ const Guru = () => {
     fetchItems({ limit: 1000 });
   }, [fetchItems]);
 
+  // Handle URL parameter for viewing a specific teacher
+  useEffect(() => {
+    const viewIC = searchParams.get('view');
+    if (viewIC && gurus.length > 0) {
+      const guru = gurus.find(g => g.ic === viewIC || g.IC === viewIC);
+      if (guru) {
+        handleView(guru);
+        // Remove the view parameter from URL after setting the view
+        setSearchParams({}, { replace: true });
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, gurus.length, setSearchParams]);
+
   // Fetch stats from API
   useEffect(() => {
     const fetchStats = async () => {
@@ -119,6 +136,7 @@ const Guru = () => {
             guru={selectedGuru}
             onSubmit={handleSubmit}
             onCancel={handleCancel}
+            user={user}
           />
         );
       case 'detail':
@@ -244,36 +262,67 @@ const Guru = () => {
                   {(user?.role === 'admin' || user?.role === 'pic') && (
                     <Card>
                       <Card.Header>
-                        <Card.Title>Kelas yang Diampu</Card.Title>
+                        <div className="flex items-center justify-between">
+                          <Card.Title>Kelas yang Diampu ({classes.length})</Card.Title>
+                          <button
+                            onClick={() => handleEdit(displayGuru)}
+                            className="text-sm text-emerald-600 hover:text-emerald-700 flex items-center gap-1"
+                            title="Edit kelas untuk guru ini"
+                          >
+                            <Edit size={16} />
+                            <span>Edit Kelas</span>
+                          </button>
+                        </div>
                       </Card.Header>
                       <Card.Content>
                         <div className="space-y-2">
                           {classes.length > 0 ? (
                             classes.map((kelas, index) => (
-                              <div key={kelas.id || index} className="p-3 bg-emerald-50 border border-emerald-200 rounded-lg hover:bg-emerald-100 transition-colors">
-                                <div className="font-medium text-sm text-emerald-900">
-                                  {kelas.nama_kelas || kelas.class_name || `Kelas ${index + 1}`}
-                                </div>
-                                <div className="text-xs text-emerald-700 mt-1">
-                                  {kelas.level && <span>Level: {kelas.level}</span>}
-                                  {kelas.level && kelas.student_count !== undefined && <span className="mx-2">•</span>}
-                                  <span>{Number(kelas.student_count) || 0} pelajar</span>
-                                  {kelas.kapasiti && (
-                                    <>
-                                      <span className="mx-2">•</span>
-                                      <span>Kapasiti: {kelas.kapasiti}</span>
-                                    </>
-                                  )}
-                                </div>
-                                {kelas.jadual && (
-                                  <div className="text-xs text-gray-600 mt-1">
-                                    {kelas.jadual}
+                              <div 
+                                key={kelas.id || index} 
+                                className="p-3 bg-emerald-50 border border-emerald-200 rounded-lg hover:bg-emerald-100 transition-colors cursor-pointer group"
+                                onClick={() => navigate(`/kelas?view=${kelas.id}`)}
+                              >
+                                <div className="flex items-start justify-between">
+                                  <div className="flex-1">
+                                    <div className="font-medium text-sm text-emerald-900 flex items-center gap-2">
+                                      <BookOpen size={14} />
+                                      {kelas.nama_kelas || kelas.class_name || `Kelas ${index + 1}`}
+                                    </div>
+                                    <div className="text-xs text-emerald-700 mt-1">
+                                      {kelas.level && <span>Level: {kelas.level}</span>}
+                                      {kelas.level && kelas.student_count !== undefined && <span className="mx-2">•</span>}
+                                      <span>{Number(kelas.student_count) || 0} pelajar</span>
+                                      {kelas.kapasiti && (
+                                        <>
+                                          <span className="mx-2">•</span>
+                                          <span>Kapasiti: {kelas.kapasiti}</span>
+                                        </>
+                                      )}
+                                    </div>
+                                    {kelas.jadual && (
+                                      <div className="text-xs text-gray-600 mt-1">
+                                        {kelas.jadual}
+                                      </div>
+                                    )}
                                   </div>
-                                )}
+                                  <ExternalLink 
+                                    size={14} 
+                                    className="text-emerald-600 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 ml-2" 
+                                  />
+                                </div>
                               </div>
                             ))
                           ) : (
-                            <p className="text-sm text-gray-500">Tiada kelas yang diampu</p>
+                            <div className="text-center py-4">
+                              <p className="text-sm text-gray-500 mb-2">Tiada kelas yang diampu</p>
+                              <button
+                                onClick={() => handleEdit(displayGuru)}
+                                className="text-sm text-emerald-600 hover:text-emerald-700 underline"
+                              >
+                                Klik untuk menambah kelas
+                              </button>
+                            </div>
                           )}
                         </div>
                       </Card.Content>

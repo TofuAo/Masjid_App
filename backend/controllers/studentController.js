@@ -34,7 +34,7 @@ export const getAllStudents = async (req, res) => {
 
     // Only show active students (those with entries in students table, not archived)
     let query = `
-      SELECT u.ic, u.nama, u.email, u.telefon, u.umur, s.kelas_id, s.tarikh_daftar, c.nama_kelas
+      SELECT u.ic, u.nama, u.email, u.telefon, u.umur, u.alamat, s.kelas_id, s.tarikh_daftar, c.nama_kelas
       FROM users u
       INNER JOIN students s ON u.ic = s.user_ic
       LEFT JOIN classes c ON s.kelas_id = c.id

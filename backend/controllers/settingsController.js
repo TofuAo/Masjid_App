@@ -6,6 +6,7 @@ import {
   DEFAULT_MASJID_LONGITUDE,
   DEFAULT_MASJID_RADIUS
 } from '../utils/masjidLocation.js';
+import { createSnapshot, SNAPSHOT_TTL_HOURS } from '../utils/adminActionSnapshots.js';
 
 const MASJID_SETTING_LIMITS = {
   masjid_latitude: { min: -90, max: 90, fixed: 6 },
@@ -121,9 +122,26 @@ export const updateSetting = async (req, res) => {
 
     // Check if setting exists
     const [existing] = await pool.execute(
-      'SELECT id FROM settings WHERE setting_key = ?',
+      'SELECT * FROM settings WHERE setting_key = ?',
       [key]
     );
+
+    // Log admin action before update
+    if (existing.length > 0 && req.user && req.user.role === 'admin') {
+      await createSnapshot({
+        entityType: 'settings',
+        entityId: existing[0].id,
+        entityIdentifier: key,
+        operation: 'update',
+        data: existing[0],
+        metadata: {
+          title: key,
+          operationLabel: 'Kemas kini tetapan',
+          redirectPath: '/settings'
+        },
+        actorIc: req.user.ic
+      });
+    }
 
     if (existing.length > 0) {
       // Update existing setting
@@ -133,10 +151,27 @@ export const updateSetting = async (req, res) => {
       );
     } else {
       // Create new setting
-      await pool.execute(
+      const [insertResult] = await pool.execute(
         'INSERT INTO settings (setting_key, setting_value, setting_type, description) VALUES (?, ?, ?, ?)',
         [key, value, type || 'text', description]
       );
+      
+      // Log admin action for new setting
+      if (req.user && req.user.role === 'admin') {
+        await createSnapshot({
+          entityType: 'settings',
+          entityId: insertResult.insertId,
+          entityIdentifier: key,
+          operation: 'create',
+          data: { setting_key: key, setting_value: value, setting_type: type || 'text', description },
+          metadata: {
+            title: key,
+            operationLabel: 'Cipta tetapan',
+            redirectPath: '/settings'
+          },
+          actorIc: req.user.ic
+        });
+      }
     }
 
     // Return updated setting

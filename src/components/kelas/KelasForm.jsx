@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, X } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Plus, X, ExternalLink } from 'lucide-react';
 import BackButton from '../ui/BackButton';
 
 const LEVEL_OPTIONS = ["Asas", "Tahsin Asas", "Pertengahan", "Lanjutan", "Tahsin Lanjutan", "Talaqi"];
@@ -7,6 +8,7 @@ const SESSION_DAYS_OPTIONS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Fri
 const SESSION_TIMES_OPTIONS = ["05:00 - 06:30", "21:00 - 22:30"];
 
 const KelasForm = ({ kelas = null, onSubmit, onCancel, gurus = [] }) => {
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
     nama_kelas: '', level: '', sessions: [{ days: [], times: [] }], yuran: 0, guru_ic: '', kapasiti: 1
   });
@@ -14,10 +16,45 @@ const KelasForm = ({ kelas = null, onSubmit, onCancel, gurus = [] }) => {
 
   useEffect(() => {
     if (kelas) {
+      // Parse and normalize sessions to ensure they have days and times arrays
+      let normalizedSessions = [{ days: [], times: [] }];
+      
+      if (kelas.sessions) {
+        let sessions = kelas.sessions;
+        
+        // If sessions is a string, parse it
+        if (typeof sessions === 'string') {
+          try {
+            sessions = JSON.parse(sessions);
+          } catch (e) {
+            sessions = [];
+          }
+        }
+        
+        // Ensure sessions is an array
+        if (Array.isArray(sessions) && sessions.length > 0) {
+          normalizedSessions = sessions.map(session => {
+            // Handle string sessions
+            if (typeof session === 'string') {
+              return { days: [], times: [] };
+            }
+            // Handle object sessions - ensure days and times are arrays
+            if (session && typeof session === 'object') {
+              return {
+                days: Array.isArray(session.days) ? session.days : [],
+                times: Array.isArray(session.times) ? session.times : []
+              };
+            }
+            // Fallback for any other type
+            return { days: [], times: [] };
+          });
+        }
+      }
+      
       setFormData({
         nama_kelas: kelas.nama_kelas || '',
         level: kelas.level || '',
-        sessions: kelas.sessions || [{ days: [], times: [] }],
+        sessions: normalizedSessions,
         yuran: parseFloat(kelas.yuran) || 0,
         guru_ic: kelas.guru_ic || '',
         kapasiti: parseInt(kelas.kapasiti) || 1
@@ -54,6 +91,14 @@ const KelasForm = ({ kelas = null, onSubmit, onCancel, gurus = [] }) => {
   const handleSessionChange = (sessionIndex, field, value) => {
     setFormData(prev => {
       const newSessions = [...prev.sessions];
+      // Ensure the session exists and has the field as an array
+      if (!newSessions[sessionIndex]) {
+        newSessions[sessionIndex] = { days: [], times: [] };
+      }
+      if (!Array.isArray(newSessions[sessionIndex][field])) {
+        newSessions[sessionIndex][field] = [];
+      }
+      
       const currentValues = newSessions[sessionIndex][field];
       if (currentValues.includes(value)) {
         newSessions[sessionIndex][field] = currentValues.filter(v => v !== value);
@@ -87,7 +132,11 @@ const KelasForm = ({ kelas = null, onSubmit, onCancel, gurus = [] }) => {
       errors.push('Sila tambah sekurang-kurangnya satu sesi.');
     }
     
-    const invalidSessions = formData.sessions.filter(s => s.days.length === 0 || s.times.length === 0);
+    const invalidSessions = formData.sessions.filter(s => {
+      const days = Array.isArray(s.days) ? s.days : [];
+      const times = Array.isArray(s.times) ? s.times : [];
+      return days.length === 0 || times.length === 0;
+    });
     if (invalidSessions.length > 0) {
       errors.push('Sila pastikan setiap sesi mempunyai sekurang-kurangnya satu hari dan satu masa.');
     }
@@ -107,7 +156,11 @@ const KelasForm = ({ kelas = null, onSubmit, onCancel, gurus = [] }) => {
       if (formData.sessions.length === 0) {
         errorObj.sessions = 'Sekurang-kurangnya satu sesi diperlukan';
       } else {
-        const invalidSessions = formData.sessions.filter(s => s.days.length === 0 || s.times.length === 0);
+        const invalidSessions = formData.sessions.filter(s => {
+          const days = Array.isArray(s.days) ? s.days : [];
+          const times = Array.isArray(s.times) ? s.times : [];
+          return days.length === 0 || times.length === 0;
+        });
         if (invalidSessions.length > 0) {
           errorObj.sessions = 'Setiap sesi mesti mempunyai hari dan masa';
         }
@@ -150,7 +203,20 @@ const KelasForm = ({ kelas = null, onSubmit, onCancel, gurus = [] }) => {
               <input type="number" name="kapasiti" value={formData.kapasiti} onChange={handleChange} required min="1" max="50" className="input-mosque w-full" placeholder="Masukkan kapasiti" />
             </div>
             <div>
-              <label className="form-label">Guru *</label>
+              <div className="flex items-center justify-between mb-1">
+                <label className="form-label">Guru *</label>
+                {formData.guru_ic && (
+                  <button
+                    type="button"
+                    onClick={() => navigate(`/guru?view=${encodeURIComponent(formData.guru_ic)}`)}
+                    className="text-xs text-emerald-600 hover:text-emerald-700 flex items-center gap-1"
+                    title="Lihat maklumat guru"
+                  >
+                    <ExternalLink size={12} />
+                    <span>Lihat Guru</span>
+                  </button>
+                )}
+              </div>
               <select name="guru_ic" value={formData.guru_ic} onChange={handleChange} required className={`input-mosque w-full ${validationErrors.guru_ic ? 'border-red-500' : ''}`}>
                 <option value="">Pilih Guru</option>
                 {gurus.map(g => <option key={g.ic} value={g.ic}>{g.nama}</option>)}
@@ -192,24 +258,24 @@ const KelasForm = ({ kelas = null, onSubmit, onCancel, gurus = [] }) => {
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                         {SESSION_DAYS_OPTIONS.map(day => (
                           <label key={day} className="flex items-center space-x-2 cursor-pointer">
-                            <input type="checkbox" checked={session.days.includes(day)} onChange={() => handleSessionChange(index, 'days', day)} className="h-4 w-4 rounded border-mosque-neutral-300 text-mosque-primary-600 focus:ring-mosque-primary-500" />
+                            <input type="checkbox" checked={Array.isArray(session.days) && session.days.includes(day)} onChange={() => handleSessionChange(index, 'days', day)} className="h-4 w-4 rounded border-mosque-neutral-300 text-mosque-primary-600 focus:ring-mosque-primary-500" />
                             <span className="text-sm text-mosque-neutral-700">{day}</span>
                           </label>
                         ))}
                       </div>
-                      {session.days.length === 0 && <p className="form-error mt-2">Sila pilih sekurang-kurangnya satu hari.</p>}
+                      {(!Array.isArray(session.days) || session.days.length === 0) && <p className="form-error mt-2">Sila pilih sekurang-kurangnya satu hari.</p>}
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-mosque-neutral-700 mb-2">Masa</label>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                         {SESSION_TIMES_OPTIONS.map(time => (
                           <label key={time} className="flex items-center space-x-2 cursor-pointer">
-                            <input type="checkbox" checked={session.times.includes(time)} onChange={() => handleSessionChange(index, 'times', time)} className="h-4 w-4 rounded border-mosque-neutral-300 text-mosque-primary-600 focus:ring-mosque-primary-500" />
+                            <input type="checkbox" checked={Array.isArray(session.times) && session.times.includes(time)} onChange={() => handleSessionChange(index, 'times', time)} className="h-4 w-4 rounded border-mosque-neutral-300 text-mosque-primary-600 focus:ring-mosque-primary-500" />
                             <span className="text-sm text-mosque-neutral-700">{time}</span>
                           </label>
                         ))}
                       </div>
-                      {session.times.length === 0 && <p className="form-error mt-2">Sila pilih sekurang-kurangnya satu masa.</p>}
+                      {(!Array.isArray(session.times) || session.times.length === 0) && <p className="form-error mt-2">Sila pilih sekurang-kurangnya satu masa.</p>}
                     </div>
                   </div>
                 </div>
@@ -219,7 +285,11 @@ const KelasForm = ({ kelas = null, onSubmit, onCancel, gurus = [] }) => {
         </div>
         <div className="p-6 bg-mosque-neutral-50 border-t border-mosque-primary-100 flex justify-end space-x-4">
           <button type="button" className="btn-mosque-secondary" onClick={onCancel}>Batal</button>
-          <button type="submit" className="btn-mosque-primary" disabled={formData.sessions.some(s => s.days.length === 0 || s.times.length === 0)}>
+          <button type="submit" className="btn-mosque-primary" disabled={formData.sessions.some(s => {
+            const days = Array.isArray(s.days) ? s.days : [];
+            const times = Array.isArray(s.times) ? s.times : [];
+            return days.length === 0 || times.length === 0;
+          })}>
             {kelas ? 'Kemaskini' : 'Tambah Kelas'}
           </button>
         </div>

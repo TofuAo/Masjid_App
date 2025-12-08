@@ -2,8 +2,9 @@ import React, { useState, useEffect } from 'react';
 import BackButton from '../ui/BackButton';
 import { formatIC } from '../../utils/icUtils';
 import { formatPhone } from '../../utils/phoneUtils';
+import { classesAPI } from '../../services/api';
 
-const GuruForm = ({ guru = null, onSubmit, onCancel }) => {
+const GuruForm = ({ guru = null, onSubmit, onCancel, user = null }) => {
   const kepakaranOptions = [
     'Al-Quran', 'Tajwid', 'Fardhu Ain', 'Hadith', 'Fiqh', 'Seerah',
     'Tafsir', 'Bahasa Arab', 'Akidah', 'Tasawwuf'
@@ -15,8 +16,76 @@ const GuruForm = ({ guru = null, onSubmit, onCancel }) => {
     telefon: '',
     kepakaran: [],
     email: '',
-    password: ''
+    password: '',
+    kelas_ids: [] // Array of class IDs
   });
+
+  const [classes, setClasses] = useState([]);
+  const [loadingClasses, setLoadingClasses] = useState(true);
+
+  // Fetch classes on component mount - Only for admin/PIC
+  useEffect(() => {
+    const fetchClasses = async () => {
+      setLoadingClasses(true);
+      try {
+        const token = localStorage.getItem('authToken');
+        if (!token) {
+          console.warn('[GuruForm] No auth token found');
+          setLoadingClasses(false);
+          return;
+        }
+        
+        // Check if user is admin or PIC - only fetch for them
+        const currentUser = user || JSON.parse(localStorage.getItem('user') || '{}');
+        const userRole = currentUser?.role;
+        
+        if (userRole !== 'admin' && userRole !== 'pic') {
+          console.log('[GuruForm] User is not admin/PIC, skipping class fetch');
+          setLoadingClasses(false);
+          setClasses([]);
+          return;
+        }
+        
+        console.log('[GuruForm] Fetching classes for admin/PIC...');
+        const response = await classesAPI.getAll({ limit: 1000 });
+        let classesList = [];
+        
+        if (Array.isArray(response)) {
+          classesList = response;
+        } else if (response?.data && Array.isArray(response.data)) {
+          classesList = response.data;
+        }
+        
+        // Filter classes: only show classes with no teacher assigned
+        // OR classes already assigned to this teacher (if editing)
+        const currentTeacherIC = guru?.ic || guru?.IC || null;
+        const filteredClasses = classesList.filter(kelas => {
+          // Show classes with no teacher (guru_ic is null, undefined, or empty string)
+          const hasNoTeacher = !kelas.guru_ic || kelas.guru_ic === null || kelas.guru_ic === '';
+          
+          // If editing a teacher, also show classes already assigned to this teacher
+          // This allows the admin to see and manage classes already assigned to this teacher
+          const isAssignedToThisTeacher = currentTeacherIC && (
+            kelas.guru_ic === currentTeacherIC || 
+            kelas.guru_ic === currentTeacherIC.replace(/-/g, '') ||
+            kelas.guru_ic?.replace(/-/g, '') === currentTeacherIC.replace(/-/g, '')
+          );
+          
+          return hasNoTeacher || isAssignedToThisTeacher;
+        });
+        
+        console.log('[GuruForm] Classes fetched:', classesList.length, 'Unassigned/This teacher:', filteredClasses.length);
+        setClasses(filteredClasses);
+      } catch (error) {
+        console.error('[GuruForm] Error fetching classes:', error);
+        setClasses([]); // Set empty array on error
+      } finally {
+        setLoadingClasses(false);
+      }
+    };
+    
+    fetchClasses();
+  }, [user, guru]);
 
   // Initialize form data and filter invalid expertise when guru prop changes
   useEffect(() => {
@@ -36,13 +105,18 @@ const GuruForm = ({ guru = null, onSubmit, onCancel }) => {
         teacherIC = `${normalizedIC.slice(0, 6)}-${normalizedIC.slice(6, 8)}-${normalizedIC.slice(8, 12)}`;
       }
       
+      // Get classes assigned to this teacher
+      const teacherClasses = guru.classes || [];
+      const kelasIds = teacherClasses.map(c => c.id || c.kelas_id).filter(id => id != null);
+      
       setFormData({
         nama: guru.nama || '',
         ic: teacherIC,
         telefon: guru.telefon || '',
         kepakaran: validKepakaran,
         email: guru.email || '',
-        password: ''
+        password: '',
+        kelas_ids: kelasIds
       });
     } else {
       // Reset form for new teacher
@@ -52,7 +126,8 @@ const GuruForm = ({ guru = null, onSubmit, onCancel }) => {
         telefon: '',
         kepakaran: [],
         email: '',
-        password: ''
+        password: '',
+        kelas_ids: []
       });
     }
   }, [guru]);
@@ -76,9 +151,18 @@ const GuruForm = ({ guru = null, onSubmit, onCancel }) => {
     }));
   };
 
+  const handleClassChange = (classId) => {
+    setFormData(prev => ({
+      ...prev,
+      kelas_ids: prev.kelas_ids.includes(classId)
+        ? prev.kelas_ids.filter(id => id !== classId)
+        : [...prev.kelas_ids, classId]
+    }));
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
-    console.log('Submitting teacher data:', formData);
+    console.log('[GuruForm] Original formData:', formData);
     
     // Filter out invalid expertise values (only keep valid ones)
     const validKepakaran = formData.kepakaran.filter(k => kepakaranOptions.includes(k));
@@ -104,21 +188,31 @@ const GuruForm = ({ guru = null, onSubmit, onCancel }) => {
       return;
     }
     
-    // For both create and update, only include password and email if they're provided
-    const { status, ...formCopy } = formData;
-    const submitData = { 
-      ...formCopy, 
+    // Build submit data
+    const submitData = {
+      nama: formData.nama,
       ic: normalizedIC,
-      kepakaran: validKepakaran
+      telefon: formData.telefon || '',
+      kepakaran: validKepakaran,
+      kelas_ids: formData.kelas_ids || [] // Include selected class IDs
     };
     
-    // Remove empty email and password fields
-    if (!submitData.password || submitData.password.trim() === '') {
-      delete submitData.password;
+    // Add optional fields only if provided
+    if (formData.email && formData.email.trim() !== '') {
+      submitData.email = formData.email.trim();
     }
-    if (!submitData.email || submitData.email.trim() === '') {
-      delete submitData.email;
+
+    if (formData.password && formData.password.trim() !== '') {
+      submitData.password = formData.password.trim();
     }
+
+    // Remove empty kelas_ids array if no classes selected
+    if (!submitData.kelas_ids || submitData.kelas_ids.length === 0) {
+      delete submitData.kelas_ids;
+    }
+
+    // Log to verify data before submission
+    console.log('[GuruForm] Submitting teacher data:', JSON.stringify(submitData, null, 2));
     
     onSubmit(submitData);
   };
@@ -206,6 +300,157 @@ const GuruForm = ({ guru = null, onSubmit, onCancel }) => {
               </div>
             )}
           </div>
+          
+          {/* ========== KELAS YANG DIAMPU SECTION - FOR ADMIN/PIC ONLY ========== */}
+          {(() => {
+            const currentUser = user || JSON.parse(localStorage.getItem('user') || '{}');
+            const userRole = currentUser?.role;
+            const isAdminOrPIC = userRole === 'admin' || userRole === 'pic';
+            
+            if (!isAdminOrPIC) {
+              return null; // Don't show for non-admin users
+            }
+            
+            return (
+              <div className="mt-6 p-4 bg-gray-50 rounded-lg border-2 border-gray-300 shadow-md" style={{ display: 'block', visibility: 'visible' }}>
+            <div className="mb-3">
+              <label className="form-label block mb-1 text-lg font-bold">
+                📚 Kelas yang Boleh Diampu <span className="text-gray-500 font-normal">(Pilihan - Boleh pilih banyak)</span>
+              </label>
+              <p className="text-xs text-gray-500 mt-1">
+                Sila pilih kelas yang akan diampu oleh guru ini. Guru boleh mengendalikan lebih daripada satu kelas.
+              </p>
+            </div>
+            
+            {/* Show currently assigned classes if editing */}
+            {guru && (() => {
+              const currentTeacherIC = guru?.ic || guru?.IC || null;
+              const currentlyAssignedClasses = classes.filter(kelas => {
+                if (!currentTeacherIC) return false;
+                return kelas.guru_ic === currentTeacherIC || 
+                       kelas.guru_ic === currentTeacherIC.replace(/-/g, '') ||
+                       kelas.guru_ic?.replace(/-/g, '') === currentTeacherIC.replace(/-/g, '');
+              });
+              
+              if (currentlyAssignedClasses.length > 0) {
+                return (
+                  <div className="mb-4 p-3 bg-blue-50 rounded-lg border-2 border-blue-200">
+                    <p className="text-sm font-semibold text-blue-800 mb-2">
+                      📋 Kelas yang Sedang Diampu ({currentlyAssignedClasses.length}):
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {currentlyAssignedClasses.map(kelas => (
+                        <span 
+                          key={kelas.id}
+                          className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-600 text-white"
+                        >
+                          {kelas.nama_kelas || kelas.nama}
+                          {kelas.level && (
+                            <span className="ml-1 text-xs opacity-90">({kelas.level})</span>
+                          )}
+                        </span>
+                      ))}
+                    </div>
+                    <p className="text-xs text-blue-600 mt-2">
+                      Kelas-kelas ini sedang diampu oleh guru ini. Anda boleh mengekalkan atau menukar pilihan.
+                    </p>
+                  </div>
+                );
+              }
+              return null;
+            })()}
+            {loadingClasses ? (
+              <div className="mt-2 p-4 bg-white rounded-lg border border-gray-200">
+                <p className="text-sm text-gray-500 text-center">Memuatkan kelas...</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <div className="mt-2 max-h-60 overflow-y-auto border-2 border-gray-300 rounded-lg p-4 bg-white shadow-sm">
+                  {classes.length === 0 ? (
+                    <div className="text-center py-4">
+                      <p className="text-sm text-gray-500">Tiada kelas tersedia</p>
+                      <p className="text-xs text-gray-400 mt-1">Sila tambah kelas terlebih dahulu</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {classes.map((kelas) => (
+                        <label 
+                          key={kelas.id} 
+                          className="flex items-center space-x-3 cursor-pointer hover:bg-emerald-50 p-3 rounded-lg border border-transparent hover:border-emerald-200 transition-all"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={formData.kelas_ids.includes(kelas.id)}
+                            onChange={() => handleClassChange(kelas.id)}
+                            className="h-5 w-5 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500 focus:ring-2 cursor-pointer"
+                          />
+                          <div className="flex-1">
+                            <span className="text-sm font-medium text-gray-700">
+                              {kelas.nama_kelas || kelas.nama}
+                            </span>
+                            {kelas.level && (
+                              <span className="text-xs text-gray-500 ml-2">({kelas.level})</span>
+                            )}
+                            {kelas.kapasiti && (
+                              <span className="text-xs text-gray-400 ml-2">• Kapasiti: {kelas.kapasiti}</span>
+                            )}
+                          </div>
+                          {formData.kelas_ids.includes(kelas.id) && (
+                            <span className="text-emerald-600 text-xs font-medium">✓ Dipilih</span>
+                          )}
+                        </label>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                {formData.kelas_ids.length > 0 && (
+                  <div className="mt-3 p-4 bg-emerald-50 rounded-lg border-2 border-emerald-200">
+                    <p className="text-sm font-semibold text-emerald-800 mb-3">
+                      ✓ {formData.kelas_ids.length} Kelas Dipilih untuk Diampu:
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {formData.kelas_ids.map((classId) => {
+                        const selectedClass = classes.find(c => c.id === classId);
+                        const currentTeacherIC = guru?.ic || guru?.IC || null;
+                        const isCurrentlyAssigned = currentTeacherIC && selectedClass && (
+                          selectedClass.guru_ic === currentTeacherIC || 
+                          selectedClass.guru_ic === currentTeacherIC.replace(/-/g, '') ||
+                          selectedClass.guru_ic?.replace(/-/g, '') === currentTeacherIC.replace(/-/g, '')
+                        );
+                        return selectedClass ? (
+                          <span 
+                            key={classId} 
+                            className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
+                              isCurrentlyAssigned 
+                                ? 'bg-blue-600 text-white' 
+                                : 'bg-emerald-600 text-white'
+                            }`}
+                          >
+                            {selectedClass.nama_kelas || selectedClass.nama}
+                            {selectedClass.level && (
+                              <span className="ml-1 text-xs opacity-90">({selectedClass.level})</span>
+                            )}
+                            {isCurrentlyAssigned && (
+                              <span className="ml-1 text-xs opacity-90">(Sedang diampu)</span>
+                            )}
+                          </span>
+                        ) : null;
+                      })}
+                    </div>
+                  </div>
+                )}
+                {formData.kelas_ids.length === 0 && classes.length > 0 && (
+                  <div className="mt-2 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                    <p className="text-xs text-blue-700">
+                      💡 Tip: Pilih kelas yang boleh diampu oleh guru ini. Ini adalah pilihan - guru boleh ditambah tanpa kelas.
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+            );
+          })()}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <label className="form-label">Email {guru ? '(Kosongkan jika tidak mahu menukar)' : '(Pilihan)'}</label>

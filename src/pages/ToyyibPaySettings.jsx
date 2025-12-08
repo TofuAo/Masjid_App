@@ -60,8 +60,9 @@ const ToyyibPaySettings = () => {
       // Fetch from payment gateway settings API (uses authenticated api service)
       const response = await paymentGatewaySettingsAPI.getAll();
       
-      if (response?.data?.success && response.data.data) {
-        const toyyibpay = response.data.data.find(g => g.gateway_name === 'toyyibpay');
+      // Note: API interceptor returns response.data directly, so check response.success, not response.data.success
+      if (response?.success && response.data) {
+        const toyyibpay = response.data.find(g => g.gateway_name === 'toyyibpay');
         
         if (toyyibpay) {
           setConfig({
@@ -77,8 +78,9 @@ const ToyyibPaySettings = () => {
       // Also try to get config from ToyyibPay endpoint
       try {
         const configResponse = await api.get('/toyyibpay/config');
-        if (configResponse?.data?.success) {
-          const apiConfig = configResponse.data.data;
+        // Note: API interceptor returns response.data directly
+        if (configResponse?.success) {
+          const apiConfig = configResponse.data;
           setConfig(prev => ({
             ...prev,
             is_test_mode: apiConfig.isTestMode,
@@ -137,22 +139,52 @@ const ToyyibPaySettings = () => {
         credentials: credentials
       });
 
-      if (response?.data?.success) {
+      // Note: API interceptor returns response.data directly, so check response.success, not response.data.success
+      if (response?.success) {
         toast.success('Tetapan ToyyibPay berjaya disimpan!');
         setHasChanges(false);
         setTestResult(null);
         // Refresh settings to get updated values
         await fetchSettings();
       } else {
-        const errorMsg = response?.data?.message || response?.data?.errors?.[0]?.msg || 'Gagal menyimpan tetapan';
+        // Extract error message from response
+        const errorMsg = response?.message || 
+                        response?.errors?.[0]?.msg || 
+                        (Array.isArray(response?.errors) && response.errors.length > 0 
+                          ? response.errors.map(e => e.msg || e.message).join(', ')
+                          : null) ||
+                        'Gagal menyimpan tetapan';
         throw new Error(errorMsg);
       }
     } catch (error) {
       console.error('Failed to save ToyyibPay settings:', error);
-      const errorMessage = error.response?.data?.message || 
-                          error.response?.data?.errors?.[0]?.msg || 
-                          error.message || 
-                          'Gagal menyimpan tetapan ToyyibPay';
+      
+      // Better error message extraction
+      let errorMessage = 'Gagal menyimpan tetapan ToyyibPay';
+      
+      if (error.response) {
+        // Axios error with response
+        const responseData = error.response.data;
+        if (responseData?.message) {
+          errorMessage = responseData.message;
+        } else if (responseData?.errors && Array.isArray(responseData.errors) && responseData.errors.length > 0) {
+          errorMessage = responseData.errors.map(e => e.msg || e.message || e).join(', ');
+        } else if (responseData?.error) {
+          errorMessage = responseData.error;
+        } else if (typeof responseData === 'string') {
+          errorMessage = responseData;
+        }
+      } else if (error.message) {
+        // Error object with message
+        errorMessage = error.message;
+      }
+      
+      console.error('Error details:', {
+        message: errorMessage,
+        response: error.response?.data,
+        status: error.response?.status
+      });
+      
       toast.error(errorMessage);
     } finally {
       setSaving(false);
@@ -177,7 +209,8 @@ const ToyyibPaySettings = () => {
       // Test by trying to get config (uses authenticated api service)
       const response = await api.get('/toyyibpay/config');
       
-      if (response?.data?.success && response.data.data.configured) {
+      // Note: API interceptor returns response.data directly
+      if (response?.success && response.data?.configured) {
         setTestResult({
           success: true,
           message: 'Sambungan berjaya! Konfigurasi ToyyibPay adalah sah.'
@@ -189,9 +222,25 @@ const ToyyibPaySettings = () => {
         });
       }
     } catch (error) {
+      // Better error message extraction for test connection
+      let errorMessage = 'Gagal menguji sambungan';
+      
+      if (error.response) {
+        const responseData = error.response.data;
+        if (responseData?.message) {
+          errorMessage = responseData.message;
+        } else if (responseData?.error) {
+          errorMessage = responseData.error;
+        } else if (typeof responseData === 'string') {
+          errorMessage = responseData;
+        }
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
       setTestResult({
         success: false,
-        message: error.response?.data?.message || 'Gagal menguji sambungan'
+        message: errorMessage
       });
     }
   };
@@ -263,6 +312,9 @@ const ToyyibPaySettings = () => {
         </Card.Header>
         <Card.Content>
           <form onSubmit={(e) => { e.preventDefault(); handleSave(); }} className="space-y-6">
+            {/* Hidden username field for accessibility (password forms should have username fields) */}
+            <input type="text" name="username" autoComplete="username" style={{ display: 'none' }} tabIndex={-1} aria-hidden="true" />
+            
             {/* Test Mode / Live Mode */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">

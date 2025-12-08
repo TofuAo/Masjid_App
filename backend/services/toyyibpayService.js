@@ -110,10 +110,19 @@ export async function createToyyibPayBill({
     // Amount must be in cents (multiply by 100)
     const billAmount = Math.round(Number(amount) * 100);
 
+    // ToyyibPay has a 30 character limit for billName
+    // Truncate description if it's too long, but keep it meaningful
+    const maxBillNameLength = 30;
+    let billName = description || `Payment ${reference}`;
+    if (billName.length > maxBillNameLength) {
+      // Try to truncate intelligently - keep the beginning
+      billName = billName.substring(0, maxBillNameLength - 3) + '...';
+    }
+
     const payload = {
       userSecretKey: config.secretKey,
       categoryCode: config.categoryCode,
-      billName: description || `Payment ${reference}`,
+      billName: billName,
       billDescription: description || `Payment for reference ${reference}`,
       billPriceSetting: 1, // Fixed price
       billPayorInfo: 1, // Collect payer information
@@ -148,8 +157,33 @@ export async function createToyyibPayBill({
     );
 
     // ToyyibPay returns an array with the first element containing the response
+    // Log the full response for debugging
+    console.log('ToyyibPay API Response:', JSON.stringify(response.data, null, 2));
+    
     if (!Array.isArray(response.data) || !response.data[0]?.BillCode) {
-      const errorMsg = response.data[0]?.msg || 'ToyyibPay did not return a bill code';
+      const errorData = response.data[0] || response.data;
+      let errorMsg = 'ToyyibPay did not return a bill code';
+      
+      // Handle different error formats from ToyyibPay
+      if (typeof errorData === 'string') {
+        errorMsg = errorData;
+      } else if (errorData?.msg) {
+        errorMsg = errorData.msg;
+      } else if (errorData?.message) {
+        errorMsg = errorData.message;
+      } else if (Array.isArray(errorData) && errorData.length > 0) {
+        errorMsg = errorData[0]?.msg || errorData[0] || errorMsg;
+      }
+      
+      // Provide user-friendly error messages for common issues
+      if (errorMsg.includes('KEY-DID-NOT-EXIST') || errorMsg.includes('USER-IS-NOT-ACTIVE')) {
+        errorMsg = 'Kunci Rahsia tidak sah atau akaun ToyyibPay tidak aktif. Sila semak tetapan ToyyibPay anda.';
+      } else if (errorMsg.includes('billName exceed limit')) {
+        errorMsg = 'Nama bil melebihi had 30 aksara.';
+      } else if (errorMsg.includes('categoryCode')) {
+        errorMsg = 'Category Code tidak sah. Sila semak tetapan ToyyibPay anda.';
+      }
+      
       console.error('ToyyibPay API Error:', response.data);
       throw new Error(errorMsg);
     }

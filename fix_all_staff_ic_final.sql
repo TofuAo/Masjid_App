@@ -1,0 +1,122 @@
+-- Complete fix for all staff IC numbers
+-- Only updates IC, preserves all other data
+
+USE masjid_app;
+
+START TRANSACTION;
+
+-- 1. TUAN HAJI MOHD RIZZAL BIN MOHD ALI NAFIAH → 731014-06-5251
+UPDATE users SET ic = '731014-06-5251', updated_at = CURRENT_TIMESTAMP 
+WHERE (nama LIKE '%RIZZAL%' OR nama LIKE '%MOHD ALI NAFIAH%') 
+  AND ic != '731014-06-5251';
+
+-- 2. MUHAMMAD 'IZZAN BIN IDRIS → 950717-06-5661
+UPDATE users SET ic = '950717-06-5661', updated_at = CURRENT_TIMESTAMP 
+WHERE (nama LIKE '%IZZAN%' OR nama LIKE '%IDRIS%') 
+  AND ic != '950717-06-5661';
+
+-- 3. ZANAL ABIDIN BIN ISMAIL → 660322-06-5653
+UPDATE users SET ic = '660322-06-5653', updated_at = CURRENT_TIMESTAMP 
+WHERE (nama LIKE '%ZANAL ABIDIN%' OR (nama LIKE '%ZANAL%' AND nama LIKE '%ISMAIL%')) 
+  AND ic != '660322-06-5653';
+
+-- 4. A.ZUNNOR BIN ABD RAHMAN → 710515-06-5193
+UPDATE users SET ic = '710515-06-5193', updated_at = CURRENT_TIMESTAMP 
+WHERE (nama LIKE '%ZUNNOR%' OR nama LIKE '%ABD RAHMAN%') 
+  AND ic != '710515-06-5193';
+
+-- 5. KHAIRUL AZZURA BINTI ISMAIL → 701108-06-5175
+UPDATE users SET ic = '701108-06-5175', updated_at = CURRENT_TIMESTAMP 
+WHERE (nama LIKE '%KHAIRUL AZZURA%' OR (nama LIKE '%KHAIRUL%' AND nama LIKE '%ISMAIL%')) 
+  AND ic != '701108-06-5175';
+
+-- 6. SYAHIRAH AISYAH BINTI SUFIAN → 740101-06-5000
+UPDATE users SET ic = '740101-06-5000', updated_at = CURRENT_TIMESTAMP 
+WHERE (nama LIKE '%SYAHIRAH%' OR nama LIKE '%SUFIAN%') 
+  AND ic != '740101-06-5000';
+
+-- 7. MUHAMMAD IHSAN BIN MHD ZAHARI → 720323-06-5059
+UPDATE users SET ic = '720323-06-5059', updated_at = CURRENT_TIMESTAMP 
+WHERE (nama LIKE '%IHSAN%' OR nama LIKE '%ZAHARI%') 
+  AND ic != '720323-06-5059';
+
+-- 8. PUTRI ANATI BINTI AZAHAR → 930929-06-5390
+UPDATE users SET ic = '930929-06-5390', updated_at = CURRENT_TIMESTAMP 
+WHERE (nama LIKE '%PUTRI ANATI%' OR nama LIKE '%AZAHAR%') 
+  AND ic != '930929-06-5390';
+
+-- 9. NURUL SYAZWANI AISYAH BINTI RUSLI → 911210-06-5097
+UPDATE users SET ic = '911210-06-5097', updated_at = CURRENT_TIMESTAMP 
+WHERE (nama LIKE '%NURUL SYAZWANI%' OR nama LIKE '%RUSLI%') 
+  AND ic != '911210-06-5097';
+
+-- 10. MOHAMAD SADIQ UMAIR BIN NAHAR → 900102-06-6005
+UPDATE users SET ic = '900102-06-6005', updated_at = CURRENT_TIMESTAMP 
+WHERE (nama LIKE '%SADIQ UMAIR%' OR nama LIKE '%NAHAR%') 
+  AND ic != '900102-06-6005';
+
+-- Update all related tables for all old IC variations
+-- This handles any IC format (with/without T prefix, with/without hyphens)
+
+-- Update teachers table
+UPDATE teachers t
+INNER JOIN users u ON t.user_ic = u.ic
+SET t.user_ic = CASE 
+  WHEN u.ic = '731014-06-5251' THEN '731014-06-5251'
+  WHEN u.ic = '950717-06-5661' THEN '950717-06-5661'
+  WHEN u.ic = '660322-06-5653' THEN '660322-06-5653'
+  WHEN u.ic = '710515-06-5193' THEN '710515-06-5193'
+  WHEN u.ic = '701108-06-5175' THEN '701108-06-5175'
+  WHEN u.ic = '740101-06-5000' THEN '740101-06-5000'
+  WHEN u.ic = '720323-06-5059' THEN '720323-06-5059'
+  WHEN u.ic = '930929-06-5390' THEN '930929-06-5390'
+  WHEN u.ic = '911210-06-5097' THEN '911210-06-5097'
+  WHEN u.ic = '900102-06-6005' THEN '900102-06-6005'
+  ELSE t.user_ic
+END
+WHERE u.ic IN ('731014-06-5251', '950717-06-5661', '660322-06-5653', '710515-06-5193', 
+                '701108-06-5175', '740101-06-5000', '720323-06-5059', '930929-06-5390', 
+                '911210-06-5097', '900102-06-6005');
+
+-- Update classes table
+UPDATE classes c
+INNER JOIN users u ON c.guru_ic = u.ic
+SET c.guru_ic = CASE 
+  WHEN u.ic = '731014-06-5251' THEN '731014-06-5251'
+  WHEN u.ic = '950717-06-5661' THEN '950717-06-5661'
+  WHEN u.ic = '660322-06-5653' THEN '660322-06-5653'
+  WHEN u.ic = '710515-06-5193' THEN '710515-06-5193'
+  WHEN u.ic = '701108-06-5175' THEN '701108-06-5175'
+  WHEN u.ic = '740101-06-5000' THEN '740101-06-5000'
+  WHEN u.ic = '720323-06-5059' THEN '720323-06-5059'
+  WHEN u.ic = '930929-06-5390' THEN '930929-06-5390'
+  WHEN u.ic = '911210-06-5097' THEN '911210-06-5097'
+  WHEN u.ic = '900102-06-6005' THEN '900102-06-6005'
+  ELSE c.guru_ic
+END
+WHERE u.ic IN ('731014-06-5251', '950717-06-5661', '660322-06-5653', '710515-06-5193', 
+                '701108-06-5175', '740101-06-5000', '720323-06-5059', '930929-06-5390', 
+                '911210-06-5097', '900102-06-6005');
+
+-- Update other related tables (handle any old IC format)
+UPDATE user_roles SET user_ic = '731014-06-5251' WHERE REPLACE(user_ic, '-', '') = '731014065251' AND user_ic != '731014-06-5251';
+UPDATE user_roles SET user_ic = '950717-06-5661' WHERE REPLACE(user_ic, '-', '') = '950717065661' AND user_ic != '950717-06-5661';
+UPDATE user_roles SET user_ic = '660322-06-5653' WHERE REPLACE(user_ic, '-', '') = '660322065653' AND user_ic != '660322-06-5653';
+UPDATE user_roles SET user_ic = '710515-06-5193' WHERE (REPLACE(user_ic, '-', '') = '710515065193' OR user_ic LIKE 'T0139046113%' OR user_ic = '0139046113') AND user_ic != '710515-06-5193';
+UPDATE user_roles SET user_ic = '701108-06-5175' WHERE REPLACE(user_ic, '-', '') = '701108065175' AND user_ic != '701108-06-5175';
+UPDATE user_roles SET user_ic = '740101-06-5000' WHERE REPLACE(user_ic, '-', '') = '740101065000' AND user_ic != '740101-06-5000';
+UPDATE user_roles SET user_ic = '720323-06-5059' WHERE REPLACE(user_ic, '-', '') = '720323065059' AND user_ic != '720323-06-5059';
+UPDATE user_roles SET user_ic = '930929-06-5390' WHERE REPLACE(user_ic, '-', '') = '930929065390' AND user_ic != '930929-06-5390';
+UPDATE user_roles SET user_ic = '911210-06-5097' WHERE REPLACE(user_ic, '-', '') = '911210065097' AND user_ic != '911210-06-5097';
+UPDATE user_roles SET user_ic = '900102-06-6005' WHERE REPLACE(user_ic, '-', '') = '900102066005' AND user_ic != '900102-06-6005';
+
+COMMIT;
+
+-- Verification
+SELECT 'VERIFICATION' as status;
+SELECT ic, nama, role FROM users WHERE ic IN (
+  '731014-06-5251', '950717-06-5661', '660322-06-5653', '710515-06-5193',
+  '701108-06-5175', '740101-06-5000', '720323-06-5059', '930929-06-5390',
+  '911210-06-5097', '900102-06-6005'
+) ORDER BY nama;
+

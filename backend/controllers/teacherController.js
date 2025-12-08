@@ -1,5 +1,6 @@
 import { pool, testConnection } from '../config/database.js';
 import { validationResult } from 'express-validator';
+import { createSnapshot, SNAPSHOT_TTL_HOURS } from '../utils/adminActionSnapshots.js';
 
 export const getAllTeachers = async (req, res) => {
   try {
@@ -159,7 +160,7 @@ export const createTeacher = async (req, res) => {
       });
     }
 
-    const { nama, ic, telefon, email, password, kepakaran, status } = req.body;
+    const { nama, ic, telefon, email, password, kepakaran } = req.body;
     const emailValue = email && email.trim() !== '' ? email.trim() : null;
 
     const connection = await pool.getConnection();
@@ -203,7 +204,8 @@ export const createTeacher = async (req, res) => {
       // Insert into users table (email is optional)
       // For public registration, set status to 'pending' - requires admin approval
       const emailValue = email && email.trim() !== '' ? email : null;
-      const registrationStatus = req.user ? status : 'pending'; // If authenticated (admin/teacher), use provided status, otherwise 'pending'
+      // Default to 'aktif' for admin-created teachers, 'pending' for public registration
+      const registrationStatus = req.user ? 'aktif' : 'pending';
       
       await connection.execute(
         `INSERT INTO users (ic, nama, telefon, email, password, role, status) 
@@ -218,6 +220,16 @@ export const createTeacher = async (req, res) => {
         [ic, JSON.stringify(kepakaran)]
       );
 
+      // Assign classes to teacher if provided
+      if (req.body.kelas_ids && Array.isArray(req.body.kelas_ids) && req.body.kelas_ids.length > 0) {
+        for (const kelasId of req.body.kelas_ids) {
+          await connection.execute(
+            'UPDATE classes SET guru_ic = ? WHERE id = ?',
+            [ic, kelasId]
+          );
+        }
+      }
+
       await connection.commit();
 
       const [newTeacher] = await pool.execute(`
@@ -226,6 +238,31 @@ export const createTeacher = async (req, res) => {
         JOIN teachers t ON u.ic = t.user_ic
         WHERE u.ic = ?
       `, [ic]);
+
+      // Log admin action for undo capability
+      if (req.user && req.user.role === 'admin') {
+        const teacherData = {
+          ...newTeacher[0],
+          kepakaran: typeof newTeacher[0].kepakaran === 'string' 
+            ? JSON.parse(newTeacher[0].kepakaran) 
+            : newTeacher[0].kepakaran
+        };
+        
+        await createSnapshot({
+          entityType: 'teacher',
+          entityId: 0,
+          entityIdentifier: ic,
+          operation: 'create',
+          data: teacherData,
+          metadata: {
+            title: nama,
+            nama,
+            operationLabel: 'Cipta guru',
+            redirectPath: `/guru?view=${ic}`
+          },
+          actorIc: req.user.ic
+        });
+      }
       
       res.status(201).json({
         success: true,
@@ -275,7 +312,22 @@ export const updateTeacher = async (req, res) => {
     }
 
     const { ic } = req.params;
-    const { nama, telefon, email, kepakaran, status, password } = req.body;
+    const { nama, telefon, email, kepakaran, password } = req.body;
+
+    // Fetch existing teacher data before update for snapshot
+    const [existingTeacher] = await pool.execute(`
+      SELECT u.ic, u.nama, u.email, u.status, u.telefon, t.kepakaran
+      FROM users u
+      JOIN teachers t ON u.ic = t.user_ic
+      WHERE u.ic = ?
+    `, [ic]);
+
+    if (existingTeacher.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Teacher not found'
+      });
+    }
 
     const connection = await pool.getConnection();
     await connection.beginTransaction();
@@ -291,7 +343,6 @@ export const updateTeacher = async (req, res) => {
       if (email !== undefined && email && email.trim() !== '') {
         userUpdates.email = email.trim();
       }
-      if (status !== undefined) userUpdates.status = status;
       if (password !== undefined && password && password.trim() !== '') {
         // Hash password if provided
         const bcrypt = (await import('bcryptjs')).default;
@@ -317,6 +368,25 @@ export const updateTeacher = async (req, res) => {
         );
       }
 
+      // Update class assignments if kelas_ids is provided
+      if (req.body.kelas_ids !== undefined) {
+        // First, remove teacher from all classes
+        await connection.execute(
+          'UPDATE classes SET guru_ic = NULL WHERE guru_ic = ?',
+          [ic]
+        );
+        
+        // Then assign teacher to selected classes
+        if (Array.isArray(req.body.kelas_ids) && req.body.kelas_ids.length > 0) {
+          for (const kelasId of req.body.kelas_ids) {
+            await connection.execute(
+              'UPDATE classes SET guru_ic = ? WHERE id = ?',
+              [ic, kelasId]
+            );
+          }
+        }
+      }
+
       await connection.commit();
 
       const [updatedTeacher] = await pool.execute(`
@@ -325,6 +395,31 @@ export const updateTeacher = async (req, res) => {
         JOIN teachers t ON u.ic = t.user_ic
         WHERE u.ic = ?
       `, [ic]);
+
+      // Log admin action for undo capability
+      if (req.user && req.user.role === 'admin') {
+        const previousData = {
+          ...existingTeacher[0],
+          kepakaran: typeof existingTeacher[0].kepakaran === 'string' 
+            ? JSON.parse(existingTeacher[0].kepakaran) 
+            : existingTeacher[0].kepakaran
+        };
+        
+        await createSnapshot({
+          entityType: 'teacher',
+          entityId: 0,
+          entityIdentifier: ic,
+          operation: 'update',
+          data: previousData,
+          metadata: {
+            title: previousData.nama,
+            nama: previousData.nama,
+            operationLabel: 'Kemas kini guru',
+            redirectPath: `/guru?view=${ic}`
+          },
+          actorIc: req.user.ic
+        });
+      }
       
       res.json({
         success: true,
@@ -353,6 +448,46 @@ export const updateTeacher = async (req, res) => {
 export const deleteTeacher = async (req, res) => {
   try {
     const { ic } = req.params;
+    
+    // Fetch teacher data before deletion for snapshot
+    const [existingTeacher] = await pool.execute(`
+      SELECT u.ic, u.nama, u.email, u.status, u.telefon, t.kepakaran
+      FROM users u
+      JOIN teachers t ON u.ic = t.user_ic
+      WHERE u.ic = ? AND u.role = 'teacher'
+    `, [ic]);
+
+    if (existingTeacher.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Teacher not found'
+      });
+    }
+
+    // Log admin action for undo capability
+    if (req.user && req.user.role === 'admin') {
+      const teacherData = {
+        ...existingTeacher[0],
+        kepakaran: typeof existingTeacher[0].kepakaran === 'string' 
+          ? JSON.parse(existingTeacher[0].kepakaran) 
+          : existingTeacher[0].kepakaran
+      };
+      
+      await createSnapshot({
+        entityType: 'teacher',
+        entityId: 0,
+        entityIdentifier: ic,
+        operation: 'delete',
+        data: teacherData,
+        metadata: {
+          title: teacherData.nama,
+          nama: teacherData.nama,
+          operationLabel: 'Padam guru',
+          redirectPath: '/guru'
+        },
+        actorIc: req.user.ic
+      });
+    }
     
     // The ON DELETE CASCADE in the database schema will handle deleting the teacher record.
     // We just need to delete the user record.
@@ -429,7 +564,7 @@ export const registerTeacher = async (req, res) => {
       });
     }
 
-    const { nama, ic, telefon, email, password, kepakaran, status } = req.body;
+    const { nama, ic, telefon, email, password, kepakaran } = req.body;
 
     const connection = await pool.getConnection();
     await connection.beginTransaction();

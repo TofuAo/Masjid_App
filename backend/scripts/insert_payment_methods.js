@@ -15,21 +15,21 @@ const paymentMethods = [
     method_code: 'duitnow_qr',
     method_name: 'DuitNow QR',
     enabled: true,
-    provider: 'paynet_direct',
+    provider: 'toyyibpay',
     display_order: 2,
     icon: 'QrCode',
     description: 'Scan QR code to pay via DuitNow',
-    config: { providers: ['paynet_direct'] }
+    config: { providers: ['toyyibpay'] }
   },
   {
     method_code: 'duitnow_request',
     method_name: 'DuitNow Request',
     enabled: true,
-    provider: 'paynet_direct',
+    provider: 'toyyibpay',
     display_order: 3,
     icon: 'Smartphone',
     description: 'Receive payment request on your phone',
-    config: { providers: ['paynet_direct'] }
+    config: { providers: ['toyyibpay'] }
   },
   {
     method_code: 'tng_ewallet',

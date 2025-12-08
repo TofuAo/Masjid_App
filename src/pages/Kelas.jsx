@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import useCrud from '../hooks/useCrud';
 import KelasList from '../components/kelas/KelasList';
 import KelasForm from '../components/kelas/KelasForm';
@@ -7,11 +7,12 @@ import Card from '../components/ui/Card';
 import Badge from '../components/ui/Badge';
 import BackButton from '../components/ui/BackButton';
 import LoadingSkeleton from '../components/ui/LoadingSkeleton';
-import { BookOpen, Users, Clock, DollarSign, AlertCircle } from 'lucide-react';
+import { BookOpen, Users, Clock, DollarSign, AlertCircle, ExternalLink, GraduationCap } from 'lucide-react';
 import { classesAPI, teachersAPI } from '../services/api';
 import { toast } from 'react-toastify';
 
 const Kelas = () => {
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [user, setUser] = React.useState(null);
   
@@ -256,7 +257,7 @@ const Kelas = () => {
                             }
                             
                             // Parse sessions if it's a string
-                            let sessions = displayKelas.sessions;
+                            let sessions = displayKelas?.sessions;
                             if (typeof sessions === 'string') {
                               try {
                                 sessions = JSON.parse(sessions);
@@ -265,8 +266,13 @@ const Kelas = () => {
                               }
                             }
                             
+                            // Ensure sessions is an array
+                            if (!Array.isArray(sessions)) {
+                              sessions = [];
+                            }
+                            
                             // Handle array of sessions
-                            if (Array.isArray(sessions) && sessions.length > 0) {
+                            if (sessions.length > 0) {
                               return (
                                 <div>
                                   {sessions.map((session, index) => {
@@ -303,7 +309,26 @@ const Kelas = () => {
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-500">Guru</label>
-                        <p className="mt-1 text-sm text-gray-900">{displayKelas.guru_nama || gurus.find(g => g.ic === displayKelas.guru_ic)?.nama || 'Tiada Guru'}</p>
+                        {displayKelas.guru_ic ? (
+                          <div className="mt-1 flex items-center gap-2">
+                            <p className="text-sm text-gray-900">
+                              {displayKelas.guru_nama || gurus.find(g => g.ic === displayKelas.guru_ic)?.nama || 'Tiada Guru'}
+                            </p>
+                            <button
+                              onClick={() => {
+                                const teacherIC = displayKelas.guru_ic;
+                                navigate(`/guru?view=${encodeURIComponent(teacherIC)}`);
+                              }}
+                              className="text-emerald-600 hover:text-emerald-700 flex items-center gap-1 text-xs"
+                              title="Lihat maklumat guru"
+                            >
+                              <ExternalLink size={14} />
+                              <span>Lihat Guru</span>
+                            </button>
+                          </div>
+                        ) : (
+                          <p className="mt-1 text-sm text-gray-900">Tiada Guru</p>
+                        )}
                       </div>
                     </div>
                   </Card.Content>
@@ -337,6 +362,71 @@ const Kelas = () => {
                     </div>
                   </Card.Content>
                 </Card>
+
+                {/* Teacher's Other Classes - Only show if teacher exists */}
+                {displayKelas.guru_ic && (() => {
+                  const teacherOtherClasses = (Array.isArray(kelass) ? kelass : []).filter(k => 
+                    k && k.guru_ic === displayKelas.guru_ic && k.id !== displayKelas.id
+                  );
+                  
+                  if (teacherOtherClasses.length > 0) {
+                    return (
+                      <Card>
+                        <Card.Header>
+                          <div className="flex items-center justify-between">
+                            <Card.Title className="flex items-center gap-2">
+                              <GraduationCap size={18} />
+                              Kelas Lain oleh Guru Ini ({teacherOtherClasses.length})
+                            </Card.Title>
+                            <button
+                              onClick={() => {
+                                const teacherIC = displayKelas.guru_ic;
+                                navigate(`/guru?view=${encodeURIComponent(teacherIC)}`);
+                              }}
+                              className="text-sm text-emerald-600 hover:text-emerald-700 flex items-center gap-1"
+                            >
+                              <ExternalLink size={14} />
+                              <span>Lihat Semua</span>
+                            </button>
+                          </div>
+                        </Card.Header>
+                        <Card.Content>
+                          <div className="space-y-2 max-h-64 overflow-y-auto">
+                            {teacherOtherClasses.map(kelas => (
+                              <div
+                                key={kelas.id}
+                                onClick={() => {
+                                  handleViewWithDetails(kelas);
+                                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                                }}
+                                className="p-2 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 transition-colors cursor-pointer group"
+                              >
+                                <div className="flex items-center justify-between">
+                                  <div className="flex-1">
+                                    <div className="font-medium text-sm text-blue-900 flex items-center gap-2">
+                                      <BookOpen size={12} />
+                                      {kelas.nama_kelas || kelas.class_name}
+                                    </div>
+                                    <div className="text-xs text-blue-700 mt-1">
+                                      {kelas.level && <span>Level: {kelas.level}</span>}
+                                      {kelas.level && <span className="mx-2">•</span>}
+                                      <span>{kelas.student_count || 0} pelajar</span>
+                                    </div>
+                                  </div>
+                                  <ExternalLink 
+                                    size={12} 
+                                    className="text-blue-600 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 ml-2" 
+                                  />
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </Card.Content>
+                      </Card>
+                    );
+                  }
+                  return null;
+                })()}
 
                 <Card>
                   <Card.Header>

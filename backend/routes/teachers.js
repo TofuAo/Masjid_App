@@ -17,6 +17,14 @@ import { normalizePhoneMiddleware } from '../middleware/normalizePhone.js';
 
 const router = express.Router();
 
+// Middleware to remove status field from request body (status is set automatically by controller)
+const removeStatusMiddleware = (req, res, next) => {
+  if (req.body && req.body.status !== undefined) {
+    delete req.body.status;
+  }
+  next();
+};
+
 // IMPORTANT: Register route MUST be defined first, before any middleware
 // This ensures Express matches the route handler before applying middleware
 
@@ -100,9 +108,6 @@ const createTeacherValidation = [
   body('kepakaran.*')
     .isIn(['Al-Quran', 'Tajwid', 'Fardhu Ain', 'Hadith', 'Fiqh', 'Seerah', 'Tafsir', 'Bahasa Arab', 'Akidah', 'Tasawwuf'])
     .withMessage('Invalid expertise selected'),
-  body('status')
-    .isIn(['aktif', 'tidak_aktif', 'cuti'])
-    .withMessage('Status must be one of: aktif, tidak_aktif, cuti'),
   body('email')
     .optional()
     .custom((value) => {
@@ -152,10 +157,6 @@ const updateTeacherValidation = [
     .optional()
     .isIn(['Al-Quran', 'Tajwid', 'Fardhu Ain', 'Hadith', 'Fiqh', 'Seerah', 'Tafsir', 'Bahasa Arab', 'Akidah', 'Tasawwuf'])
     .withMessage('Invalid expertise selected'),
-  body('status')
-    .optional({ checkFalsy: true })
-    .isIn(['aktif', 'tidak_aktif', 'cuti'])
-    .withMessage('Status must be one of: aktif, tidak_aktif, cuti'),
   body('email')
     .optional()
     .custom((value) => {
@@ -205,7 +206,7 @@ router.post('/register', (req, res, next) => {
 router.get('/', authenticateToken, getAllTeachers);
 router.get('/stats', authenticateToken, getTeacherStats);
 router.get('/:ic', authenticateToken, icValidation, normalizeICMiddleware, getTeacherById);
-router.post('/', authenticateToken, requireRole(['admin', 'teacher']), createTeacherValidation, normalizeICMiddleware, normalizePhoneMiddleware, createTeacher);
+router.post('/', authenticateToken, requireRole(['admin', 'teacher']), removeStatusMiddleware, createTeacherValidation, normalizeICMiddleware, normalizePhoneMiddleware, createTeacher);
 router.put('/:ic', authenticateToken, requireRole(['admin', 'teacher']), icValidation, updateTeacherValidation, normalizeICMiddleware, normalizePhoneMiddleware, updateTeacher);
 router.delete('/:ic', authenticateToken, requireRole(['admin']), icValidation, normalizeICMiddleware, deleteTeacher);
 

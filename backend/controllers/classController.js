@@ -1,6 +1,7 @@
 import { pool, testConnection } from '../config/database.js';
 import { validationResult } from 'express-validator';
 import { safeParseJSON } from '../utils/jsonParser.js';
+import { createSnapshot, SNAPSHOT_TTL_HOURS } from '../utils/adminActionSnapshots.js';
 
 export const getAllClasses = async (req, res) => {
   try {
@@ -211,6 +212,30 @@ export const createClass = async (req, res) => {
       ...newClass[0],
       sessions: safeParseJSON(newClass[0].sessions, [])
     };
+
+    // Ensure sessions is always an array for snapshot
+    const snapshotData = {
+      ...parsedNewClass,
+      sessions: Array.isArray(parsedNewClass.sessions) ? parsedNewClass.sessions : []
+    };
+
+    // Log admin action for undo capability
+    if (req.user && req.user.role === 'admin') {
+      await createSnapshot({
+        entityType: 'class',
+        entityId: result.insertId,
+        entityIdentifier: String(result.insertId),
+        operation: 'create',
+        data: snapshotData,
+        metadata: {
+          title: nama_kelas,
+          nama_kelas,
+          operationLabel: 'Cipta kelas',
+          redirectPath: `/kelas?view=${result.insertId}`
+        },
+        actorIc: req.user.ic
+      });
+    }
     
     res.status(201).json({
       success: true,
@@ -240,11 +265,13 @@ export const updateClass = async (req, res) => {
     const { id } = req.params;
     const { nama_kelas, level, sessions, yuran, guru_ic, kapasiti } = req.body;
     
-    // Check if class exists
-    const [existingClasses] = await pool.execute(
-      'SELECT id FROM classes WHERE id = ?',
-      [id]
-    );
+    // Fetch existing class data before update for snapshot
+    const [existingClasses] = await pool.execute(`
+      SELECT c.id, c.nama_kelas, c.level, c.sessions, c.yuran, c.guru_ic, c.kapasiti, c.status, u.nama as guru_nama
+      FROM classes c
+      LEFT JOIN users u ON c.guru_ic = u.ic
+      WHERE c.id = ?
+    `, [id]);
     
     if (existingClasses.length === 0) {
       return res.status(404).json({
@@ -286,6 +313,35 @@ export const updateClass = async (req, res) => {
       ...updatedClass[0],
       sessions: safeParseJSON(updatedClass[0].sessions, [])
     };
+
+    // Log admin action for undo capability
+    if (req.user && req.user.role === 'admin') {
+      const previousData = {
+        ...existingClasses[0],
+        sessions: safeParseJSON(existingClasses[0].sessions, [])
+      };
+      
+      // Ensure sessions is always an array for snapshot
+      const snapshotData = {
+        ...previousData,
+        sessions: Array.isArray(previousData.sessions) ? previousData.sessions : []
+      };
+      
+      await createSnapshot({
+        entityType: 'class',
+        entityId: Number(id),
+        entityIdentifier: String(id),
+        operation: 'update',
+        data: snapshotData,
+        metadata: {
+          title: snapshotData.nama_kelas,
+          nama_kelas: snapshotData.nama_kelas,
+          operationLabel: 'Kemas kini kelas',
+          redirectPath: `/kelas?view=${id}`
+        },
+        actorIc: req.user.ic
+      });
+    }
     
     res.json({
       success: true,
@@ -305,11 +361,13 @@ export const deleteClass = async (req, res) => {
   try {
     const { id } = req.params;
     
-    // Check if class exists
-    const [existingClasses] = await pool.execute(
-      'SELECT id FROM classes WHERE id = ?',
-      [id]
-    );
+    // Fetch existing class data before deletion for snapshot
+    const [existingClasses] = await pool.execute(`
+      SELECT c.id, c.nama_kelas, c.level, c.sessions, c.yuran, c.guru_ic, c.kapasiti, c.status, u.nama as guru_nama
+      FROM classes c
+      LEFT JOIN users u ON c.guru_ic = u.ic
+      WHERE c.id = ?
+    `, [id]);
     
     if (existingClasses.length === 0) {
       return res.status(404).json({
@@ -329,6 +387,35 @@ export const deleteClass = async (req, res) => {
       return res.status(400).json({
         success: false,
         message: 'Cannot delete class with active students. Please deactivate or remove all students first.'
+      });
+    }
+
+    // Log admin action for undo capability
+    if (req.user && req.user.role === 'admin') {
+      const classData = {
+        ...existingClasses[0],
+        sessions: safeParseJSON(existingClasses[0].sessions, [])
+      };
+      
+      // Ensure sessions is always an array for snapshot
+      const snapshotData = {
+        ...classData,
+        sessions: Array.isArray(classData.sessions) ? classData.sessions : []
+      };
+      
+      await createSnapshot({
+        entityType: 'class',
+        entityId: Number(id),
+        entityIdentifier: String(id),
+        operation: 'delete',
+        data: snapshotData,
+        metadata: {
+          title: snapshotData.nama_kelas,
+          nama_kelas: snapshotData.nama_kelas,
+          operationLabel: 'Padam kelas',
+          redirectPath: '/kelas'
+        },
+        actorIc: req.user.ic
       });
     }
     

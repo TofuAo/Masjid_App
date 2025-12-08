@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import api from '../services/api';
 import { toast } from 'react-toastify';
 import { CreditCard, Lock, Shield } from 'lucide-react';
 import Card from '../components/ui/Card';
@@ -28,7 +28,8 @@ const PaymentCheckout = ({ amount, description, feeId, onSuccess, onCancel }) =>
 
     setLoading(true);
     try {
-      const { data } = await axios.post('/api/toyyibpay/initiate', {
+      // Use the api service which has proper base URL configuration
+      const response = await api.post('/toyyibpay/initiate', {
         amount,
         description,
         customerName,
@@ -37,18 +38,23 @@ const PaymentCheckout = ({ amount, description, feeId, onSuccess, onCancel }) =>
         feeId // Link payment to fee if provided
       });
 
-      if (data?.data?.paymentUrl) {
+      // Note: API interceptor returns response.data directly
+      if (response?.success && response?.data?.paymentUrl) {
         // Redirect to ToyyibPay payment page
-        window.location.href = data.data.paymentUrl;
-      } else if (data?.paymentUrl) {
+        window.location.href = response.data.paymentUrl;
+      } else if (response?.paymentUrl) {
         // Fallback for old response format
-        window.location.href = data.paymentUrl;
+        window.location.href = response.paymentUrl;
       } else {
         throw new Error('Payment URL tidak ditemui');
       }
     } catch (error) {
       console.error('ToyyibPay initiate error:', error);
-      const errorMessage = error.response?.data?.message || error.message || 'Gagal memulakan pembayaran.';
+      // Better error message extraction
+      const errorMessage = error.response?.data?.message || 
+                          error.response?.data?.errors?.[0]?.msg ||
+                          error.message || 
+                          'Gagal memulakan pembayaran.';
       toast.error(errorMessage);
     } finally {
       setLoading(false);

@@ -718,10 +718,39 @@ The system uses a unique yearly database architecture:
 - Fields: nama, umur, alamat, telefon, email, password, role, status
 - Purpose: Master user table for all system users
 
+**Schema Example:**
+
+```sql:database/masjid_app_schema.sql
+CREATE TABLE users (
+    ic VARCHAR(20) PRIMARY KEY,
+    nama VARCHAR(100) NOT NULL,
+    umur INT,
+    alamat VARCHAR(255),
+    telefon VARCHAR(20),
+    email VARCHAR(100) UNIQUE,
+    password VARCHAR(255),
+    role ENUM('student','teacher','admin') NOT NULL,
+    status ENUM('aktif','tidak_aktif','cuti') DEFAULT 'aktif',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+```
+
 **pelajars (students)**
 - Primary key: `user_ic` (references users.ic)
 - Fields: kelas_id, tarikh_daftar
 - Purpose: Student-specific information
+
+**Schema Example:**
+
+```sql:database/masjid_app_schema.sql
+CREATE TABLE students (
+    user_ic VARCHAR(20) PRIMARY KEY,
+    kelas_id INT,
+    tarikh_daftar DATE,
+    FOREIGN KEY (user_ic) REFERENCES users(ic) ON DELETE CASCADE
+);
+```
 
 **gurus (teachers)**
 - Primary key: `user_ic` (references users.ic)
@@ -732,6 +761,25 @@ The system uses a unique yearly database architecture:
 - Primary key: `id`
 - Fields: nama_kelas, level, jadual, sessions (JSON), yuran, guru_ic, kapasiti, status
 - Purpose: Class information and configuration
+
+**Schema Example:**
+
+```sql:database/masjid_app_schema.sql
+CREATE TABLE classes (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    nama_kelas VARCHAR(100) NOT NULL,
+    level VARCHAR(50),
+    jadual VARCHAR(100),
+    sessions JSON,
+    yuran DECIMAL(10,2) DEFAULT 0,
+    guru_ic VARCHAR(20),
+    kapasiti INT DEFAULT 20,
+    status ENUM('aktif', 'tidak_aktif', 'penuh') DEFAULT 'aktif',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (guru_ic) REFERENCES users(ic) ON DELETE SET NULL
+);
+```
 
 **kehadiran (attendance)**
 - Primary key: `id`
@@ -816,6 +864,131 @@ The system uses a unique yearly database architecture:
 **Authentication:** JWT Bearer Token  
 **Content-Type:** `application/json`
 
+### 7.1.1 Backend Server Setup
+
+The Express.js server is configured with security middleware, CORS, and rate limiting:
+
+```javascript:backend/server.js
+import express from 'express';
+import cors from 'cors';
+import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
+import dotenv from 'dotenv';
+import { testConnection, pool } from './config/database.js';
+import routes from './routes/index.js';
+
+// Load environment variables
+dotenv.config();
+
+const app = express();
+
+// Security middleware - Helmet.js
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      scriptSrc: ["'self'"],
+      imgSrc: ["'self'", "data:", "https:"],
+    },
+  },
+  hsts: {
+    maxAge: 31536000,
+    includeSubDomains: true,
+    preload: true
+  }
+}));
+
+// CORS configuration
+const corsOptions = {
+  origin: (origin, callback) => {
+    const allowedOrigins = [
+      'http://localhost:3000',
+      'http://localhost:5173',
+      process.env.FRONTEND_URL
+    ].filter(Boolean);
+    
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+};
+
+app.use(cors(corsOptions));
+
+// Rate limiting
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 500, // 500 requests per 15 minutes
+  message: 'Too many requests, please try again later.'
+});
+
+app.use('/api/', limiter);
+
+// Body parsing middleware
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// API routes
+app.use('/api', routes);
+
+// Error handling
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(500).json({ 
+    success: false, 
+    message: 'Internal server error' 
+  });
+});
+
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, async () => {
+  console.log(`Server running on port ${PORT}`);
+  await testConnection();
+});
+```
+
+### 7.1.2 Database Configuration
+
+The MySQL connection pool is configured for optimal performance:
+
+```javascript:backend/config/database.js
+import mysql from 'mysql2/promise';
+import dotenv from 'dotenv';
+
+dotenv.config();
+
+// Create connection pool
+const pool = mysql.createPool({
+  host: process.env.DB_HOST || 'mysql',
+  port: process.env.DB_PORT || 3306,
+  user: process.env.DB_USER || 'masjid_user',
+  password: process.env.DB_PASSWORD || 'masjid_password',
+  database: process.env.DB_NAME || 'masjid_app',
+  waitForConnections: true,
+  connectionLimit: 10,
+  queueLimit: 0,
+  connectTimeout: 60000,
+});
+
+// Test connection function
+export async function testConnection() {
+  try {
+    const connection = await pool.getConnection();
+    console.log('✅ Connected to database:', process.env.DB_NAME);
+    connection.release();
+  } catch (error) {
+    console.error('❌ Database connection failed:', error.message);
+  }
+}
+
+export { pool };
+```
+
 ### 7.2 Authentication Endpoints
 
 #### Register User
@@ -831,6 +1004,79 @@ Body: {
 Response: { token: string, user: object }
 ```
 
+**Implementation Example:**
+
+```javascript:backend/controllers/authController.js
+export const register = async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        success: false,
+        message: errors.array()[0].msg,
+        errors: errors.array()
+      });
+    }
+
+    const { nama, ic_number, email, password, telefon, umur } = req.body;
+
+    // Normalize IC number (remove hyphens)
+    const normalizedIC = ic_number.replace(/\D/g, '');
+    
+    if (normalizedIC.length !== 12) {
+      return res.status(400).json({
+        success: false,
+        message: 'Nombor IC mestilah 12 digit'
+      });
+    }
+
+    // Check if user already exists
+    const [existingUsers] = await pool.execute(
+      "SELECT * FROM users WHERE ic = ?",
+      [normalizedIC]
+    );
+
+    if (existingUsers.length > 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Pengguna dengan IC ini sudah wujud'
+      });
+    }
+
+    // Hash password if provided
+    let hashedPassword = null;
+    if (password) {
+      hashedPassword = await bcrypt.hash(password, 10);
+    }
+
+    // Create user
+    await pool.execute(
+      `INSERT INTO users (ic, nama, email, password, telefon, umur, role, status) 
+       VALUES (?, ?, ?, ?, ?, ?, 'student', 'aktif')`,
+      [normalizedIC, nama, email, hashedPassword, telefon, umur]
+    );
+
+    // Create student record
+    await pool.execute(
+      `INSERT INTO students (user_ic, tarikh_daftar) 
+       VALUES (?, CURDATE())`,
+      [normalizedIC]
+    );
+
+    res.status(201).json({
+      success: true,
+      message: 'Pendaftaran berjaya'
+    });
+  } catch (error) {
+    console.error('Registration error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Ralat semasa pendaftaran'
+    });
+  }
+};
+```
+
 #### Login
 ```
 POST /api/auth/login
@@ -839,6 +1085,72 @@ Body: {
   password: string
 }
 Response: { token: string, user: object }
+```
+
+**Implementation Example:**
+
+```javascript:backend/controllers/authController.js
+export const login = async (req, res) => {
+  try {
+    const { ic, password } = req.body;
+    
+    // Normalize IC
+    const normalizedIC = ic.replace(/\D/g, '');
+    
+    // Find user
+    const [users] = await pool.execute(
+      `SELECT * FROM users WHERE REPLACE(ic, '-', '') = ? AND status = 'aktif'`,
+      [normalizedIC]
+    );
+
+    if (users.length === 0) {
+      return res.status(401).json({
+        success: false,
+        message: 'IC atau kata laluan tidak betul'
+      });
+    }
+
+    const user = users[0];
+
+    // Verify password
+    if (user.password) {
+      const isValid = await bcrypt.compare(password, user.password);
+      if (!isValid) {
+        return res.status(401).json({
+          success: false,
+          message: 'IC atau kata laluan tidak betul'
+        });
+      }
+    }
+
+    // Generate JWT token
+    const token = jwt.sign(
+      { 
+        userId: user.ic,
+        role: user.role 
+      },
+      process.env.JWT_SECRET,
+      { expiresIn: process.env.JWT_EXPIRES_IN || '24h' }
+    );
+
+    res.json({
+      success: true,
+      token,
+      user: {
+        ic: user.ic,
+        nama: user.nama,
+        email: user.email,
+        role: user.role
+      }
+    });
+  } catch (error) {
+    console.error('Login error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Ralat semasa log masuk'
+    });
+  }
+};
 ```
 
 #### Forgot Password
@@ -870,6 +1182,111 @@ GET /api/students
 Headers: { Authorization: 'Bearer <token>' }
 Query: ?page=1&limit=10&search=name&status=aktif
 Response: { students: [], total: number, page: number }
+```
+
+**Route Implementation:**
+
+```javascript:backend/routes/students.js
+import express from 'express';
+import { body, param } from 'express-validator';
+import {
+  getAllStudents,
+  getStudentById,
+  createStudent,
+  updateStudent,
+  deleteStudent
+} from '../controllers/studentController.js';
+import { authenticateToken, requireRole } from '../middleware/auth.js';
+
+const router = express.Router();
+
+// Validation rules
+const studentValidation = [
+  body('nama')
+    .notEmpty()
+    .withMessage('Name is required')
+    .isLength({ min: 2, max: 100 })
+    .withMessage('Name must be between 2 and 100 characters'),
+  body('ic')
+    .notEmpty()
+    .withMessage('IC number is required')
+    .custom((value) => {
+      const normalized = value.replace(/\D/g, '');
+      if (normalized.length !== 12) {
+        throw new Error('IC must be 12 digits');
+      }
+      return true;
+    }),
+  body('umur')
+    .isInt({ min: 5, max: 100 })
+    .withMessage('Age must be between 5 and 100'),
+  body('email').isEmail().withMessage('Must be a valid email')
+];
+
+// Routes
+router.get('/', authenticateToken, getAllStudents);
+router.get('/:ic', authenticateToken, getStudentById);
+router.post('/', authenticateToken, requireRole(['admin']), studentValidation, createStudent);
+router.put('/:ic', authenticateToken, requireRole(['admin']), updateStudent);
+router.delete('/:ic', authenticateToken, requireRole(['admin']), deleteStudent);
+
+export default router;
+```
+
+**Controller Implementation:**
+
+```javascript:backend/controllers/studentController.js
+import { pool } from '../config/database.js';
+
+export const getAllStudents = async (req, res) => {
+  try {
+    const { page = 1, limit = 10, search, status } = req.query;
+    const offset = (page - 1) * limit;
+    
+    let query = `
+      SELECT u.*, s.kelas_id, s.tarikh_daftar, k.nama_kelas
+      FROM users u
+      LEFT JOIN students s ON u.ic = s.user_ic
+      LEFT JOIN classes k ON s.kelas_id = k.id
+      WHERE u.role = 'student'
+    `;
+    const params = [];
+
+    if (search) {
+      query += ` AND (u.nama LIKE ? OR u.ic LIKE ?)`;
+      params.push(`%${search}%`, `%${search}%`);
+    }
+
+    if (status) {
+      query += ` AND u.status = ?`;
+      params.push(status);
+    }
+
+    query += ` ORDER BY u.created_at DESC LIMIT ? OFFSET ?`;
+    params.push(parseInt(limit), parseInt(offset));
+
+    const [students] = await pool.execute(query, params);
+
+    // Get total count
+    const [countResult] = await pool.execute(
+      `SELECT COUNT(*) as total FROM users WHERE role = 'student'`
+    );
+
+    res.json({
+      success: true,
+      students,
+      total: countResult[0].total,
+      page: parseInt(page),
+      limit: parseInt(limit)
+    });
+  } catch (error) {
+    console.error('Error fetching students:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching students'
+    });
+  }
+};
 ```
 
 #### Get Student
@@ -1352,6 +1769,72 @@ See `VPS_DEPLOYMENT_GUIDE.md` for detailed VPS deployment instructions.
 - **Secure Storage:** Tokens stored in HTTP-only cookies (optional)
 - **Session Management:** Automatic session timeout
 
+**Authentication Middleware Example:**
+
+```javascript:backend/middleware/auth.js
+import jwt from 'jsonwebtoken';
+import { pool } from '../config/database.js';
+
+export const authenticateToken = async (req, res, next) => {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+
+  if (!token) {
+    return res.status(401).json({ 
+      success: false, 
+      message: 'Access token required' 
+    });
+  }
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    
+    // Verify user still exists and is active
+    const [users] = await pool.execute(
+      'SELECT ic, nama, email, role, status FROM users WHERE ic = ? AND status = "aktif"',
+      [decoded.userId]
+    );
+
+    if (users.length === 0) {
+      return res.status(401).json({
+        success: false,
+        message: 'User not found or inactive'
+      });
+    }
+
+    const user = users[0];
+    req.user = user;
+    next();
+  } catch (error) {
+    return res.status(403).json({
+      success: false,
+      message: 'Invalid or expired token'
+    });
+  }
+};
+
+export const requireRole = (roles) => {
+  return (req, res, next) => {
+    if (!req.user) {
+      return res.status(401).json({ 
+        success: false, 
+        message: 'Authentication required' 
+      });
+    }
+
+    const hasRequiredRole = roles.includes(req.user.role);
+    if (!hasRequiredRole) {
+      return res.status(403).json({ 
+        success: false, 
+        message: 'Insufficient permissions' 
+      });
+    }
+
+    next();
+  };
+};
+```
+
 ### 10.2 Authorization Security
 
 - **Role-Based Access Control (RBAC):** Multiple user roles
@@ -1396,7 +1879,201 @@ See `VPS_DEPLOYMENT_GUIDE.md` for detailed VPS deployment instructions.
 
 ## 11. User Guide
 
-### 11.1 Administrator Guide
+### 11.1 Frontend Component Examples
+
+**Dashboard Component:**
+
+```javascript:src/pages/Dashboard.jsx
+import React, { useState, useEffect } from 'react';
+import { studentsAPI, teachersAPI, classesAPI } from '../services/api';
+import StatCard from '../components/dashboard/StatCard';
+
+const Dashboard = () => {
+  const [stats, setStats] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchDashboardData();
+  }, []);
+
+  const fetchDashboardData = async () => {
+    try {
+      const [students, teachers, classes] = await Promise.all([
+        studentsAPI.getAll(),
+        teachersAPI.getAll(),
+        classesAPI.getAll()
+      ]);
+
+      setStats([
+        { title: 'Total Students', value: students.length, icon: 'Users' },
+        { title: 'Total Teachers', value: teachers.length, icon: 'GraduationCap' },
+        { title: 'Total Classes', value: classes.length, icon: 'BookOpen' }
+      ]);
+      setLoading(false);
+    } catch (error) {
+      console.error('Error fetching dashboard data:', error);
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return <div>Loading...</div>;
+  }
+
+  return (
+    <div className="dashboard">
+      <h1>Dashboard</h1>
+      <div className="stats-grid">
+        {stats.map((stat, index) => (
+          <StatCard key={index} {...stat} />
+        ))}
+      </div>
+    </div>
+  );
+};
+
+export default Dashboard;
+```
+
+**API Service Example:**
+
+```javascript:src/services/api.js
+import axios from 'axios';
+
+const api = axios.create({
+  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api',
+  timeout: 30000,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
+// Request interceptor to add auth token
+api.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('authToken');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
+
+// Response interceptor to handle errors
+api.interceptors.response.use(
+  (response) => response.data,
+  (error) => {
+    if (error.response?.status === 401) {
+      localStorage.removeItem('authToken');
+      window.location.href = '/login';
+    }
+    return Promise.reject(error);
+  }
+);
+
+// API endpoints
+export const studentsAPI = {
+  getAll: (params) => api.get('/students', { params }),
+  getById: (ic) => api.get(`/students/${ic}`),
+  create: (data) => api.post('/students', data),
+  update: (ic, data) => api.put(`/students/${ic}`, data),
+  delete: (ic) => api.delete(`/students/${ic}`)
+};
+
+export default api;
+```
+
+**Student Form Component:**
+
+```javascript:src/components/pelajar/PelajarForm.jsx
+import React, { useState, useEffect } from 'react';
+import { studentsAPI, classesAPI } from '../../services/api';
+import { formatIC } from '../../utils/icUtils';
+
+const PelajarForm = ({ pelajar = null, onSubmit, onCancel }) => {
+  const [formData, setFormData] = useState({
+    nama: '',
+    ic: '',
+    umur: 5,
+    alamat: '',
+    telefon: '',
+    email: '',
+    kelas_id: null
+  });
+  const [classes, setClasses] = useState([]);
+
+  useEffect(() => {
+    fetchClasses();
+    if (pelajar) {
+      setFormData({
+        nama: pelajar.nama || '',
+        ic: formatIC(pelajar.ic, true) || '',
+        umur: pelajar.umur || 5,
+        alamat: pelajar.alamat || '',
+        telefon: pelajar.telefon || '',
+        email: pelajar.email || '',
+        kelas_id: pelajar.kelas_id || null
+      });
+    }
+  }, [pelajar]);
+
+  const fetchClasses = async () => {
+    try {
+      const response = await classesAPI.getAll();
+      setClasses(response.data || response);
+    } catch (error) {
+      console.error('Error fetching classes:', error);
+    }
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      if (pelajar) {
+        await studentsAPI.update(pelajar.ic, formData);
+      } else {
+        await studentsAPI.create(formData);
+      }
+      onSubmit();
+    } catch (error) {
+      console.error('Error saving student:', error);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <div>
+        <label>Name</label>
+        <input
+          type="text"
+          value={formData.nama}
+          onChange={(e) => setFormData({ ...formData, nama: e.target.value })}
+          required
+        />
+      </div>
+      <div>
+        <label>IC Number</label>
+        <input
+          type="text"
+          value={formData.ic}
+          onChange={(e) => setFormData({ ...formData, ic: e.target.value })}
+          required
+        />
+      </div>
+      {/* More form fields... */}
+      <button type="submit">Save</button>
+      <button type="button" onClick={onCancel}>Cancel</button>
+    </form>
+  );
+};
+
+export default PelajarForm;
+```
+
+### 11.2 Administrator Guide
 
 #### Login
 1. Navigate to login page

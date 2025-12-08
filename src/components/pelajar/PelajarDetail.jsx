@@ -8,16 +8,21 @@ import { formatIC } from '../../utils/icUtils';
 const PelajarDetail = ({ pelajar, onEdit, onClose }) => {
   if (!pelajar) return null;
 
-  const getKelasName = (kelasId) => {
-    const kelasNames = {
-      'al-quran-pemula': 'Al-Quran Pemula',
-      'al-quran-tahfiz': 'Al-Quran Tahfiz',
-      'fardhu-ain': 'Fardhu Ain',
-      'tajwid': 'Tajwid',
-      'hadith': 'Hadith',
-      'fiqh': 'Fiqh'
-    };
-    return kelasNames[kelasId] || 'Tiada Kelas';
+  // Get class name from API response, fallback to 'Tiada Kelas'
+  const getKelasName = () => {
+    return pelajar.nama_kelas || 'Tiada Kelas';
+  };
+
+  // Format registration date safely
+  const formatTarikhDaftar = () => {
+    if (!pelajar.tarikh_daftar) return '-';
+    try {
+      const date = new Date(pelajar.tarikh_daftar);
+      if (isNaN(date.getTime())) return '-';
+      return date.toLocaleDateString('ms-MY');
+    } catch (error) {
+      return '-';
+    }
   };
 
   return (
@@ -105,13 +110,13 @@ const PelajarDetail = ({ pelajar, onEdit, onClose }) => {
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-500">Kelas</label>
-                  <p className="mt-1 text-sm text-gray-900">{getKelasName(pelajar.kelas_id)}</p>
+                  <p className="mt-1 text-sm text-gray-900">{getKelasName()}</p>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-500">Tarikh Daftar</label>
                   <p className="mt-1 text-sm text-gray-900 flex items-center">
                     <Calendar className="w-4 h-4 mr-2 text-emerald-600" />
-                    {new Date(pelajar.tarikh_daftar).toLocaleDateString('ms-MY')}
+                    {formatTarikhDaftar()}
                   </p>
                 </div>
               </div>
