@@ -113,6 +113,13 @@ export const initiateToyyibPayPayment = async (req, res) => {
     // Create ToyyibPay bill
     let billCode, paymentUrl;
     try {
+      // Get config for return URL
+      const config = await getToyyibPayConfig();
+      
+      // Build return URL with payment ID for automatic receipt display
+      const baseReturnUrl = config.returnUrl || `${process.env.FRONTEND_URL || 'http://localhost:3000'}/payment/return`;
+      const returnUrlWithPaymentId = `${baseReturnUrl}${baseReturnUrl.includes('?') ? '&' : '?'}payment_id=${payment.id}`;
+      
       const billResult = await createToyyibPayBill({
         amount: Number(amount),
         description,
@@ -120,19 +127,35 @@ export const initiateToyyibPayPayment = async (req, res) => {
         customerEmail: customerEmail || '',
         customerPhone: customerPhone || '',
         reference,
-        paymentId: payment.id
+        paymentId: payment.id,
+        returnUrl: returnUrlWithPaymentId
       });
 
       billCode = billResult.billCode;
       paymentUrl = billResult.paymentUrl;
     } catch (error) {
       // If bill creation fails, mark payment as failed
-      await updatePaymentStatus(payment.id, 'failed');
+      try {
+        await updatePaymentStatus(payment.id, 'failed');
+      } catch (updateError) {
+        console.error('Failed to update payment status:', updateError);
+      }
+      
+      // Extract error message properly
+      let errorMessage = 'Failed to create ToyyibPay bill';
+      if (error && error.message) {
+        errorMessage = error.message.trim();
+        // If message is just whitespace or tab, use default
+        if (!errorMessage || errorMessage.length === 0 || errorMessage === '\t') {
+          errorMessage = 'Failed to create ToyyibPay bill. Please check your ToyyibPay configuration.';
+        }
+      }
+      
+      console.error('ToyyibPay bill creation error:', error);
       
       return res.status(500).json({
         success: false,
-        message: error.message || 'Failed to create ToyyibPay bill',
-        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        message: errorMessage
       });
     }
 
@@ -170,10 +193,20 @@ export const initiateToyyibPayPayment = async (req, res) => {
     });
   } catch (error) {
     console.error('ToyyibPay initiate error:', error);
+    
+    // Extract error message properly
+    let errorMessage = 'Failed to initiate payment';
+    if (error && error.message) {
+      errorMessage = error.message.trim();
+      // If message is just whitespace or tab, use default
+      if (!errorMessage || errorMessage.length === 0 || errorMessage === '\t') {
+        errorMessage = 'Failed to initiate payment. Please check your configuration.';
+      }
+    }
+    
     res.status(500).json({
       success: false,
-      message: 'Failed to initiate payment',
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      message: errorMessage
     });
   }
 };

@@ -565,7 +565,7 @@ const Login = ({ onLogin }) => {
               <div>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <User className="h-5 w-5 text-gray-400" />
+                    <User className="h-5 w-5 text-gray-600" />
                   </div>
                   <input
                     id="icNumber"
@@ -589,7 +589,7 @@ const Login = ({ onLogin }) => {
               <div>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <Lock className="h-5 w-5 text-gray-400" />
+                    <Lock className="h-5 w-5 text-gray-600" />
                   </div>
                   <input
                     id="password"
@@ -608,9 +608,9 @@ const Login = ({ onLogin }) => {
                     className="absolute inset-y-0 right-0 pr-3 flex items-center"
                   >
                     {showPassword ? (
-                      <EyeOff className="h-5 w-5 text-gray-400 hover:text-black" />
-                    ) : (
-                      <Eye className="h-5 w-5 text-gray-400 hover:text-black" />
+                      <EyeOff className="h-5 w-5 text-gray-600 hover:text-black" />
+              ) : (
+                      <Eye className="h-5 w-5 text-gray-600 hover:text-black" />
                     )}
                   </button>
                 </div>
@@ -688,7 +688,7 @@ const Login = ({ onLogin }) => {
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <User className="h-5 w-5 text-gray-400" />
+                    <User className="h-5 w-5 text-gray-600" />
                   </div>
                   <input
                     id="student-icNumber"
@@ -846,7 +846,7 @@ const Login = ({ onLogin }) => {
               <div>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <User className="h-5 w-5 text-gray-400" />
+                    <User className="h-5 w-5 text-gray-600" />
                   </div>
                   <input
                     id="icNumber"
@@ -870,7 +870,7 @@ const Login = ({ onLogin }) => {
               <div>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <Lock className="h-5 w-5 text-gray-400" />
+                    <Lock className="h-5 w-5 text-gray-600" />
                   </div>
                   <input
                     id="password"
@@ -889,9 +889,9 @@ const Login = ({ onLogin }) => {
                     className="absolute inset-y-0 right-0 pr-3 flex items-center"
                   >
                     {showPassword ? (
-                      <EyeOff className="h-5 w-5 text-gray-400 hover:text-black" />
-                    ) : (
-                      <Eye className="h-5 w-5 text-gray-400 hover:text-black" />
+                      <EyeOff className="h-5 w-5 text-gray-600 hover:text-black" />
+              ) : (
+                      <Eye className="h-5 w-5 text-gray-600 hover:text-black" />
                     )}
                   </button>
                 </div>

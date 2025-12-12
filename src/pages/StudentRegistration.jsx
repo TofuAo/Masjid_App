@@ -4,6 +4,7 @@ import { authAPI } from '../services/api';
 import { User, AlertCircle, CreditCard, Mail, Phone, Calendar, CheckCircle } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { formatIC, isValidIC } from '../utils/icUtils';
+import { formatPhone } from '../utils/phoneUtils';
 
 const StudentRegistration = () => {
   const navigate = useNavigate();
@@ -25,6 +26,13 @@ const StudentRegistration = () => {
     // Format IC number as user types
     if (name === 'ic_number') {
       const formatted = formatIC(value, true);
+      setFormData((prev) => ({
+        ...prev,
+        [name]: formatted,
+      }));
+    } else if (name === 'telefon') {
+      // Auto-format phone with hyphen
+      const formatted = formatPhone(value, true);
       setFormData((prev) => ({
         ...prev,
         [name]: formatted,
@@ -221,7 +229,7 @@ const StudentRegistration = () => {
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <User className="h-5 w-5 text-gray-400" />
+                    <User className="h-5 w-5 text-gray-600" />
                   </div>
                   <input
                     id="nama"
@@ -243,7 +251,7 @@ const StudentRegistration = () => {
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <CreditCard className="h-5 w-5 text-gray-400" />
+                    <CreditCard className="h-5 w-5 text-gray-600" />
                   </div>
                   <input
                     id="ic_number"
@@ -268,7 +276,7 @@ const StudentRegistration = () => {
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <Calendar className="h-5 w-5 text-gray-400" />
+                    <Calendar className="h-5 w-5 text-gray-600" />
                   </div>
                   <input
                     id="umur"
@@ -291,7 +299,7 @@ const StudentRegistration = () => {
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <Mail className="h-5 w-5 text-gray-400" />
+                    <Mail className="h-5 w-5 text-gray-600" />
                   </div>
                   <input
                     id="email"
@@ -313,7 +321,7 @@ const StudentRegistration = () => {
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <Phone className="h-5 w-5 text-gray-400" />
+                    <Phone className="h-5 w-5 text-gray-600" />
                   </div>
                   <input
                     id="telefon"

@@ -101,7 +101,7 @@ const StudentResultDetailModal = ({ isOpen, onClose, studentIc, studentName, cla
           </div>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors"
+            className="text-gray-600 hover:text-gray-800 transition-colors"
           >
             <X size={24} />
           </button>
@@ -168,7 +168,7 @@ const StudentResultDetailModal = ({ isOpen, onClose, studentIc, studentName, cla
                       </div>
                     </div>
                   ) : (
-                    <div className="text-center py-4 text-gray-400">
+                    <div className="text-center py-4 text-gray-600">
                       <p>Tiada keputusan untuk {label.toLowerCase()}</p>
                     </div>
                   )}

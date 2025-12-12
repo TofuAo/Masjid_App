@@ -3,7 +3,7 @@ import StatCard from './StatCard';
 
 const QuickStats = ({ stats }) => {
   if (!stats || stats.length === 0) {
-    return <div className="text-center text-gray-400 py-4">Tiada statistik untuk dipaparkan.</div>;
+    return <div className="text-center text-gray-600 py-4">Tiada statistik untuk dipaparkan.</div>;
   }
 
   return (

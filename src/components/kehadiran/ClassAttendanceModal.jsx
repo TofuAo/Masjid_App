@@ -57,7 +57,7 @@ const ClassAttendanceModal = ({ isOpen, onClose, className, attendanceDate, stud
           </div>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-black transition-colors"
+            className="text-gray-600 hover:text-black transition-colors"
           >
             <X className="w-6 h-6" />
           </button>

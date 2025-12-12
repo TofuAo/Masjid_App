@@ -651,7 +651,7 @@ const StaffCheckIn = ({ user }) => {
               {todayStatus.status === 'checked_in' ? (
                 <CheckCircle className="h-8 w-8 text-green-500" />
               ) : (
-                <XCircle className="h-8 w-8 text-gray-400" />
+                <XCircle className="h-8 w-8 text-gray-600" />
               )}
             </div>
 

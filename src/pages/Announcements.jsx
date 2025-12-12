@@ -171,7 +171,7 @@ const Announcements = ({ user }) => {
                               <p className="text-xs text-gray-500 capitalize">
                                 {operationLabel} • ID #{action.entity_id}
                               </p>
-                              <div className="flex items-center text-xs text-gray-400 mt-1">
+                              <div className="flex items-center text-xs text-gray-600 mt-1">
                                 <Clock className="w-3 h-3 mr-1" />
                                 <span>
                                   {createdAt

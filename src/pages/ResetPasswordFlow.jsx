@@ -238,9 +238,9 @@ const ResetPasswordFlow = () => {
                 </label>
                 <div className="relative">
                   {inputType === 'email' ? (
-                    <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                    <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-600 w-5 h-5" />
                   ) : (
-                    <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                    <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-600 w-5 h-5" />
                   )}
                   <input
                     type={inputType === 'email' ? 'email' : 'tel'}
@@ -368,7 +368,7 @@ const ResetPasswordFlow = () => {
                   Kod Pengesahan (6 digit)
                 </label>
                 <div className="relative">
-                  <Key className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                  <Key className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-600 w-5 h-5" />
                   <input
                     type="text"
                     value={otp}
@@ -459,7 +459,7 @@ const ResetPasswordFlow = () => {
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-600 hover:text-gray-800"
                   >
                     {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                   </button>

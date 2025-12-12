@@ -7,12 +7,19 @@ import GuruForm from '../components/guru/GuruForm';
 import Card from '../components/ui/Card';
 import Badge from '../components/ui/Badge';
 import BackButton from '../components/ui/BackButton';
-import { GraduationCap, ExternalLink, Edit, BookOpen } from 'lucide-react';
+import Button from '../components/ui/Button';
+import { GraduationCap, ExternalLink, Edit, BookOpen, UserPlus, X, Users } from 'lucide-react';
+import { toast } from 'react-toastify';
+import { formatIC } from '../utils/icUtils';
+import { formatPhoneForDisplay } from '../utils/phoneUtils';
 
 const Guru = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [user, setUser] = React.useState(null);
+  const [showUnassigned, setShowUnassigned] = React.useState(false);
+  const [unassignedUsers, setUnassignedUsers] = React.useState([]);
+  const [loadingUnassigned, setLoadingUnassigned] = React.useState(false);
   
   React.useEffect(() => {
     const storedUser = localStorage.getItem('user');
@@ -72,15 +79,12 @@ const Guru = () => {
     }
   }, [currentView, selectedGuru]);
 
-  // Statistics from API
-  const [stats, setStats] = useState({
-    total: 0
-  });
 
-  // Fetch all teachers with high limit
+  // Fetch all teachers with high limit - only on mount
   useEffect(() => {
     fetchItems({ limit: 1000 });
-  }, [fetchItems]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Only fetch once on mount
 
   // Handle URL parameter for viewing a specific teacher
   useEffect(() => {
@@ -96,29 +100,54 @@ const Guru = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams, gurus.length, setSearchParams]);
 
-  // Fetch stats from API
-  useEffect(() => {
-    const fetchStats = async () => {
-      try {
-        const response = await teachersAPI.getStats();
-        if (response?.success && response?.data) {
-          setStats({
-            total: response.data.total || 0
-          });
-        }
-      } catch (error) {
-        console.error('Failed to fetch stats:', error);
-        // Fallback to calculated stats
-        const gurusArray = Array.isArray(gurus) ? gurus : [];
-        setStats({
-          total: gurusArray.length
-        });
-      }
-    };
-    fetchStats();
-  }, [gurus.length]);
+  // Calculate total from actual list to ensure sync with displayed list
+  const totalGurus = Array.isArray(gurus) ? gurus.length : 0;
 
-  const totalGurus = stats.total;
+  // Fetch unassigned staff/teachers
+  const fetchUnassigned = async () => {
+    if (user?.role !== 'admin') return;
+    
+    setLoadingUnassigned(true);
+    try {
+      const response = await teachersAPI.getUnassigned();
+      // Handle both response formats: {success: true, data: [...]} or just [...]
+      let data = [];
+      if (response?.success && Array.isArray(response.data)) {
+        data = response.data;
+      } else if (Array.isArray(response?.data)) {
+        data = response.data;
+      } else if (Array.isArray(response)) {
+        data = response;
+      }
+      setUnassignedUsers(data);
+    } catch (error) {
+      console.error('Failed to fetch unassigned staff/teachers:', error);
+      toast.error('Gagal memuatkan senarai pengguna.');
+      setUnassignedUsers([]);
+    } finally {
+      setLoadingUnassigned(false);
+    }
+  };
+
+  // Convert user to teacher
+  const handleConvertToTeacher = async (userIc) => {
+    try {
+      await teachersAPI.convertToTeacher({ ic: userIc, kepakaran: [] });
+      toast.success('Pengguna berjaya ditukar kepada guru!');
+      fetchUnassigned(); // Refresh list
+      fetchItems({ limit: 1000 }); // Refresh teachers list
+    } catch (error) {
+      console.error('Failed to convert user to teacher:', error);
+      const errorMessage = error?.message || 'Gagal menukar pengguna kepada guru.';
+      toast.error(errorMessage);
+    }
+  };
+
+  useEffect(() => {
+    if (showUnassigned && user?.role === 'admin') {
+      fetchUnassigned();
+    }
+  }, [showUnassigned, user]);
 
   const renderContent = () => {
     if (loading) {
@@ -205,7 +234,7 @@ const Guru = () => {
                         </div>
                         <div>
                           <label className="block text-sm font-medium text-gray-500">Nombor Telefon</label>
-                          <p className="mt-1 text-sm text-gray-900">{displayGuru?.telefon || '-'}</p>
+                          <p className="mt-1 text-sm text-gray-900">{displayGuru?.telefon ? formatPhoneForDisplay(displayGuru.telefon) : '-'}</p>
                         </div>
                         {displayGuru?.email && (
                           <div>
@@ -353,6 +382,103 @@ const Guru = () => {
               </Card>
 
             </div>
+
+            {/* Admin: Show unassigned staff/teachers */}
+            {user?.role === 'admin' && (
+              <Card>
+                <Card.Header>
+                  <div className="flex items-center justify-between">
+                    <Card.Title>Senarai Semua Pengguna Staff/Guru</Card.Title>
+                    <Button
+                      variant="outline"
+                      onClick={() => setShowUnassigned(!showUnassigned)}
+                    >
+                      {showUnassigned ? (
+                        <>
+                          <X className="w-4 h-4 mr-2" />
+                          Tutup
+                        </>
+                      ) : (
+                        <>
+                          <Users className="w-4 h-4 mr-2" />
+                          Lihat Senarai
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </Card.Header>
+                {showUnassigned && (
+                  <Card.Content>
+                    {loadingUnassigned ? (
+                      <div className="text-center py-8">Memuatkan senarai...</div>
+                    ) : unassignedUsers.length === 0 ? (
+                      <div className="text-center py-8 text-gray-500">
+                        Tiada pengguna dengan peranan staff/guru.
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        <p className="text-sm text-gray-600 mb-4">
+                          Senarai semua pengguna yang mempunyai peranan staff/teacher. Klik "Jadikan Guru" untuk pengguna yang belum mempunyai rekod dalam jadual teachers.
+                        </p>
+                        <div className="space-y-2">
+                          {unassignedUsers.map((usr) => {
+                            const hasTeacherEntry = usr.has_teacher_entry === 1 || usr.has_teacher_entry === true;
+                            return (
+                              <div
+                                key={usr.ic}
+                                className={`flex items-center justify-between p-4 border rounded-lg ${
+                                  hasTeacherEntry 
+                                    ? 'bg-green-50 border-green-200' 
+                                    : 'bg-gray-50 border-gray-200'
+                                }`}
+                              >
+                                <div className="flex-1">
+                                  <div className="font-medium text-gray-900">{usr.nama}</div>
+                                  <div className="text-sm text-gray-600 mt-1">
+                                    <span>IC: {formatIC(usr.ic)}</span>
+                                    {usr.email && <span className="ml-3">Email: {usr.email}</span>}
+                                    {usr.telefon && <span className="ml-3">Tel: {formatPhoneForDisplay(usr.telefon)}</span>}
+                                  </div>
+                                  <div className="mt-1">
+                                    <Badge variant={usr.role === 'staff' ? 'secondary' : 'default'}>
+                                      {usr.role === 'staff' ? 'Staff' : 'Teacher'}
+                                    </Badge>
+                                    {usr.status && (
+                                      <Badge variant={usr.status === 'aktif' ? 'success' : 'warning'} className="ml-2">
+                                        {usr.status}
+                                      </Badge>
+                                    )}
+                                    {hasTeacherEntry && (
+                                      <Badge variant="success" className="ml-2">
+                                        Sudah ada rekod guru
+                                      </Badge>
+                                    )}
+                                  </div>
+                                </div>
+                                {!hasTeacherEntry && (
+                                  <Button
+                                    onClick={() => handleConvertToTeacher(usr.ic)}
+                                    className="ml-4"
+                                  >
+                                    <UserPlus className="w-4 h-4 mr-2" />
+                                    Jadikan Guru
+                                  </Button>
+                                )}
+                                {hasTeacherEntry && (
+                                  <Badge variant="success" className="ml-4">
+                                    Sudah menjadi guru
+                                  </Badge>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+                  </Card.Content>
+                )}
+              </Card>
+            )}
 
             {/* Guru List */}
             <GuruList

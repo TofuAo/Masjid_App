@@ -73,7 +73,7 @@ const AnnouncementForm = ({ announcement, onSubmit, onCancel }) => {
           <Card.Title>{announcement ? 'Edit Pengumuman' : 'Buat Pengumuman Baru'}</Card.Title>
           <button
             onClick={onCancel}
-            className="text-gray-400 hover:text-gray-600"
+            className="text-gray-600 hover:text-gray-800"
           >
             <X className="w-5 h-5" />
           </button>

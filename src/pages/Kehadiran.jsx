@@ -35,14 +35,24 @@ const Kehadiran = () => {
   const fetchClasses = useCallback(async () => {
     try {
       const classesResponse = await classesAPI.getAll({ limit: 9999 });
-      setKelass(Array.isArray(classesResponse) ? classesResponse : []);
+      const allClasses = Array.isArray(classesResponse) ? classesResponse : [];
+      
+      // If user is a teacher, filter to only show their assigned classes
+      if (user && user.role === 'teacher' && user.ic) {
+        const teacherClasses = allClasses.filter(kls => kls.guru_ic === user.ic);
+        setKelass(teacherClasses);
+      } else {
+        // For admins and other roles, show all classes
+        setKelass(allClasses);
+      }
     } catch (err) {
       console.error('Failed to fetch classes:', err);
       toast.error('Gagal memuatkan data kelas.');
       setKelass([]);
     }
-  }, []);
+  }, [user]);
 
+  // Initialize user on mount only
   useEffect(() => {
     const userData = JSON.parse(localStorage.getItem('user'));
     if (userData) {
@@ -51,19 +61,27 @@ const Kehadiran = () => {
         setUserRole(userData.role);
       }
     }
-    // Only fetch classes if user is not a student
+  }, []);
+
+  // Fetch classes when user changes or on mount
+  useEffect(() => {
+    const userData = JSON.parse(localStorage.getItem('user'));
     if (userData && userData.role !== 'student') {
       fetchClasses();
     }
-    
-    // Fetch attendance data based on date range
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.ic]); // Only re-fetch if user IC changes
+
+  // Fetch attendance data when filters change
+  useEffect(() => {
     fetchAttendanceData({ 
       start_date: startDate,
       end_date: endDate,
       class_id: selectedKelas === 'semua' ? undefined : selectedKelas,
       limit: 10000
     });
-  }, [fetchClasses, fetchAttendanceData, startDate, endDate, selectedKelas]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [startDate, endDate, selectedKelas]); // Only depend on filter values
 
   // Normalize status values from backend ('Hadir' -> 'hadir', 'Tidak Hadir' -> 'tidak_hadir', etc.)
   const normalizeStatus = (status) => {
@@ -550,7 +568,7 @@ const Kehadiran = () => {
                             )}
                           </div>
                         </div>
-                        <ChevronRight className="w-5 h-5 text-gray-400" />
+                        <ChevronRight className="w-5 h-5 text-gray-600" />
                       </div>
                     </div>
                   ))}

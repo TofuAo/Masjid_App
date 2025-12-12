@@ -268,7 +268,7 @@ const PelajarForm = ({ pelajar = null, onSubmit, onCancel }) => {
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Nombor IC {!pelajar && '*'}
-                {pelajar && <span className="text-gray-400 text-xs font-normal ml-1">(Tidak boleh diubah)</span>}
+                {pelajar && <span className="text-gray-600 text-xs font-normal ml-1">(Tidak boleh diubah)</span>}
               </label>
               <input
                 type="text"
@@ -307,7 +307,7 @@ const PelajarForm = ({ pelajar = null, onSubmit, onCancel }) => {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Nombor Telefon <span className="text-gray-400 text-xs font-normal">(Pilihan)</span>
+                Nombor Telefon <span className="text-gray-600 text-xs font-normal">(Pilihan)</span>
               </label>
               <input
                 type="tel"
@@ -325,7 +325,7 @@ const PelajarForm = ({ pelajar = null, onSubmit, onCancel }) => {
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Alamat <span className="text-gray-400 text-xs font-normal">(Pilihan)</span>
+              Alamat <span className="text-gray-600 text-xs font-normal">(Pilihan)</span>
             </label>
             <textarea
               name="alamat"
@@ -415,7 +415,7 @@ const PelajarForm = ({ pelajar = null, onSubmit, onCancel }) => {
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Email {!pelajar && '*'}
-                {pelajar && <span className="text-gray-400 text-xs font-normal ml-1">(Pilihan)</span>}
+                {pelajar && <span className="text-gray-600 text-xs font-normal ml-1">(Pilihan)</span>}
               </label>
               <input
                 type="email"
@@ -432,7 +432,7 @@ const PelajarForm = ({ pelajar = null, onSubmit, onCancel }) => {
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Password {!pelajar && '*'}
-                {pelajar && <span className="text-gray-400 text-xs font-normal ml-1">(Tinggalkan kosong untuk tidak menukar)</span>}
+                {pelajar && <span className="text-gray-600 text-xs font-normal ml-1">(Tinggalkan kosong untuk tidak menukar)</span>}
               </label>
               <input
                 type="password"

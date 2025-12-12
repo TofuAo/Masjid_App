@@ -266,7 +266,7 @@ const ResultFormModal = ({
                       className="input-mosque w-full pr-10"
                     />
                     <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-                      <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform ${isStudentDropdownOpen ? 'transform rotate-180' : ''}`} />
+                      <ChevronDown className={`w-5 h-5 text-gray-600 transition-transform ${isStudentDropdownOpen ? 'transform rotate-180' : ''}`} />
                     </div>
                   </div>
                   
@@ -274,7 +274,7 @@ const ResultFormModal = ({
                     <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto">
                       <div className="p-2 border-b border-gray-200 sticky top-0 bg-white">
                         <div className="relative">
-                          <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                          <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-500 w-4 h-4" />
                           <input
                             type="text"
                             value={studentSearchTerm}

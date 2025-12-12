@@ -5,9 +5,10 @@ import { toast } from 'react-toastify';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import Badge from '../components/ui/Badge';
-import { Settings as SettingsIcon, QrCode, Key, Upload, Link, Save, Users, Eye, EyeOff, MapPin, Database, CloudUpload, History, DownloadCloud, Loader2, Search, X, CreditCard, Mail, Phone, Archive } from 'lucide-react';
+import { Settings as SettingsIcon, QrCode, Key, Upload, Link, Save, Users, Eye, EyeOff, MapPin, Database, CloudUpload, History, DownloadCloud, Loader2, Search, X, CreditCard, Mail, Phone, Archive, Contact, Clock } from 'lucide-react';
 import { formatIC } from '../utils/icUtils';
 import { getEffectiveRole } from '../utils/userRoles';
+import { formatPhoneForDisplay } from '../utils/phoneUtils';
 
 const Settings = () => {
   // Check if user is admin - redirect non-admins to personal settings
@@ -18,7 +19,7 @@ const Settings = () => {
   if (!user || userRole !== 'admin') {
     return <Navigate to="/personal-settings" replace />;
   }
-  const [activeTab, setActiveTab] = useState('qr'); // 'qr', 'password', 'checkin', or 'backup'
+  const [activeTab, setActiveTab] = useState('qr'); // 'qr', 'password', 'checkin', 'backup', or 'contact'
   const [loading, setLoading] = useState(false);
   const [exportingBackup, setExportingBackup] = useState(false);
   const [archivingYear, setArchivingYear] = useState(false);
@@ -194,6 +195,16 @@ const Settings = () => {
     masjid_checkin_radius: '100'
   });
 
+  // Contact Information Settings
+  const [contactInfo, setContactInfo] = useState({
+    contact_address_line1: '',
+    contact_address_line2: '',
+    contact_phone: '',
+    contact_email: '',
+    contact_hours_weekdays: '',
+    contact_hours_weekend: ''
+  });
+
   const formatCoordinate = (value) => {
     const numeric = Number(value);
     if (Number.isNaN(numeric)) {
@@ -215,6 +226,7 @@ const Settings = () => {
     fetchQRSettings();
     fetchAllUsers();
     fetchCheckInSettings();
+    fetchContactInfo();
   }, []);
 
   useEffect(() => {
@@ -483,6 +495,86 @@ const Settings = () => {
     return nama.includes(query) || ic.includes(query) || role.includes(query) || email.includes(query) || telefon.includes(query);
   });
 
+  // Fetch Contact Information
+  const fetchContactInfo = async () => {
+    try {
+      const keys = [
+        'contact_address_line1',
+        'contact_address_line2',
+        'contact_phone',
+        'contact_email',
+        'contact_hours_weekdays',
+        'contact_hours_weekend'
+      ];
+      
+      const settingsPromises = keys.map(key => 
+        settingsAPI.getByKey(key).catch(() => ({ data: { setting_value: '' } }))
+      );
+      
+      const results = await Promise.all(settingsPromises);
+      
+      setContactInfo({
+        contact_address_line1: results[0]?.data?.setting_value || '',
+        contact_address_line2: results[1]?.data?.setting_value || '',
+        contact_phone: results[2]?.data?.setting_value || '',
+        contact_email: results[3]?.data?.setting_value || '',
+        contact_hours_weekdays: results[4]?.data?.setting_value || '',
+        contact_hours_weekend: results[5]?.data?.setting_value || ''
+      });
+    } catch (error) {
+      console.error('Failed to fetch contact info:', error);
+    }
+  };
+
+  // Save Contact Information
+  const handleSaveContactInfo = async () => {
+    try {
+      setLoading(true);
+      
+      await Promise.all([
+        settingsAPI.update('contact_address_line1', {
+          value: contactInfo.contact_address_line1,
+          type: 'text',
+          description: 'Contact address line 1'
+        }),
+        settingsAPI.update('contact_address_line2', {
+          value: contactInfo.contact_address_line2,
+          type: 'text',
+          description: 'Contact address line 2'
+        }),
+        settingsAPI.update('contact_phone', {
+          value: contactInfo.contact_phone,
+          type: 'text',
+          description: 'Contact phone number'
+        }),
+        settingsAPI.update('contact_email', {
+          value: contactInfo.contact_email,
+          type: 'text',
+          description: 'Contact email address'
+        }),
+        settingsAPI.update('contact_hours_weekdays', {
+          value: contactInfo.contact_hours_weekdays,
+          type: 'text',
+          description: 'Operating hours for weekdays'
+        }),
+        settingsAPI.update('contact_hours_weekend', {
+          value: contactInfo.contact_hours_weekend,
+          type: 'text',
+          description: 'Operating hours for weekend'
+        })
+      ]);
+
+      toast.success('Maklumat perhubungan berjaya disimpan!');
+      fetchContactInfo();
+    } catch (error) {
+      console.error('Failed to save contact info:', error);
+      toast.error('Gagal menyimpan maklumat perhubungan.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -538,6 +630,17 @@ const Settings = () => {
             >
               <Database className="w-4 h-4 inline mr-2" />
               Eksport Pangkalan Data
+            </button>
+            <button
+              onClick={() => setActiveTab('contact')}
+              className={`px-4 py-2 font-medium transition-colors ${
+                activeTab === 'contact'
+                  ? 'border-b-2 border-emerald-600 text-emerald-600'
+                  : 'text-black hover:text-black'
+              }`}
+            >
+              <Contact className="w-4 h-4 inline mr-2" />
+              Maklumat Perhubungan
             </button>
           </div>
           
@@ -631,7 +734,7 @@ const Settings = () => {
                   Pautan QR Code (Alternatif)
                 </label>
                 <div className="flex items-center space-x-2">
-                  <Link className="w-5 h-5 text-gray-400" />
+                  <Link className="w-5 h-5 text-gray-600" />
                   <input
                     type="text"
                     value={qrSettings.qr_code_link}
@@ -675,7 +778,7 @@ const Settings = () => {
               <div className="flex flex-col sm:flex-row gap-4 mb-6">
                 <div className="flex-1">
                   <div className="relative">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 w-4 h-4" />
                     <input
                       type="text"
                       placeholder="Cari pengguna..."
@@ -729,7 +832,7 @@ const Settings = () => {
                             <div>
                               <div className="text-sm font-medium text-gray-900">{user.nama}</div>
                               {user.telefon && (
-                                <div className="text-sm text-gray-500">{user.telefon}</div>
+                                <div className="text-sm text-gray-500">{formatPhoneForDisplay(user.telefon)}</div>
                               )}
                             </div>
                           </td>
@@ -767,14 +870,14 @@ const Settings = () => {
                   <div className="text-center py-12">
                     <div className="flex justify-center mb-4">
                       <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center">
-                        <Users className="w-8 h-8 text-gray-400" />
+                        <Users className="w-8 h-8 text-gray-600" />
                       </div>
                     </div>
                     <p className="text-gray-500 text-lg font-medium mb-2">
                       {userSearchQuery ? 'Tiada pengguna ditemui' : 'Tiada pengguna dalam senarai'}
                     </p>
                     {userSearchQuery && (
-                      <p className="text-sm text-gray-400">
+                      <p className="text-sm text-gray-600">
                         Cuba cari dengan kata kunci lain
                       </p>
                     )}
@@ -797,7 +900,7 @@ const Settings = () => {
               </div>
               <button
                 onClick={handleCloseModal}
-                className="text-gray-400 hover:text-gray-600 transition-colors"
+                className="text-gray-600 hover:text-gray-800 transition-colors"
               >
                 <X className="w-6 h-6" />
               </button>
@@ -807,7 +910,7 @@ const Settings = () => {
               {/* User Info */}
               <div className="bg-gray-50 p-4 rounded-lg space-y-3">
                 <div className="flex items-center">
-                  <CreditCard className="w-5 h-5 text-gray-400 mr-3" />
+                  <CreditCard className="w-5 h-5 text-gray-600 mr-3" />
                   <div>
                     <p className="text-xs text-gray-500">Nombor IC</p>
                     <p className="text-sm font-medium text-gray-900">
@@ -817,7 +920,7 @@ const Settings = () => {
                 </div>
                 {modalUser.email && (
                   <div className="flex items-center">
-                    <Mail className="w-5 h-5 text-gray-400 mr-3" />
+                    <Mail className="w-5 h-5 text-gray-600 mr-3" />
                     <div>
                       <p className="text-xs text-gray-500">Email</p>
                       <p className="text-sm font-medium text-gray-900">{modalUser.email}</p>
@@ -826,15 +929,15 @@ const Settings = () => {
                 )}
                 {modalUser.telefon && (
                   <div className="flex items-center">
-                    <Phone className="w-5 h-5 text-gray-400 mr-3" />
+                    <Phone className="w-5 h-5 text-gray-600 mr-3" />
                     <div>
                       <p className="text-xs text-gray-500">Telefon</p>
-                      <p className="text-sm font-medium text-gray-900">{modalUser.telefon}</p>
+                      <p className="text-sm font-medium text-gray-900">{formatPhoneForDisplay(modalUser.telefon)}</p>
                     </div>
                   </div>
                 )}
                 <div className="flex items-center">
-                  <Users className="w-5 h-5 text-gray-400 mr-3" />
+                  <Users className="w-5 h-5 text-gray-600 mr-3" />
                   <div>
                     <p className="text-xs text-gray-500">Peranan</p>
                     <Badge variant="default">
@@ -860,7 +963,7 @@ const Settings = () => {
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-black"
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-600 hover:text-black"
                   >
                     {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                   </button>
@@ -1025,6 +1128,122 @@ const Settings = () => {
               >
                 <Save className="w-4 h-4 mr-2" />
                 Simpan Tetapan Lokasi
+              </Button>
+            </div>
+          </Card.Content>
+        </Card>
+      )}
+
+      {/* Contact Information Settings */}
+      {activeTab === 'contact' && (
+        <Card>
+          <Card.Header>
+            <Card.Title className="flex items-center space-x-2">
+              <Contact className="w-5 h-5" />
+              <span>Maklumat Perhubungan</span>
+            </Card.Title>
+          </Card.Header>
+          <Card.Content>
+            <div className="space-y-6">
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-1">
+                <p className="text-sm text-blue-800">
+                  <strong>Maklumat:</strong> Maklumat ini akan dipaparkan pada halaman Hubungi Kami.
+                </p>
+              </div>
+
+              {/* Address */}
+              <div>
+                <label className="block text-sm font-medium text-black mb-2">
+                  Alamat Baris 1 <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={contactInfo.contact_address_line1}
+                  onChange={(e) => setContactInfo({ ...contactInfo, contact_address_line1: e.target.value })}
+                  placeholder="Contoh: Masjid Negeri Sultan Ahmad 1"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-black mb-2">
+                  Alamat Baris 2
+                </label>
+                <input
+                  type="text"
+                  value={contactInfo.contact_address_line2}
+                  onChange={(e) => setContactInfo({ ...contactInfo, contact_address_line2: e.target.value })}
+                  placeholder="Contoh: Kuantan, Pahang"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+              </div>
+
+              {/* Phone */}
+              <div>
+                <label className="block text-sm font-medium text-black mb-2">
+                  <Phone className="w-4 h-4 inline mr-2" />
+                  Telefon <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={contactInfo.contact_phone}
+                  onChange={(e) => setContactInfo({ ...contactInfo, contact_phone: e.target.value })}
+                  placeholder="+60 9-123 4567"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+              </div>
+
+              {/* Email */}
+              <div>
+                <label className="block text-sm font-medium text-black mb-2">
+                  <Mail className="w-4 h-4 inline mr-2" />
+                  Emel <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="email"
+                  value={contactInfo.contact_email}
+                  onChange={(e) => setContactInfo({ ...contactInfo, contact_email: e.target.value })}
+                  placeholder="admin@epengajian.com"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+              </div>
+
+              {/* Operating Hours */}
+              <div>
+                <label className="block text-sm font-medium text-black mb-2">
+                  <Clock className="w-4 h-4 inline mr-2" />
+                  Waktu Operasi - Isnin - Jumaat
+                </label>
+                <input
+                  type="text"
+                  value={contactInfo.contact_hours_weekdays}
+                  onChange={(e) => setContactInfo({ ...contactInfo, contact_hours_weekdays: e.target.value })}
+                  placeholder="Isnin - Jumaat: 8:00 AM - 5:00 PM"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-black mb-2">
+                  <Clock className="w-4 h-4 inline mr-2" />
+                  Waktu Operasi - Sabtu - Ahad
+                </label>
+                <input
+                  type="text"
+                  value={contactInfo.contact_hours_weekend}
+                  onChange={(e) => setContactInfo({ ...contactInfo, contact_hours_weekend: e.target.value })}
+                  placeholder="Sabtu - Ahad: 9:00 AM - 1:00 PM"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+              </div>
+
+              <Button
+                onClick={handleSaveContactInfo}
+                disabled={loading}
+                className="w-full"
+              >
+                <Save className="w-4 h-4 mr-2" />
+                Simpan Maklumat Perhubungan
               </Button>
             </div>
           </Card.Content>
@@ -1220,7 +1439,7 @@ const Settings = () => {
                                     Muat Turun
                                   </button>
                                 ) : !backup.driveViewLink ? (
-                                  <span className="text-gray-400">-</span>
+                                  <span className="text-gray-600">-</span>
                                 ) : null}
                               </div>
                             </td>

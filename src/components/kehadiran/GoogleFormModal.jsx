@@ -73,7 +73,7 @@ const GoogleFormModal = ({ isOpen, onClose, formUrl, classId, className, selecte
           </div>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors"
+            className="text-gray-600 hover:text-gray-800 transition-colors"
           >
             <X className="w-6 h-6" />
           </button>

@@ -210,7 +210,7 @@ const PaymentMethodSettings = () => {
                         method.enabled ? 'bg-emerald-100' : 'bg-gray-200'
                       }`}>
                         <Icon className={`w-6 h-6 ${
-                          method.enabled ? 'text-emerald-600' : 'text-gray-400'
+                          method.enabled ? 'text-emerald-600' : 'text-gray-600'
                         }`} />
                       </div>
 
@@ -286,7 +286,7 @@ const PaymentMethodSettings = () => {
                           {method.enabled ? (
                             <ToggleRight className="w-6 h-6 text-emerald-600" />
                           ) : (
-                            <ToggleLeft className="w-6 h-6 text-gray-400" />
+                            <ToggleLeft className="w-6 h-6 text-gray-600" />
                           )}
                         </button>
 

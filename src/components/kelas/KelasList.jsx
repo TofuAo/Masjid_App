@@ -167,7 +167,7 @@ const KelasList = ({ kelass = [], onEdit, onView, onDelete, onAdd, gurus = [], u
                         );
                       }
                       
-                      return <span className="text-xs text-gray-400">-</span>;
+                      return <span className="text-xs text-gray-600">-</span>;
                     })()}
                   </td>
                   <td className="px-3 sm:px-6 py-3 sm:py-4 text-sm text-mosque-neutral-700 hidden md:table-cell">{kelas.guru_nama || getGuruName(kelas.guru_ic)}</td>

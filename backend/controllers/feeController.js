@@ -1,13 +1,25 @@
 import { pool, testConnection } from '../config/database.js';
 import { validationResult } from 'express-validator';
 import { sendFeePaymentConfirmation } from '../utils/emailService.js';
+import { generateMonthlyFeesManually, syncCurrentMonthFeesWithClassYuran } from '../schedulers/monthlyFeeGenerationJob.js';
 
 export const getAllFees = async (req, res) => {
   try {
     const { search, status, bulan, tahun, page = 1, limit = 1000 } = req.query;
     
+    // Get current month and year for prioritizing current month fees
+    const now = new Date();
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
+    const monthNames = [
+      'Januari', 'Februari', 'Mac', 'April', 'Mei', 'Jun',
+      'Julai', 'Ogos', 'September', 'Oktober', 'November', 'Disember'
+    ];
+    const currentMonthName = monthNames[currentMonth];
+    
     // Use LEFT JOIN to show all students, even those without fees
-    // Get the most recent fee for each student, or NULL if no fee exists
+    // Prioritize current month's fee, otherwise get the most recent fee
+    // For unpaid fees, always use the current class yuran to keep them in sync
     let query = `
       SELECT 
         COALESCE(f.id, 0) as id,
@@ -15,7 +27,12 @@ export const getAllFees = async (req, res) => {
         u.nama as pelajar_nama,
         u.ic as pelajar_ic,
         c.nama_kelas,
-        COALESCE(f.jumlah, COALESCE(c.yuran, 150.00)) as jumlah,
+        c.nama_kelas as kelas_nama,
+        CASE 
+          WHEN f.id IS NULL THEN COALESCE(c.yuran, 150.00)
+          WHEN f.status IS NULL OR f.status NOT IN ('terbayar', 'Bayar', 'paid', 'Terbayar') THEN COALESCE(c.yuran, 150.00)
+          ELSE f.jumlah
+        END as jumlah,
         COALESCE(f.status, 'Belum Bayar') as status,
         f.tarikh,
         f.tarikh_bayar,
@@ -24,6 +41,9 @@ export const getAllFees = async (req, res) => {
         f.cara_bayar,
         f.no_resit,
         f.resit_img,
+        f.document_confirmed,
+        f.confirmed_by,
+        f.confirmed_at,
         f.created_at,
         f.updated_at
       FROM users u
@@ -33,15 +53,19 @@ export const getAllFees = async (req, res) => {
         SELECT f1.*
         FROM fees f1
         INNER JOIN (
-          SELECT student_ic, MAX(created_at) as max_created
-          FROM fees
+          SELECT student_ic, 
+                 COALESCE(
+                   MAX(CASE WHEN f1.bulan = ? AND f1.tahun = ? THEN created_at END),
+                   MAX(created_at)
+                 ) as max_created
+          FROM fees f1
           GROUP BY student_ic
         ) f2 ON f1.student_ic = f2.student_ic AND f1.created_at = f2.max_created
       ) f ON u.ic = f.student_ic
       WHERE u.role = 'student'
     `;
     
-    const queryParams = [];
+    const queryParams = [currentMonthName, currentYear];
 
     // If user is a student, only show their own fees
     if (req.user && req.user.role === 'student') {
@@ -94,6 +118,49 @@ export const getAllFees = async (req, res) => {
     query += ` ORDER BY u.nama ASC LIMIT ${safeLimit} OFFSET ${offset}`;
     
     const [fees] = await pool.execute(query, queryParams);
+    
+    // Sync unpaid fees with current class yuran amounts in the background
+    // This ensures fee records are updated to match class yuran
+    if (fees.length > 0) {
+      try {
+        const now = new Date();
+        const currentMonth = now.getMonth();
+        const currentYear = now.getFullYear();
+        const monthNames = [
+          'Januari', 'Februari', 'Mac', 'April', 'Mei', 'Jun',
+          'Julai', 'Ogos', 'September', 'Oktober', 'November', 'Disember'
+        ];
+        const currentMonthName = monthNames[currentMonth];
+        
+        // Get all unpaid fees for current month that need syncing
+        const [unpaidFees] = await pool.execute(`
+          SELECT f.id, f.student_ic, f.jumlah, c.yuran as class_yuran
+          FROM fees f
+          JOIN users u ON f.student_ic = u.ic
+          JOIN students s ON u.ic = s.user_ic
+          JOIN classes c ON s.kelas_id = c.id
+          WHERE f.bulan = ?
+            AND f.tahun = ?
+            AND (f.status IS NULL OR f.status NOT IN ('terbayar', 'Bayar', 'paid', 'Terbayar'))
+            AND ABS(f.jumlah - c.yuran) > 0.01
+        `, [currentMonthName, currentYear]);
+        
+        // Update fees that don't match their class yuran
+        if (unpaidFees.length > 0) {
+          for (const fee of unpaidFees) {
+            await pool.execute(`
+              UPDATE fees 
+              SET jumlah = ?, updated_at = CURRENT_TIMESTAMP
+              WHERE id = ?
+            `, [fee.class_yuran, fee.id]);
+          }
+          console.log(`[Fee Sync] Synced ${unpaidFees.length} unpaid fees with class yuran amounts`);
+        }
+      } catch (error) {
+        // Don't fail the request if sync fails, just log it
+        console.error('[Fee Sync] Error syncing fees in getAllFees:', error);
+      }
+    }
     
     // Get total count for pagination
     let countQuery = `
@@ -585,6 +652,69 @@ export const getFeeStats = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Internal server error'
+    });
+  }
+};
+
+/**
+ * Manually generate monthly fees (Admin only)
+ * POST /api/fees/generate-monthly
+ * Body: { month?: number (0-11), year?: number }
+ */
+export const generateMonthlyFees = async (req, res) => {
+  try {
+    // Only admin can trigger manual fee generation
+    if (req.user?.role !== 'admin' && req.user?.activeRole !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        message: 'Only administrators can generate fees manually'
+      });
+    }
+
+    const { month, year } = req.body;
+    
+    const result = await generateMonthlyFeesManually(month, year);
+    
+    res.json({
+      success: true,
+      ...result
+    });
+  } catch (error) {
+    console.error('Generate monthly fees error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to generate monthly fees',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+};
+
+/**
+ * Sync current month fees with class yuran (Admin only)
+ * POST /api/fees/sync-current-month
+ */
+export const syncCurrentMonthFees = async (req, res) => {
+  try {
+    // Only admin can trigger sync
+    if (req.user?.role !== 'admin' && req.user?.activeRole !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        message: 'Only administrators can sync fees'
+      });
+    }
+
+    const result = await syncCurrentMonthFeesWithClassYuran();
+    
+    res.json({
+      success: true,
+      ...result
+    });
+  } catch (error) {
+    console.error('Sync current month fees error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to sync current month fees',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 };

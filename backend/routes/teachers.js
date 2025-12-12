@@ -7,7 +7,9 @@ import {
   updateTeacher,
   deleteTeacher,
   getTeacherStats,
-  registerTeacher
+  registerTeacher,
+  getUnassignedStaffTeachers,
+  convertUserToTeacher
 } from '../controllers/teacherController.js';
 import { authenticateToken, requireRole } from '../middleware/auth.js';
 import { isValidICFormat } from '../utils/icNormalizer.js';
@@ -205,6 +207,11 @@ router.post('/register', (req, res, next) => {
 // Routes - Apply authentication to each route individually (NOT using router.use to avoid affecting /register)
 router.get('/', authenticateToken, getAllTeachers);
 router.get('/stats', authenticateToken, getTeacherStats);
+router.get('/unassigned', authenticateToken, requireRole(['admin']), getUnassignedStaffTeachers);
+router.post('/convert', authenticateToken, requireRole(['admin']), [
+  body('ic').notEmpty().withMessage('IC number is required'),
+  body('kepakaran').optional().isArray().withMessage('Kepakaran must be an array')
+], normalizeICMiddleware, convertUserToTeacher);
 router.get('/:ic', authenticateToken, icValidation, normalizeICMiddleware, getTeacherById);
 router.post('/', authenticateToken, requireRole(['admin', 'teacher']), removeStatusMiddleware, createTeacherValidation, normalizeICMiddleware, normalizePhoneMiddleware, createTeacher);
 router.put('/:ic', authenticateToken, requireRole(['admin', 'teacher']), icValidation, updateTeacherValidation, normalizeICMiddleware, normalizePhoneMiddleware, updateTeacher);

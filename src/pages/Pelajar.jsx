@@ -38,9 +38,11 @@ const Pelajar = ({ user }) => {
   } = handlers;
 
   // Fetch all students with high limit
+  // Fetch all students with high limit - only on mount
   useEffect(() => {
     fetchItems({ limit: 1000 });
-  }, [fetchItems]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Only fetch once on mount
 
   // Calculate statistics from API response
   const pelajarsArray = Array.isArray(pelajars) ? pelajars : [];

@@ -94,19 +94,19 @@ const FeaturedClasses = () => {
             <p className="text-sm text-gray-600 mt-2">{trimText(kelas.deskripsi || kelas.description, 140)}</p>
             <div className="grid grid-cols-2 gap-4 mt-4 text-sm text-gray-500">
               <div className="flex items-center gap-2">
-                <Clock className="w-4 h-4 text-gray-400" />
+                <Clock className="w-4 h-4 text-gray-600" />
                 {kelas.jadual || kelas.schedule || 'Jadual akan datang'}
               </div>
               <div className="flex items-center gap-2">
-                <Users className="w-4 h-4 text-gray-400" />
+                <Users className="w-4 h-4 text-gray-600" />
                 {getTeacherName(kelas)}
               </div>
               <div className="flex items-center gap-2">
-                <CreditCard className="w-4 h-4 text-gray-400" />
+                <CreditCard className="w-4 h-4 text-gray-600" />
                 {kelas.yuran ? `RM ${Number(kelas.yuran).toFixed(2)}` : 'Yuran fleksibel'}
               </div>
               <div className="flex items-center gap-2">
-                <BookOpen className="w-4 h-4 text-gray-400" />
+                <BookOpen className="w-4 h-4 text-gray-600" />
                 Kapasiti {kelas.kapasiti || kelas.capacity || 'terhad'}
               </div>
             </div>

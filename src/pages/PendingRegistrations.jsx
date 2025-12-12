@@ -128,7 +128,7 @@ const PendingRegistrations = () => {
 
       {pendingUsers.length === 0 ? (
         <div className="bg-white rounded-lg shadow p-8 text-center">
-          <Clock className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+          <Clock className="h-16 w-16 text-gray-600 mx-auto mb-4" />
           <h3 className="text-xl font-semibold text-gray-900 mb-2">Tiada Pendaftaran Menunggu</h3>
           <p className="text-gray-600">Tiada pendaftaran baru yang menunggu kelulusan pada masa ini.</p>
         </div>
@@ -160,7 +160,7 @@ const PendingRegistrations = () => {
                   <tr key={user.ic} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
-                        <User className="h-5 w-5 text-gray-400 mr-2" />
+                        <User className="h-5 w-5 text-gray-600 mr-2" />
                         <span className="text-sm font-medium text-gray-900">{user.ic}</span>
                       </div>
                     </td>

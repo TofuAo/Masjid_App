@@ -62,6 +62,17 @@ api.interceptors.response.use(
     return response.data;
   },
   (error) => {
+    // Handle rate limiting (429) - don't spam console
+    if (error.response?.status === 429) {
+      // Silently handle rate limit errors - don't log to reduce noise
+      const errorMessage = error.response?.data?.message || 'Terlalu banyak permintaan. Sila cuba lagi selepas beberapa saat.';
+      return Promise.reject({ 
+        message: errorMessage,
+        status: 429,
+        isRateLimitError: true
+      });
+    }
+
     // Handle network errors (connection issues)
     if (!error.response) {
       if (error.code === 'ECONNABORTED') {
@@ -222,6 +233,17 @@ export const teachersAPI = {
       throw error;
     }
   },
+  getUnassigned: async () => {
+    try {
+      // Request with very high limit to get all users (10,000 should be enough)
+      const response = await api.get('/teachers/unassigned', { params: { limit: 10000, page: 1 } });
+      return response?.success ? response : { success: true, data: response?.data || [] };
+    } catch (error) {
+      console.error('Error fetching unassigned staff/teachers:', error);
+      throw error;
+    }
+  },
+  convertToTeacher: (data) => api.post('/teachers/convert', data),
 };
 
 // Classes API
@@ -536,6 +558,18 @@ export const contactAPI = {
 };
 
 // IB (Internal Auditor) API
+export const usersAPI = {
+  getAll: async (params = { limit: 1000, page: 1 }) => {
+    try {
+      const response = await api.get('/users', { params });
+      return response?.success ? response : { success: true, data: response?.data || [] };
+    } catch (error) {
+      console.error('Error fetching all users:', error);
+      throw error;
+    }
+  },
+};
+
 export const ibAPI = {
   getAvailableReports: () => api.get('/ib/reports'),
   getMonthlyReport: (params) => api.get('/ib/report', { params }),

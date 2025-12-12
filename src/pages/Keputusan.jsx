@@ -237,7 +237,7 @@ const Keputusan = () => {
             <div className="flex flex-col sm:flex-row gap-4">
               <div className="flex-1">
                 <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 w-4 h-4" />
                   <input
                     type="text"
                     placeholder="Cari pelajar, kelas atau peperiksaan..."
@@ -248,7 +248,7 @@ const Keputusan = () => {
                 </div>
               </div>
               <div className="flex items-center space-x-2">
-                <Filter className="w-4 h-4 text-gray-400" />
+                <Filter className="w-4 h-4 text-gray-600" />
                 <select
                   value={examFilter}
                   onChange={(e) => setExamFilter(e.target.value)}

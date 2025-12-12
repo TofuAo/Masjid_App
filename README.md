@@ -17,6 +17,11 @@ See [QUICK_START.md](./QUICK_START.md) for step-by-step instructions.
 
 ## 📚 Documentation
 
+### For End Users:
+- **[USER_GUIDE.md](./USER_GUIDE.md)** - 📖 Complete user guide for all roles (Pelajar, Guru, Pentadbir, IB)
+- **Help Center** - Access in-app help center at `/help` route
+
+### For Developers:
 - **[QUICK_START.md](./QUICK_START.md)** - Get started in 5 minutes
 - **[DEPLOYMENT_README.md](./DEPLOYMENT_README.md)** - Complete deployment guide
 - **[DEPLOYMENT_CHECKLIST.md](./DEPLOYMENT_CHECKLIST.md)** - Deployment checklist

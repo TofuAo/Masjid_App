@@ -10,6 +10,7 @@ import LoadingSkeleton from '../components/ui/LoadingSkeleton';
 import { BookOpen, Users, Clock, DollarSign, AlertCircle, ExternalLink, GraduationCap } from 'lucide-react';
 import { classesAPI, teachersAPI } from '../services/api';
 import { toast } from 'react-toastify';
+import { formatPhoneForDisplay } from '../utils/phoneUtils';
 
 const Kelas = () => {
   const navigate = useNavigate();
@@ -37,10 +38,11 @@ const Kelas = () => {
     fetchItems,
   } = useCrud(classesAPI, 'kelas');
 
-  // Fetch all classes with high limit
+  // Fetch all classes with high limit - only on mount
   useEffect(() => {
     fetchItems({ limit: 1000 });
-  }, [fetchItems]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Only fetch once on mount
 
   const {
     add: handleAdd,
@@ -438,7 +440,7 @@ const Kelas = () => {
                         displayKelas.students.map(student => (
                           <div key={student.ic || student.id} className="p-2 bg-emerald-50 border border-emerald-200 rounded text-sm">
                             <div className="font-medium">{student.nama}</div>
-                            {student.telefon && <div className="text-xs text-gray-600">{student.telefon}</div>}
+                            {student.telefon && <div className="text-xs text-gray-600">{formatPhoneForDisplay(student.telefon)}</div>}
                             {student.ic && <div className="text-xs text-gray-500">IC: {student.ic}</div>}
                           </div>
                         ))

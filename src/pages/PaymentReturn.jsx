@@ -4,7 +4,9 @@ import { toast } from 'react-toastify';
 import { CheckCircle, XCircle, Clock, ArrowLeft } from 'lucide-react';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
+import Receipt from '../components/Receipt';
 import { paymentAPI } from '../services/paymentAPI';
+import { feesAPI } from '../services/api';
 
 /**
  * Payment Return Page
@@ -17,6 +19,7 @@ const PaymentReturn = () => {
   const [searchParams] = useSearchParams();
   const [status, setStatus] = useState('checking');
   const [paymentData, setPaymentData] = useState(null);
+  const [feeData, setFeeData] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -34,6 +37,25 @@ const PaymentReturn = () => {
             if (response?.success && response?.data) {
               const payment = response.data;
               setPaymentData(payment);
+              
+              // Fetch fee details if payment is linked to a fee
+              const metadata = typeof payment.metadata === 'string' 
+                ? JSON.parse(payment.metadata || '{}') 
+                : payment.metadata || {};
+              
+              if (metadata.feeId || metadata.fee_id) {
+                try {
+                  const feeId = metadata.feeId || metadata.fee_id;
+                  const feeResponse = await feesAPI.getById(feeId);
+                  const fee = feeResponse?.data || feeResponse;
+                  if (fee && fee.id) {
+                    setFeeData(fee);
+                  }
+                } catch (feeError) {
+                  console.error('Error fetching fee details:', feeError);
+                  // Continue without fee data
+                }
+              }
               
               // Map payment status
               if (payment.status === 'completed') {
@@ -78,14 +100,14 @@ const PaymentReturn = () => {
   }, [searchParams]);
 
   const handleBackToFees = () => {
-    navigate('/yuran');
+    navigate(-1); // Go back to previous page in browser history
   };
 
   const handleRetryPayment = () => {
     if (paymentData?.metadata?.feeId) {
       navigate(`/pay-yuran/${paymentData.metadata.feeId}`);
     } else {
-      navigate('/yuran');
+      navigate(-1); // Go back to previous page
     }
   };
 
@@ -104,31 +126,36 @@ const PaymentReturn = () => {
 
   if (status === 'success') {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
-        <Card className="max-w-md w-full">
-          <Card.Content className="text-center py-8">
-            <CheckCircle className="w-16 h-16 text-green-600 mx-auto mb-4" />
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">Pembayaran Berjaya!</h2>
-            <p className="text-gray-600 mb-4">
-              Terima kasih! Pembayaran anda telah berjaya diproses.
-            </p>
-            {paymentData && (
-              <div className="bg-gray-50 rounded-lg p-4 mb-4 text-left">
-                <p className="text-sm text-gray-600">
-                  <span className="font-medium">Jumlah:</span> RM {paymentData.amount?.toFixed(2)}
-                </p>
-                {paymentData.provider_reference && (
-                  <p className="text-sm text-gray-600 mt-1">
-                    <span className="font-medium">No. Rujukan:</span> {paymentData.provider_reference}
-                  </p>
-                )}
-              </div>
-            )}
-            <Button onClick={handleBackToFees} className="w-full">
+      <div className="min-h-screen bg-gray-50 py-8 px-4">
+        <div className="max-w-4xl mx-auto">
+          {/* Back Button */}
+          <div className="mb-6 no-print">
+            <Button
+              variant="outline"
+              onClick={handleBackToFees}
+              className="flex items-center space-x-2"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              <span>Kembali ke Yuran</span>
+            </Button>
+          </div>
+
+          {/* Receipt Component - Automatically displayed */}
+          {paymentData && (
+            <Receipt 
+              payment={paymentData} 
+              fee={feeData}
+              onPrint={() => window.print()}
+            />
+          )}
+
+          {/* Additional Actions */}
+          <div className="mt-6 text-center no-print">
+            <Button onClick={handleBackToFees} variant="outline">
               Kembali ke Yuran
             </Button>
-          </Card.Content>
-        </Card>
+          </div>
+        </div>
       </div>
     );
   }
@@ -181,7 +208,7 @@ const PaymentReturn = () => {
     <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
       <Card className="max-w-md w-full">
         <Card.Content className="text-center py-8">
-          <XCircle className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+          <XCircle className="w-16 h-16 text-gray-600 mx-auto mb-4" />
           <h2 className="text-2xl font-bold text-gray-900 mb-2">Status Pembayaran Tidak Diketahui</h2>
           <p className="text-gray-600 mb-4">
             Kami tidak dapat menentukan status pembayaran anda. Sila semak status pembayaran di halaman yuran.

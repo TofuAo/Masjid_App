@@ -17,6 +17,7 @@ import exportRoutes from './export.js';
 import adminActionRoutes from './adminActions.js';
 import pendingPicChangeRoutes from './pendingPicChanges.js';
 import picUserRoutes from './picUsers.js';
+import gamificationRoutes from './gamification.js';
 import archiveRoutes from './archive.js';
 import paymentRoutes from './payments.js';
 import paymentMethodSettingsRoutes from './paymentMethodSettings.js';
@@ -24,6 +25,7 @@ import paymentGatewaySettingsRoutes from './paymentGatewaySettings.js';
 import toyyibPayRoutes from './toyyibpay.js';
 import contactRoutes from './contact.js';
 import ibRoutes from './ib.js';
+import userRoutes from './users.js';
 const router = Router();
 
 router.use('/auth', authRoutes);
@@ -52,5 +54,7 @@ router.use('/payment-gateways', paymentGatewaySettingsRoutes);
 router.use('/toyyibpay', toyyibPayRoutes);
 router.use('/contact', contactRoutes);
 router.use('/ib', ibRoutes);
+router.use('/gamification', gamificationRoutes);
+router.use('/users', userRoutes);
 
 export default router;

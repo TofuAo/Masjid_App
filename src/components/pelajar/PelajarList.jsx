@@ -56,7 +56,7 @@ const PelajarList = ({ pelajars = [], onEdit, onView, onDelete, onAdd, user }) =
           <div className="flex flex-col sm:flex-row gap-4 mb-6">
             <div className="flex-1">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 w-4 h-4" />
                 <input
                   type="text"
                   placeholder="Cari pelajar..."
@@ -152,14 +152,14 @@ const PelajarList = ({ pelajars = [], onEdit, onView, onDelete, onAdd, user }) =
           <div className="text-center py-12">
             <div className="flex justify-center mb-4">
               <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center">
-                <Users className="w-8 h-8 text-gray-400" />
+                <Users className="w-8 h-8 text-gray-600" />
               </div>
             </div>
             <p className="text-gray-500 text-lg font-medium mb-2">
               {searchTerm ? 'Tiada pelajar ditemui' : 'Tiada pelajar dalam senarai'}
             </p>
             {searchTerm && (
-              <p className="text-sm text-gray-400">
+              <p className="text-sm text-gray-600">
                 Cuba cari dengan kata kunci lain
               </p>
             )}

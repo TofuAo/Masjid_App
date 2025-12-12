@@ -1,5 +1,6 @@
 import { pool, testConnection } from '../config/database.js';
 import { validationResult } from 'express-validator';
+import { handleAttendanceGamification } from '../utils/gamificationIntegration.js';
 
 export const getAttendance = async (req, res) => {
   try {
@@ -12,7 +13,8 @@ export const getAttendance = async (req, res) => {
 
     let query = `
       SELECT a.*, u.nama as pelajar_nama, u.ic as pelajar_ic, c.nama_kelas,
-             mu.nama as marked_by_name
+             mu.nama as marked_by_name,
+             a.document_confirmed, a.confirmed_by, a.confirmed_at, a.confirmation_notes
       FROM attendance a
       JOIN users u ON a.student_ic = u.ic
       JOIN classes c ON a.class_id = c.id
@@ -423,9 +425,29 @@ export const markAttendance = async (req, res) => {
         [student_ic, class_id, attendanceDate, status]
       );
 
+      // Trigger gamification for attendance (only for students)
+      let gamificationResult = null;
+      try {
+        const [userCheck] = await pool.execute(
+          'SELECT role FROM users WHERE ic = ?',
+          [student_ic]
+        );
+        if (userCheck.length > 0 && userCheck[0].role === 'student') {
+          gamificationResult = await handleAttendanceGamification(
+            student_ic,
+            status,
+            class_id
+          );
+        }
+      } catch (gamError) {
+        console.error('Gamification error (non-blocking):', gamError);
+        // Don't fail the request if gamification fails
+      }
+
       res.status(201).json({
         success: true,
         message: 'Attendance marked successfully',
+        gamification: gamificationResult
       });
     }
   } catch (error) {
@@ -452,6 +474,21 @@ export const bulkMarkAttendance = async (req, res) => {
     
     // Use current date if tarikh is not provided
     const attendanceDate = tarikh || new Date().toISOString().split('T')[0];
+
+    // If user is a teacher, check if they are assigned to this class
+    if (req.user && req.user.role === 'teacher') {
+      const [classCheck] = await pool.execute(
+        'SELECT guru_ic FROM classes WHERE id = ?',
+        [class_id]
+      );
+      
+      if (classCheck.length === 0 || classCheck[0].guru_ic !== req.user.ic) {
+        return res.status(403).json({
+          success: false,
+          message: 'You do not have permission to mark attendance for this class',
+        });
+      }
+    }
 
     // Get a connection from the pool for transaction
     const connection = await pool.getConnection();
@@ -554,6 +591,21 @@ export const bulkMarkAttendanceWithProof = async (req, res) => {
 
     // Use current date if tarikh is not provided
     const attendanceDate = tarikh || new Date().toISOString().split('T')[0];
+
+    // If user is a teacher, check if they are assigned to this class
+    if (req.user && req.user.role === 'teacher') {
+      const [classCheck] = await pool.execute(
+        'SELECT guru_ic FROM classes WHERE id = ?',
+        [class_id]
+      );
+      
+      if (classCheck.length === 0 || classCheck[0].guru_ic !== req.user.ic) {
+        return res.status(403).json({
+          success: false,
+          message: 'You do not have permission to mark attendance for this class',
+        });
+      }
+    }
 
     // Handle proof image
     let proofImagePath = null;

@@ -1,15 +1,22 @@
 import React, { useState } from 'react';
 import { Search, Plus, Edit, Eye, Trash2, GraduationCap } from 'lucide-react';
+import { formatPhoneForDisplay } from '../../utils/phoneUtils';
 
 const GuruList = ({ gurus = [], onEdit, onView, onDelete, onAdd, user }) => {
   const [searchTerm, setSearchTerm] = useState('');
 
   const filteredGurus = gurus.filter(guru => {
+    if (!searchTerm.trim()) return true; // Show all if no search term
+    
     const lowerSearchTerm = searchTerm.toLowerCase();
     const kepakaranArray = Array.isArray(guru.kepakaran) ? guru.kepakaran : (guru.kepakaran ? [guru.kepakaran] : []);
-    const matchesSearch = guru.nama.toLowerCase().includes(lowerSearchTerm) ||
-                         guru.IC.includes(searchTerm) ||
-                         guru.telefon.includes(searchTerm) ||
+    const ic = guru.IC || guru.ic || '';
+    const telefon = guru.telefon || '';
+    const nama = guru.nama || '';
+    
+    const matchesSearch = nama.toLowerCase().includes(lowerSearchTerm) ||
+                         ic.toLowerCase().includes(lowerSearchTerm) ||
+                         telefon.includes(searchTerm) ||
                          kepakaranArray.some(k => k.toLowerCase().includes(lowerSearchTerm));
     return matchesSearch;
   });
@@ -53,8 +60,8 @@ const GuruList = ({ gurus = [], onEdit, onView, onDelete, onAdd, user }) => {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-mosque-primary-100">
-              {filteredGurus.map((guru) => (
-                <tr key={guru.ic} className="hover:bg-mosque-primary-50 transition-colors duration-200">
+              {filteredGurus.map((guru, index) => (
+                <tr key={guru.ic || guru.IC || `guru-${index}`} className="hover:bg-mosque-primary-50 transition-colors duration-200">
                   <td className="px-3 sm:px-6 py-3 sm:py-4">
                     <div className="flex items-center">
                       <div className="flex-shrink-0 h-10 w-10">
@@ -72,8 +79,8 @@ const GuruList = ({ gurus = [], onEdit, onView, onDelete, onAdd, user }) => {
                       </div>
                     </div>
                   </td>
-                  <td className="px-3 sm:px-6 py-3 sm:py-4 text-sm text-mosque-neutral-700 hidden md:table-cell">{guru.IC}</td>
-                  <td className="px-3 sm:px-6 py-3 sm:py-4 text-sm text-mosque-neutral-700 hidden md:table-cell">{guru.telefon}</td>
+                  <td className="px-3 sm:px-6 py-3 sm:py-4 text-sm text-mosque-neutral-700 hidden md:table-cell">{guru.IC || guru.ic || '-'}</td>
+                  <td className="px-3 sm:px-6 py-3 sm:py-4 text-sm text-mosque-neutral-700 hidden md:table-cell">{guru.telefon ? formatPhoneForDisplay(guru.telefon) : '-'}</td>
                   <td className="px-3 sm:px-6 py-3 sm:py-4 hidden md:table-cell">
                     <div className="flex flex-wrap gap-1">
                       {(Array.isArray(guru.kepakaran) ? guru.kepakaran : (guru.kepakaran ? [guru.kepakaran] : [])).slice(0, 2).map((kepakaran) => (

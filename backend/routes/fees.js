@@ -8,7 +8,9 @@ import {
   markAsPaid,
   deleteFee,
   getFeeStats,
-  confirmFeeDocument
+  confirmFeeDocument,
+  generateMonthlyFees,
+  syncCurrentMonthFees
 } from '../controllers/feeController.js';
 import { authenticateToken, requireRole } from '../middleware/auth.js';
 import { normalizeICMiddleware } from '../middleware/normalizeIC.js';
@@ -70,6 +72,8 @@ router.use(authenticateToken);
 // Routes
 router.get('/', getAllFees);
 router.get('/stats', getFeeStats);
+router.post('/generate-monthly', requireRole(['admin']), generateMonthlyFees);
+router.post('/sync-current-month', requireRole(['admin']), syncCurrentMonthFees);
 router.get('/:id', idValidation, getFeeById);
 router.post('/', requireRole(['admin', 'staff']), feeValidation, normalizeICMiddleware, createFee);
 router.put('/:id', requireRole(['admin', 'staff']), idValidation, feeValidation, normalizeICMiddleware, updateFee);

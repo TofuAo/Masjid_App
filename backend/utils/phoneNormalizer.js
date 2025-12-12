@@ -9,15 +9,16 @@ export const normalizePhone = (phone) => {
   // Remove all hyphens, spaces, and parentheses
   const cleaned = phone.toString().replace(/[-\s()]/g, '');
   
-  // Check if it's a valid Malaysian mobile number (10 or 11 digits starting with 01)
-  if (!/^01\d{8,9}$/.test(cleaned)) {
+  // Check if it starts with 01 and has at least 9 digits (Malaysian mobile format)
+  // Standard format: 01X followed by 7-8 digits (10-11 digits total)
+  // But also handle 9-digit numbers that start with 01 (edge cases)
+  if (!/^01\d{7,9}$/.test(cleaned)) {
     return phone; // Return original if invalid format
   }
   
   // Format: 01X-XXXXXXX (for 10 digits) or 01X-XXXXXXXX (for 11 digits)
-  if (cleaned.length === 10) {
-    return `${cleaned.substring(0, 3)}-${cleaned.substring(3)}`;
-  } else if (cleaned.length === 11) {
+  // Also format 9-digit numbers as 01X-XXXXXX
+  if (cleaned.length >= 9 && cleaned.length <= 11 && cleaned.startsWith('01')) {
     return `${cleaned.substring(0, 3)}-${cleaned.substring(3)}`;
   }
   

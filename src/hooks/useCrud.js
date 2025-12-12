@@ -37,9 +37,8 @@ const useCrud = (api, itemName) => {
     }
   }, [api, itemName]);
 
-  useEffect(() => {
-    fetchItems();
-  }, [fetchItems]);
+  // Removed auto-fetch useEffect to prevent infinite loops
+  // Components should manually call fetchItems when needed
 
   const handleAdd = () => {
     setCurrentItem(null);

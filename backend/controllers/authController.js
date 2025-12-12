@@ -5,36 +5,17 @@ import { pool } from '../config/database.js';
 import { validationResult } from 'express-validator';
 import { sendPasswordResetEmail } from '../utils/emailService.js';
 import { sendPasswordResetSMS, generateResetCode } from '../utils/smsService.js';
-import { formatICWithHyphen } from '../utils/icFormatter.js';
+import { formatICWithHyphen, normalizeICForQuery, isValidICFormat } from '../utils/icUtils.js';
+import { normalizePhone } from '../utils/phoneNormalizer.js';
 import { logFailedAuthAttempt, logSuspiciousActivity } from '../middleware/securityLogger.js';
 import { fetchUserRoles } from '../services/userRoleService.js';
+import { findUserByNormalizedIc, findAllUsersByNormalizedIc, getUserWithRoles } from '../services/userLookupService.js';
 import { createSnapshot, SNAPSHOT_TTL_HOURS } from '../utils/adminActionSnapshots.js';
+import { validatePasswordStrength as checkPasswordStrength } from '../utils/passwordPolicy.js';
+import { isAccountLocked, recordFailedAttempt, recordSuccessfulLogin, ensureLoginAttemptsTable } from '../services/accountLockoutService.js';
 
 const SESSION_DURATION_SECONDS = 24 * 60 * 60; // 24 hours
-const normalizeIcForQuery = (ic) => {
-  if (!ic) return '';
-  return ic.toString().replace(/[-\s]/g, '');
-};
-
-const findUserByNormalizedIc = async (normalizedIc) => {
-  // Try multiple normalization methods to find the user
-  const [users1] = await pool.execute(
-    `SELECT * FROM users WHERE REPLACE(ic, '-', '') = ? ORDER BY (ic LIKE '%-%') DESC, ic ASC LIMIT 1`,
-    [normalizedIc]
-  );
-  
-  if (users1.length > 0) {
-    return users1[0];
-  }
-  
-  // Also try with spaces removed
-  const [users2] = await pool.execute(
-    `SELECT * FROM users WHERE REPLACE(REPLACE(ic, '-', ''), ' ', '') = ? ORDER BY (ic LIKE '%-%') DESC, ic ASC LIMIT 1`,
-    [normalizedIc]
-  );
-  
-  return users2[0] || null;
-};
+const REFRESH_TOKEN_DURATION_SECONDS = 7 * 24 * 60 * 60; // 7 days
 
 async function attachRoleMetadata(user) {
   const roles = await fetchUserRoles(user.ic, user.role);
@@ -70,25 +51,34 @@ export const register = async (req, res) => {
       });
     }
 
-    // Normalize IC number (remove hyphens and ensure it's 12 digits)
-    const normalizedIC = ic_number.replace(/\D/g, '');
-    
-    if (normalizedIC.length !== 12) {
+    // Validate and normalize IC number
+    if (!isValidICFormat(ic_number)) {
       return res.status(400).json({
         success: false,
-        message: 'Nombor IC mestilah 12 digit'
+        message: 'Format IC tidak sah. Sila masukkan 12 digit nombor IC.'
       });
     }
 
+    const normalizedIC = normalizeICForQuery(ic_number);
+    
     // Hardcode role to 'student' for registration
     const userRole = 'student';
-    const normalizedEmail = email && email.trim() !== '' ? email.trim() : null;
+    const normalizedEmail = email && email.trim() !== '' ? email.trim().toLowerCase() : null;
 
-    // Check if user already exists by IC number
-    const [existingUsers] = await pool.execute(
-      "SELECT * FROM users WHERE ic = ?",
-      [normalizedIC]
-    );
+    // Check for duplicate users using robust lookup (handles different IC formats)
+    let existingUsers = [];
+    try {
+      const allUsers = await findAllUsersByNormalizedIc(normalizedIC);
+      existingUsers = allUsers.map(u => ({ ...u, ic: u.ic })); // Keep original IC format
+    } catch (error) {
+      console.error('[REGISTER] Error checking for existing users:', error);
+      // Fallback to simple query
+      const [users] = await pool.execute(
+        "SELECT * FROM users WHERE REPLACE(REPLACE(ic, '-', ''), ' ', '') = ?",
+        [normalizedIC]
+      );
+      existingUsers = users;
+    }
 
     if (normalizedEmail) {
       const [existingEmails] = await pool.execute(
@@ -104,22 +94,61 @@ export const register = async (req, res) => {
       }
     }
 
+    // Validate password strength if provided
+    if (password && password.trim() !== '') {
+      const passwordValidation = checkPasswordStrength(password);
+      if (!passwordValidation.valid) {
+        return res.status(400).json({
+          success: false,
+          message: passwordValidation.message
+        });
+      }
+      // Warn user if password is weak but still accept it
+      if (passwordValidation.warning) {
+        console.warn(`[REGISTER] Weak password used for IC: ${normalizedIC}`);
+      }
+    }
+
     // Hash password only if provided (password is optional for student registration)
-    const hashedPassword = password && password.trim() !== '' 
-      ? await bcrypt.hash(password, 12) 
-      : null;
+    let hashedPassword = null;
+    if (password && password.trim() !== '') {
+      try {
+        hashedPassword = await bcrypt.hash(password, 12);
+      } catch (error) {
+        console.error('[REGISTER] Password hashing error:', error);
+        return res.status(500).json({
+          success: false,
+          message: 'Ralat sistem semasa memproses kata laluan. Sila cuba lagi.'
+        });
+      }
+    }
 
     if (existingUsers && existingUsers.length > 0) {
       const existingUser = existingUsers[0];
-      const [duplicateRole] = await pool.execute(
-        'SELECT id FROM user_roles WHERE user_ic = ? AND role = ?',
-        [normalizedIC, userRole]
-      );
+      
+      // Check if user already has student role (either as primary role or in user_roles)
+      const hasStudentRole = existingUser.role === userRole || 
+                            (existingUser.allRoles && existingUser.allRoles.includes(userRole));
+      
+      // Also check user_roles table directly
+      let hasRoleInUserRoles = false;
+      try {
+        const normalizedExistingIC = normalizeICForQuery(existingUser.ic);
+        const [duplicateRole] = await pool.execute(
+          `SELECT id FROM user_roles 
+           WHERE REPLACE(REPLACE(user_ic, '-', ''), ' ', '') = ? AND role = ?`,
+          [normalizedExistingIC, userRole]
+        );
+        hasRoleInUserRoles = duplicateRole.length > 0;
+      } catch (error) {
+        console.error('[REGISTER] Error checking user_roles:', error);
+      }
 
-      if (existingUser.role === userRole || duplicateRole.length > 0) {
+      if (hasStudentRole || hasRoleInUserRoles) {
         return res.status(400).json({
           success: false,
-          message: 'Nombor IC ini sudah didaftarkan. Sila log masuk atau gunakan nombor IC lain.'
+          message: 'Nombor IC ini sudah didaftarkan sebagai pelajar. Sila log masuk atau hubungi pentadbir jika anda memerlukan bantuan.',
+          accountStatus: 'already_registered'
         });
       }
 
@@ -138,7 +167,7 @@ export const register = async (req, res) => {
 
       if (telefon && telefon.trim() !== '' && telefon.trim() !== existingUser.telefon) {
         fields.push('telefon = ?');
-        params.push(telefon.trim());
+        params.push(normalizePhone(telefon.trim()));
       }
 
       if (hashedPassword) {
@@ -198,7 +227,7 @@ export const register = async (req, res) => {
         normalizedIC, 
         nama, 
         normalizedEmail, 
-        telefon && telefon.trim() !== '' ? telefon.trim() : null,
+        telefon && telefon.trim() !== '' ? normalizePhone(telefon.trim()) : null,
         umur && umur !== '' ? parseInt(umur) : null,
         hashedPassword, 
         userRole
@@ -577,47 +606,85 @@ export const login = async (req, res) => {
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
+      const firstError = errors.array()[0];
       return res.status(400).json({
         success: false,
-        message: 'Validation failed',
+        message: firstError.msg || 'Validation failed',
         errors: errors.array()
       });
     }
 
     const { icNumber, password, requestedRole } = req.body;
 
+    // Validate IC format
+    if (!icNumber || !isValidICFormat(icNumber)) {
+      logFailedAuthAttempt(req, 'Invalid IC format');
+      return res.status(400).json({
+        success: false,
+        message: 'Format IC tidak sah. Sila masukkan 12 digit nombor IC.'
+      });
+    }
+
+    // Validate password presence
+    if (!password || password.trim().length === 0) {
+      logFailedAuthAttempt(req, 'Missing password');
+      return res.status(400).json({
+        success: false,
+        message: 'Kata laluan diperlukan'
+      });
+    }
+
     // Normalize IC for database lookup (ignore hyphens/spaces)
-    const normalizedICForQuery = normalizeIcForQuery(icNumber);
+    const normalizedICForQuery = normalizeICForQuery(icNumber);
     
-    console.log('[LOGIN] Attempt - Original IC:', icNumber, 'Normalized:', normalizedICForQuery);
+    console.log('[LOGIN] Attempt - Original IC:', icNumber, 'Normalized:', normalizedICForQuery, 'Requested Role:', requestedRole);
+
+    // SECURITY: Check if account is locked before attempting login
+    const lockStatus = await isAccountLocked(normalizedICForQuery);
+    if (lockStatus.locked) {
+      logFailedAuthAttempt(req, 'Account locked');
+      return res.status(423).json({
+        success: false,
+        message: `Akaun telah dikunci disebabkan terlalu banyak percubaan log masuk yang gagal. Sila cuba lagi selepas ${lockStatus.minutesRemaining} minit.`,
+        accountStatus: 'locked',
+        lockoutExpires: lockStatus.lockoutExpires,
+        minutesRemaining: lockStatus.minutesRemaining
+      });
+    }
 
     // Find user by normalized IC (supports both hyphenated and non-hyphenated formats)
-    const user = await findUserByNormalizedIc(normalizedICForQuery);
+    // If a specific role is requested, prioritize users with that role
+    let user;
+    try {
+      user = await findUserByNormalizedIc(normalizedICForQuery, requestedRole);
+    } catch (error) {
+      console.error('[LOGIN] Database error finding user:', error);
+      logFailedAuthAttempt(req, 'Database error during lookup');
+      return res.status(500).json({
+        success: false,
+        message: 'Ralat sistem. Sila cuba lagi kemudian.'
+      });
+    }
     
     if (user) {
       console.log('[LOGIN] User found - IC:', user.ic, 'Nama:', user.nama, 'Role:', user.role, 'Status:', user.status);
       console.log('[LOGIN] User has password:', !!user.password);
     } else {
       console.log('[LOGIN] User NOT found for IC:', normalizedICForQuery);
-      // Debug: Check what users exist with similar IC
-      const [debugUsers] = await pool.execute(
-        'SELECT ic, nama, role, status FROM users WHERE REPLACE(REPLACE(ic, "-", ""), " ", "") LIKE ? LIMIT 5',
-        [`%${normalizedICForQuery.slice(-6)}%`]
-      );
-      if (debugUsers.length > 0) {
-        console.log('[LOGIN] Debug - Similar ICs found:', debugUsers.map(u => `${u.ic} (${u.nama})`).join(', '));
+      
+      // Record failed attempt for unknown user (potential brute force)
+      await recordFailedAttempt(normalizedICForQuery, req.ip || req.connection.remoteAddress);
+      
+      // Check for duplicate accounts that might exist
+      try {
+        const allUsers = await findAllUsersByNormalizedIc(normalizedICForQuery);
+        if (allUsers.length > 0) {
+          console.log('[LOGIN] Found duplicate accounts:', allUsers.map(u => `${u.ic} (${u.role})`).join(', '));
+        }
+      } catch (error) {
+        console.error('[LOGIN] Error checking for duplicates:', error);
       }
-      // Also check exact match with different normalization
-      const [exactMatch] = await pool.execute(
-        'SELECT ic, nama, role, status FROM users WHERE REPLACE(REPLACE(ic, "-", ""), " ", "") = ?',
-        [normalizedICForQuery]
-      );
-      if (exactMatch.length > 0) {
-        console.log('[LOGIN] Debug - Found with exact match:', exactMatch.map(u => `${u.ic} (${u.nama})`).join(', '));
-      }
-    }
-
-    if (!user) {
+      
       // Log failed authentication attempt
       logFailedAuthAttempt(req, 'User not found');
       return res.status(401).json({
@@ -636,38 +703,87 @@ export const login = async (req, res) => {
       });
     }
 
+    // Check if user has a password set
+    if (!user.password) {
+      logFailedAuthAttempt(req, 'User has no password');
+      return res.status(401).json({
+        success: false,
+        message: 'Akaun ini tidak mempunyai kata laluan. Sila hubungi pentadbir untuk menetapkan kata laluan.',
+        accountStatus: 'no_password'
+      });
+    }
+
     // SECURITY: Only use bcrypt comparison - never allow plaintext passwords
     // Check if password is already hashed (starts with $2a$, $2b$, or $2y$)
-    const isHashed = user.password && (user.password.startsWith('$2a$') || user.password.startsWith('$2b$') || user.password.startsWith('$2y$'));
+    const isHashed = user.password.startsWith('$2a$') || user.password.startsWith('$2b$') || user.password.startsWith('$2y$');
     
     console.log('[LOGIN] Password check - Has password:', !!user.password, 'Is hashed:', isHashed);
     
     let isPasswordValid = false;
-    if (isHashed) {
-      // Password is hashed, use bcrypt comparison
-      isPasswordValid = await bcrypt.compare(password, user.password);
-      console.log('[LOGIN] Password comparison result:', isPasswordValid);
-    } else {
-      // Password is not hashed (legacy data), hash it and update the database
-      // This should not happen in production, but we handle it securely
-      console.warn(`⚠️ SECURITY WARNING: User ${user.ic} has unhashed password. Migrating to hashed password.`);
-      const hashedPassword = await bcrypt.hash(password, 12);
-      await pool.execute(
-        'UPDATE users SET password = ?, updated_at = CURRENT_TIMESTAMP WHERE ic = ?',
-        [hashedPassword, user.ic]
-      );
-      // For this login attempt, compare the provided password with the newly hashed one
-      isPasswordValid = await bcrypt.compare(password, hashedPassword);
+    try {
+      if (isHashed) {
+        // Password is hashed, use bcrypt comparison
+        isPasswordValid = await bcrypt.compare(password, user.password);
+        console.log('[LOGIN] Password comparison result:', isPasswordValid);
+      } else {
+        // Password is not hashed (legacy data), hash it and update the database
+        // This should not happen in production, but we handle it securely
+        console.warn(`⚠️ SECURITY WARNING: User ${user.ic} has unhashed password. Migrating to hashed password.`);
+        logSuspiciousActivity(req, `User ${user.ic} has unhashed password - migrating to bcrypt`);
+        
+        const hashedPassword = await bcrypt.hash(password, 12);
+        await pool.execute(
+          'UPDATE users SET password = ?, updated_at = CURRENT_TIMESTAMP WHERE ic = ?',
+          [hashedPassword, user.ic]
+        );
+        // For this login attempt, compare the provided password with the newly hashed one
+        isPasswordValid = await bcrypt.compare(password, hashedPassword);
+      }
+    } catch (error) {
+      console.error('[LOGIN] Password comparison error:', error);
+      logFailedAuthAttempt(req, 'Password comparison error');
+      return res.status(500).json({
+        success: false,
+        message: 'Ralat sistem semasa mengesahkan kata laluan. Sila cuba lagi.'
+      });
     }
     
     if (!isPasswordValid) {
+      // Record failed login attempt for account lockout
+      const lockoutInfo = await recordFailedAttempt(user.ic, req.ip || req.connection.remoteAddress);
+      
       // Log failed authentication attempt
       logFailedAuthAttempt(req, 'Invalid password');
+      
+      // Check if there are duplicate accounts that might have the correct password
+      try {
+        const allUsers = await findAllUsersByNormalizedIc(normalizedICForQuery);
+        if (allUsers.length > 1) {
+          console.log('[LOGIN] Multiple accounts found for this IC. User may need to specify role.');
+        }
+      } catch (error) {
+        // Ignore errors in duplicate check
+      }
+      
+      // If account is now locked, inform user
+      if (lockoutInfo.locked) {
+        return res.status(423).json({
+          success: false,
+          message: `Terlalu banyak percubaan log masuk yang gagal. Akaun telah dikunci selama 15 minit.`,
+          accountStatus: 'locked',
+          lockoutExpires: lockoutInfo.lockoutExpires
+        });
+      }
+      
       return res.status(401).json({
         success: false,
-        message: 'IC Number atau kata laluan salah'
+        message: `IC Number atau kata laluan salah. ${lockoutInfo.attemptsRemaining > 0 ? `${lockoutInfo.attemptsRemaining} percubaan lagi sebelum akaun dikunci.` : ''}`,
+        attemptsRemaining: lockoutInfo.attemptsRemaining
       });
     }
+    
+    // SECURITY: Record successful login (clears failed attempts)
+    await recordSuccessfulLogin(user.ic);
 
     // Check if user account is approved (status must be 'aktif')
     if (user.status === 'pending') {
@@ -689,8 +805,17 @@ export const login = async (req, res) => {
     }
 
     // Enrich user with all roles (RBAC)
-    const roleMeta = await attachRoleMetadata(user);
-    const availableRoles = roleMeta.roles || [user.role];
+    let roleMeta;
+    let availableRoles;
+    try {
+      roleMeta = await attachRoleMetadata(user);
+      availableRoles = roleMeta.roles || [user.role];
+    } catch (error) {
+      console.error('[LOGIN] Error fetching role metadata:', error);
+      // Fallback to primary role if role fetching fails
+      availableRoles = [user.role];
+      roleMeta = { roles: availableRoles, activeRole: user.role };
+    }
 
     // Determine active role based on requestedRole and available roles
     let activeRole = mapRequestedRoleToActiveRole(requestedRole, availableRoles, user.role);
@@ -701,31 +826,65 @@ export const login = async (req, res) => {
 
     // If user explicitly chose a role, ensure we can honor that choice.
     if (requestedRole) {
-      const normalizedRequested = String(requestedRole).toLowerCase();
-      const mismatch =
-        (normalizedRequested === 'admin' && activeRole !== 'admin') ||
-        (normalizedRequested === 'pic' && activeRole !== 'pic') ||
-        (normalizedRequested === 'ib' && activeRole !== 'ib') ||
-        (normalizedRequested === 'staff-teacher' && !(activeRole === 'staff' || activeRole === 'teacher'));
-
-      if (mismatch) {
-        return res.status(403).json({
-          success: false,
-          message: 'Anda tidak mempunyai akses untuk peranan yang dipilih.'
-        });
+      const normalizedRequested = String(requestedRole).toLowerCase().trim();
+      const normalizedActive = String(activeRole).toLowerCase().trim();
+      
+      // Check if the requested role is available
+      const hasRequestedRole = availableRoles.some(r => r.toLowerCase() === normalizedRequested);
+      
+      if (!hasRequestedRole) {
+        // Check for aliases (e.g., 'staff-teacher')
+        if (normalizedRequested === 'staff-teacher' && (availableRoles.includes('staff') || availableRoles.includes('teacher'))) {
+          // Allow staff-teacher to map to staff or teacher
+          activeRole = availableRoles.find(r => r === 'teacher' || r === 'staff') || activeRole;
+        } else {
+          return res.status(403).json({
+            success: false,
+            message: `Anda tidak mempunyai akses untuk peranan "${requestedRole}". Peranan yang tersedia: ${availableRoles.join(', ')}.`
+          });
+        }
+      } else {
+        // User has the role, use it
+        activeRole = availableRoles.find(r => r.toLowerCase() === normalizedRequested) || activeRole;
       }
     }
 
-    // Generate JWT token only for approved (aktif) users
-    const token = jwt.sign(
+    // Generate JWT access token (short-lived) and refresh token (long-lived)
+    const accessToken = jwt.sign(
       { 
         userId: user.ic, 
         nama: user.nama,
-        role: activeRole
+        role: activeRole,
+        type: 'access'
       },
       process.env.JWT_SECRET,
       { expiresIn: SESSION_DURATION_SECONDS }
     );
+
+    // Generate refresh token for token renewal
+    const refreshToken = jwt.sign(
+      {
+        userId: user.ic,
+        type: 'refresh'
+      },
+      process.env.JWT_SECRET,
+      { expiresIn: REFRESH_TOKEN_DURATION_SECONDS }
+    );
+
+    // Store refresh token in database (optional - for token revocation)
+    // Use normalized IC (without hyphens) for database storage
+    const normalizedIcForStorage = normalizeICForQuery(user.ic);
+    try {
+      await pool.execute(
+        `INSERT INTO refresh_tokens (user_ic, token, expires_at, created_at) 
+         VALUES (?, ?, DATE_ADD(NOW(), INTERVAL ? SECOND), NOW())
+         ON DUPLICATE KEY UPDATE token = ?, expires_at = DATE_ADD(NOW(), INTERVAL ? SECOND), created_at = NOW()`,
+        [normalizedIcForStorage, refreshToken, REFRESH_TOKEN_DURATION_SECONDS, refreshToken, REFRESH_TOKEN_DURATION_SECONDS]
+      );
+    } catch (error) {
+      // If table doesn't exist, continue without storing (graceful degradation)
+      console.warn('[LOGIN] Could not store refresh token (table may not exist):', error.message);
+    }
 
     // Remove password from response and attach role metadata
     const { password: _, ...userWithoutPassword } = user;
@@ -740,17 +899,31 @@ export const login = async (req, res) => {
       message: 'Login successful',
       data: {
         user: userWithoutPassword,
-        token,
+        token: accessToken, // Backward compatibility - use accessToken as token
+        accessToken, // New field for clarity
+        refreshToken, // New field for refresh token functionality
         expiresIn: SESSION_DURATION_SECONDS,
-        expiresAt
+        expiresAt,
+        refreshTokenExpiresIn: REFRESH_TOKEN_DURATION_SECONDS
       }
     });
   } catch (error) {
-    console.error('Login error:', error);
-    console.error('Database error details:', error.message, error.code);
+    console.error('[LOGIN] Unexpected error:', error);
+    console.error('[LOGIN] Error stack:', error.stack);
+    console.error('[LOGIN] Error details:', {
+      message: error.message,
+      code: error.code,
+      errno: error.errno,
+      sqlState: error.sqlState
+    });
+    
+    // Log suspicious activity for unexpected errors
+    logSuspiciousActivity(req, `Unexpected login error: ${error.message}`);
+    
+    // Don't expose internal error details to client
     res.status(500).json({
       success: false,
-      message: 'Internal server error'
+      message: 'Ralat sistem berlaku. Sila cuba lagi kemudian atau hubungi pentadbir jika masalah berterusan.'
     });
   }
 };
@@ -1509,7 +1682,8 @@ export const getPreferences = async (req, res) => {
       colorScheme: 'summer', // Default to green emerald (summer)
       language: 'ms',
       fontFamily: 'system',
-      fontSize: 'medium'
+      fontSize: 'medium',
+      gamificationEnabled: true // Default to enabled
     };
 
     res.json({
@@ -1537,7 +1711,7 @@ export const updatePreferences = async (req, res) => {
       });
     }
 
-    const { theme, colorScheme, language, fontFamily, fontSize } = req.body;
+    const { theme, colorScheme, language, fontFamily, fontSize, gamificationEnabled } = req.body;
 
     // Validate preferences
     const validThemes = ['light', 'dark', 'auto'];
@@ -1561,6 +1735,9 @@ export const updatePreferences = async (req, res) => {
     }
     if (fontSize && validFontSizes.includes(fontSize)) {
       preferences.fontSize = fontSize;
+    }
+    if (typeof gamificationEnabled === 'boolean') {
+      preferences.gamificationEnabled = gamificationEnabled;
     }
 
     // Get existing preferences and merge
@@ -1849,7 +2026,7 @@ export const updateProfile = async (req, res) => {
       }
       if (telefon !== undefined) {
         updateFields.push('telefon = ?');
-        updateValues.push(telefon === null ? null : telefon);
+        updateValues.push(telefon === null || telefon === '' ? null : normalizePhone(telefon.trim()));
       }
       if (email !== undefined) {
         updateFields.push('email = ?');

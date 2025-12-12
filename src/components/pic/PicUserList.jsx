@@ -2,6 +2,7 @@ import React from 'react';
 import Card from '../ui/Card';
 import Button from '../ui/Button';
 import { Plus, Edit, Trash2, Mail, Phone, Shield } from 'lucide-react';
+import { formatPhoneForDisplay } from '../../utils/phoneUtils';
 
 const PicUserList = ({ picUsers = [], onAdd, onEdit, onDelete, loading }) => {
   return (
@@ -49,7 +50,7 @@ const PicUserList = ({ picUsers = [], onAdd, onEdit, onDelete, loading }) => {
                         {pic.telefon && (
                           <span className="flex items-center gap-1">
                             <Phone className="w-4 h-4" />
-                            {pic.telefon}
+                            {formatPhoneForDisplay(pic.telefon)}
                           </span>
                         )}
                       </div>

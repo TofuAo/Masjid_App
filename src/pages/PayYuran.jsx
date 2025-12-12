@@ -16,8 +16,6 @@ const PayYuran = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [qrSettings, setQrSettings] = useState(null);
-  const [showPaymentMethodSelection, setShowPaymentMethodSelection] = useState(false);
-  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState(null);
   const [showPaymentCheckout, setShowPaymentCheckout] = useState(false);
   const [showDirectQR, setShowDirectQR] = useState(false);
 
@@ -99,9 +97,9 @@ const PayYuran = () => {
       <div className="text-center py-8">
         <XCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
         <p className="text-red-600 mb-4">{error || 'Rekod yuran tidak ditemui'}</p>
-        <Button onClick={() => navigate('/yuran')}>
+        <Button onClick={() => navigate(-1)}>
           <ArrowLeft className="w-4 h-4 mr-2" />
-          Kembali ke Yuran
+          Kembali
         </Button>
       </div>
     );
@@ -118,7 +116,7 @@ const PayYuran = () => {
       {/* Back Button */}
       <Button
         variant="outline"
-        onClick={() => navigate('/yuran')}
+        onClick={() => navigate(-1)}
         className="mb-4"
       >
         <ArrowLeft className="w-4 h-4 mr-2" />
@@ -142,7 +140,7 @@ const PayYuran = () => {
               </div>
               <div>
                 <label className="text-sm font-medium text-gray-600">Kelas</label>
-                <p className="text-lg font-semibold text-gray-900">{fee.kelas_nama || '-'}</p>
+                <p className="text-lg font-semibold text-gray-900">{fee.kelas_nama || fee.nama_kelas || '-'}</p>
               </div>
               <div>
                 <label className="text-sm font-medium text-gray-600">Bulan/Tahun</label>
@@ -173,9 +171,8 @@ const PayYuran = () => {
         </Card.Content>
       </Card>
 
-      {/* Payment Method Selection - Show initially if not paid */}
-      {/* Show payment method selection by default when fee is not paid and nothing else is selected */}
-      {!isPaid && !showPaymentMethodSelection && !showPaymentCheckout && !showDirectQR && (
+      {/* Payment Options - Simplified: Direct to ToyyibPay or QR Code */}
+      {!isPaid && !showPaymentCheckout && !showDirectQR && (
         <Card>
           <Card.Header>
             <Card.Title className="flex items-center space-x-2">
@@ -186,16 +183,14 @@ const PayYuran = () => {
           <Card.Content>
             <div className="space-y-4">
               <p className="text-sm text-gray-600 mb-4">
-                Sila pilih kaedah pembayaran yang anda mahu gunakan. Anda juga boleh terus menggunakan QR Code tanpa memilih kaedah.
+                Pilih kaedah pembayaran yang anda mahu gunakan. Anda akan memilih kaedah pembayaran di ToyyibPay (FPX, DuitNow, E-Wallet, dll).
               </p>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {/* Direct QR Code Option */}
                 <button
                   onClick={() => {
-                    // Show QR code directly, hide payment method selection
                     setShowDirectQR(true);
-                    setShowPaymentMethodSelection(false);
                     setShowPaymentCheckout(false);
                   }}
                   className="p-4 border-2 border-emerald-200 rounded-lg hover:border-emerald-400 hover:bg-emerald-50 transition-all text-left"
@@ -208,24 +203,24 @@ const PayYuran = () => {
                         <p className="text-xs text-gray-500">Imbas QR code untuk bayar</p>
                       </div>
                     </div>
-                    <ChevronRight className="w-5 h-5 text-gray-400" />
+                    <ChevronRight className="w-5 h-5 text-gray-600" />
                   </div>
                 </button>
 
-                {/* Online Payment Gateway Option */}
+                {/* Direct to ToyyibPay - No intermediate selection needed */}
                 <button
-                  onClick={() => setShowPaymentMethodSelection(true)}
-                  className="p-4 border-2 border-gray-200 rounded-lg hover:border-emerald-400 hover:bg-emerald-50 transition-all text-left"
+                  onClick={() => setShowPaymentCheckout(true)}
+                  className="p-4 border-2 border-emerald-200 rounded-lg hover:border-emerald-400 hover:bg-emerald-50 transition-all text-left"
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-3">
                       <CreditCard className="w-6 h-6 text-emerald-600" />
                       <div>
-                        <p className="font-medium text-gray-900">Pembayaran Online</p>
+                        <p className="font-medium text-gray-900">Bayar dengan ToyyibPay</p>
                         <p className="text-xs text-gray-500">FPX, DuitNow, E-Wallet</p>
                       </div>
                     </div>
-                    <ChevronRight className="w-5 h-5 text-gray-400" />
+                    <ChevronRight className="w-5 h-5 text-gray-600" />
                   </div>
                 </button>
               </div>
@@ -234,86 +229,8 @@ const PayYuran = () => {
         </Card>
       )}
 
-      {/* Payment Method Selection Details */}
-      {!isPaid && showPaymentMethodSelection && !showPaymentCheckout && (
-        <Card>
-          <Card.Header>
-            <Card.Title className="flex items-center space-x-2">
-              <CreditCard className="w-5 h-5" />
-              <span>Pilih Kaedah Pembayaran Online</span>
-            </Card.Title>
-          </Card.Header>
-          <Card.Content>
-            <div className="space-y-4">
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setShowPaymentMethodSelection(false);
-                  setSelectedPaymentMethod(null);
-                }}
-                className="mb-4"
-              >
-                <ArrowLeft className="w-4 h-4 mr-2" />
-                Kembali
-              </Button>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {/* FPX */}
-                <button
-                  onClick={() => {
-                    setSelectedPaymentMethod('fpx');
-                    setShowPaymentCheckout(true);
-                  }}
-                  className="p-4 border-2 border-gray-200 rounded-lg hover:border-emerald-400 hover:bg-emerald-50 transition-all text-left"
-                >
-                  <CreditCard className="w-6 h-6 text-emerald-600 mb-2" />
-                  <p className="font-medium text-gray-900">FPX</p>
-                  <p className="text-xs text-gray-500">Bank Transfer</p>
-                </button>
-
-                {/* DuitNow QR */}
-                <button
-                  onClick={() => {
-                    setSelectedPaymentMethod('duitnow_qr');
-                    setShowPaymentCheckout(true);
-                  }}
-                  className="p-4 border-2 border-gray-200 rounded-lg hover:border-emerald-400 hover:bg-emerald-50 transition-all text-left"
-                >
-                  <QrCode className="w-6 h-6 text-emerald-600 mb-2" />
-                  <p className="font-medium text-gray-900">DuitNow QR</p>
-                  <p className="text-xs text-gray-500">Imbas QR Code</p>
-                </button>
-
-                {/* DuitNow Request */}
-                <button
-                  onClick={() => {
-                    setSelectedPaymentMethod('duitnow_request');
-                    setShowPaymentCheckout(true);
-                  }}
-                  className="p-4 border-2 border-gray-200 rounded-lg hover:border-emerald-400 hover:bg-emerald-50 transition-all text-left"
-                >
-                  <Smartphone className="w-6 h-6 text-emerald-600 mb-2" />
-                  <p className="font-medium text-gray-900">DuitNow Request</p>
-                  <p className="text-xs text-gray-500">Terima permintaan bayaran</p>
-                </button>
-
-                {/* E-Wallets */}
-                <button
-                  onClick={() => {
-                    setSelectedPaymentMethod('ewallet');
-                    setShowPaymentCheckout(true);
-                  }}
-                  className="p-4 border-2 border-gray-200 rounded-lg hover:border-emerald-400 hover:bg-emerald-50 transition-all text-left"
-                >
-                  <Wallet className="w-6 h-6 text-emerald-600 mb-2" />
-                  <p className="font-medium text-gray-900">E-Wallet</p>
-                  <p className="text-xs text-gray-500">Touch'n Go, Boost, GrabPay</p>
-                </button>
-              </div>
-            </div>
-          </Card.Content>
-        </Card>
-      )}
+      {/* Removed: Payment Method Selection Details - No longer needed as ToyyibPay handles this */}
+      {/* All payment methods (FPX, DuitNow QR, DuitNow Request, E-Wallet) are selected on ToyyibPay's page */}
 
       {/* Payment Checkout Component */}
       {!isPaid && showPaymentCheckout && (
@@ -328,14 +245,13 @@ const PayYuran = () => {
           }}
           onCancel={() => {
             setShowPaymentCheckout(false);
-            setShowPaymentMethodSelection(false);
             setSelectedPaymentMethod(null);
           }}
         />
       )}
 
-      {/* QR Code Payment (Default/Direct) - Show when user selects direct QR or skips payment method */}
-      {!isPaid && !showPaymentMethodSelection && !showPaymentCheckout && showDirectQR && (
+      {/* QR Code Payment (Default/Direct) - Show when user selects direct QR */}
+      {!isPaid && !showPaymentCheckout && showDirectQR && (
         <Card>
           <Card.Header>
             <Card.Title className="flex items-center space-x-2">
@@ -409,7 +325,7 @@ const PayYuran = () => {
                     </div>
                   ) : (
                     <div className="text-center text-gray-500">
-                      <QrCode className="w-16 h-16 mx-auto mb-2 text-gray-400" />
+                      <QrCode className="w-16 h-16 mx-auto mb-2 text-gray-600" />
                       <p>Sedang memuatkan QR code...</p>
                     </div>
                   )}

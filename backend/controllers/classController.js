@@ -181,12 +181,35 @@ export const createClass = async (req, res) => {
     const { nama_kelas, level, sessions, yuran, guru_ic, kapasiti } = req.body;
     
     // Check if teacher exists and is active
+    // Include users with teacher/staff role OR admin users with teacher entry
+    // Normalize IC for comparison
+    const normalizedGuruIc = guru_ic ? guru_ic.replace(/[-\s]/g, '') : '';
+    
     const [teachers] = await pool.execute(
-      "SELECT ic FROM users WHERE ic = ? AND role = 'teacher' AND status = 'aktif'",
-      [guru_ic]
+      `SELECT DISTINCT u.ic FROM users u
+       LEFT JOIN teachers t ON REPLACE(REPLACE(u.ic, '-', ''), ' ', '') = REPLACE(REPLACE(t.user_ic, '-', ''), ' ', '')
+       LEFT JOIN user_roles ur ON REPLACE(REPLACE(u.ic, '-', ''), ' ', '') = REPLACE(REPLACE(ur.user_ic, '-', ''), ' ', '') AND ur.role = 'teacher'
+       WHERE REPLACE(REPLACE(u.ic, '-', ''), ' ', '') = ?
+         AND u.status = 'aktif'
+         AND (
+           u.role IN ('teacher', 'staff')
+           OR (u.role = 'admin' AND t.user_ic IS NOT NULL)
+           OR (u.role = 'admin' AND ur.user_ic IS NOT NULL)
+           OR (u.role = 'admin' AND EXISTS (
+             SELECT 1 FROM teachers t2 
+             WHERE REPLACE(REPLACE(t2.user_ic, '-', ''), ' ', '') = ?
+           ))
+           OR (u.role = 'admin' AND EXISTS (
+             SELECT 1 FROM user_roles ur2 
+             WHERE REPLACE(REPLACE(ur2.user_ic, '-', ''), ' ', '') = ? AND ur2.role = 'teacher'
+           ))
+         )
+       LIMIT 1`,
+      [normalizedGuruIc, normalizedGuruIc, normalizedGuruIc]
     );
     
     if (teachers.length === 0) {
+      console.error(`[createClass] Teacher validation failed for guru_ic: ${guru_ic} (normalized: ${normalizedGuruIc})`);
       return res.status(400).json({
         success: false,
         message: 'Teacher not found or inactive'
@@ -280,18 +303,98 @@ export const updateClass = async (req, res) => {
       });
     }
     
+    const existingClass = existingClasses[0];
+    const oldYuran = parseFloat(existingClass.yuran) || 0;
+    const newYuran = parseFloat(yuran) || 0;
+    // Check if yuran changed (with small tolerance for floating point comparison)
+    const yuranChanged = Math.abs(oldYuran - newYuran) > 0.001;
+    
+    // Check both role and activeRole (for role switching)
+    const userRole = req.user?.activeRole || req.user?.role;
+    const userIc = req.user?.ic || req.user?.userId;
+    
+    // Permission check: Only admin/staff can update any class, teachers can only update their own classes
+    if (userRole !== 'admin' && userRole !== 'staff') {
+      if (userRole === 'teacher') {
+        // Teachers can only update classes where they are the assigned teacher
+        if (existingClass.guru_ic !== userIc) {
+          return res.status(403).json({
+            success: false,
+            message: 'Insufficient permissions. You can only update classes assigned to you.'
+          });
+        }
+        // Also check if they're trying to change the teacher assignment
+        if (guru_ic && guru_ic !== userIc) {
+          return res.status(403).json({
+            success: false,
+            message: 'Insufficient permissions. Teachers cannot change class assignment.'
+          });
+        }
+      } else {
+        // Students and other roles cannot update classes
+        return res.status(403).json({
+          success: false,
+          message: `Insufficient permissions. Only administrators, staff, and teachers can update classes. Your current role is: ${userRole || 'unknown'}. Please log in with an admin, staff, or teacher account.`
+        });
+      }
+    }
+    
     // Check if teacher exists and is active
+    // Include users with teacher/staff role OR admin users with teacher entry
+    // Normalize IC for comparison
+    const normalizedGuruIc = guru_ic ? guru_ic.replace(/[-\s]/g, '') : '';
+    
     const [teachers] = await pool.execute(
-      "SELECT ic FROM users WHERE ic = ? AND role = 'teacher' AND status = 'aktif'",
-      [guru_ic]
+      `SELECT DISTINCT u.ic FROM users u
+             LEFT JOIN teachers t ON REPLACE(REPLACE(u.ic, '-', ''), ' ', '') = REPLACE(REPLACE(t.user_ic, '-', ''), ' ', '')
+       LEFT JOIN user_roles ur ON REPLACE(REPLACE(u.ic, '-', ''), ' ', '') = REPLACE(REPLACE(ur.user_ic, '-', ''), ' ', '') AND ur.role = 'teacher'
+       WHERE REPLACE(REPLACE(u.ic, '-', ''), ' ', '') = ?
+         AND u.status = 'aktif'
+         AND (
+           u.role IN ('teacher', 'staff')
+           OR (u.role = 'admin' AND t.user_ic IS NOT NULL)
+           OR (u.role = 'admin' AND ur.user_ic IS NOT NULL)
+           OR (u.role = 'admin' AND EXISTS (
+             SELECT 1 FROM teachers t2 
+             WHERE REPLACE(REPLACE(t2.user_ic, '-', ''), ' ', '') = ?
+           ))
+           OR (u.role = 'admin' AND EXISTS (
+             SELECT 1 FROM user_roles ur2 
+             WHERE REPLACE(REPLACE(ur2.user_ic, '-', ''), ' ', '') = ? AND ur2.role = 'teacher'
+           ))
+         )
+       LIMIT 1`,
+      [normalizedGuruIc, normalizedGuruIc, normalizedGuruIc]
     );
     
     if (teachers.length === 0) {
+      // Additional debug: Check what users exist with this IC
+      const [debugUsers] = await pool.execute(
+        `SELECT ic, role, status FROM users 
+         WHERE REPLACE(REPLACE(ic, '-', ''), ' ', '') = ?`,
+        [normalizedGuruIc]
+      );
+      const [debugTeachers] = await pool.execute(
+        `SELECT user_ic FROM teachers 
+         WHERE REPLACE(REPLACE(user_ic, '-', ''), ' ', '') = ?`,
+        [normalizedGuruIc]
+      );
+      const [debugRoles] = await pool.execute(
+        `SELECT user_ic, role FROM user_roles 
+         WHERE REPLACE(REPLACE(user_ic, '-', ''), ' ', '') = ?`,
+        [normalizedGuruIc]
+      );
+      console.error(`[updateClass] Teacher validation failed for guru_ic: ${guru_ic} (normalized: ${normalizedGuruIc})`);
+      console.error(`[updateClass] Debug - Users found:`, debugUsers);
+      console.error(`[updateClass] Debug - Teachers table entries:`, debugTeachers);
+      console.error(`[updateClass] Debug - User roles:`, debugRoles);
       return res.status(400).json({
         success: false,
         message: 'Teacher not found or inactive'
       });
     }
+    
+    console.log(`[updateClass] Teacher validation passed for guru_ic: ${guru_ic}, found:`, teachers[0]);
     
     // Convert sessions array to JSON string for storage
     const sessionsJson = JSON.stringify(sessions || []);
@@ -301,6 +404,142 @@ export const updateClass = async (req, res) => {
       SET nama_kelas = ?, level = ?, sessions = ?, yuran = ?, guru_ic = ?, kapasiti = ?, updated_at = CURRENT_TIMESTAMP
       WHERE id = ?
     `, [nama_kelas, level, sessionsJson, yuran, guru_ic, kapasiti, id]);
+    
+    // If yuran amount changed, update fees for current month and future months
+    // Update fees immediately when yuran changes (for any role that can update classes)
+    if (yuranChanged) {
+      try {
+        const now = new Date();
+        const currentMonth = now.getMonth(); // 0-11
+        const currentYear = now.getFullYear();
+        
+        // Month names in Malay (must match the order used in monthlyFeeGenerationJob.js)
+        const monthNames = [
+          'Januari', 'Februari', 'Mac', 'April', 'Mei', 'Jun',
+          'Julai', 'Ogos', 'September', 'Oktober', 'November', 'Disember'
+        ];
+        const currentMonthName = monthNames[currentMonth];
+        
+        // Get all students in this class
+        const [classStudents] = await pool.execute(`
+          SELECT user_ic FROM students WHERE kelas_id = ?
+        `, [id]);
+        
+        if (classStudents.length > 0) {
+          const studentIcs = classStudents.map(s => s.user_ic);
+          const placeholders = studentIcs.map(() => '?').join(',');
+          
+          let totalUpdated = 0;
+          let totalCreated = 0;
+          
+          // Update ALL existing fees for current month (including paid ones)
+          // This ensures all current month fees are in sync with the new yuran amount
+          const [currentMonthUpdated] = await pool.execute(`
+            UPDATE fees 
+            SET jumlah = ?, updated_at = CURRENT_TIMESTAMP
+            WHERE student_ic IN (${placeholders})
+              AND bulan = ?
+              AND tahun = ?
+          `, [newYuran, ...studentIcs, currentMonthName, currentYear]);
+          
+          const currentMonthCount = currentMonthUpdated.affectedRows || 0;
+          totalUpdated += currentMonthCount;
+          
+          // Check which students don't have fees for current month yet
+          const [existingFees] = await pool.execute(`
+            SELECT DISTINCT student_ic 
+            FROM fees 
+            WHERE student_ic IN (${placeholders})
+              AND bulan = ?
+              AND tahun = ?
+          `, [...studentIcs, currentMonthName, currentYear]);
+          
+          const studentsWithFees = new Set(existingFees.map(f => f.student_ic));
+          const studentsWithoutFees = studentIcs.filter(ic => !studentsWithFees.has(ic));
+          
+          // Create fees for students who don't have fees for current month yet
+          if (studentsWithoutFees.length > 0) {
+            const feeDate = new Date(currentYear, currentMonth, 1).toISOString().split('T')[0];
+            
+            for (const studentIc of studentsWithoutFees) {
+              try {
+                await pool.execute(`
+                  INSERT INTO fees (
+                    student_ic, 
+                    jumlah, 
+                    status, 
+                    tarikh, 
+                    bulan, 
+                    tahun,
+                    tarikh_bayar,
+                    cara_bayar,
+                    no_resit,
+                    resit_img
+                  )
+                  VALUES (?, ?, 'Belum Bayar', ?, ?, ?, NULL, NULL, NULL, NULL)
+                `, [studentIc, newYuran, feeDate, currentMonthName, currentYear]);
+                totalCreated++;
+              } catch (error) {
+                console.error(`[Class Update] Error creating fee for student ${studentIc}:`, error);
+              }
+            }
+          }
+          
+          // Log detailed information for debugging
+          if (classStudents.length > 0) {
+            console.log(`[Class Update] Found ${classStudents.length} students in class ${id}:`, classStudents.map(s => s.user_ic).join(', '));
+            console.log(`[Class Update] Current month: ${currentMonthName} ${currentYear}`);
+            console.log(`[Class Update] New yuran amount: RM ${newYuran.toFixed(2)}`);
+            console.log(`[Class Update] Updated ${currentMonthCount} existing fees (all statuses), created ${totalCreated} new fees for current month`);
+          }
+          
+          // Update fees for future months in current year (all fees regardless of status)
+          const futureMonthNames = monthNames.slice(currentMonth + 1);
+          let futureCurrentYearCount = 0;
+          
+          if (futureMonthNames.length > 0) {
+            const futurePlaceholders = futureMonthNames.map(() => '?').join(',');
+            const [futureCurrentYear] = await pool.execute(`
+              UPDATE fees 
+              SET jumlah = ?, updated_at = CURRENT_TIMESTAMP
+              WHERE student_ic IN (${placeholders})
+                AND bulan IN (${futurePlaceholders})
+                AND tahun = ?
+            `, [newYuran, ...studentIcs, ...futureMonthNames, currentYear]);
+            futureCurrentYearCount = futureCurrentYear.affectedRows || 0;
+            totalUpdated += futureCurrentYearCount;
+          }
+          
+          // Update all fees in future years (all fees regardless of status)
+          const [futureYears] = await pool.execute(`
+            UPDATE fees 
+            SET jumlah = ?, updated_at = CURRENT_TIMESTAMP
+            WHERE student_ic IN (${placeholders})
+              AND tahun > ?
+          `, [newYuran, ...studentIcs, currentYear]);
+          const futureYearsCount = futureYears.affectedRows || 0;
+          totalUpdated += futureYearsCount;
+          
+          console.log(`[Class Update] ✅ Yuran changed from RM ${oldYuran.toFixed(2)} to RM ${newYuran.toFixed(2)} for class ${id} (${existingClass.nama_kelas})`);
+          console.log(`[Class Update] Updated fees for ${classStudents.length} students in class:`);
+          console.log(`  - Current month (${currentMonthName} ${currentYear}): ${currentMonthCount} unpaid fees updated, ${totalCreated} new fees created`);
+          console.log(`  - Future months in ${currentYear}: ${futureCurrentYearCount} fees updated`);
+          console.log(`  - Future years: ${futureYearsCount} fees updated`);
+          console.log(`  - Total: ${totalUpdated + totalCreated} fees updated/created`);
+          
+          // If no fees were updated or created, log a warning
+          if (totalUpdated === 0 && totalCreated === 0) {
+            console.warn(`[Class Update] ⚠️  No fees were updated or created. This might mean:`);
+            console.warn(`  - No students are assigned to this class`);
+            console.warn(`  - All fees for current month are already paid`);
+          }
+        }
+      } catch (error) {
+        console.error('[Class Update] Error updating fees after yuran change:', error);
+        // Don't fail the class update if fee update fails, just log it
+        // The class update was successful, fees can be updated manually if needed
+      }
+    }
     
     const [updatedClass] = await pool.execute(`
       SELECT c.id, c.nama_kelas, c.level, c.sessions, c.yuran, c.guru_ic, c.kapasiti, c.status, u.nama as guru_nama

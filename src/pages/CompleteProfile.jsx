@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { authAPI, clearAuth } from '../services/api';
 import { User, Mail, Phone, BookOpen, GraduationCap } from 'lucide-react';
+import { formatPhone } from '../utils/phoneUtils';
 
 const CompleteProfile = ({ user, onComplete }) => {
   const navigate = useNavigate();
@@ -34,7 +35,7 @@ const CompleteProfile = ({ user, onComplete }) => {
     }
     setFormData(prev => ({
       ...prev,
-      [name]: value
+      [name]: name === 'telefon' ? formatPhone(value, true) : value // Auto-format phone with hyphen
     }));
     
     // Clear error for this field

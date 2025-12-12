@@ -9,7 +9,7 @@ const RecentActivity = ({ activities = [] }) => {
       </div>
       <div className="p-6 space-y-6">
         {activities.length === 0 ? (
-          <div className="text-gray-400 text-center py-2">Tiada aktiviti terkini untuk dipaparkan.</div>
+          <div className="text-gray-600 text-center py-2">Tiada aktiviti terkini untuk dipaparkan.</div>
         ) : (
           activities.map((activity) => (
             <div key={activity.id} className="flex items-start space-x-4">
@@ -20,12 +20,6 @@ const RecentActivity = ({ activities = [] }) => {
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-mosque-neutral-800">{activity.message}</p>
-                <div className="flex items-center mt-1 space-x-3">
-                  <span className={`${activity.badgeClass} capitalize`}>
-                    {activity.type}
-                  </span>
-                  <span className="text-xs text-mosque-neutral-500">{activity.time}</span>
-                </div>
               </div>
             </div>
           ))

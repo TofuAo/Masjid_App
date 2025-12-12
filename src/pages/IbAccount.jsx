@@ -37,6 +37,8 @@ const IbAccount = () => {
   const [imageModalOpen, setImageModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterConfirmed, setFilterConfirmed] = useState('all'); // all, confirmed, pending
+  const [filterClass, setFilterClass] = useState(''); // Filter by class
+  const [filterMonth, setFilterMonth] = useState(''); // Filter by month (YYYY-MM format)
   const [confirming, setConfirming] = useState({});
   
   // Class-based confirmation state
@@ -50,6 +52,13 @@ const IbAccount = () => {
   const [excludedStudents, setExcludedStudents] = useState([]);
   const [showClassConfirmation, setShowClassConfirmation] = useState(false);
   const [approvalStep, setApprovalStep] = useState('class'); // 'class', 'students', 'documents'
+  
+  // Student detail modal state
+  const [selectedStudent, setSelectedStudent] = useState(null);
+  const [studentDetailModalOpen, setStudentDetailModalOpen] = useState(false);
+  const [studentAttendanceMonth, setStudentAttendanceMonth] = useState('');
+  const [studentAttendanceData, setStudentAttendanceData] = useState([]);
+  const [loadingStudentAttendance, setLoadingStudentAttendance] = useState(false);
 
   useEffect(() => {
     const userData = JSON.parse(localStorage.getItem('user'));
@@ -102,13 +111,15 @@ const IbAccount = () => {
     setLoadingClassDocuments(true);
     try {
       const response = await ibAPI.getClassDocuments({ class_id: selectedClassId });
+      // Handle response structure - API interceptor returns response.data, so response is already the data object
+      const responseData = response?.data || response;
       // Filter documents to only show selected students
       const filteredData = {
-        ...response.data,
-        attendance: response.data.attendance?.filter(a => 
+        ...responseData,
+        attendance: responseData.attendance?.filter(a => 
           selectedStudentIds.includes(a.student_ic)
         ) || [],
-        fees: response.data.fees?.filter(f => 
+        fees: responseData.fees?.filter(f => 
           selectedStudentIds.includes(f.student_ic)
         ) || []
       };
@@ -205,24 +216,85 @@ const IbAccount = () => {
   const fetchAllData = async () => {
     setLoading(true);
     try {
-      // Fetch all attendance records with documents
+      // Fetch all attendance records
       const attendanceData = await attendanceAPI.getAll({
         limit: 10000
       });
-      const attendanceArray = Array.isArray(attendanceData) ? attendanceData : [];
-      setAllAttendance(attendanceArray.filter(a => a.proof_image));
+      const attendanceArray = Array.isArray(attendanceData) ? attendanceData : (attendanceData?.data || []);
+      
+      // Group by student_ic and get only the latest attendance record per student
+      const latestAttendanceMap = new Map();
+      attendanceArray.forEach(record => {
+        const studentIc = record.student_ic || record.pelajar_ic;
+        if (!studentIc) return;
+        
+        const existing = latestAttendanceMap.get(studentIc);
+        if (!existing) {
+          latestAttendanceMap.set(studentIc, record);
+        } else {
+          // Compare dates - keep the latest one
+          const existingDate = new Date(existing.tarikh);
+          const currentDate = new Date(record.tarikh);
+          if (currentDate > existingDate) {
+            latestAttendanceMap.set(studentIc, record);
+          }
+        }
+      });
+      
+      // Convert map to array
+      const latestAttendance = Array.from(latestAttendanceMap.values());
+      setAllAttendance(latestAttendance);
 
-      // Fetch all fees with receipts
+      // Fetch all fees (show all, not just those with receipt images)
       const feesData = await feesAPI.getAll({
         limit: 10000
       });
-      const feesArray = Array.isArray(feesData) ? feesData : [];
-      setAllFees(feesArray.filter(f => f.resit_img));
+      const feesArray = Array.isArray(feesData) ? feesData : (feesData?.data || []);
+      setAllFees(feesArray);
     } catch (error) {
       console.error('Error fetching data:', error);
       toast.error('Gagal memuatkan data.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleStudentClick = async (studentIc, studentName) => {
+    setSelectedStudent({ ic: studentIc, name: studentName });
+    setStudentDetailModalOpen(true);
+    // Set default month to current month
+    const now = new Date();
+    const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    setStudentAttendanceMonth(currentMonth);
+    await fetchStudentAttendance(studentIc, currentMonth);
+  };
+
+  const fetchStudentAttendance = async (studentIc, month) => {
+    if (!studentIc || !month) return;
+    
+    setLoadingStudentAttendance(true);
+    try {
+      // Use the attendance API with pelajar_id and date (month format)
+      const attendanceData = await attendanceAPI.getAll({
+        pelajar_id: studentIc,
+        date: month, // Format: YYYY-MM
+        limit: 1000
+      });
+      const attendanceArray = Array.isArray(attendanceData) ? attendanceData : (attendanceData?.data || []);
+      setStudentAttendanceData(attendanceArray);
+    } catch (error) {
+      console.error('Error fetching student attendance:', error);
+      toast.error('Gagal memuatkan data kehadiran pelajar.');
+      setStudentAttendanceData([]);
+    } finally {
+      setLoadingStudentAttendance(false);
+    }
+  };
+
+  const handleStudentAttendanceMonthChange = async (month) => {
+    setStudentAttendanceMonth(month);
+    if (selectedStudent?.ic) {
+      await fetchStudentAttendance(selectedStudent.ic, month);
     }
   };
 
@@ -236,6 +308,10 @@ const IbAccount = () => {
       await attendanceAPI.confirmDocument(id, { confirmed, notes });
       toast.success(confirmed ? 'Dokumen kehadiran berjaya disahkan!' : 'Pengesahan dokumen kehadiran dibatalkan.');
       await fetchAllData();
+      // Refresh student attendance if modal is open
+      if (selectedStudent?.ic && studentAttendanceMonth) {
+        await fetchStudentAttendance(selectedStudent.ic, studentAttendanceMonth);
+      }
     } catch (error) {
       console.error('Error confirming attendance document:', error);
       toast.error('Gagal mengesahkan dokumen kehadiran.');
@@ -317,18 +393,32 @@ const IbAccount = () => {
     }
   };
 
-  // Filter data based on search and confirmation status
+  // Filter data based on search, class, month, and confirmation status
   const filteredAttendance = allAttendance.filter(record => {
+    // Search by name or IC only (not class name)
     const matchesSearch = !searchTerm || 
       record.pelajar_nama?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      record.pelajar_ic?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      record.nama_kelas?.toLowerCase().includes(searchTerm.toLowerCase());
+      record.pelajar_ic?.toLowerCase().includes(searchTerm.toLowerCase());
     
+    // Filter by class
+    const matchesClass = !filterClass || 
+      record.class_id?.toString() === filterClass;
+    
+    // Filter by month (YYYY-MM format)
+    const matchesMonth = !filterMonth || (() => {
+      if (!record.tarikh) return false;
+      const recordDate = new Date(record.tarikh);
+      const [year, month] = filterMonth.split('-');
+      return recordDate.getFullYear() === parseInt(year) && 
+             (recordDate.getMonth() + 1) === parseInt(month);
+    })();
+    
+    // Filter by confirmation status
     const matchesFilter = filterConfirmed === 'all' ||
       (filterConfirmed === 'confirmed' && record.document_confirmed) ||
       (filterConfirmed === 'pending' && !record.document_confirmed);
     
-    return matchesSearch && matchesFilter;
+    return matchesSearch && matchesClass && matchesMonth && matchesFilter;
   });
 
   const filteredFees = allFees.filter(fee => {
@@ -356,15 +446,20 @@ const IbAccount = () => {
   if (!user) {
     return (
       <div className="text-center py-12">
-        <AlertCircle className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+        <AlertCircle className="w-16 h-16 text-gray-600 mx-auto mb-4" />
         <h3 className="text-lg font-semibold text-gray-900 mb-2">Tiada Data Pengguna</h3>
         <p className="text-gray-600">Sila log masuk untuk melihat maklumat akaun anda.</p>
       </div>
     );
   }
 
-  const pendingAttendanceCount = allAttendance.filter(a => !a.document_confirmed).length;
-  const pendingFeesCount = allFees.filter(f => !f.document_confirmed).length;
+  // Count pending documents (only those with proof_image/resit_img that are not confirmed)
+  const pendingAttendanceCount = allAttendance.filter(a => a.proof_image && !a.document_confirmed).length;
+  const pendingFeesCount = allFees.filter(f => f.resit_img && !f.document_confirmed).length;
+  
+  // Count total records with documents
+  const attendanceWithProof = allAttendance.filter(a => a.proof_image).length;
+  const feesWithReceipt = allFees.filter(f => f.resit_img).length;
 
   return (
     <div className="space-y-6">
@@ -490,7 +585,7 @@ const IbAccount = () => {
                           {selectedStudentIds.includes(student.ic) ? (
                             <Check className="w-4 h-4 text-emerald-600" />
                           ) : (
-                            <X className="w-4 h-4 text-gray-400" />
+                            <X className="w-4 h-4 text-gray-600" />
                           )}
                         </button>
                         <div>
@@ -687,7 +782,7 @@ const IbAccount = () => {
             </div>
             <div className="ml-4">
               <p className="text-sm font-medium text-black">Kehadiran dengan Bukti</p>
-              <p className="text-2xl font-bold text-black">{allAttendance.length}</p>
+              <p className="text-2xl font-bold text-black">{attendanceWithProof}</p>
             </div>
           </div>
         </Card>
@@ -715,7 +810,7 @@ const IbAccount = () => {
             </div>
             <div className="ml-4">
               <p className="text-sm font-medium text-black">Resit Pembayaran</p>
-              <p className="text-2xl font-bold text-black">{allFees.length}</p>
+              <p className="text-2xl font-bold text-black">{feesWithReceipt}</p>
             </div>
           </div>
         </Card>
@@ -767,23 +862,42 @@ const IbAccount = () => {
                 </div>
               </button>
             </div>
-            <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-4 flex-wrap">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 w-5 h-5" />
                 <input
                   type="text"
-                  placeholder="Cari pelajar..."
+                  placeholder="Cari nama pelajar..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 />
               </div>
               <select
+                value={filterClass}
+                onChange={(e) => setFilterClass(e.target.value)}
+                className="px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              >
+                <option value="">Semua Kelas</option>
+                {classes.map((cls) => (
+                  <option key={cls.id} value={cls.id}>
+                    {cls.nama_kelas}
+                  </option>
+                ))}
+              </select>
+              <input
+                type="month"
+                value={filterMonth}
+                onChange={(e) => setFilterMonth(e.target.value)}
+                placeholder="Pilih bulan"
+                className="px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              />
+              <select
                 value={filterConfirmed}
                 onChange={(e) => setFilterConfirmed(e.target.value)}
                 className="px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500"
               >
-                <option value="all">Semua</option>
+                <option value="all">Semua Status</option>
                 <option value="pending">Menunggu Pengesahan</option>
                 <option value="confirmed">Telah Disahkan</option>
               </select>
@@ -796,7 +910,7 @@ const IbAccount = () => {
             <div className="space-y-4">
               {filteredAttendance.length === 0 ? (
                 <div className="text-center py-8">
-                  <FileText className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                  <FileText className="w-12 h-12 text-gray-600 mx-auto mb-4" />
                   <p className="text-gray-600">Tiada rekod kehadiran ditemui.</p>
                 </div>
               ) : (
@@ -831,8 +945,14 @@ const IbAccount = () => {
                             {new Date(record.tarikh).toLocaleDateString('ms-MY')}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-black">
-                            <div className="font-medium">{record.pelajar_nama}</div>
-                            <div className="text-xs text-gray-500">{record.pelajar_ic}</div>
+                            <button
+                              onClick={() => handleStudentClick(record.pelajar_ic || record.student_ic, record.pelajar_nama)}
+                              className="text-left hover:text-emerald-600 hover:underline cursor-pointer"
+                              title="Klik untuk lihat data bulanan pelajar"
+                            >
+                              <div className="font-medium">{record.pelajar_nama}</div>
+                              <div className="text-xs text-gray-500">{record.pelajar_ic}</div>
+                            </button>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-black">
                             {record.nama_kelas || record.kelas_nama || 'N/A'}
@@ -841,7 +961,12 @@ const IbAccount = () => {
                             {getStatusBadge(record.status)}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
-                            {record.document_confirmed ? (
+                            {!record.proof_image ? (
+                              <Badge variant="secondary" className="flex items-center space-x-1">
+                                <FileText className="w-4 h-4" />
+                                <span>Tiada Bukti</span>
+                              </Badge>
+                            ) : record.document_confirmed ? (
                               <Badge variant="success" className="flex items-center space-x-1">
                                 <CheckCircle className="w-4 h-4" />
                                 <span>Telah Disahkan</span>
@@ -916,7 +1041,7 @@ const IbAccount = () => {
             <div className="space-y-4">
               {filteredFees.length === 0 ? (
                 <div className="text-center py-8">
-                  <CreditCard className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                  <CreditCard className="w-12 h-12 text-gray-600 mx-auto mb-4" />
                   <p className="text-gray-600">Tiada resit pembayaran ditemui.</p>
                 </div>
               ) : (
@@ -1064,6 +1189,188 @@ const IbAccount = () => {
                 alt="Document"
                 className="max-w-full max-h-[80vh] mx-auto rounded"
               />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Student Detail Modal */}
+      {studentDetailModalOpen && selectedStudent && (
+        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50" onClick={() => setStudentDetailModalOpen(false)}>
+          <div className="max-w-6xl max-h-[90vh] w-full mx-4 p-4" onClick={(e) => e.stopPropagation()}>
+            <div className="bg-white rounded-lg p-6 overflow-y-auto max-h-[90vh]">
+              <div className="flex justify-between items-center mb-6">
+                <div>
+                  <h3 className="text-2xl font-semibold text-gray-900">Data Kehadiran Pelajar</h3>
+                  <p className="text-sm text-gray-600 mt-1">
+                    {selectedStudent.name} ({selectedStudent.ic})
+                  </p>
+                </div>
+                <button
+                  onClick={() => setStudentDetailModalOpen(false)}
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  <XCircle className="w-6 h-6" />
+                </button>
+              </div>
+
+              {/* Month Picker */}
+              <div className="mb-6 flex items-center space-x-4">
+                <label className="text-sm font-medium text-gray-700">Pilih Bulan:</label>
+                <input
+                  type="month"
+                  value={studentAttendanceMonth}
+                  onChange={(e) => handleStudentAttendanceMonthChange(e.target.value)}
+                  className="px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+              </div>
+
+              {/* Attendance Table */}
+              {loadingStudentAttendance ? (
+                <div className="text-center py-8">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600 mx-auto"></div>
+                  <p className="mt-4 text-gray-600">Memuatkan data...</p>
+                </div>
+              ) : studentAttendanceData.length === 0 ? (
+                <div className="text-center py-8">
+                  <Calendar className="w-12 h-12 text-gray-600 mx-auto mb-4" />
+                  <p className="text-gray-600">Tiada rekod kehadiran untuk bulan yang dipilih.</p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Tarikh
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Kelas
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Status
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Status Dokumen
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Tindakan
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {studentAttendanceData.map((record) => (
+                        <tr key={record.id} className="hover:bg-gray-50">
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-black">
+                            {new Date(record.tarikh).toLocaleDateString('ms-MY')}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-black">
+                            {record.nama_kelas || record.kelas_nama || 'N/A'}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            {getStatusBadge(record.status)}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            {!record.proof_image ? (
+                              <Badge variant="secondary" className="flex items-center space-x-1">
+                                <FileText className="w-4 h-4" />
+                                <span>Tiada Bukti</span>
+                              </Badge>
+                            ) : record.document_confirmed ? (
+                              <Badge variant="success" className="flex items-center space-x-1">
+                                <CheckCircle className="w-4 h-4" />
+                                <span>Telah Disahkan</span>
+                              </Badge>
+                            ) : (
+                              <Badge variant="warning" className="flex items-center space-x-1">
+                                <Clock className="w-4 h-4" />
+                                <span>Menunggu Pengesahan</span>
+                              </Badge>
+                            )}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm">
+                            <div className="flex space-x-2">
+                              {record.proof_image && (
+                                <>
+                                  <button
+                                    onClick={() => handleImageClick(record.proof_image)}
+                                    className="text-emerald-600 hover:text-emerald-700 flex items-center space-x-1"
+                                    title="Lihat bukti"
+                                  >
+                                    <Eye className="w-4 h-4" />
+                                  </button>
+                                  <button
+                                    onClick={() => downloadImage(record.proof_image, `attendance_${record.id}.jpg`)}
+                                    className="text-blue-600 hover:text-blue-700 flex items-center space-x-1"
+                                    title="Muat turun"
+                                  >
+                                    <Download className="w-4 h-4" />
+                                  </button>
+                                </>
+                              )}
+                              {/* Approve button - show for all records with proof_image, or allow approval even without proof */}
+                              {record.proof_image ? (
+                                !record.document_confirmed ? (
+                                  <button
+                                    onClick={async () => {
+                                      await handleConfirmAttendanceDocument(record.id, true);
+                                      await fetchStudentAttendance(selectedStudent.ic, studentAttendanceMonth);
+                                    }}
+                                    disabled={confirming[`attendance_${record.id}`]}
+                                    className="text-emerald-600 hover:text-emerald-700 flex items-center space-x-1 disabled:opacity-50"
+                                    title="Sahkan dokumen"
+                                  >
+                                    {confirming[`attendance_${record.id}`] ? (
+                                      <Clock className="w-4 h-4 animate-spin" />
+                                    ) : (
+                                      <FileCheck className="w-4 h-4" />
+                                    )}
+                                  </button>
+                                ) : (
+                                  <button
+                                    onClick={async () => {
+                                      await handleConfirmAttendanceDocument(record.id, false);
+                                      await fetchStudentAttendance(selectedStudent.ic, studentAttendanceMonth);
+                                    }}
+                                    disabled={confirming[`attendance_${record.id}`]}
+                                    className="text-red-600 hover:text-red-700 flex items-center space-x-1 disabled:opacity-50"
+                                    title="Batal pengesahan"
+                                  >
+                                    {confirming[`attendance_${record.id}`] ? (
+                                      <Clock className="w-4 h-4 animate-spin" />
+                                    ) : (
+                                      <XCircle className="w-4 h-4" />
+                                    )}
+                                  </button>
+                                )
+                              ) : (
+                                // For records without proof, still allow approval (approve the attendance record itself)
+                                <button
+                                  onClick={async () => {
+                                    if (window.confirm('Adakah anda pasti ingin mengesahkan rekod kehadiran ini (tanpa bukti)?')) {
+                                      await handleConfirmAttendanceDocument(record.id, true);
+                                      await fetchStudentAttendance(selectedStudent.ic, studentAttendanceMonth);
+                                    }
+                                  }}
+                                  disabled={confirming[`attendance_${record.id}`]}
+                                  className="text-emerald-600 hover:text-emerald-700 flex items-center space-x-1 disabled:opacity-50"
+                                  title="Sahkan rekod kehadiran"
+                                >
+                                  {confirming[`attendance_${record.id}`] ? (
+                                    <Clock className="w-4 h-4 animate-spin" />
+                                  ) : (
+                                    <CheckCircle className="w-4 h-4" />
+                                  )}
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           </div>
         </div>

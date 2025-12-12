@@ -1829,6 +1829,582 @@ Marks for Week 11: _____
 
 ---
 
+## ERROR HANDLING DOCUMENTATION
+
+### Overview
+This document provides comprehensive information about error handling mechanisms implemented throughout the Masjid Management System. All modules include robust error handling to ensure system stability, user experience, and proper debugging capabilities.
+
+### Backend Error Handling
+
+#### 1. Controller-Level Error Handling
+
+All backend controllers follow a consistent error handling pattern using try-catch blocks:
+
+**Pattern:**
+```javascript
+export const controllerFunction = async (req, res) => {
+  try {
+    // Validation
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Validation failed',
+        errors: errors.array()
+      });
+    }
+    
+    // Business logic
+    // Database operations
+    
+    // Success response
+    res.status(200).json({
+      success: true,
+      message: 'Operation successful',
+      data: result
+    });
+  } catch (error) {
+    console.error('Controller error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
+  }
+};
+```
+
+**Controllers with Error Handling:**
+- `authController.js` - Authentication, registration, password reset
+- `studentController.js` - Student CRUD operations
+- `teacherController.js` - Teacher management
+- `classController.js` - Class management
+- `attendanceController.js` - Attendance tracking
+- `feeController.js` - Fee management
+- `examController.js` - Exam management
+- `resultController.js` - Results management
+- `paymentController.js` - Payment processing
+- `webhookController.js` - Webhook handlers
+- `announcementController.js` - Announcements
+- `ibController.js` - IB role functions
+- `staffCheckInController.js` - Staff check-in
+- `adminController.js` - Admin management
+- `settingsController.js` - System settings
+
+#### 2. Global Error Handler Middleware
+
+**Location:** `backend/middleware/errorHandler.js`
+
+The global error handler provides centralized error processing:
+
+**Features:**
+- Database error handling (duplicate entries, foreign key violations)
+- Validation error formatting
+- JWT token error handling
+- Development vs production error messages
+- Standardized error response format
+
+**Error Types Handled:**
+- `ER_DUP_ENTRY` - Duplicate entry (409 Conflict)
+- `ER_NO_REFERENCED_ROW_2` - Foreign key violation (400 Bad Request)
+- `ER_BAD_FIELD_ERROR` - Schema error (500 Internal Server Error)
+- `ValidationError` - Validation failures (400 Bad Request)
+- `JsonWebTokenError` - Invalid token (401 Unauthorized)
+- `TokenExpiredError` - Expired token (401 Unauthorized)
+
+**Usage in server.js:**
+```javascript
+import { errorHandler } from './middleware/errorHandler.js';
+// ... routes ...
+app.use(errorHandler); // Must be last middleware
+```
+
+#### 3. Database Connection Error Handling
+
+**Location:** `backend/config/database.js`
+
+**Connection Pool Configuration:**
+- Connection timeout: 60 seconds
+- Connection limit: 10 concurrent connections
+- Automatic reconnection handling
+- Connection test utility function
+
+**Error Handling:**
+```javascript
+export async function testConnection() {
+  try {
+    const connection = await pool.getConnection();
+    console.log('✅ Connected to database');
+    connection.release();
+  } catch (error) {
+    console.error('❌ Database connection failed:', error.message);
+    throw error;
+  }
+}
+```
+
+**Transaction Error Handling:**
+Controllers that use database transactions implement proper rollback:
+
+```javascript
+const connection = await pool.getConnection();
+await connection.beginTransaction();
+
+try {
+  // Database operations
+  await connection.commit();
+} catch (error) {
+  await connection.rollback();
+  throw error;
+} finally {
+  connection.release();
+}
+```
+
+#### 4. API Response Format
+
+**Standard Success Response:**
+```json
+{
+  "success": true,
+  "message": "Operation successful",
+  "data": { ... }
+}
+```
+
+**Standard Error Response:**
+```json
+{
+  "success": false,
+  "message": "Error description",
+  "errors": [ ... ]  // Optional: validation errors
+}
+```
+
+**HTTP Status Codes Used:**
+- `200` - Success
+- `201` - Created
+- `400` - Bad Request (validation errors, invalid input)
+- `401` - Unauthorized (authentication required)
+- `403` - Forbidden (insufficient permissions)
+- `404` - Not Found
+- `409` - Conflict (duplicate entries)
+- `500` - Internal Server Error
+- `503` - Service Unavailable (database connection issues)
+
+#### 5. Validation Error Handling
+
+**Location:** `backend/routes/*.js`
+
+All routes use `express-validator` for input validation:
+
+**Validation Pattern:**
+```javascript
+import { body, param, query, validationResult } from 'express-validator';
+
+const validateCreate = [
+  body('nama').notEmpty().withMessage('Name is required'),
+  body('ic').matches(/^\d{6}-\d{2}-\d{4}$/).withMessage('Invalid IC format'),
+  // ... more validations
+];
+
+router.post('/create', validateCreate, controller.create);
+```
+
+**Validation Error Response:**
+```json
+{
+  "success": false,
+  "message": "Validation failed",
+  "errors": [
+    {
+      "msg": "Name is required",
+      "param": "nama",
+      "location": "body"
+    }
+  ]
+}
+```
+
+### Frontend Error Handling
+
+#### 1. API Service Error Handling
+
+**Location:** `src/services/api.js`
+
+**Axios Interceptors:**
+
+**Request Interceptor:**
+- Adds authentication token to headers
+- Checks token expiration before request
+- Handles expired token scenarios
+
+**Response Interceptor:**
+- Handles network errors (timeout, connection failures)
+- Formats error responses consistently
+- Maps HTTP status codes to user-friendly messages
+- Handles authentication errors (401, 403)
+- Provides detailed error information in development mode
+
+**Network Error Handling:**
+```javascript
+// Timeout errors (408)
+if (error.code === 'ECONNABORTED') {
+  return Promise.reject({ 
+    message: 'Permintaan mengambil masa terlalu lama. Sila cuba lagi.',
+    status: 408,
+    isNetworkError: true
+  });
+}
+
+// Connection errors (0)
+if (error.message === 'Network Error' || error.code === 'ERR_NETWORK') {
+  return Promise.reject({ 
+    message: 'Tidak dapat menyambung ke pelayan. Sila semak sambungan internet anda.',
+    status: 0,
+    isNetworkError: true
+  });
+}
+```
+
+#### 2. Component-Level Error Handling
+
+**Pattern in React Components:**
+```javascript
+const [loading, setLoading] = useState(true);
+const [error, setError] = useState(null);
+
+const fetchData = async () => {
+  try {
+    setLoading(true);
+    setError(null);
+    const data = await api.getAll();
+    setItems(data);
+  } catch (err) {
+    console.error('Error fetching data:', err);
+    setError(err);
+    toast.error(err.message || 'Gagal memuatkan data.');
+  } finally {
+    setLoading(false);
+  }
+};
+```
+
+**Error Display in UI:**
+- Loading states prevent user confusion
+- Error messages displayed via toast notifications
+- Error boundaries for component crashes
+- Fallback UI for failed data loads
+
+#### 3. Form Validation Error Handling
+
+**Client-Side Validation:**
+- Real-time validation feedback
+- Error messages displayed below input fields
+- Prevents form submission on validation errors
+
+**Server-Side Validation:**
+- Displays validation errors from API responses
+- Highlights specific form fields with errors
+- Provides actionable error messages
+
+**Example:**
+```javascript
+try {
+  await api.create(formData);
+  toast.success('Data berjaya disimpan');
+  // Success handling
+} catch (error) {
+  if (error.errors) {
+    // Display field-specific errors
+    setFieldErrors(error.errors);
+  } else {
+    toast.error(error.message || 'Operasi gagal');
+  }
+}
+```
+
+#### 4. Authentication Error Handling
+
+**Token Expiration:**
+- Automatic token validation before API calls
+- Redirects to login page on token expiration
+- Clears stored authentication data
+- Shows appropriate message to user
+
+**Permission Errors:**
+- Handles 403 Forbidden responses
+- Shows permission-specific error messages
+- Hides unauthorized UI elements
+- Logs security events for review
+
+### Common Error Scenarios and Handling
+
+#### 1. Database Connection Errors
+
+**Scenario:** Database is unavailable or connection times out
+
+**Handling:**
+- Connection pool automatically retries
+- Global error handler catches connection errors
+- Returns 503 Service Unavailable response
+- Logs error for monitoring
+
+**User Experience:**
+- Frontend shows network error message
+- Option to retry operation
+- Graceful degradation of features
+
+#### 2. Validation Errors
+
+**Scenario:** Invalid input data submitted
+
+**Handling:**
+- Client-side validation prevents invalid submissions
+- Server-side validation as secondary check
+- Returns 400 Bad Request with specific field errors
+- User-friendly error messages in Malay
+
+**User Experience:**
+- Inline error messages on form fields
+- Highlighted invalid fields
+- Clear instructions for correction
+
+#### 3. Authentication Errors
+
+**Scenario:** Invalid or expired token
+
+**Handling:**
+- Token validation in middleware
+- Automatic token refresh where applicable
+- Redirect to login on authentication failure
+- Security logging for failed attempts
+
+**User Experience:**
+- Automatic logout on token expiration
+- Message: "Sesi anda telah tamat tempoh. Sila log masuk semula."
+- Preserved navigation state for redirect after login
+
+#### 4. Authorization Errors
+
+**Scenario:** User lacks permission for action
+
+**Handling:**
+- Role-based access control checks
+- Permission middleware validation
+- Returns 403 Forbidden response
+- Logs unauthorized access attempts
+
+**User Experience:**
+- Clear permission denied message
+- UI elements hidden for unauthorized actions
+- No sensitive information exposed
+
+#### 5. File Upload Errors
+
+**Scenario:** Invalid file type, size limit exceeded, upload failure
+
+**Handling:**
+- File validation before upload
+- Size limit checks (client and server)
+- Type validation (MIME type, extension)
+- Graceful error handling for upload failures
+
+**User Experience:**
+- Immediate feedback on file selection
+- Progress indicators during upload
+- Clear error messages for failures
+- Option to retry upload
+
+#### 6. Payment Processing Errors
+
+**Scenario:** Payment gateway failure, invalid payment data
+
+**Handling:**
+- Transaction rollback on failure
+- Idempotency checks prevent duplicate charges
+- Webhook signature verification
+- Detailed error logging for reconciliation
+
+**User Experience:**
+- Clear payment error messages
+- No duplicate charges on retry
+- Payment status tracking
+- Support contact information for unresolved issues
+
+#### 7. Concurrent Modification Errors
+
+**Scenario:** Multiple users editing same record simultaneously
+
+**Handling:**
+- Optimistic locking where applicable
+- Last-write-wins with timestamps
+- Conflict detection and user notification
+- Audit logging of changes
+
+**User Experience:**
+- Notification of concurrent changes
+- Option to refresh and see latest data
+- Warning before overwriting changes
+
+### Error Logging and Monitoring
+
+#### 1. Console Logging
+
+**Development:**
+- Detailed error stack traces
+- Request/response logging
+- Database query logging
+- Performance metrics
+
+**Production:**
+- Error summaries without sensitive data
+- Minimal logging for performance
+- Security event logging
+- Critical error alerts
+
+#### 2. Error Tracking
+
+**Security Events:**
+- Failed authentication attempts
+- Unauthorized access attempts
+- Suspicious activity patterns
+- Location: `backend/middleware/securityLogger.js`
+
+**Admin Actions:**
+- All admin operations logged
+- Snapshot system for undo capability
+- Audit trail for compliance
+- Location: `backend/utils/adminActionSnapshots.js`
+
+### Best Practices Implemented
+
+1. **Always Use Try-Catch:** All async functions wrapped in try-catch
+2. **Consistent Error Format:** Standard error response structure
+3. **User-Friendly Messages:** Errors displayed in Malay for users
+4. **Detailed Developer Messages:** Technical details in development mode
+5. **Graceful Degradation:** System continues functioning with partial failures
+6. **Transaction Safety:** Database transactions with proper rollback
+7. **Input Validation:** Client and server-side validation
+8. **Security Logging:** All security events logged for review
+9. **Error Recovery:** Retry mechanisms for transient failures
+10. **Clear Error Messages:** Actionable error messages for users
+
+### Testing Error Handling
+
+**Manual Testing:**
+- Disconnect database to test connection errors
+- Submit invalid data to test validation
+- Use expired tokens to test authentication
+- Test with insufficient permissions
+
+**Automated Testing:**
+- Unit tests for error scenarios
+- Integration tests for API error responses
+- Error boundary tests in React
+- Database transaction rollback tests
+
+### Error Handling Checklist
+
+- [x] All controllers have try-catch blocks
+- [x] Global error handler middleware implemented
+- [x] Database connection error handling
+- [x] Transaction rollback on errors
+- [x] Validation error handling (client and server)
+- [x] Authentication error handling
+- [x] Authorization error handling
+- [x] Network error handling in frontend
+- [x] File upload error handling
+- [x] Payment processing error handling
+- [x] Error logging and monitoring
+- [x] User-friendly error messages
+- [x] Error recovery mechanisms
+- [x] Security event logging
+
+### Error Handling Code Examples
+
+**Backend Controller Pattern:**
+```javascript
+// File: backend/controllers/exampleController.js
+export const createItem = async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Validation failed',
+        errors: errors.array()
+      });
+    }
+
+    const connection = await pool.getConnection();
+    await connection.beginTransaction();
+
+    try {
+      // Database operations
+      const result = await connection.execute('INSERT INTO ...');
+      await connection.commit();
+      
+      res.status(201).json({
+        success: true,
+        message: 'Item created successfully',
+        data: result
+      });
+    } catch (dbError) {
+      await connection.rollback();
+      throw dbError;
+    } finally {
+      connection.release();
+    }
+  } catch (error) {
+    console.error('Create item error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
+  }
+};
+```
+
+**Frontend API Call Pattern:**
+```javascript
+// File: src/services/api.js
+const fetchData = async () => {
+  try {
+    setLoading(true);
+    setError(null);
+    const response = await api.getAll();
+    return response;
+  } catch (error) {
+    console.error('Error:', error);
+    if (error.isNetworkError) {
+      toast.error('Tidak dapat menyambung ke pelayan.');
+    } else if (error.status === 401) {
+      // Handle authentication error
+      clearAuth();
+      navigate('/login');
+    } else {
+      toast.error(error.message || 'Operasi gagal');
+    }
+    throw error;
+  } finally {
+    setLoading(false);
+  }
+};
+```
+
+### Summary
+
+The Masjid Management System implements comprehensive error handling at all levels:
+- **Backend:** Global error handler, controller try-catch blocks, database transaction safety
+- **Frontend:** API interceptors, component error handling, user-friendly messages
+- **Database:** Connection pooling, transaction management, error recovery
+- **Security:** Authentication/authorization error handling, security logging
+- **User Experience:** Clear error messages, graceful degradation, recovery options
+
+All error handling follows consistent patterns and best practices to ensure system reliability, security, and user satisfaction.
+
+---
+
 END OF LOG BOOK
 Student Name: ________________
 

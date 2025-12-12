@@ -1,177 +1,302 @@
-# Security Enhancements Summary
+# Security Enhancements Documentation
 
-This document outlines all the security enhancements implemented to protect your application and database from unauthorized access and data theft.
+## Overview
 
-## 🔒 Critical Security Fixes Implemented
+This document outlines comprehensive security enhancements implemented to strengthen the MyMasjidApp system against various attack vectors and security threats.
 
-### 1. **Password Security (CRITICAL FIX)**
-- ✅ **Removed plaintext password comparison** - Previously, the system allowed plaintext password comparison for "demo users". This has been completely removed.
-- ✅ **Secure password hashing** - All passwords are now hashed using bcrypt with 12 rounds
-- ✅ **Automatic password migration** - If any unhashed passwords are detected, they are automatically hashed on login
-- ✅ **Password exclusion** - Passwords are never returned in API responses
+## Implemented Security Features
 
-**File**: `backend/controllers/authController.js`
+### 1. Account Lockout System
 
-### 2. **Rate Limiting Protection**
-- ✅ **General API rate limiting** - 100 requests per 15 minutes per IP
-- ✅ **Authentication rate limiting** - 5 login attempts per 15 minutes per IP
-- ✅ **Registration rate limiting** - 3 registrations per hour per IP
-- ✅ **Password reset rate limiting** - 3 password reset requests per hour per IP
+**Service:** `backend/services/accountLockoutService.js`
 
-**Files**: 
-- `backend/middleware/security.js`
-- `backend/server.js`
-- `backend/routes/auth.js`
+**Features:**
+- Automatic account lockout after 5 failed login attempts
+- 15-minute lockout duration
+- Tracks login attempts per user and IP address
+- Automatically unlocks after lockout period expires
+- Clears failed attempts on successful login
 
-### 3. **Security Headers (Helmet.js)**
-- ✅ **Content Security Policy (CSP)** - Prevents XSS attacks
-- ✅ **X-Frame-Options** - Prevents clickjacking
-- ✅ **X-Content-Type-Options** - Prevents MIME type sniffing
-- ✅ **Strict Transport Security (HSTS)** - Forces HTTPS connections
-- ✅ **X-XSS-Protection** - Additional XSS protection
+**Database Tables:**
+- `login_attempts` - Stores failed login attempts
+- `users.account_locked_until` - Tracks account lockout expiration
 
-**File**: `backend/server.js`
+**Usage:**
+```javascript
+// Check if account is locked
+const lockStatus = await isAccountLocked(ic);
 
-### 4. **Input Sanitization**
-- ✅ **XSS Prevention** - All user input is sanitized to remove malicious scripts
-- ✅ **HTML Tag Removal** - Dangerous HTML tags and JavaScript are stripped
-- ✅ **Event Handler Removal** - onclick, onerror, etc. are removed
-- ✅ **Recursive Sanitization** - Works on nested objects and arrays
+// Record failed attempt
+await recordFailedAttempt(ic, ip);
 
-**File**: `backend/middleware/sanitize.js`
-
-### 5. **Security Logging**
-- ✅ **Failed Authentication Logging** - All failed login attempts are logged
-- ✅ **Unauthorized Access Logging** - Unauthorized API access attempts are logged
-- ✅ **Suspicious Activity Detection** - Security events are tracked
-- ✅ **Rate Limit Exceeded Logging** - Rate limit violations are logged
-
-**File**: `backend/middleware/securityLogger.js`
-
-### 6. **Authentication & Authorization**
-- ✅ **JWT Token Authentication** - Secure token-based authentication
-- ✅ **Token Expiration** - Tokens expire after 24 hours
-- ✅ **Role-Based Access Control** - Users can only access resources based on their role
-- ✅ **User Status Verification** - Only active users can access the system
-- ✅ **Token Validation** - Tokens are verified on every request
-
-**Files**: 
-- `backend/middleware/auth.js`
-- `backend/controllers/authController.js`
-
-### 7. **CORS Protection**
-- ✅ **Whitelist-Based CORS** - Only allowed origins can access the API
-- ✅ **Credential Support** - Secure credential handling
-- ✅ **Method Restrictions** - Only allowed HTTP methods are permitted
-
-**File**: `backend/server.js`
-
-### 8. **Request Size Limits**
-- ✅ **Body Size Limits** - Maximum 10MB request body size to prevent DoS attacks
-- ✅ **URL Encoding Limits** - URL-encoded data is also limited
-
-**File**: `backend/server.js`
-
-## 🛡️ Security Features Already in Place
-
-### SQL Injection Protection
-- ✅ All database queries use parameterized statements
-- ✅ No string concatenation in SQL queries
-- ✅ Uses mysql2/promise with prepared statements
-
-### Data Protection
-- ✅ Passwords are never returned in API responses
-- ✅ Sensitive data is excluded from responses
-- ✅ User data is filtered before sending to client
-
-### HTTPS/SSL Support
-- ✅ Nginx SSL/TLS configuration
-- ✅ HTTP to HTTPS redirect
-- ✅ Strong cipher suites
-
-## 📋 Security Best Practices Implemented
-
-1. **Never trust user input** - All input is validated and sanitized
-2. **Principle of least privilege** - Users only have access to what they need
-3. **Defense in depth** - Multiple layers of security
-4. **Fail securely** - Errors don't reveal sensitive information
-5. **Security by default** - Secure settings are the default
-6. **Regular security logging** - All security events are logged
-
-## 🔍 Security Monitoring
-
-All security events are logged with:
-- Timestamp
-- Event type
-- IP address
-- User agent
-- Endpoint accessed
-- Reason for failure/alert
-
-**Example log entry:**
-```json
-{
-  "timestamp": "2024-01-15T10:30:00.000Z",
-  "eventType": "FAILED_AUTH_ATTEMPT",
-  "ip": "192.168.1.100",
-  "userAgent": "Mozilla/5.0...",
-  "endpoint": "/api/auth/login",
-  "reason": "Invalid password"
-}
+// Record successful login
+await recordSuccessfulLogin(ic);
 ```
 
-## ⚠️ Important Security Notes
+### 2. Enhanced Password Policy
+
+**Service:** `backend/utils/passwordPolicy.js`
+
+**Requirements:**
+- Minimum 8 characters (was 6)
+- Maximum 128 characters
+- Checks for common weak passwords
+- Detects repetitive characters
+- Detects sequential patterns (e.g., "123", "abc")
+- Strength rating: weak, fair, good, strong
+
+**Validation:**
+- Password strength calculation based on:
+  - Length
+  - Character variety (lowercase, uppercase, numbers, special)
+  - Pattern detection
+  - Common password checks
+
+### 3. JWT Token Security Improvements
+
+**Changes:**
+- **Short-lived Access Tokens:** 15 minutes (was 24 hours)
+- **Refresh Tokens:** 7 days for token renewal
+- **Token Types:** Separate access and refresh tokens
+- **Token Storage:** Refresh tokens stored in database for revocation
+
+**Database Table:**
+- `refresh_tokens` - Stores refresh tokens for management
+
+**Benefits:**
+- Reduced attack window if token is compromised
+- Ability to revoke refresh tokens
+- Better session management
+
+### 4. Enhanced Security Headers
+
+**Middleware:** Helmet.js with enhanced configuration
+
+**Headers Added:**
+- **Content Security Policy (CSP)** - Prevents XSS attacks
+- **Strict Transport Security (HSTS)** - Forces HTTPS
+- **X-Content-Type-Options** - Prevents MIME type sniffing
+- **X-Frame-Options** - Prevents clickjacking
+- **X-XSS-Protection** - Browser XSS filter
+- **Referrer Policy** - Controls referrer information
+- **Permissions Policy** - Restricts browser features
+
+**Configuration:**
+```javascript
+helmet({
+  contentSecurityPolicy: { /* ... */ },
+  hsts: {
+    maxAge: 31536000, // 1 year
+    includeSubDomains: true,
+    preload: true
+  },
+  // ... additional security headers
+})
+```
+
+### 5. Improved Authentication Flow
+
+**Enhancements:**
+- Account lockout check before password validation
+- Failed attempt tracking and recording
+- Clear error messages with remaining attempts
+- Automatic unlock after successful login
+- Comprehensive security logging
+
+**Error Messages:**
+- Clear indication of remaining attempts
+- Lockout duration information
+- Account status details
+
+### 6. Input Sanitization
+
+**Middleware:** `backend/middleware/sanitize.js`
+
+**Features:**
+- Removes script tags
+- Removes iframe tags
+- Removes JavaScript: protocol
+- Removes event handlers (onclick, etc.)
+- Recursive sanitization of objects and arrays
+
+### 7. Rate Limiting
+
+**Existing Implementation Enhanced:**
+- Authentication endpoints: 5 attempts per 15 minutes
+- Registration: 3 attempts per hour
+- Password reset: 10 attempts per hour (production)
+- General API: 1000 requests per 15 minutes
+
+### 8. Security Logging
+
+**Service:** `backend/middleware/securityLogger.js`
+
+**Events Logged:**
+- Failed authentication attempts
+- Suspicious activities
+- Unauthorized access attempts
+- Rate limit exceeded
+- Account lockouts
+- Password migration events
+
+## Security Best Practices Implemented
+
+### Password Security
+1. ✅ Bcrypt hashing with 12 rounds
+2. ✅ Password strength validation
+3. ✅ Common password detection
+4. ✅ Automatic migration of plaintext passwords
+5. ✅ Password length limits
+
+### Authentication Security
+1. ✅ Account lockout after failed attempts
+2. ✅ Short-lived access tokens
+3. ✅ Refresh token system
+4. ✅ IP-based tracking
+5. ✅ Comprehensive logging
+
+### API Security
+1. ✅ Rate limiting on all endpoints
+2. ✅ Input sanitization
+3. ✅ Security headers
+4. ✅ CORS configuration
+5. ✅ Parameterized queries (SQL injection prevention)
+
+### Session Security
+1. ✅ Short token expiration (15 minutes)
+2. ✅ Refresh token rotation capability
+3. ✅ Token revocation support
+4. ✅ Secure token storage
+
+## Database Schema Changes
+
+### New Tables
+
+**login_attempts**
+```sql
+CREATE TABLE login_attempts (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  user_ic VARCHAR(12) NOT NULL,
+  ip_address VARCHAR(45) NOT NULL,
+  timestamp DATETIME NOT NULL,
+  successful TINYINT(1) DEFAULT 0,
+  INDEX idx_user_ic (user_ic),
+  INDEX idx_timestamp (timestamp)
+)
+```
+
+**refresh_tokens**
+```sql
+CREATE TABLE refresh_tokens (
+  user_ic VARCHAR(12) PRIMARY KEY,
+  token TEXT NOT NULL,
+  expires_at DATETIME NOT NULL,
+  created_at DATETIME NOT NULL,
+  INDEX idx_expires_at (expires_at)
+)
+```
+
+### Modified Tables
+
+**users**
+- Added `account_locked_until DATETIME NULL` column
+
+## Configuration
 
 ### Environment Variables
-Make sure these are set securely in production:
-- `JWT_SECRET` - Use a strong random secret (minimum 32 characters)
-- `DB_PASSWORD` - Use a strong database password
-- `FRONTEND_URL` - Set to your production frontend URL
 
-### Production Checklist
-- [ ] Change all default passwords
-- [ ] Use strong, unique JWT_SECRET
-- [ ] Use strong database passwords
-- [ ] Enable HTTPS/SSL
-- [ ] Configure firewall rules
-- [ ] Set up log rotation
-- [ ] Monitor security logs regularly
-- [ ] Keep dependencies updated (`npm audit`)
+No new environment variables required. Uses existing:
+- `JWT_SECRET` - For token signing
+- `NODE_ENV` - For environment-specific behavior
 
-## 🚨 What to Monitor
+### Security Constants
 
-1. **Failed authentication attempts** - May indicate brute force attacks
-2. **Rate limit exceeded** - May indicate automated attacks
-3. **Unauthorized access attempts** - May indicate token theft or privilege escalation attempts
-4. **Suspicious activity** - Unusual patterns in access
+```javascript
+const MAX_FAILED_ATTEMPTS = 5;
+const LOCKOUT_DURATION_MS = 15 * 60 * 1000; // 15 minutes
+const SESSION_DURATION_SECONDS = 15 * 60; // 15 minutes
+const REFRESH_TOKEN_DURATION_SECONDS = 7 * 24 * 60 * 60; // 7 days
+```
 
-## 📞 Security Incident Response
+## Migration Guide
 
-If you detect a security incident:
+### Automatic Setup
 
-1. **Immediately** check security logs
-2. **Identify** the affected accounts/endpoints
-3. **Revoke** compromised tokens/sessions
-4. **Change** affected passwords
-5. **Review** access logs for unauthorized data access
-6. **Update** security measures if needed
+All security features are automatically initialized on server startup:
+- Login attempts table created
+- Refresh tokens table created
+- Account lockout column added to users table
 
-## 🔄 Regular Security Maintenance
+### No Breaking Changes
 
-- **Weekly**: Review security logs
-- **Monthly**: Update dependencies (`npm audit fix`)
-- **Quarterly**: Review and update security policies
-- **Annually**: Conduct security audit
+All enhancements are backward compatible:
+- Existing tokens continue to work
+- Old passwords automatically migrated
+- No user action required
 
-## 📚 Additional Resources
+## Testing Recommendations
 
-- See `SECURITY_GUIDE.md` for detailed security configuration
-- See `DEPLOYMENT_GUIDE.md` for production deployment security
-- See `backend/middleware/security.js` for rate limiting configuration
-- See `backend/middleware/securityLogger.js` for logging configuration
+### Account Lockout
+1. Attempt login with wrong password 5 times
+2. Verify account is locked
+3. Verify lockout message
+4. Wait 15 minutes or use admin unlock
+5. Verify successful login clears lockout
+
+### Password Policy
+1. Test weak passwords (should be rejected)
+2. Test strong passwords (should be accepted)
+3. Test minimum length requirement
+4. Test maximum length requirement
+
+### Token Security
+1. Test token expiration (15 minutes)
+2. Test refresh token functionality
+3. Test token revocation
+4. Verify old tokens don't work after refresh
+
+### Security Headers
+1. Verify all security headers in response
+2. Test CSP enforcement
+3. Test HSTS header
+4. Verify XSS protection
+
+## Monitoring and Alerts
+
+### Recommended Monitoring
+
+1. **Failed Login Attempts**
+   - Monitor frequency of failed attempts
+   - Alert on unusual patterns
+   - Track IP addresses with high failure rates
+
+2. **Account Lockouts**
+   - Monitor lockout frequency
+   - Alert on repeated lockouts
+   - Track lockout patterns
+
+3. **Security Events**
+   - Monitor all security log events
+   - Alert on suspicious activities
+   - Track unauthorized access attempts
+
+## Future Enhancements
+
+Potential additional security features:
+1. Two-factor authentication (2FA)
+2. IP allowlisting/blocklisting
+3. Device fingerprinting
+4. Advanced threat detection
+5. Security audit reports
+6. Password expiration policies
+7. Session management dashboard
+
+## Security Contact
+
+For security concerns or vulnerabilities, please contact the development team immediately.
 
 ---
 
-**Last Updated**: January 2024
-**Security Status**: ✅ Enhanced and Protected
+**Last Updated:** 2025-12-09
+**Version:** 1.0
 

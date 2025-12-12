@@ -227,7 +227,7 @@ const AdminActions = ({ user }) => {
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
             <div className="flex flex-col md:flex-row md:items-center gap-3 flex-1">
               <label className="flex items-center gap-2 text-sm text-gray-600">
-                <Filter className="w-4 h-4 text-gray-400" />
+                <Filter className="w-4 h-4 text-gray-600" />
                 <span>Pilih Entiti</span>
               </label>
               <select
@@ -246,7 +246,7 @@ const AdminActions = ({ user }) => {
 
             <div className="flex items-center gap-3">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
                 <input
                   type="text"
                   value={searchTerm}
@@ -333,7 +333,7 @@ const AdminActions = ({ user }) => {
                         </td>
                         <td className="px-4 py-4 align-top">
                           <div className="flex items-center gap-2 text-xs text-gray-600">
-                            <UserIcon className="w-3 h-3 text-gray-400" />
+                            <UserIcon className="w-3 h-3 text-gray-600" />
                             <span>{action.created_by || 'Tidak diketahui'}</span>
                           </div>
                         </td>
@@ -347,7 +347,7 @@ const AdminActions = ({ user }) => {
                                 Buka Modul
                               </Link>
                             ) : (
-                              <span className="text-xs text-gray-400">Tiada pautan modul</span>
+                              <span className="text-xs text-gray-600">Tiada pautan modul</span>
                             )}
                             <button
                               type="button"

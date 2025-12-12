@@ -369,7 +369,7 @@ const GuruForm = ({ guru = null, onSubmit, onCancel, user = null }) => {
                   {classes.length === 0 ? (
                     <div className="text-center py-4">
                       <p className="text-sm text-gray-500">Tiada kelas tersedia</p>
-                      <p className="text-xs text-gray-400 mt-1">Sila tambah kelas terlebih dahulu</p>
+                      <p className="text-xs text-gray-600 mt-1">Sila tambah kelas terlebih dahulu</p>
                     </div>
                   ) : (
                     <div className="space-y-2">
@@ -392,7 +392,7 @@ const GuruForm = ({ guru = null, onSubmit, onCancel, user = null }) => {
                               <span className="text-xs text-gray-500 ml-2">({kelas.level})</span>
                             )}
                             {kelas.kapasiti && (
-                              <span className="text-xs text-gray-400 ml-2">• Kapasiti: {kelas.kapasiti}</span>
+                              <span className="text-xs text-gray-600 ml-2">• Kapasiti: {kelas.kapasiti}</span>
                             )}
                           </div>
                           {formData.kelas_ids.includes(kelas.id) && (

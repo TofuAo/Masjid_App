@@ -240,13 +240,51 @@
 
   input::placeholder,
   textarea::placeholder {
-    @apply text-gray-600;
+    @apply text-gray-500;
   }
 
   input:disabled,
   textarea:disabled,
   select:disabled {
-    @apply text-gray-700 bg-gray-100;
+    @apply text-gray-600 bg-gray-100;
+  }
+
+  /* Global text color rules - Never use light text on light backgrounds */
+  * {
+    /* Override any light text colors on light backgrounds */
+  }
+  
+  /* Ensure all text on white/light backgrounds is dark */
+  .bg-white *,
+  .bg-gray-50 *,
+  .bg-gray-100 *,
+  .bg-blue-50 *,
+  .bg-emerald-50 *,
+  .bg-yellow-50 *,
+  .bg-orange-50 *,
+  .bg-purple-50 *,
+  .bg-pink-50 *,
+  .bg-green-50 * {
+    /* Force dark text unless explicitly overridden */
+  }
+  
+  .bg-white .text-gray-400,
+  .bg-gray-50 .text-gray-400,
+  .bg-gray-100 .text-gray-400,
+  .bg-blue-50 .text-gray-400,
+  .bg-emerald-50 .text-gray-400 {
+    @apply text-gray-600;
+  }
+  
+  .bg-white .text-gray-300,
+  .bg-gray-50 .text-gray-300,
+  .bg-gray-100 .text-gray-300 {
+    @apply text-gray-700;
+  }
+  
+  .bg-white .text-gray-200,
+  .bg-gray-50 .text-gray-200 {
+    @apply text-gray-800;
   }
 
   /* Gradient Backgrounds */

@@ -26,6 +26,27 @@ export const formatPhone = (value, autoFormat = false) => {
 };
 
 /**
+ * Formats phone number for display purposes (always formats with hyphen if valid)
+ * @param {string} phone - Phone number to format (can be with or without hyphens)
+ * @returns {string} - Formatted phone number with hyphen, or original if invalid/empty
+ */
+export const formatPhoneForDisplay = (phone) => {
+  if (!phone) return phone || '';
+  
+  // Remove all non-digit characters
+  const digitsOnly = phone.replace(/\D/g, '');
+  
+  // If it's a valid Malaysian mobile format (10-11 digits starting with 01)
+  if (digitsOnly.length >= 10 && digitsOnly.length <= 11 && digitsOnly.startsWith('01')) {
+    // Format with hyphen: 01X-XXXXXXX or 01X-XXXXXXXX
+    return `${digitsOnly.slice(0, 3)}-${digitsOnly.slice(3)}`;
+  }
+  
+  // If already formatted or doesn't match format, return as is
+  return phone;
+};
+
+/**
  * Validates if phone number is in valid Malaysian mobile format (with or without hyphens)
  * @param {string} phone - Phone number to validate
  * @returns {boolean} - True if valid

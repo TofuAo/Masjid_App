@@ -198,7 +198,7 @@ def create_word_document():
         i += 1
     
     # Save document
-    output_file = 'INDUSTRIAL_TRAINING_REPORT.docx'
+    output_file = 'INDUSTRIAL_TRAINING_REPORT_FIXED.docx'
     doc.save(output_file)
     print(f"✓ Word document created successfully: {output_file}")
     print(f"✓ File saved in: {__import__('os').path.abspath(output_file)}")

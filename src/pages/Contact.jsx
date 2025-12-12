@@ -5,6 +5,8 @@ import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import ActivitiesBanner from '../components/contact/ActivitiesBanner';
 import api from '../services/api';
+import { settingsAPI } from '../services/api';
+import { formatPhone } from '../utils/phoneUtils';
 
 const Contact = ({ user }) => {
   const [formData, setFormData] = useState({
@@ -18,6 +20,14 @@ const Contact = ({ user }) => {
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [errors, setErrors] = useState({});
+  const [contactInfo, setContactInfo] = useState({
+    address_line1: 'Masjid Negeri Sultan Ahmad 1',
+    address_line2: 'Kuantan, Pahang',
+    phone: '+60 9-123 4567',
+    email: 'admin@epengajian.com',
+    hours_weekdays: 'Isnin - Jumaat: 8:00 AM - 5:00 PM',
+    hours_weekend: 'Sabtu - Ahad: 9:00 AM - 1:00 PM'
+  });
 
   useEffect(() => {
     // Pre-fill user data if logged in
@@ -29,13 +39,47 @@ const Contact = ({ user }) => {
         phone: user.telefon || ''
       }));
     }
+
+    // Fetch contact information from settings
+    fetchContactInfo();
   }, [user]);
+
+  const fetchContactInfo = async () => {
+    try {
+      const keys = [
+        'contact_address_line1',
+        'contact_address_line2',
+        'contact_phone',
+        'contact_email',
+        'contact_hours_weekdays',
+        'contact_hours_weekend'
+      ];
+      
+      const settingsPromises = keys.map(key => 
+        settingsAPI.getByKey(key).catch(() => ({ data: { setting_value: '' } }))
+      );
+      
+      const results = await Promise.all(settingsPromises);
+      
+      setContactInfo({
+        address_line1: results[0]?.data?.setting_value || 'Masjid Negeri Sultan Ahmad 1',
+        address_line2: results[1]?.data?.setting_value || 'Kuantan, Pahang',
+        phone: results[2]?.data?.setting_value || '+60 9-123 4567',
+        email: results[3]?.data?.setting_value || 'admin@epengajian.com',
+        hours_weekdays: results[4]?.data?.setting_value || 'Isnin - Jumaat: 8:00 AM - 5:00 PM',
+        hours_weekend: results[5]?.data?.setting_value || 'Sabtu - Ahad: 9:00 AM - 1:00 PM'
+      });
+    } catch (error) {
+      console.error('Failed to fetch contact info:', error);
+      // Keep default values on error
+    }
+  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
-      [name]: value
+      [name]: name === 'phone' ? formatPhone(value, true) : value // Auto-format phone with hyphen
     }));
     // Clear error for this field
     if (errors[name]) {
@@ -179,8 +223,13 @@ const Contact = ({ user }) => {
                 <div>
                   <h3 className="font-medium text-gray-900">Alamat</h3>
                   <p className="text-sm text-gray-600">
-                    Masjid Negeri Sultan Ahmad 1<br />
-                    Kuantan, Pahang
+                    {contactInfo.address_line1}
+                    {contactInfo.address_line2 && (
+                      <>
+                        <br />
+                        {contactInfo.address_line2}
+                      </>
+                    )}
                   </p>
                 </div>
               </div>
@@ -190,8 +239,8 @@ const Contact = ({ user }) => {
                 <div>
                   <h3 className="font-medium text-gray-900">Telefon</h3>
                   <p className="text-sm text-gray-600">
-                    <a href="tel:+6091234567" className="hover:text-emerald-600">
-                      +60 9-123 4567
+                    <a href={`tel:${contactInfo.phone.replace(/[^0-9+]/g, '')}`} className="hover:text-emerald-600">
+                      {contactInfo.phone}
                     </a>
                   </p>
                 </div>
@@ -202,8 +251,8 @@ const Contact = ({ user }) => {
                 <div>
                   <h3 className="font-medium text-gray-900">Emel</h3>
                   <p className="text-sm text-gray-600">
-                    <a href="mailto:admin@epengajian.com" className="hover:text-emerald-600">
-                      admin@epengajian.com
+                    <a href={`mailto:${contactInfo.email}`} className="hover:text-emerald-600">
+                      {contactInfo.email}
                     </a>
                   </p>
                 </div>
@@ -214,8 +263,13 @@ const Contact = ({ user }) => {
                 <div>
                   <h3 className="font-medium text-gray-900">Waktu Operasi</h3>
                   <p className="text-sm text-gray-600">
-                    Isnin - Jumaat: 8:00 AM - 5:00 PM<br />
-                    Sabtu - Ahad: 9:00 AM - 1:00 PM
+                    {contactInfo.hours_weekdays}
+                    {contactInfo.hours_weekend && (
+                      <>
+                        <br />
+                        {contactInfo.hours_weekend}
+                      </>
+                    )}
                   </p>
                 </div>
               </div>
@@ -229,7 +283,7 @@ const Contact = ({ user }) => {
             </Card.Header>
             <Card.Content className="space-y-2">
               <a
-                href="https://wa.me/60123456789"
+                href={`https://wa.me/${contactInfo.phone.replace(/[^0-9]/g, '')}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center space-x-2 p-3 rounded-lg bg-green-50 hover:bg-green-100 transition-colors"
@@ -238,7 +292,7 @@ const Contact = ({ user }) => {
                 <span className="text-sm font-medium text-green-900">WhatsApp Kami</span>
               </a>
               <a
-                href="mailto:admin@epengajian.com"
+                href={`mailto:${contactInfo.email}`}
                 className="flex items-center space-x-2 p-3 rounded-lg bg-blue-50 hover:bg-blue-100 transition-colors"
               >
                 <Mail className="w-5 h-5 text-blue-600" />
@@ -263,7 +317,7 @@ const Contact = ({ user }) => {
                     </label>
                     <div className="relative">
                       <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        <User className="h-5 w-5 text-gray-400" />
+                        <User className="h-5 w-5 text-gray-600" />
                       </div>
                       <input
                         type="text"
@@ -291,7 +345,7 @@ const Contact = ({ user }) => {
                     </label>
                     <div className="relative">
                       <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        <Mail className="h-5 w-5 text-gray-400" />
+                        <Mail className="h-5 w-5 text-gray-600" />
                       </div>
                       <input
                         type="email"
@@ -320,7 +374,7 @@ const Contact = ({ user }) => {
                   </label>
                   <div className="relative">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <Phone className="h-5 w-5 text-gray-400" />
+                      <Phone className="h-5 w-5 text-gray-600" />
                     </div>
                     <input
                       type="tel"

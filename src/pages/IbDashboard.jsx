@@ -572,7 +572,7 @@ const IbDashboard = () => {
 
         {filteredReports.length === 0 && !loading && (
           <div className="bg-white rounded-lg shadow-md p-12 text-center">
-            <FileText className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+            <FileText className="w-16 h-16 text-gray-600 mx-auto mb-4" />
             <p className="text-gray-600">Tiada laporan bulanan ditemui</p>
           </div>
         )}

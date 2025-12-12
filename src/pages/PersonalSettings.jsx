@@ -3,7 +3,7 @@ import { useLocation } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
-import { Settings as SettingsIcon, Palette, Globe, Type, Save, Sparkles, Key, Mail, Phone, User, Eye, EyeOff } from 'lucide-react';
+import { Settings as SettingsIcon, Palette, Globe, Type, Save, Sparkles, Key, Mail, Phone, User, Eye, EyeOff, Trophy } from 'lucide-react';
 import { usePreferences } from '../hooks/usePreferences';
 import { useLanguage } from '../contexts/LanguageContext';
 import { seasonalSchemes, getScheme } from '../config/seasonalSchemes';
@@ -250,15 +250,15 @@ const PersonalSettings = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <Card>
-        <Card.Header>
-          <Card.Title className="flex items-center space-x-2">
-            <SettingsIcon className="w-5 h-5" />
-            <span>{t('personalSettings')}</span>
+      <Card className="border-2 border-emerald-100 shadow-lg bg-gradient-to-br from-white to-emerald-50">
+        <Card.Header className="bg-gradient-to-r from-emerald-50 to-green-50 border-b-2 border-emerald-200 -m-6 mb-4 p-6">
+          <Card.Title className="flex items-center space-x-2 text-emerald-800">
+            <SettingsIcon className="w-6 h-6 text-emerald-600" />
+            <span className="text-xl font-bold">{t('personalSettings')}</span>
           </Card.Title>
         </Card.Header>
         <Card.Content>
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-gray-700 leading-relaxed">
             {t('settingsDescription')}
           </p>
         </Card.Content>
@@ -379,24 +379,24 @@ const PersonalSettings = () => {
       </Card>
 
       {/* Language Settings */}
-      <Card>
-        <Card.Header>
-          <Card.Title className="flex items-center space-x-2">
-            <Globe className="w-5 h-5" />
+      <Card className="border-2 border-emerald-100 shadow-lg">
+        <Card.Header className="bg-gradient-to-r from-emerald-50 to-green-50 border-b-2 border-emerald-200">
+          <Card.Title className="flex items-center space-x-2 text-emerald-800">
+            <Globe className="w-5 h-5 text-emerald-600" />
             <span>{t('language')}</span>
           </Card.Title>
         </Card.Header>
-        <Card.Content>
+        <Card.Content className="bg-white">
           <div className="space-y-4">
             <select
               value={localPreferences.language}
               onChange={(e) => handlePreferenceChange('language', e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+              className="w-full px-4 py-3 border-2 border-emerald-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 bg-white text-gray-900 shadow-sm hover:border-emerald-300 transition-colors"
             >
               <option value="ms">Bahasa Melayu</option>
               <option value="en">English</option>
             </select>
-            <p className="text-xs text-gray-500 dark:text-gray-400">
+            <p className="text-xs text-gray-600 mt-2">
               {localPreferences.language === 'ms'
                 ? 'Pilih bahasa untuk antaramuka anda. (Nota: Beberapa teks mungkin masih dalam bahasa asal)'
                 : 'Choose language for your interface. (Note: Some text may still be in the original language)'}
@@ -405,25 +405,62 @@ const PersonalSettings = () => {
         </Card.Content>
       </Card>
 
+      {/* Gamification Settings */}
+      {currentUser && currentUser.role === 'student' && (
+        <Card className="border-2 border-emerald-100 shadow-lg">
+          <Card.Header className="bg-gradient-to-r from-emerald-50 to-green-50 border-b-2 border-emerald-200">
+            <Card.Title className="flex items-center space-x-2 text-emerald-800">
+              <Trophy className="w-5 h-5 text-emerald-600" />
+              <span>{localPreferences.language === 'ms' ? 'Gamifikasi' : 'Gamification'}</span>
+            </Card.Title>
+          </Card.Header>
+          <Card.Content className="bg-white">
+            <div className="space-y-4">
+              <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border-2 border-gray-200">
+                <div className="flex-1">
+                  <label className="block text-sm font-semibold text-gray-800 mb-1">
+                    {localPreferences.language === 'ms' ? 'Aktifkan Gamifikasi' : 'Enable Gamification'}
+                  </label>
+                  <p className="text-xs text-gray-600">
+                    {localPreferences.language === 'ms'
+                      ? 'Hidupkan atau matikan ciri gamifikasi seperti mata, level, dan pencapaian.'
+                      : 'Turn on or off gamification features like points, levels, and achievements.'}
+                  </p>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer ml-4">
+                  <input
+                    type="checkbox"
+                    checked={localPreferences.gamificationEnabled !== false}
+                    onChange={(e) => handlePreferenceChange('gamificationEnabled', e.target.checked)}
+                    className="sr-only peer"
+                  />
+                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-emerald-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
+                </label>
+              </div>
+            </div>
+          </Card.Content>
+        </Card>
+      )}
+
       {/* Font Settings */}
-      <Card>
-        <Card.Header>
-          <Card.Title className="flex items-center space-x-2">
-            <Type className="w-5 h-5" />
+      <Card className="border-2 border-emerald-100 shadow-lg">
+        <Card.Header className="bg-gradient-to-r from-emerald-50 to-green-50 border-b-2 border-emerald-200">
+          <Card.Title className="flex items-center space-x-2 text-emerald-800">
+            <Type className="w-5 h-5 text-emerald-600" />
             <span>{t('fontStyle')} & {t('fontSize')}</span>
           </Card.Title>
         </Card.Header>
-        <Card.Content>
+        <Card.Content className="bg-white">
           <div className="space-y-6">
             {/* Font Family */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              <label className="block text-sm font-semibold text-gray-800 mb-2">
                 {t('fontStyle')}
               </label>
               <select
                 value={localPreferences.fontFamily}
                 onChange={(e) => handlePreferenceChange('fontFamily', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                className="w-full px-4 py-3 border-2 border-emerald-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 bg-white text-gray-900 shadow-sm hover:border-emerald-300 transition-colors"
                 style={{ fontFamily: `var(--user-font-family, ${localPreferences.fontFamily === 'system' ? '-apple-system' : localPreferences.fontFamily})` }}
               >
                 <option value="system">{t('system')}</option>
@@ -431,7 +468,7 @@ const PersonalSettings = () => {
                 <option value="serif">{t('serif')}</option>
                 <option value="monospace">{t('monospace')}</option>
               </select>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+              <p className="text-xs text-gray-600 mt-2">
                 {localPreferences.language === 'ms'
                   ? 'Pilih gaya fon untuk teks dalam antaramuka.'
                   : 'Choose font style for text in the interface.'}
@@ -440,7 +477,7 @@ const PersonalSettings = () => {
 
             {/* Font Size */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              <label className="block text-sm font-semibold text-gray-800 mb-2">
                 {t('fontSize')}
               </label>
               <div className="space-y-2">
@@ -454,19 +491,22 @@ const PersonalSettings = () => {
                     const sizes = ['small', 'medium', 'large', 'xlarge'];
                     handlePreferenceChange('fontSize', sizes[parseInt(e.target.value)]);
                   }}
-                  className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer accent-emerald-600"
+                  className="w-full h-3 bg-gradient-to-r from-emerald-100 to-emerald-200 rounded-lg appearance-none cursor-pointer accent-emerald-600 shadow-inner"
+                  style={{
+                    background: 'linear-gradient(to right, #d1fae5 0%, #a7f3d0 50%, #6ee7b7 100%)'
+                  }}
                 />
-                <div className="flex items-center justify-between text-sm text-gray-600 dark:text-gray-400">
-                  <span>{t('small')}</span>
-                  <span className="font-medium">{t('fontSize')}: {
+                <div className="flex items-center justify-between text-sm text-gray-700 font-medium">
+                  <span className="text-emerald-700">{t('small')}</span>
+                  <span className="font-semibold text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full">{t('fontSize')}: {
                     localPreferences.fontSize === 'small' ? t('small') :
                     localPreferences.fontSize === 'medium' ? t('medium') :
                     localPreferences.fontSize === 'large' ? t('large') : t('xlarge')
                   }</span>
-                  <span>{t('large')}</span>
+                  <span className="text-emerald-700">{t('large')}</span>
                 </div>
               </div>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+              <p className="text-xs text-gray-600 mt-2">
                 {localPreferences.language === 'ms'
                   ? 'Laraskan saiz fon untuk keselesaan membaca.'
                   : 'Adjust font size for reading comfort.'}
@@ -477,14 +517,14 @@ const PersonalSettings = () => {
       </Card>
 
       {/* Profile Management Section */}
-      <Card>
-        <Card.Header>
-          <Card.Title className="flex items-center space-x-2">
-            <User className="w-5 h-5" />
+      <Card className="border-2 border-emerald-100 shadow-lg">
+        <Card.Header className="bg-gradient-to-r from-emerald-50 to-green-50 border-b-2 border-emerald-200">
+          <Card.Title className="flex items-center space-x-2 text-emerald-800">
+            <User className="w-5 h-5 text-emerald-600" />
             <span>{localPreferences.language === 'ms' ? 'Maklumat Profil' : 'Profile Information'}</span>
           </Card.Title>
         </Card.Header>
-        <Card.Content>
+        <Card.Content className="bg-white">
           {loadingProfile ? (
             <div className="flex items-center justify-center py-8">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600"></div>
@@ -493,8 +533,8 @@ const PersonalSettings = () => {
             <div className="space-y-4">
               {/* Email Field */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  <Mail className="w-4 h-4 inline mr-1" />
+                <label className="block text-sm font-semibold text-gray-800 mb-2 flex items-center">
+                  <Mail className="w-4 h-4 mr-2 text-emerald-600" />
                   {localPreferences.language === 'ms' ? 'Emel' : 'Email'}
                 </label>
                 <input
@@ -502,9 +542,9 @@ const PersonalSettings = () => {
                   value={profileData.email}
                   onChange={(e) => setProfileData({ ...profileData, email: e.target.value })}
                   placeholder={localPreferences.language === 'ms' ? 'contoh@email.com' : 'example@email.com'}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                  className="w-full px-4 py-3 border-2 border-emerald-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 bg-white text-gray-900 shadow-sm hover:border-emerald-300 transition-colors"
                 />
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                <p className="text-xs text-gray-600 mt-2">
                   {localPreferences.language === 'ms'
                     ? 'Emel digunakan untuk reset kata laluan dan notifikasi.'
                     : 'Email is used for password reset and notifications.'}
@@ -513,8 +553,8 @@ const PersonalSettings = () => {
 
               {/* Phone Field */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  <Phone className="w-4 h-4 inline mr-1" />
+                <label className="block text-sm font-semibold text-gray-800 mb-2 flex items-center">
+                  <Phone className="w-4 h-4 mr-2 text-emerald-600" />
                   {localPreferences.language === 'ms' ? 'Nombor Telefon' : 'Phone Number'}
                 </label>
                 <input
@@ -526,9 +566,9 @@ const PersonalSettings = () => {
                   }}
                   placeholder={localPreferences.language === 'ms' ? '012-3456789' : '012-3456789'}
                   maxLength={12}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                  className="w-full px-4 py-3 border-2 border-emerald-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 bg-white text-gray-900 shadow-sm hover:border-emerald-300 transition-colors"
                 />
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                <p className="text-xs text-gray-600 mt-2">
                   {localPreferences.language === 'ms'
                     ? 'Nombor telefon digunakan untuk reset kata laluan melalui SMS.'
                     : 'Phone number is used for password reset via SMS.'}
@@ -553,18 +593,18 @@ const PersonalSettings = () => {
 
       {/* Password Change Section - Hidden for students */}
       {currentUser && currentUser.role !== 'student' && (
-        <Card>
-          <Card.Header>
-            <Card.Title className="flex items-center space-x-2">
-              <Key className="w-5 h-5" />
+        <Card className="border-2 border-emerald-100 shadow-lg">
+          <Card.Header className="bg-gradient-to-r from-emerald-50 to-green-50 border-b-2 border-emerald-200">
+            <Card.Title className="flex items-center space-x-2 text-emerald-800">
+              <Key className="w-5 h-5 text-emerald-600" />
               <span>{localPreferences.language === 'ms' ? 'Tukar Kata Laluan' : 'Change Password'}</span>
             </Card.Title>
           </Card.Header>
-          <Card.Content>
+          <Card.Content className="bg-white">
           <div className="space-y-4">
             {/* Current Password */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              <label className="block text-sm font-semibold text-gray-800 mb-2">
                 {localPreferences.language === 'ms' ? 'Kata Laluan Semasa' : 'Current Password'}
               </label>
               <div className="relative">
@@ -573,12 +613,12 @@ const PersonalSettings = () => {
                   value={passwordData.currentPassword}
                   onChange={(e) => setPasswordData({ ...passwordData, currentPassword: e.target.value })}
                   placeholder={localPreferences.language === 'ms' ? 'Masukkan kata laluan semasa' : 'Enter current password'}
-                  className="w-full px-3 py-2 pr-10 border border-gray-300 dark:border-gray-700 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                  className="w-full px-4 py-3 pr-12 border-2 border-emerald-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 bg-white text-gray-900 shadow-sm hover:border-emerald-300 transition-colors"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPasswords({ ...showPasswords, current: !showPasswords.current })}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  className="absolute right-4 top-1/2 transform -translate-y-1/2 text-emerald-600 hover:text-emerald-700 transition-colors"
                 >
                   {showPasswords.current ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                 </button>
@@ -587,7 +627,7 @@ const PersonalSettings = () => {
 
             {/* New Password */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              <label className="block text-sm font-semibold text-gray-800 mb-2">
                 {localPreferences.language === 'ms' ? 'Kata Laluan Baru' : 'New Password'}
               </label>
               <div className="relative">
@@ -596,12 +636,12 @@ const PersonalSettings = () => {
                   value={passwordData.newPassword}
                   onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
                   placeholder={localPreferences.language === 'ms' ? 'Sekurang-kurangnya 6 aksara' : 'At least 6 characters'}
-                  className="w-full px-3 py-2 pr-10 border border-gray-300 dark:border-gray-700 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                  className="w-full px-4 py-3 pr-12 border-2 border-emerald-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 bg-white text-gray-900 shadow-sm hover:border-emerald-300 transition-colors"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPasswords({ ...showPasswords, new: !showPasswords.new })}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  className="absolute right-4 top-1/2 transform -translate-y-1/2 text-emerald-600 hover:text-emerald-700 transition-colors"
                 >
                   {showPasswords.new ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                 </button>
@@ -610,7 +650,7 @@ const PersonalSettings = () => {
 
             {/* Confirm Password */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              <label className="block text-sm font-semibold text-gray-800 mb-2">
                 {localPreferences.language === 'ms' ? 'Sahkan Kata Laluan Baru' : 'Confirm New Password'}
               </label>
               <div className="relative">
@@ -619,12 +659,12 @@ const PersonalSettings = () => {
                   value={passwordData.confirmPassword}
                   onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
                   placeholder={localPreferences.language === 'ms' ? 'Masukkan semula kata laluan baru' : 'Re-enter new password'}
-                  className="w-full px-3 py-2 pr-10 border border-gray-300 dark:border-gray-700 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                  className="w-full px-4 py-3 pr-12 border-2 border-emerald-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 bg-white text-gray-900 shadow-sm hover:border-emerald-300 transition-colors"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPasswords({ ...showPasswords, confirm: !showPasswords.confirm })}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  className="absolute right-4 top-1/2 transform -translate-y-1/2 text-emerald-600 hover:text-emerald-700 transition-colors"
                 >
                   {showPasswords.confirm ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                 </button>
@@ -652,28 +692,24 @@ const PersonalSettings = () => {
       )}
 
       {/* Save Button */}
-      <Card>
+      <Card className="border-2 border-emerald-100 shadow-lg bg-gradient-to-br from-emerald-50 to-green-50">
         <Card.Content>
           <Button
             onClick={handleSave}
             disabled={saving || !hasUnsavedChanges}
-            className="w-full"
-            style={saving || !hasUnsavedChanges ? { 
-              opacity: saving ? 0.9 : 1,
-              color: 'white',
-              cursor: saving ? 'not-allowed' : 'default'
-            } : {}}
+            className={`w-full py-4 text-lg font-semibold shadow-lg transition-all duration-300 ${
+              saving || !hasUnsavedChanges
+                ? 'opacity-60 cursor-not-allowed'
+                : 'hover:scale-105 hover:shadow-xl active:scale-95'
+            }`}
+            style={{
+              background: saving || !hasUnsavedChanges
+                ? 'linear-gradient(135deg, #9ca3af 0%, #6b7280 100%)'
+                : 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+            }}
           >
-            <Save className="w-4 h-4 mr-2" style={{ opacity: 1 }} />
-            <span style={{ 
-              fontWeight: 600, 
-              fontSize: '0.9375rem',
-              letterSpacing: '0.025em',
-              opacity: 1,
-              color: 'white'
-            }}>
-              {saving ? t('loading') : t('saveSettings')}
-            </span>
+            <Save className="w-5 h-5 mr-2" />
+            {saving ? t('loading') : t('saveSettings')}
           </Button>
         </Card.Content>
       </Card>

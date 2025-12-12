@@ -4,6 +4,7 @@ import Button from '../ui/Button';
 import BackButton from '../ui/BackButton';
 import { User, Phone, MapPin, Calendar, BookOpen, Edit } from 'lucide-react';
 import { formatIC } from '../../utils/icUtils';
+import { formatPhoneForDisplay } from '../../utils/phoneUtils';
 
 const PelajarDetail = ({ pelajar, onEdit, onClose }) => {
   if (!pelajar) return null;
@@ -89,7 +90,7 @@ const PelajarDetail = ({ pelajar, onEdit, onClose }) => {
                   <label className="block text-sm font-medium text-gray-500">Nombor Telefon</label>
                   <p className="mt-1 text-sm text-gray-900 flex items-center">
                     <Phone className="w-4 h-4 mr-2 text-emerald-600" />
-                    {pelajar.telefon}
+                    {formatPhoneForDisplay(pelajar.telefon) || '-'}
                   </p>
                 </div>
               </div>

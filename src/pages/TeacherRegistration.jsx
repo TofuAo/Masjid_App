@@ -271,7 +271,7 @@ const TeacherRegistration = () => {
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <User className="h-5 w-5 text-gray-400" />
+                    <User className="h-5 w-5 text-gray-600" />
                   </div>
                   <input
                     id="nama"
@@ -293,7 +293,7 @@ const TeacherRegistration = () => {
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <CreditCard className="h-5 w-5 text-gray-400" />
+                    <CreditCard className="h-5 w-5 text-gray-600" />
                   </div>
                   <input
                     id="ic_number"
@@ -318,7 +318,7 @@ const TeacherRegistration = () => {
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <Mail className="h-5 w-5 text-gray-400" />
+                    <Mail className="h-5 w-5 text-gray-600" />
                   </div>
                   <input
                     id="email"
@@ -341,7 +341,7 @@ const TeacherRegistration = () => {
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <Phone className="h-5 w-5 text-gray-400" />
+                    <Phone className="h-5 w-5 text-gray-600" />
                   </div>
                   <input
                     id="telefon"
@@ -396,7 +396,7 @@ const TeacherRegistration = () => {
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <Lock className="h-5 w-5 text-gray-400" />
+                    <Lock className="h-5 w-5 text-gray-600" />
                   </div>
                   <input
                     id="password"
@@ -416,9 +416,9 @@ const TeacherRegistration = () => {
                     onClick={() => setShowPassword(!showPassword)}
                   >
                     {showPassword ? (
-                      <EyeOff className="h-5 w-5 text-gray-400 hover:text-gray-600" />
-                    ) : (
-                      <Eye className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+                      <EyeOff className="h-5 w-5 text-gray-600 hover:text-gray-800" />
+              ) : (
+                      <Eye className="h-5 w-5 text-gray-600 hover:text-gray-800" />
                     )}
                   </button>
                 </div>
@@ -432,7 +432,7 @@ const TeacherRegistration = () => {
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <Lock className="h-5 w-5 text-gray-400" />
+                    <Lock className="h-5 w-5 text-gray-600" />
                   </div>
                   <input
                     id="confirmPassword"
@@ -452,9 +452,9 @@ const TeacherRegistration = () => {
                     onClick={() => setShowPassword(!showPassword)}
                   >
                     {showPassword ? (
-                      <EyeOff className="h-5 w-5 text-gray-400 hover:text-gray-600" />
-                    ) : (
-                      <Eye className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+                      <EyeOff className="h-5 w-5 text-gray-600 hover:text-gray-800" />
+              ) : (
+                      <Eye className="h-5 w-5 text-gray-600 hover:text-gray-800" />
                     )}
                   </button>
                 </div>

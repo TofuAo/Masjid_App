@@ -141,7 +141,7 @@ const ChooseResetMethod = () => {
         <Card.Content>
           <div className="mb-6">
             <div className="flex items-center justify-center mb-4">
-              <CreditCard className="w-5 h-5 text-gray-400 mr-2" />
+              <CreditCard className="w-5 h-5 text-gray-600 mr-2" />
               <span className="text-sm text-gray-600">
                 IC: <strong>{formatIC(icNumber, true)}</strong>
               </span>
@@ -164,7 +164,7 @@ const ChooseResetMethod = () => {
             >
               <div className="flex items-center">
                 <div className={`p-3 rounded-full ${hasEmail ? 'bg-emerald-100' : 'bg-gray-100'}`}>
-                  <Mail className={`w-6 h-6 ${hasEmail ? 'text-emerald-600' : 'text-gray-400'}`} />
+                  <Mail className={`w-6 h-6 ${hasEmail ? 'text-emerald-600' : 'text-gray-600'}`} />
                 </div>
                 <div className="ml-4 text-left flex-1">
                   <h3 className="font-semibold text-gray-900">Hantar ke Emel</h3>

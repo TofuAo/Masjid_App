@@ -26,6 +26,7 @@ import {
   CheckCircle,
   Network,
   FileCheck,
+  HelpCircle,
 } from 'lucide-react';
 import { SidebarProvider, useSidebar } from './components/ui/SidebarProvider';
 import { usePreferences } from './hooks/usePreferences';
@@ -91,6 +92,7 @@ const LayoutContent = ({ children, user, onLogout, onRoleChange }) => {
 
   let menuItems = [
     { icon: <Home className="w-5 h-5" />, label: 'Dashboard', link: '/' },
+    { icon: <HelpCircle className="w-5 h-5" />, label: 'Bantuan', link: '/help' },
     { icon: <MessageSquare className="w-5 h-5" />, label: 'Hubungi Kami', link: '/contact' },
   ];
 
@@ -107,6 +109,7 @@ const LayoutContent = ({ children, user, onLogout, onRoleChange }) => {
       { icon: <ShieldCheck className="w-5 h-5" />, label: 'Kelulusan PIC', link: '/pic-approvals' },
       { icon: <UserCog className="w-5 h-5" />, label: 'Pengguna PIC', link: '/pic-users' },
       { icon: <ShieldCheck className="w-5 h-5" />, label: 'Pengurusan Admin', link: '/admins' },
+      { icon: <Users className="w-5 h-5" />, label: 'Semua Pengguna', link: '/all-users' },
       { icon: <History className="w-5 h-5" />, label: 'Tindakan Admin', link: '/admin-actions' },
       { icon: <Network className="w-5 h-5" />, label: 'Hierarki Sistem', link: '/hierarchy' },
       { icon: <Users className="w-5 h-5" />, label: 'Pelajar', link: '/pelajar' },

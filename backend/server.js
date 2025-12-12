@@ -20,7 +20,9 @@ import { scheduleAnnualDatabaseBackup } from './schedulers/annualBackupJob.js';
 import { scheduleAnnouncementCleanup } from './schedulers/announcementCleanupJob.js';
 import { schedulePaymentReconciliation } from './schedulers/paymentReconciliationJob.js';
 import { scheduleAdminActionCleanup } from './schedulers/adminActionCleanupJob.js';
+import { scheduleMonthlyFeeGeneration, scheduleFeeSyncJob } from './schedulers/monthlyFeeGenerationJob.js';
 import { errorHandler } from './middleware/errorHandler.js';
+import { ensureLoginAttemptsTable } from './services/accountLockoutService.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -42,7 +44,7 @@ const app = express();
 
 // ==================== SECURITY MIDDLEWARE ====================
 
-// Helmet.js - Security headers
+// Helmet.js - Enhanced Security headers
 app.use(helmet({
   contentSecurityPolicy: {
     directives: {
@@ -55,13 +57,28 @@ app.use(helmet({
       objectSrc: ["'none'"],
       mediaSrc: ["'self'"],
       frameSrc: ["'none'"],
+      baseUri: ["'self'"],
+      formAction: ["'self'"],
+      upgradeInsecureRequests: []
     },
   },
   crossOriginEmbedderPolicy: false, // Allow embedding if needed
+  crossOriginResourcePolicy: { policy: "cross-origin" },
   hsts: {
-    maxAge: 31536000,
+    maxAge: 31536000, // 1 year
     includeSubDomains: true,
-    preload: true
+    preload: true,
+    force: true
+  },
+  noSniff: true,
+  xssFilter: true,
+  referrerPolicy: { policy: "strict-origin-when-cross-origin" },
+  permissionsPolicy: {
+    features: {
+      geolocation: ["'self'"],
+      camera: ["'none'"],
+      microphone: ["'none'"]
+    }
   }
 }));
 
@@ -128,7 +145,7 @@ const preferencesLimiter = rateLimit({
 // Rate limiting - General API protection (exclude OPTIONS requests and preferences/profile endpoints)
 const generalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 500, // Increased limit: 500 requests per 15 minutes
+  max: 1000, // Increased limit: 1000 requests per 15 minutes to handle multiple components
   message: 'Too many requests from this IP, please try again later.',
   standardHeaders: true,
   legacyHeaders: false,
@@ -335,7 +352,17 @@ ensureIbRole().catch(err => {
 const PORT = process.env.PORT || 5000;
 
 // Ensure check-in table and pending status exist before starting server
-Promise.all([ensureCheckInTable(), ensurePendingStatus(), ensurePendingPicTable(), ensurePicRole(), createArchivedStudentsTable(), ensureAdminAccounts(), ensureIbRole(), testConnection()]).then(() => {
+Promise.all([
+  ensureCheckInTable(), 
+  ensurePendingStatus(), 
+  ensurePendingPicTable(), 
+  ensurePicRole(), 
+  createArchivedStudentsTable(), 
+  ensureAdminAccounts(), 
+  ensureIbRole(), 
+  ensureLoginAttemptsTable(),
+  testConnection()
+]).then(() => {
   app.listen(PORT, "0.0.0.0", () => {
     logger.success(`Server running on port ${theme.data(PORT)}`);
     logger.info(`Environment: ${theme.data(process.env.NODE_ENV || 'development')}`);
@@ -346,6 +373,8 @@ Promise.all([ensureCheckInTable(), ensurePendingStatus(), ensurePendingPicTable(
     scheduleAnnouncementCleanup();
     schedulePaymentReconciliation();
     scheduleAdminActionCleanup();
+    scheduleMonthlyFeeGeneration();
+    scheduleFeeSyncJob();
   });
 }).catch(err => {
   console.error('Failed to ensure database tables:', err);
@@ -361,6 +390,8 @@ Promise.all([ensureCheckInTable(), ensurePendingStatus(), ensurePendingPicTable(
     scheduleAnnouncementCleanup();
     schedulePaymentReconciliation();
     scheduleAdminActionCleanup();
+    scheduleMonthlyFeeGeneration();
+    scheduleFeeSyncJob();
   });
 });
 

@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, X, ExternalLink } from 'lucide-react';
+import { Plus, X, ExternalLink, Search, ChevronDown } from 'lucide-react';
 import BackButton from '../ui/BackButton';
 
 const LEVEL_OPTIONS = ["Asas", "Tahsin Asas", "Pertengahan", "Lanjutan", "Tahsin Lanjutan", "Talaqi"];
@@ -13,6 +13,29 @@ const KelasForm = ({ kelas = null, onSubmit, onCancel, gurus = [] }) => {
     nama_kelas: '', level: '', sessions: [{ days: [], times: [] }], yuran: 0, guru_ic: '', kapasiti: 1
   });
   const [validationErrors, setValidationErrors] = useState({});
+  
+  // Searchable teacher select state
+  const [teacherSearchTerm, setTeacherSearchTerm] = useState('');
+  const [isTeacherDropdownOpen, setIsTeacherDropdownOpen] = useState(false);
+  const teacherDropdownRef = useRef(null);
+  const teacherInputRef = useRef(null);
+  
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (teacherDropdownRef.current && !teacherDropdownRef.current.contains(event.target)) {
+        setIsTeacherDropdownOpen(false);
+      }
+    };
+
+    if (isTeacherDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isTeacherDropdownOpen]);
 
   useEffect(() => {
     if (kelas) {
@@ -75,6 +98,37 @@ const KelasForm = ({ kelas = null, onSubmit, onCancel, gurus = [] }) => {
       setValidationErrors(prev => {
         const newErrors = { ...prev };
         delete newErrors[name];
+        return newErrors;
+      });
+    }
+  };
+
+  // Get selected teacher display name
+  const getSelectedTeacherDisplay = () => {
+    if (!formData.guru_ic) return '';
+    const selectedGuru = gurus.find(g => g.ic === formData.guru_ic || g.IC === formData.guru_ic);
+    return selectedGuru ? selectedGuru.nama : '';
+  };
+
+  // Filter teachers based on search term
+  const filteredTeachers = gurus.filter(guru => {
+    if (!teacherSearchTerm) return true;
+    const searchLower = teacherSearchTerm.toLowerCase();
+    const nama = (guru.nama || '').toLowerCase();
+    const ic = (guru.ic || guru.IC || '').toLowerCase();
+    return nama.includes(searchLower) || ic.includes(searchLower);
+  });
+
+  // Handle teacher selection
+  const handleTeacherSelect = (guruIc) => {
+    setFormData(prev => ({ ...prev, guru_ic: guruIc }));
+    setTeacherSearchTerm('');
+    setIsTeacherDropdownOpen(false);
+    // Clear validation error
+    if (validationErrors.guru_ic) {
+      setValidationErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors.guru_ic;
         return newErrors;
       });
     }
@@ -217,10 +271,63 @@ const KelasForm = ({ kelas = null, onSubmit, onCancel, gurus = [] }) => {
                   </button>
                 )}
               </div>
-              <select name="guru_ic" value={formData.guru_ic} onChange={handleChange} required className={`input-mosque w-full ${validationErrors.guru_ic ? 'border-red-500' : ''}`}>
-                <option value="">Pilih Guru</option>
-                {gurus.map(g => <option key={g.ic} value={g.ic}>{g.nama}</option>)}
-              </select>
+              <div className="relative" ref={teacherDropdownRef}>
+                <div className="relative">
+                  <input
+                    type="text"
+                    ref={teacherInputRef}
+                    value={isTeacherDropdownOpen ? teacherSearchTerm : getSelectedTeacherDisplay()}
+                    onChange={(e) => {
+                      setTeacherSearchTerm(e.target.value);
+                      setIsTeacherDropdownOpen(true);
+                    }}
+                    onFocus={() => {
+                      setIsTeacherDropdownOpen(true);
+                      setTeacherSearchTerm('');
+                    }}
+                    placeholder="Cari guru dengan nama atau IC..."
+                    required
+                    className={`input-mosque w-full pr-10 ${validationErrors.guru_ic ? 'border-red-500' : ''}`}
+                  />
+                  <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                    {isTeacherDropdownOpen ? (
+                      <Search className="h-4 w-4 text-gray-400" />
+                    ) : (
+                      <ChevronDown className="h-4 w-4 text-gray-400" />
+                    )}
+                  </div>
+                </div>
+                {isTeacherDropdownOpen && (
+                  <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto">
+                    {filteredTeachers.length === 0 ? (
+                      <div className="px-4 py-2 text-sm text-gray-500">Tiada guru dijumpai</div>
+                    ) : (
+                      filteredTeachers.map(guru => (
+                        <button
+                          key={guru.ic || guru.IC}
+                          type="button"
+                          onClick={() => handleTeacherSelect(guru.ic || guru.IC)}
+                          className={`w-full text-left px-4 py-2 hover:bg-emerald-50 focus:bg-emerald-50 focus:outline-none ${
+                            formData.guru_ic === (guru.ic || guru.IC) ? 'bg-emerald-100' : ''
+                          }`}
+                        >
+                          <div className="font-medium text-gray-900">{guru.nama}</div>
+                          {guru.ic || guru.IC ? (
+                            <div className="text-xs text-gray-500">{guru.ic || guru.IC}</div>
+                          ) : null}
+                        </button>
+                      ))
+                    )}
+                  </div>
+                )}
+              </div>
+              {/* Hidden input for form validation */}
+              <input
+                type="hidden"
+                name="guru_ic"
+                value={formData.guru_ic}
+                required
+              />
               {validationErrors.guru_ic && <p className="text-red-500 text-xs mt-1">{validationErrors.guru_ic}</p>}
             </div>
             <div>

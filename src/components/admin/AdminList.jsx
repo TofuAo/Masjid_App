@@ -57,7 +57,7 @@ const AdminList = ({ admins = [], onEdit, onView, onDelete, onAdd, loading, admi
         {/* Search */}
         <div className="mb-6">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 w-4 h-4" />
             <input
               type="text"
               placeholder="Cari admin..."
@@ -77,14 +77,14 @@ const AdminList = ({ admins = [], onEdit, onView, onDelete, onAdd, loading, admi
           <div className="text-center py-12">
             <div className="flex justify-center mb-4">
               <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center">
-                <ShieldCheck className="w-8 h-8 text-gray-400" />
+                <ShieldCheck className="w-8 h-8 text-gray-600" />
               </div>
             </div>
             <p className="text-gray-500 text-lg font-medium mb-2">
               {searchTerm ? 'Tiada admin ditemui' : 'Tiada admin dalam senarai'}
             </p>
             {searchTerm && (
-              <p className="text-sm text-gray-400">
+              <p className="text-sm text-gray-600">
                 Cuba cari dengan kata kunci lain
               </p>
             )}
@@ -136,7 +136,7 @@ const AdminList = ({ admins = [], onEdit, onView, onDelete, onAdd, loading, admi
                     <td className="px-3 sm:px-6 py-3 sm:py-4 text-sm text-gray-900 hidden md:table-cell">
                       {admin.email ? (
                         <div className="flex items-center">
-                          <Mail className="w-3 h-3 mr-1 text-gray-400" />
+                          <Mail className="w-3 h-3 mr-1 text-gray-600" />
                           {admin.email}
                         </div>
                       ) : (

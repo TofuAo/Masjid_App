@@ -186,7 +186,7 @@ const AttendanceFormModal = ({ isOpen, onClose, classId, className, selectedDate
           </div>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-black transition-colors"
+            className="text-gray-600 hover:text-black transition-colors"
             disabled={submitting}
           >
             <X className="w-6 h-6" />

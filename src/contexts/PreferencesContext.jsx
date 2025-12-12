@@ -88,7 +88,8 @@ const defaultPreferences = {
   colorScheme: 'summer', // Default to green emerald (summer)
   language: 'ms',
   fontFamily: 'system',
-  fontSize: 'medium'
+  fontSize: 'medium',
+  gamificationEnabled: true // Default to enabled
 };
 
 const PreferencesContext = createContext();

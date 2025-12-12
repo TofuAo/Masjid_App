@@ -2,14 +2,27 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 
-const BackButton = ({ onClick, className = '', variant = 'default' }) => {
+const BackButton = ({ onClick, className = '', variant = 'default', fallbackPath = '/' }) => {
   const navigate = useNavigate();
 
-  const handleClick = () => {
+  const handleClick = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
     if (onClick) {
       onClick();
     } else {
-      navigate(-1); // Go back in browser history
+      // Try to go back in browser history
+      // React Router's navigate(-1) will go back if history exists
+      // If no history, it will stay on current page, so we provide a fallback
+      const hasHistory = window.history.length > 1;
+      
+      if (hasHistory) {
+        navigate(-1);
+      } else {
+        // Fallback to home/dashboard if no history available
+        navigate(fallbackPath, { replace: true });
+      }
     }
   };
 
@@ -24,6 +37,7 @@ const BackButton = ({ onClick, className = '', variant = 'default' }) => {
 
   return (
     <button
+      type="button"
       onClick={handleClick}
       className={`${baseClasses} ${variantClasses[variant]} ${className}`}
       aria-label="Go back"

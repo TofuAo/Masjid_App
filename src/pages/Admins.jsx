@@ -58,14 +58,15 @@ const Admins = () => {
     }
   }, []);
 
-  // Fetch all admins with high limit
+  // Fetch all admins with high limit - only when user changes
   useEffect(() => {
     // Only fetch if user is master admin or not yet determined
     const activeRole = getEffectiveRole(user);
     if (!user || (activeRole === 'admin' && isMasterAdmin)) {
       fetchItems({ limit: 1000 });
     }
-  }, [fetchItems, user, isMasterAdmin]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.ic, isMasterAdmin]); // Only re-fetch if user IC or isMasterAdmin changes
 
   // Extract admin limit from API response
   useEffect(() => {

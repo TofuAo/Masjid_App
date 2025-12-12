@@ -35,13 +35,18 @@ import PendingRegistrations from './pages/PendingRegistrations';
 import PicApprovals from './pages/PicApprovals';
 import PicUsers from './pages/PicUsers';
 import Admins from './pages/Admins';
+import AllUsers from './pages/AllUsers';
 import Contact from './pages/Contact';
 import IbDashboard from './pages/IbDashboard';
 import Hierarchy from './pages/Hierarchy';
+import HelpCenter from './pages/HelpCenter';
 import Account from './pages/Account';
 import IbAccount from './pages/IbAccount';
 import { PreferencesProvider, usePreferences } from './contexts/PreferencesContext';
 import { LanguageProvider } from './contexts/LanguageContext';
+import { GamificationEffectsProvider } from './components/gamification/GamificationEffectsProvider';
+import GamificationLiveTracker from './components/gamification/GamificationLiveTracker';
+import WelcomeModal from './components/ui/WelcomeModal';
 
 function App() {
   return (
@@ -57,6 +62,7 @@ function AppContent() {
   const [loading, setLoading] = useState(true);
   const [profileComplete, setProfileComplete] = useState(null);
   const [checkingProfile, setCheckingProfile] = useState(true);
+  const [showWelcomeModal, setShowWelcomeModal] = useState(false);
   const { preferences } = usePreferences();
 
   const checkProfileComplete = useCallback(async () => {
@@ -103,6 +109,43 @@ function AppContent() {
         
         // Check profile completeness
         checkProfileComplete();
+        
+        // Check if welcome modal should be shown
+        // Migrate old localStorage key format if it exists
+        const oldKey = `onboarding_completed_${parsedUser.ic}`;
+        const oldCompleted = localStorage.getItem(oldKey);
+        if (oldCompleted === 'true') {
+          // Migrate to new format - if old key exists, treat as permanently disabled
+          localStorage.setItem(`onboarding_permanently_disabled_${parsedUser.ic}`, 'true');
+          localStorage.removeItem(oldKey);
+        }
+        
+        const permanentlyDisabled = localStorage.getItem(`onboarding_permanently_disabled_${parsedUser.ic}`);
+        const lastShownTimestamp = localStorage.getItem(`onboarding_last_shown_${parsedUser.ic}`);
+        const TWENTY_FOUR_HOURS = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
+        
+        let shouldShowModal = false;
+        
+        if (!permanentlyDisabled) {
+          if (!lastShownTimestamp) {
+            // Never shown before, show it
+            shouldShowModal = true;
+          } else {
+            // Check if 24 hours have passed since last shown
+            const lastShown = parseInt(lastShownTimestamp, 10);
+            const timeSinceLastShown = Date.now() - lastShown;
+            if (timeSinceLastShown >= TWENTY_FOUR_HOURS) {
+              shouldShowModal = true;
+            }
+          }
+        }
+        
+        if (shouldShowModal) {
+          // Show welcome modal after a short delay to allow UI to render
+          setTimeout(() => {
+            setShowWelcomeModal(true);
+          }, 500);
+        }
       } catch (error) {
         console.error('Error parsing stored user:', error);
         clearAuth();
@@ -119,6 +162,43 @@ function AppContent() {
     // Check profile completeness after login
     setCheckingProfile(true);
     await checkProfileComplete();
+    
+    // Check if welcome modal should be shown
+    // Migrate old localStorage key format if it exists
+    const oldKey = `onboarding_completed_${userData.ic}`;
+    const oldCompleted = localStorage.getItem(oldKey);
+    if (oldCompleted === 'true') {
+      // Migrate to new format - if old key exists, treat as permanently disabled
+      localStorage.setItem(`onboarding_permanently_disabled_${userData.ic}`, 'true');
+      localStorage.removeItem(oldKey);
+    }
+    
+    const permanentlyDisabled = localStorage.getItem(`onboarding_permanently_disabled_${userData.ic}`);
+    const lastShownTimestamp = localStorage.getItem(`onboarding_last_shown_${userData.ic}`);
+    const TWENTY_FOUR_HOURS = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
+    
+    let shouldShowModal = false;
+    
+    if (!permanentlyDisabled) {
+      if (!lastShownTimestamp) {
+        // Never shown before, show it
+        shouldShowModal = true;
+      } else {
+        // Check if 24 hours have passed since last shown
+        const lastShown = parseInt(lastShownTimestamp, 10);
+        const timeSinceLastShown = Date.now() - lastShown;
+        if (timeSinceLastShown >= TWENTY_FOUR_HOURS) {
+          shouldShowModal = true;
+        }
+      }
+    }
+    
+    if (shouldShowModal) {
+      // Show welcome modal after profile check completes
+      setTimeout(() => {
+        setShowWelcomeModal(true);
+      }, 1000);
+    }
   };
 
   const handleRoleChange = (role) => {
@@ -156,6 +236,7 @@ function AppContent() {
 
   return (
     <LanguageProvider language={preferences?.language || 'ms'}>
+      <GamificationEffectsProvider>
       {!user ? (
         <>
           <Routes>
@@ -187,7 +268,15 @@ function AppContent() {
           
           {/* If profile is complete, show normal app */}
           {profileComplete === true && (
+            <>
+              {showWelcomeModal && (
+                <WelcomeModal 
+                  user={user} 
+                  onClose={() => setShowWelcomeModal(false)} 
+                />
+              )}
             <Layout user={user} onLogout={handleLogout} onRoleChange={handleRoleChange}>
+              <GamificationLiveTracker />
               <div className="fade-in">
               <Routes>
                 <Route path="/" element={<Dashboard />} />
@@ -217,17 +306,21 @@ function AppContent() {
                 <Route path="/pic-approvals" element={<PicApprovals user={user} />} />
                 <Route path="/pic-users" element={<PicUsers />} />
                 <Route path="/admins" element={<Admins />} />
+                <Route path="/all-users" element={<AllUsers user={user} />} />
                 <Route path="/contact" element={<Contact user={user} />} />
                 <Route path="/ib-dashboard" element={<IbDashboard />} />
                 <Route path="/hierarchy" element={<Hierarchy user={user} />} />
+                <Route path="/help" element={<HelpCenter />} />
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
               </div>
             </Layout>
+            </>
           )}
           <ToastContainer position="top-right" />
         </>
       )}
+      </GamificationEffectsProvider>
     </LanguageProvider>
   );
 }

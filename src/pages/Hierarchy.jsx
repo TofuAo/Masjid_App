@@ -241,7 +241,7 @@ const Hierarchy = ({ user }) => {
                 {index < hierarchy.length - 1 && (
                   <div className="flex justify-center my-4">
                     <div className="flex flex-col items-center">
-                      <ArrowDown className="w-6 h-6 text-gray-400" />
+                      <ArrowDown className="w-6 h-6 text-gray-600" />
                       <div className="h-8 w-0.5 bg-gradient-to-b from-gray-300 to-gray-200"></div>
                     </div>
                   </div>

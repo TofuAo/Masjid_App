@@ -42,11 +42,11 @@ I further understand that agreement of the tasks to maintain confidentiality cou
 (SYED MUHAMMAD KHALID AL-YAHYA BIN SYED KHALIL)
 INTERNSHIP STUDENT
 MATRIC ID: RC23138
-DATE: [DATE]
+DATE: [To be filled]
 
-([SUPERVISOR NAME])
+([SUPERVISOR NAME - To be filled])
 INDUSTRY SUPERVISOR
-DATE: [DATE]
+DATE: [To be filled]
 
 ---
 
@@ -68,6 +68,7 @@ LIST OF ABREVIATIONS ..... vii
 1.1 Overview ..... 1
 1.2 Organization Background ..... 2
 1.3 Organization Chart ..... 2
+1.4 Project Report ..... 3
 2 PROJECT REPORT ..... 4
 2.1 Project Overview ..... 4
 2.2 Task Overview ..... 4
@@ -103,7 +104,7 @@ Figure 2: Gantt Chart ..... 21
 
 # LIST OF ABREVIATIONS
 
-|  UMPSA | Universiti Malaysia Pahang Al-Sultan Abdullah  |
+| UMPSA | Universiti Malaysia Pahang Al-Sultan Abdullah |
 | --- | --- |
 |  UI | User Interface  |
 |  API | Application Programming Interface  |
@@ -172,15 +173,112 @@ Refer Figure 1: Organization Chart in Attachment.
 
 ---
 
-# 2 PROJECT REPORT 
+## 1.4 Project Report
+
+The main project that I am working on during my internship in MASJID NEGERI SULTAN AHMAD 1 is **MyMasjidApp (Masjid Management System)**, a comprehensive full-stack web application that mainly focus on digitize and automate the process of masjid and madrasah management within an institution.
+
+### Project Objective
+
+The main objective of MyMasjidApp is to provide a high performance and transparent management system in order to helps the targeted institutions to improve their efficiency in operations management. Other than efficiency and transparency, MyMasjidApp also come with low cost compared to setting up own management system, since MyMasjidApp utilize modern web technologies and can be deployed on various platforms including cloud services, the cost is really flexible and adapt to the institution's needs.
+
+### Project Scope
+
+The project scope includes the development of a comprehensive management system with the following modules:
+- Student Management Module
+- Teacher Management Module
+- Class Management Module
+- Attendance Management Module
+- Fee Management Module
+- Payment Processing Module
+- Exam Management Module
+- Results Management Module
+- IB (Imam Bilal) Role Module
+- Staff Check-in Module
+- Announcement Module
+- Reporting Module
+- Authentication & Authorization Module
+
+### Project Plan
+
+The project was planned and executed in 9 main phases over a period of 6 months:
+
+**Phase 1: Planning and Design (Weeks 1-2: September 17 - October 1, 2025)**
+- Project kick-off meeting with supervisor
+- Requirement gathering from stakeholders
+- System architecture design
+- Database schema design
+- Technology stack selection
+- Project planning and timeline creation
+
+**Phase 2: Core Module Development (Weeks 3-4: October 2 - October 15, 2025)**
+- Student management module development
+- Student registration and profile management
+- Student search and filtering functionality
+- Batch import via CSV
+- IC number validation
+
+**Phase 3: Management Modules (Weeks 5-6: October 16 - October 29, 2025)**
+- Teacher management module development
+- Class management module development
+- Teacher-class assignment system
+- Class schedule management
+- Class capacity management
+
+**Phase 4: Security and Authentication (Week 7: October 30 - November 5, 2025)**
+- Authentication and authorization system implementation
+- JWT token implementation
+- Role-based access control (RBAC)
+- Password reset functionality
+- Session management
+
+**Phase 5: Operational Modules (Week 8: November 6 - November 12, 2025)**
+- Attendance management module development
+- Fee management module development
+- Google Forms integration for attendance
+- Fee tracking and reporting
+
+**Phase 6: Payment Integration (Week 9: November 13 - November 19, 2025)**
+- Payment system integration
+- iPay88 gateway integration
+- eGHL gateway integration
+- PayNet Direct integration
+- Webhook handling implementation
+
+**Phase 7: Academic Modules (Week 10: November 20 - November 26, 2025)**
+- Exam management module development
+- Results management module development
+- Grade calculation functionality
+- Results reporting
+
+**Phase 8: Testing and Deployment Preparation (Week 11: November 27 - December 1, 2025)**
+- Comprehensive testing of all modules
+- Bug fixing and optimization
+- Docker containerization
+- Deployment preparation and configuration
+- Documentation creation
+
+**Phase 8b: Production Deployment (Mid to End December 2025)**
+- Final system testing and validation
+- Production server setup and configuration
+- Production deployment
+- Post-deployment monitoring and verification
+
+**Phase 9: Enhancement and Maintenance (December 2025 - March 2026)**
+- Additional feature development
+- Performance optimization
+- User feedback implementation
+- System maintenance and updates
+- Final documentation and handover
+
+---
+
+# 2 PROJECT REPORT
 
 ## 2.1 Project Overview
 
 The main project that I am working on during my internship in MASJID NEGERI SULTAN AHMAD 1 is **MyMasjidApp (Masjid Management System)**, a comprehensive full-stack web application that mainly focus on digitize and automate the process of masjid and madrasah management within an institution. It has functions like student management, teacher management, class management, attendance tracking, fee management, payment processing, exam management, results management, and administrative tasks.
 
 The overall background of this project is because most masjid and madrasah institutions in Malaysia still rely on manual record-keeping systems which are time-consuming, error-prone, and inefficient. The cost to build up own extended management application is too high for most institutions. Hence, MyMasjidApp is developed to help those institutions in managing their operations in a more convenient and low-cost way.
-
-The main objective of MyMasjidApp is to provide a high performance and transparent management system in order to helps the targeted institutions to improve their efficiency in operations management. Other than efficiency and transparency, MyMasjidApp also come with low cost compared to setting up own management system, since MyMasjidApp utilize modern web technologies and can be deployed on various platforms including cloud services, the cost is really flexible and adapt to the institution's needs.
 
 ---
 
@@ -238,12 +336,18 @@ During my internship period from September 17, 2025 to March 4, 2026, I was invo
 - Grade calculation functionality
 - Results reporting
 
-**Phase 8: Testing and Deployment (Week 11: November 27 - December 1, 2025)**
+**Phase 8: Testing and Deployment Preparation (Week 11: November 27 - December 1, 2025)**
 - Comprehensive testing of all modules
 - Bug fixing and optimization
 - Docker containerization
-- Production deployment
+- Deployment preparation and configuration
 - Documentation creation
+
+**Phase 8b: Production Deployment (Mid to End December 2025)**
+- Final system testing and validation
+- Production server setup and configuration
+- Production deployment
+- Post-deployment monitoring and verification
 
 **Phase 9: Enhancement and Maintenance (December 2025 - March 2026)**
 - Additional feature development
@@ -392,9 +496,9 @@ The project required integration with several external services and APIs to prov
 - Added webhook logging and monitoring
 - Implemented idempotency checks to prevent duplicate processing
 
-#### 5. Deployment
+#### 5. Deployment Preparation
 
-The deployment process involved containerization, server configuration, and production environment setup.
+The deployment preparation process involved containerization, server configuration, and production environment setup. The system is prepared for deployment scheduled for mid to end December 2025.
 
 **Docker Containerization:**
 - Created Dockerfile for frontend application
@@ -405,16 +509,16 @@ The deployment process involved containerization, server configuration, and prod
 
 **Nginx Configuration:**
 - Configured Nginx as reverse proxy for frontend and backend
-- Set up SSL/TLS encryption with Let's Encrypt certificates
+- Prepared SSL/TLS encryption setup with Let's Encrypt certificates
 - Configured load balancing (prepared for future scaling)
 - Set up caching for static assets
 - Configured proper headers for security
 
-**Production Deployment:**
-- Deployed application to production server
-- Configured environment variables and secrets
-- Set up database backups and recovery procedures
-- Implemented monitoring and logging
+**Production Deployment Preparation:**
+- Prepared application for production server deployment
+- Configured environment variables and secrets structure
+- Prepared database backup and recovery procedures
+- Implemented monitoring and logging setup
 - Created deployment scripts for easy updates
 
 **Documentation:**
@@ -436,7 +540,7 @@ The deployment process involved containerization, server configuration, and prod
 | **Database Management** | MySQL 8.0, SQL | - Designed and implemented relational database schema. <br> - Created complex queries with joins and aggregations. <br> - Implemented yearly database system for data separation. <br> - Optimized database performance with proper indexing. <br> - Managed database transactions for data consistency. |
 | **Authentication & Security** | JWT, bcrypt | - Implemented JWT-based authentication system. <br> - Used bcrypt for secure password hashing. <br> - Created role-based access control (RBAC) system. <br> - Implemented secure session management. <br> - Added input validation and SQL injection prevention. |
 | **Payment Integration** | iPay88, eGHL, PayNet Direct | - Integrated multiple payment gateways into the application. <br> - Implemented payment processing workflows. <br> - Created webhook handlers for payment notifications. <br> - Developed payment reconciliation system. <br> - Handled payment status tracking and requery mechanisms. |
-| **DevOps & Deployment** | Docker, Docker Compose, Nginx | - Containerized application using Docker. <br> - Orchestrated services using Docker Compose. <br> - Configured Nginx as reverse proxy and web server. <br> - Set up SSL/TLS encryption for secure connections. <br> - Deployed application to production environment. |
+| **DevOps & Deployment** | Docker, Docker Compose, Nginx | - Containerized application using Docker. <br> - Orchestrated services using Docker Compose. <br> - Configured Nginx as reverse proxy and web server. <br> - Set up SSL/TLS encryption for secure connections. <br> - Prepared application for production deployment (scheduled mid to end December 2025). |
 | **API Development** | RESTful API, Axios | - Designed and developed RESTful API endpoints. <br> - Implemented proper HTTP methods (GET, POST, PUT, DELETE). <br> - Created consistent API response format. <br> - Used Axios for HTTP client communication. <br> - Implemented error handling and status codes. |
 | **Version Control** | Git | - Used Git for version control throughout the project. <br> - Learned branching and merging strategies. <br> - Managed code repository and collaboration. |
 | **Google Forms Integration** | Google Forms API | - Integrated Google Forms for attendance input. <br> - Created webhook handlers for form submissions. <br> - Implemented data mapping and validation. |
@@ -917,14 +1021,14 @@ This challenge taught me about third-party API integration, data transformation,
 
 ---
 
-# 3 KNOWLEDGE AND EXPERIENCE GAIN 
+# 3 KNOWLEDGE AND EXPERIENCE GAIN
 
 ## 3.1 Technical Skill
 
 Throughout my internship, I gained extensive technical knowledge and skills in full-stack web development. The following table summarizes the technical skills I learned:
 
 | Technical Skills | Description |
-|:--:|:--:|
+| :--: | :--: |
 | **React 19 Development** | - Learned to develop modern single-page applications using React 19 framework. <br> - Understood component lifecycle, hooks, and state management. <br> - Created reusable components and managed component state effectively. <br> - Implemented routing using React Router. <br> - Used React hooks (useState, useEffect, useContext) for state management. |
 | **Vite Build Tool** | - Learned to use Vite as a fast build tool and development server. <br> - Understood the difference between development and production builds. <br> - Configured Vite for optimal performance. |
 | **TailwindCSS Styling** | - Learned utility-first CSS framework approach. <br> - Created responsive designs for mobile and desktop. <br> - Implemented modern UI designs with glass-morphism effects. <br> - Used TailwindCSS for consistent styling across the application. |
@@ -939,7 +1043,7 @@ Throughout my internship, I gained extensive technical knowledge and skills in f
 | **API Development** | - Designed and developed RESTful API endpoints. <br> - Implemented proper HTTP methods and status codes. <br> - Created consistent API response format. <br> - Implemented error handling and validation. <br> - Used Axios for HTTP client communication. |
 | **Google Forms Integration** | - Integrated Google Forms for attendance input. <br> - Created webhook handlers for form submissions. <br> - Implemented data parsing and mapping. <br> - Added validation and error handling. |
 | **Git Version Control** | - Used Git for version control throughout the project. <br> - Learned branching and merging strategies. <br> - Managed code repository and collaboration. <br> - Created meaningful commit messages. |
-| **Deployment** | - Deployed application to production environment. <br> - Configured environment variables and secrets. <br> - Set up monitoring and logging. <br> - Created deployment documentation and scripts. |
+| **Deployment** | - Prepared application for production deployment (scheduled mid to end December 2025). <br> - Configured environment variables and secrets structure. <br> - Set up monitoring and logging infrastructure. <br> - Created deployment documentation and scripts. |
 
 Table 1: Technical Skills Learned
 
@@ -964,6 +1068,8 @@ Table 2: Soft Skills Learned
 
 ## 3.3 Mapping Skill
 
+Since I was exposed to full-stack web development during my learning in university, most of the concepts were familiar, but the implementation and real-world application were new experiences. The overall concept of programming, folder structure, and software development lifecycle are similar with what was taught in university subjects.
+
 The knowledge and skills I gained during my university studies provided a solid foundation for my internship work. This section maps the theoretical knowledge from university subjects to the practical application in the industry project.
 
 ### Software Development Lifecycle (SDLC)
@@ -983,7 +1089,7 @@ In the MyMasjidApp project, I applied the SDLC methodology throughout the develo
 - **Design Phase:** Created database schema, designed API endpoints, and planned module structure
 - **Development Phase:** Implemented all 13 modules following the design specifications
 - **Testing Phase:** Performed comprehensive testing of all features and modules
-- **Deployment Phase:** Deployed the application to production environment
+- **Deployment Phase:** Prepared the application for production deployment (scheduled mid to end December 2025)
 - **Maintenance Phase:** Continued to maintain and enhance the system
 
 **Connection:**
@@ -1187,7 +1293,7 @@ My long-term career goals (3-5 years):
 
 ---
 
-# 4 CONCLUSION AND IMPROVEMENT RECOMMENDATION 
+# 4 CONCLUSION AND IMPROVEMENT RECOMMENDATION
 
 To conclude, I learned a lot technical and soft skills during my internship in MASJID NEGERI SULTAN AHMAD 1 and am appreciate that MASJID NEGERI SULTAN AHMAD 1 take me as an intern. The working environment is comfort, and all necessary devices are prepared for interns, the people are nice and inclusive, interns are included in most of the activities. Programs and mentoring benefits me in terms of self-growth in many aspects.
 
@@ -1195,7 +1301,7 @@ I am exposed to the new technology and real-world project development during my 
 
 During the project, I also receive much feedback from senior and colleagues, this helps me to think in different point of views to cater most possible situations and have a more complete understanding of real-world project requirements to provide and develop a complete application that really solve client's problems.
 
-The project was successfully completed and deployed to production environment. I am glad that I could be a part of this process that helps in business development and provides value to the end users.
+The project development was successfully completed and is prepared for production deployment scheduled for mid to end December 2025. I am glad that I could be a part of this process that will help in business development and provide value to the end users once deployed.
 
 I am appreciate that I am a part of MASJID NEGERI SULTAN AHMAD 1 and appreciate the efforts by faculty that provided this opportunity for me to enroll in this internship program, it helps me growth and experience real world working environment well-guided. For the next section, improvement suggestions will be given from my point of view as an intern to both parties, which are industry (MASJID NEGERI SULTAN AHMAD 1) and the faculty (FKOM) of UMPSA.
 
@@ -1231,7 +1337,7 @@ Additional suggestions include:
 
 *Figure 1: Organization Chart*
 
-[INSERT ORGANIZATION CHART HERE]
+[Organization Chart - To be inserted]
 
 ---
 
@@ -1262,10 +1368,11 @@ Additional suggestions include:
 | **Phase 7: Exam & Results** | | | | | | | ████████ | | | | | |
 | - Exam Module | | | | | | | ████ | | | | | |
 | - Results Module | | | | | | | | ████ | | | | |
-| **Phase 8: Testing & Deployment** | | | | | | | | ████████ | | | | |
+| **Phase 8: Testing & Deployment Prep** | | | | | | | | ████████ | | | | |
 | - Testing | | | | | | | | ████ | | | | |
-| - Deployment | | | | | | | | | ████ | | | |
-| **Phase 9: Enhancement** | | | | | | | | | ████████ | ████████ | ████████ | ████ |
+| - Deployment Prep | | | | | | | | | ████ | | | |
+| **Phase 8b: Production Deployment** | | | | | | | | | | ████ | | |
+| **Phase 9: Enhancement** | | | | | | | | | | ████████ | ████████ | ████████ | ████ |
 | - Feature Enhancement | | | | | | | | | ████ | ████ | ████ | |
 | - Maintenance | | | | | | | | | | ████ | ████ | ████ |
 
@@ -1281,7 +1388,7 @@ Additional suggestions include:
 - **M5 (Nov 12)**: Attendance & Fee modules completed
 - **M6 (Nov 19)**: Payment integration completed
 - **M7 (Nov 26)**: Exam & Results modules completed
-- **M8 (Dec 1)**: System deployed to production
+- **M8 (Mid-End Dec)**: System deployment to production (scheduled)
 - **M9 (Mar 4)**: Final handover and documentation
 
 ---

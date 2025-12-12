@@ -66,7 +66,8 @@ router.get('/', getAllClasses);
 router.get('/stats', getClassStats);
 router.get('/:id', idValidation, getClassById);
 router.post('/', requireRole(['admin', 'staff']), classValidation, normalizeICMiddleware, createClass);
-router.put('/:id', requireRole(['admin', 'staff']), idValidation, classValidation, normalizeICMiddleware, updateClass);
+// Allow teachers to update their own classes, admins/staff can update any class
+router.put('/:id', idValidation, classValidation, normalizeICMiddleware, updateClass);
 router.delete('/:id', requireRole(['admin']), idValidation, deleteClass);
 
 export default router;
