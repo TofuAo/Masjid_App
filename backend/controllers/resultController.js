@@ -4,6 +4,7 @@ import {
   getGradeRangesFromSettings,
   determineGradeForMark
 } from '../utils/grading.js';
+import { getSafePagination } from '../utils/pagination.js';
 
 export const getAllResults = async (req, res) => {
   try {
@@ -52,9 +53,8 @@ export const getAllResults = async (req, res) => {
       }
     }
     
-    // Add pagination (inline to avoid ER_WRONG_ARGUMENTS on LIMIT/OFFSET)
-    const safeLimit = Math.max(1, parseInt(limit));
-    const offset = (Math.max(1, parseInt(page)) - 1) * safeLimit;
+    // Add pagination (using safe pagination utility to prevent SQL injection)
+    const { limit: safeLimit, offset } = getSafePagination(page, limit, 1, 1000);
     query += ` ORDER BY e.tarikh_exam DESC, e.subject ASC, u.nama ASC LIMIT ${safeLimit} OFFSET ${offset}`;
     
     const [results] = await pool.execute(query, queryParams);

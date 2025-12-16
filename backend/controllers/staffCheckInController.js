@@ -5,6 +5,7 @@ import {
   fetchMasjidLocationFromSettings,
   DEFAULT_MASJID_RADIUS
 } from '../utils/masjidLocation.js';
+import { safeLimit } from '../utils/pagination.js';
 
 const DEFAULT_HISTORY_MONTHS = 3;
 const isStaffRole = (role) => role === 'teacher' || role === 'admin' || role === 'pic';
@@ -297,13 +298,10 @@ export const getCheckInHistory = async (req, res) => {
       params.push(effectiveEndDate);
     }
 
-    const limitParam = parseInt(req.query.limit, 10);
-    if (!Number.isNaN(limitParam) && limitParam > 0) {
-      const safeLimit = Math.min(limitParam, 5000);
-      query += ` ORDER BY sc.check_in_time DESC LIMIT ${safeLimit}`;
-    } else {
-      query += ' ORDER BY sc.check_in_time DESC LIMIT 100';
-    }
+    // Use safe pagination utility to prevent SQL injection
+    const limitParam = req.query.limit;
+    const safeLimitValue = safeLimit(limitParam, 100, 5000);
+    query += ` ORDER BY sc.check_in_time DESC LIMIT ${safeLimitValue}`;
 
     const [records] = await pool.execute(query, params);
 

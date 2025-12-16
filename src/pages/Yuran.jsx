@@ -7,6 +7,7 @@ import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import Badge from '../components/ui/Badge';
 import LoadingSkeleton from '../components/ui/LoadingSkeleton';
+import ReceiptViewer from '../components/receipt/ReceiptViewer';
 import { CreditCard, DollarSign, CheckCircle, XCircle, Clock, Plus, Search, Filter, QrCode, Settings, Upload, Link as LinkIcon, Save, ChevronDown, ChevronUp, AlertCircle, FileCheck, Eye } from 'lucide-react';
 import { getEffectiveRole } from '../utils/userRoles';
 
@@ -26,6 +27,8 @@ const Yuran = () => {
   const [qrImageFile, setQrImageFile] = useState(null);
   const [qrImagePreview, setQrImagePreview] = useState(null);
   const [savingQR, setSavingQR] = useState(false);
+  const [selectedReceipt, setSelectedReceipt] = useState(null);
+  const [showReceiptViewer, setShowReceiptViewer] = useState(false);
 
   const {
     items: yuran,
@@ -618,7 +621,25 @@ const Yuran = () => {
                                 {y.no_resit ? `Resit: ${y.no_resit}` : 'Terbayar'}
                               </div>
                             )}
-                            {y.resit_img && (userRole === 'admin' || userRole === 'pic') && (
+                            {y.no_resit && (y.status === 'terbayar' || y.status === 'Bayar') && (
+                              <div className="flex space-x-2 mt-2">
+                                <button
+                                  onClick={() => {
+                                    setSelectedReceipt({
+                                      receiptNumber: y.no_resit,
+                                      feeId: y.id
+                                    });
+                                    setShowReceiptViewer(true);
+                                  }}
+                                  className="text-xs text-blue-600 hover:text-blue-800 flex items-center space-x-1"
+                                  title="View receipt"
+                                >
+                                  <Eye className="w-3 h-3" />
+                                  <span>View Receipt</span>
+                                </button>
+                              </div>
+                            )}
+                            {y.resit_img && (userRole === 'admin' || userRole === 'pic') && !y.no_resit && (
                               <div className="flex space-x-2 mt-2">
                                 <button
                                   onClick={() => {
@@ -673,8 +694,28 @@ const Yuran = () => {
                               <span>Bayar Yuran</span>
                             </button>
                           ) : (
-                            <div className="text-xs text-black">
-                              {y.no_resit && `Resit: ${y.no_resit}`}
+                            <div className="text-xs text-black flex items-center space-x-2">
+                              {y.no_resit ? (
+                                <>
+                                  <span>Receipt: {y.no_resit}</span>
+                                  <button
+                                    onClick={() => {
+                                      setSelectedReceipt({
+                                        receiptNumber: y.no_resit,
+                                        feeId: y.id
+                                      });
+                                      setShowReceiptViewer(true);
+                                    }}
+                                    className="text-blue-600 hover:text-blue-800 flex items-center space-x-1"
+                                    title="View receipt"
+                                  >
+                                    <Eye className="w-3 h-3" />
+                                    <span>View</span>
+                                  </button>
+                                </>
+                              ) : (
+                                <span>Terbayar</span>
+                              )}
                             </div>
                           )}
                         </td>
@@ -693,6 +734,20 @@ const Yuran = () => {
           )}
         </Card.Content>
       </Card>
+
+      {/* Receipt Viewer Modal */}
+      {showReceiptViewer && selectedReceipt && (
+        <ReceiptViewer
+          isOpen={showReceiptViewer}
+          onClose={() => {
+            setShowReceiptViewer(false);
+            setSelectedReceipt(null);
+          }}
+          receiptNumber={selectedReceipt.receiptNumber}
+          feeId={selectedReceipt.feeId}
+          paymentId={selectedReceipt.paymentId}
+        />
+      )}
     </div>
   );
 };

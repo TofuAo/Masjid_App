@@ -10,8 +10,6 @@ import { Link } from 'react-router-dom';
 import Badge from '../components/ui/Badge';
 import FeaturedClasses from '../components/kelas/FeaturedClasses';
 import { getEffectiveRole } from '../utils/userRoles';
-import { usePreferences } from '../hooks/usePreferences';
-import GamificationWidget from '../components/gamification/GamificationWidget';
 
 const Dashboard = () => {
   const [mainStats, setMainStats] = useState([]);
@@ -433,10 +431,6 @@ const Dashboard = () => {
 
   const userStr = localStorage.getItem('user');
   const user = userStr ? JSON.parse(userStr) : null;
-  
-  // Get gamification preference
-  const { preferences } = usePreferences();
-  const gamificationEnabled = preferences?.gamificationEnabled !== false; // Default to true if not set
 
   return (
       <div className="space-y-6 animate-fade-in">
@@ -450,13 +444,6 @@ const Dashboard = () => {
       
       {/* Monthly Attendance - Only show for students */}
       {userRole === 'student' && renderMonthlyAttendance()}
-      
-      {/* Gamification Widget - Only show for students with gamification enabled */}
-      {userRole === 'student' && gamificationEnabled && (
-        <div className="mt-6">
-          <GamificationWidget />
-        </div>
-      )}
 
       {/* Recent Activity - full width */}
       <div>

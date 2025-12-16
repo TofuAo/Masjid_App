@@ -16,13 +16,17 @@ const registerValidation = [
     .notEmpty()
     .withMessage('IC Number is required')
     .custom((value) => {
+      // STRICT: Reject T0-prefixed or any IC starting with non-digits
+      if (value.toString().trim().startsWith('T0') || /^[^0-9]/.test(value.toString().trim())) {
+        throw new Error('Invalid IC format. IC must be 12 digits (format: XXXXXX-XX-XXXX)');
+      }
       // Remove hyphens and spaces for validation
       const cleaned = value.toString().replace(/[-\s]/g, '');
       if (cleaned.length !== 12) {
         throw new Error('IC Number must be exactly 12 digits');
       }
       if (!/^\d{12}$/.test(cleaned)) {
-        throw new Error('IC Number must contain only digits');
+        throw new Error('IC Number must contain only digits (format: XXXXXX-XX-XXXX)');
       }
       return true;
     }),

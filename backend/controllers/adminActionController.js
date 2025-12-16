@@ -339,11 +339,120 @@ const undoClassAction = async (snapshot) => {
   }
 };
 
+const undoPicUserAction = async (snapshot) => {
+  const { operation, entity_identifier: entityIc, data } = snapshot;
+  if (!data || !entityIc) {
+    throw new Error('Snapshot data missing for PIC user undo.');
+  }
+
+  const connection = await pool.getConnection();
+  try {
+    await connection.beginTransaction();
+
+    switch (operation) {
+      case 'delete': {
+        const userData = data.user;
+        const metadata = snapshot.metadata || {};
+        const actionType = metadata.action_type;
+
+        if (actionType === 'remove_pic_role') {
+          // Restore PIC role to user_roles table
+          await connection.execute(
+            `INSERT IGNORE INTO user_roles (user_ic, role) VALUES (?, ?)`,
+            [entityIc, 'pic']
+          );
+        } else if (actionType === 'delete_pic_user') {
+          // Restore full user record
+          await connection.execute(
+            `INSERT INTO users (ic, nama, email, telefon, password, role, status, created_at, updated_at) 
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+             ON DUPLICATE KEY UPDATE
+               nama = VALUES(nama),
+               email = VALUES(email),
+               telefon = VALUES(telefon),
+               password = VALUES(password),
+               role = VALUES(role),
+               status = VALUES(status),
+               updated_at = VALUES(updated_at)`,
+            [
+              userData.ic,
+              userData.nama,
+              userData.email || null,
+              userData.telefon || null,
+              userData.password || null,
+              userData.role || 'pic',
+              userData.status || 'aktif',
+              userData.created_at || new Date(),
+              userData.updated_at || new Date()
+            ]
+          );
+
+          // Restore all roles
+          if (data.roles && Array.isArray(data.roles)) {
+            for (const role of data.roles) {
+              await connection.execute(
+                `INSERT IGNORE INTO user_roles (user_ic, role) VALUES (?, ?)`,
+                [entityIc, role]
+              );
+            }
+          } else {
+            // Fallback: restore PIC role if roles array not available
+            await connection.execute(
+              `INSERT IGNORE INTO user_roles (user_ic, role) VALUES (?, ?)`,
+              [entityIc, 'pic']
+            );
+          }
+        } else if (actionType === 'remove_pic_role_and_update_primary') {
+          // Restore user's primary role and all roles
+          if (userData.role) {
+            await connection.execute(
+              `UPDATE users SET role = ?, updated_at = CURRENT_TIMESTAMP WHERE ic = ?`,
+              [userData.role, entityIc]
+            );
+          }
+
+          // Restore all roles including PIC
+          if (data.roles && Array.isArray(data.roles)) {
+            for (const role of data.roles) {
+              await connection.execute(
+                `INSERT IGNORE INTO user_roles (user_ic, role) VALUES (?, ?)`,
+                [entityIc, role]
+              );
+            }
+          } else {
+            // Restore PIC role
+            await connection.execute(
+              `INSERT IGNORE INTO user_roles (user_ic, role) VALUES (?, ?)`,
+              [entityIc, 'pic']
+            );
+          }
+        }
+        break;
+      }
+      default:
+        throw new Error(`Unsupported snapshot operation for PIC user: ${operation}`);
+    }
+
+    await connection.commit();
+    return {
+      entityId: entityIc,
+      entityType: 'picUser',
+      action: 'restore'
+    };
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
+  }
+};
+
 const entityUndoHandlers = {
   announcement: undoAnnouncementAction,
   student: undoStudentAction,
   teacher: undoTeacherAction,
-  class: undoClassAction
+  class: undoClassAction,
+  picUser: undoPicUserAction
 };
 
 export const undoValidators = [

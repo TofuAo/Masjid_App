@@ -15,11 +15,11 @@ import Kelas from './pages/Kelas';
 import Kehadiran from './pages/Kehadiran';
 import Yuran from './pages/Yuran';
 import PayYuran from './pages/PayYuran';
+import PaymentHistory from './pages/PaymentHistory';
 import Keputusan from './pages/Keputusan';
 import Laporan from './pages/Laporan';
 import Settings from './pages/Settings';
 import PersonalSettings from './pages/PersonalSettings';
-import PaymentMethodSettings from './pages/PaymentMethodSettings';
 import PaymentReturn from './pages/PaymentReturn';
 import ToyyibPaySettings from './pages/ToyyibPaySettings';
 import ForgotPassword from './pages/ForgotPassword';
@@ -44,8 +44,6 @@ import Account from './pages/Account';
 import IbAccount from './pages/IbAccount';
 import { PreferencesProvider, usePreferences } from './contexts/PreferencesContext';
 import { LanguageProvider } from './contexts/LanguageContext';
-import { GamificationEffectsProvider } from './components/gamification/GamificationEffectsProvider';
-import GamificationLiveTracker from './components/gamification/GamificationLiveTracker';
 import WelcomeModal from './components/ui/WelcomeModal';
 
 function App() {
@@ -236,7 +234,6 @@ function AppContent() {
 
   return (
     <LanguageProvider language={preferences?.language || 'ms'}>
-      <GamificationEffectsProvider>
       {!user ? (
         <>
           <Routes>
@@ -276,7 +273,6 @@ function AppContent() {
                 />
               )}
             <Layout user={user} onLogout={handleLogout} onRoleChange={handleRoleChange}>
-              <GamificationLiveTracker />
               <div className="fade-in">
               <Routes>
                 <Route path="/" element={<Dashboard />} />
@@ -290,11 +286,11 @@ function AppContent() {
                 <Route path="/kehadiran" element={<Kehadiran />} />
                 <Route path="/yuran" element={<Yuran />} />
                 <Route path="/pay-yuran/:id" element={<PayYuran />} />
+                <Route path="/payment-history" element={<PaymentHistory />} />
                 <Route path="/payment/return" element={<PaymentReturn />} />
                 <Route path="/keputusan" element={<Keputusan />} />
                 <Route path="/laporan" element={<Laporan />} />
                 <Route path="/settings" element={<Settings />} />
-                <Route path="/payment-method-settings" element={<PaymentMethodSettings />} />
                 <Route path="/toyyibpay-settings" element={<ToyyibPaySettings />} />
                 <Route path="/personal-settings" element={<PersonalSettings />} />
                 <Route path="/account" element={<Account />} />
@@ -320,7 +316,6 @@ function AppContent() {
           <ToastContainer position="top-right" />
         </>
       )}
-      </GamificationEffectsProvider>
     </LanguageProvider>
   );
 }

@@ -1,5 +1,6 @@
 import { pool } from '../config/database.js';
 import { validationResult } from 'express-validator';
+import { getSafePagination } from '../utils/pagination.js';
 
 export const getAllExams = async (req, res) => {
   try {
@@ -12,13 +13,20 @@ export const getAllExams = async (req, res) => {
       queryParams.push(`%${search}%`);
     }
 
-    const safeLimit = Math.max(1, parseInt(limit));
-    const offset = (Math.max(1, parseInt(page)) - 1) * safeLimit;
+    // Add pagination (using safe pagination utility to prevent SQL injection)
+    const { limit: safeLimit, offset } = getSafePagination(page, limit, 1, 10);
     query += ` ORDER BY e.created_at DESC LIMIT ${safeLimit} OFFSET ${offset}`;
 
     const [exams] = await pool.execute(query, queryParams);
 
-    const [countResult] = await pool.execute(`SELECT COUNT(*) as total FROM exams WHERE 1=1 ${search ? `AND subject LIKE '%${search}%'` : ''}`);
+    // Use parameterized query for count to prevent SQL injection
+    let countQuery = `SELECT COUNT(*) as total FROM exams WHERE 1=1`;
+    const countParams = [];
+    if (search) {
+      countQuery += ` AND subject LIKE ?`;
+      countParams.push(`%${search}%`);
+    }
+    const [countResult] = await pool.execute(countQuery, countParams);
     const total = countResult[0].total;
 
     res.json({

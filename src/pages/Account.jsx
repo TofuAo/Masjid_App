@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { attendanceAPI, feesAPI } from '../services/api';
-import { gamificationAPI } from '../services/gamificationAPI';
 import { toast } from 'react-toastify';
 import Card from '../components/ui/Card';
 import Badge from '../components/ui/Badge';
@@ -17,24 +16,8 @@ import {
   AlertCircle,
   Eye,
   Download,
-  Trophy,
-  Flame,
-  Award,
-  TrendingUp,
-  Activity,
-  Medal,
-  Zap,
-  BarChart3,
-  Coins
 } from 'lucide-react';
 import { getEffectiveRole } from '../utils/userRoles';
-import { usePreferences } from '../hooks/usePreferences';
-import LevelProgress from '../components/gamification/LevelProgress';
-import AchievementBadge from '../components/gamification/AchievementBadge';
-import Leaderboard from '../components/gamification/Leaderboard';
-import GamificationActivityFeed from '../components/gamification/GamificationActivityFeed';
-import StreakFireEffect from '../components/gamification/StreakFireEffect';
-import SparkleEffect from '../components/gamification/SparkleEffect';
 
 const Account = () => {
   const [user, setUser] = useState(null);
@@ -45,11 +28,6 @@ const Account = () => {
   const [selectedImage, setSelectedImage] = useState(null);
   const [imageModalOpen, setImageModalOpen] = useState(false);
   
-  // Gamification state
-  const [gamificationStats, setGamificationStats] = useState(null);
-  const [allAchievements, setAllAchievements] = useState([]);
-  const [myAchievements, setMyAchievements] = useState([]);
-  const [loadingGamification, setLoadingGamification] = useState(false);
 
   useEffect(() => {
     const userData = JSON.parse(localStorage.getItem('user'));
@@ -57,9 +35,6 @@ const Account = () => {
       setUser(userData);
       fetchData(userData.ic);
       const effectiveRole = getEffectiveRole(userData);
-      if (effectiveRole === 'student') {
-        fetchGamificationData();
-      }
     }
   }, []);
 
@@ -87,38 +62,6 @@ const Account = () => {
     }
   };
 
-  const fetchGamificationData = async () => {
-    try {
-      setLoadingGamification(true);
-      const [statsRes, achievementsRes, myAchievementsRes] = await Promise.all([
-        gamificationAPI.getMyStats().catch(() => ({ data: null })),
-        gamificationAPI.getAvailableAchievements().catch(() => ({ data: [] })),
-        gamificationAPI.getMyAchievements().catch(() => ({ data: [] }))
-      ]);
-
-      setGamificationStats(statsRes.data);
-      setAllAchievements(achievementsRes.data || []);
-      setMyAchievements(myAchievementsRes.data || []);
-    } catch (error) {
-      console.error('Error fetching gamification data:', error);
-    } finally {
-      setLoadingGamification(false);
-    }
-  };
-
-  const getUnlockedAchievements = () => {
-    return allAchievements.filter(a => a.unlocked);
-  };
-
-  const getLockedAchievements = () => {
-    return allAchievements.filter(a => !a.unlocked);
-  };
-
-  const getAchievementsByCategory = (category) => {
-    return allAchievements.filter(a => a.category === category);
-  };
-
-  const categories = ['attendance', 'academic', 'payment', 'social', 'milestone', 'special'];
 
   const getStatusBadge = (status) => {
     const statusConfig = {
@@ -197,10 +140,6 @@ const Account = () => {
 
   const effectiveRole = getEffectiveRole(user);
   const isStudent = effectiveRole === 'student';
-  
-  // Get gamification preference from preferences context
-  const { preferences } = usePreferences();
-  const gamificationEnabled = preferences?.gamificationEnabled !== false; // Default to true if not set
 
   // Filter attendance and fees to show only those with documents
   const attendanceWithDocs = attendance.filter(a => a.proof_image);
@@ -258,62 +197,6 @@ const Account = () => {
                 <span>Resit Pembayaran ({feesWithDocs.length})</span>
               </div>
             </button>
-            {isStudent && gamificationEnabled && (
-              <>
-                <button
-                  onClick={() => setActiveTab('gamification')}
-                  className={`pb-3 px-4 font-medium transition-colors whitespace-nowrap ${
-                    activeTab === 'gamification'
-                      ? 'text-emerald-600 border-b-2 border-emerald-600'
-                      : 'text-gray-600 hover:text-gray-900'
-                  }`}
-                >
-                  <div className="flex items-center space-x-2">
-                    <Trophy className="w-5 h-5" />
-                    <span>Gamifikasi</span>
-                  </div>
-                </button>
-                <button
-                  onClick={() => setActiveTab('achievements')}
-                  className={`pb-3 px-4 font-medium transition-colors whitespace-nowrap ${
-                    activeTab === 'achievements'
-                      ? 'text-emerald-600 border-b-2 border-emerald-600'
-                      : 'text-gray-600 hover:text-gray-900'
-                  }`}
-                >
-                  <div className="flex items-center space-x-2">
-                    <Award className="w-5 h-5" />
-                    <span>Pencapaian</span>
-                  </div>
-                </button>
-                <button
-                  onClick={() => setActiveTab('leaderboard')}
-                  className={`pb-3 px-4 font-medium transition-colors whitespace-nowrap ${
-                    activeTab === 'leaderboard'
-                      ? 'text-emerald-600 border-b-2 border-emerald-600'
-                      : 'text-gray-600 hover:text-gray-900'
-                  }`}
-                >
-                  <div className="flex items-center space-x-2">
-                    <Trophy className="w-5 h-5" />
-                    <span>Papan Pendahulu</span>
-                  </div>
-                </button>
-                <button
-                  onClick={() => setActiveTab('activity')}
-                  className={`pb-3 px-4 font-medium transition-colors whitespace-nowrap ${
-                    activeTab === 'activity'
-                      ? 'text-emerald-600 border-b-2 border-emerald-600'
-                      : 'text-gray-600 hover:text-gray-900'
-                  }`}
-                >
-                  <div className="flex items-center space-x-2">
-                    <Activity className="w-5 h-5" />
-                    <span>Aktiviti</span>
-                  </div>
-                </button>
-              </>
-            )}
           </div>
         </Card.Header>
         <Card.Content>
@@ -504,311 +387,6 @@ const Account = () => {
             </div>
           )}
 
-          {/* Gamification Tab */}
-          {isStudent && gamificationEnabled && activeTab === 'gamification' && (
-            <div className="space-y-6 relative">
-              <SparkleEffect trigger={true} duration={8000} count={10} />
-              {loadingGamification ? (
-                <LoadingSkeleton type="card" count={3} />
-              ) : gamificationStats ? (
-                <>
-                  {/* Level Progress */}
-                  <LevelProgress
-                    level={gamificationStats.points.level}
-                    xp={gamificationStats.points.xp}
-                    pointsToNextLevel={gamificationStats.points.pointsToNextLevel}
-                    progress={gamificationStats.points.progress}
-                  />
-
-                  {/* Stats Grid */}
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div className="bg-white rounded-xl shadow-lg p-6 border-l-4 border-yellow-500">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-gray-600 mb-1">Total Mata</p>
-                          <p className="text-3xl font-bold text-gray-800">{gamificationStats.points.total.toLocaleString()}</p>
-                        </div>
-                        <Trophy className="w-12 h-12 text-yellow-500" />
-                      </div>
-                    </div>
-
-                    <div className="bg-white rounded-xl shadow-lg p-6 border-l-4 border-purple-500">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-gray-600 mb-1">Pencapaian</p>
-                          <p className="text-3xl font-bold text-gray-800">{gamificationStats.achievementCount}</p>
-                        </div>
-                        <Award className="w-12 h-12 text-purple-500" />
-                      </div>
-                    </div>
-
-                    <div className="bg-white rounded-xl shadow-lg p-6 border-l-4 border-orange-500">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-gray-600 mb-1">Level Semasa</p>
-                          <p className="text-3xl font-bold text-gray-800">{gamificationStats.points.level}</p>
-                        </div>
-                        <TrendingUp className="w-12 h-12 text-orange-500" />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Streaks */}
-                  <div className="bg-white rounded-xl shadow-lg p-6">
-                    <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center space-x-2">
-                      <Flame className="w-6 h-6 text-orange-500" />
-                      <span>Streak Anda</span>
-                    </h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {gamificationStats.streaks.attendance && (
-                        <div className="bg-gradient-to-r from-orange-50 to-red-50 rounded-lg p-4 border-2 border-orange-200">
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <p className="text-gray-700 font-semibold mb-1">Kehadiran</p>
-                              <div className="flex items-center space-x-2">
-                                <StreakFireEffect streakCount={gamificationStats.streaks.attendance.current} size="xl" />
-                                <p className="text-4xl font-bold text-orange-600">
-                                  {gamificationStats.streaks.attendance.current}
-                                </p>
-                              </div>
-                              <p className="text-sm text-gray-600 mt-2">
-                                Terpanjang: {gamificationStats.streaks.attendance.longest} hari
-                              </p>
-                            </div>
-                            <Flame className="w-16 h-16 text-orange-400 opacity-50" />
-                          </div>
-                        </div>
-                      )}
-                      {gamificationStats.streaks.login && (
-                        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-4 border-2 border-blue-200">
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <p className="text-gray-700 font-semibold mb-1">Log Masuk</p>
-                              <div className="flex items-center space-x-2">
-                                <StreakFireEffect streakCount={gamificationStats.streaks.login.current} size="xl" />
-                                <p className="text-4xl font-bold text-blue-600">
-                                  {gamificationStats.streaks.login.current}
-                                </p>
-                              </div>
-                              <p className="text-sm text-gray-600 mt-2">
-                                Terpanjang: {gamificationStats.streaks.login.longest} hari
-                              </p>
-                            </div>
-                            <TrendingUp className="w-16 h-16 text-blue-400 opacity-50" />
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Recent Achievements */}
-                  {myAchievements.length > 0 && (
-                    <div className="bg-white rounded-xl shadow-lg p-6">
-                      <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center space-x-2">
-                        <Medal className="w-6 h-6 text-yellow-500" />
-                        <span>Pencapaian Terkini</span>
-                      </h3>
-                      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-                        {myAchievements.slice(0, 6).map((achievement) => (
-                          <AchievementBadge
-                            key={achievement.id}
-                            achievement={achievement}
-                            size="md"
-                            unlocked={true}
-                          />
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </>
-              ) : (
-                <div className="text-center py-8">
-                  <Trophy className="w-12 h-12 text-gray-400 mx-auto mb-2" />
-                  <p className="text-gray-600">Tiada data gamifikasi</p>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Achievements Tab */}
-          {isStudent && gamificationEnabled && activeTab === 'achievements' && (
-            <div className="space-y-6">
-              {loadingGamification ? (
-                <LoadingSkeleton type="card" count={3} />
-              ) : (
-                <>
-                  {/* Achievement Progress */}
-                  <div className="bg-white rounded-xl shadow-lg p-6">
-                    <div className="flex items-center justify-between mb-4">
-                      <h3 className="text-xl font-bold text-gray-800">Kemajuan Pencapaian</h3>
-                      <div className="text-right">
-                        <p className="text-2xl font-bold text-blue-600">
-                          {getUnlockedAchievements().length} / {allAchievements.length}
-                        </p>
-                        <p className="text-sm text-gray-600">Pencapaian Dikunci</p>
-                      </div>
-                    </div>
-                    <div className="w-full bg-gray-200 rounded-full h-4">
-                      <div
-                        className="bg-gradient-to-r from-yellow-400 to-orange-500 h-4 rounded-full transition-all duration-500"
-                        style={{
-                          width: `${allAchievements.length > 0 ? (getUnlockedAchievements().length / allAchievements.length) * 100 : 0}%`
-                        }}
-                      />
-                    </div>
-                  </div>
-
-                  {/* Achievements by Category */}
-                  {categories.map((category) => {
-                    const categoryAchievements = getAchievementsByCategory(category);
-                    if (categoryAchievements.length === 0) return null;
-
-                    return (
-                      <div key={category} className="bg-white rounded-xl shadow-lg p-6">
-                        <h3 className="text-lg font-bold text-gray-800 mb-4 capitalize">
-                          {category === 'attendance' && '📅 Kehadiran'}
-                          {category === 'academic' && '📚 Akademik'}
-                          {category === 'payment' && '💳 Pembayaran'}
-                          {category === 'social' && '👥 Sosial'}
-                          {category === 'milestone' && '🎯 Pencapaian Utama'}
-                          {category === 'special' && '⭐ Khas'}
-                        </h3>
-                        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-                          {categoryAchievements.map((achievement) => (
-                            <AchievementBadge
-                              key={achievement.id}
-                              achievement={achievement}
-                              size="md"
-                              showLocked={!achievement.unlocked}
-                              unlocked={achievement.unlocked}
-                            />
-                          ))}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </>
-              )}
-            </div>
-          )}
-
-          {/* Leaderboard Tab */}
-          {isStudent && gamificationEnabled && activeTab === 'leaderboard' && (
-            <div className="space-y-6">
-              <Leaderboard category="overall" limit={20} showCurrentUser={true} />
-            </div>
-          )}
-
-          {/* Activity Tab */}
-          {isStudent && gamificationEnabled && activeTab === 'activity' && (
-            <div className="space-y-6">
-              <GamificationActivityFeed limit={30} />
-              
-              {/* Real-time Stats Summary */}
-              {gamificationStats && (
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="bg-gradient-to-br from-yellow-50 to-orange-50 rounded-lg p-4 border-2 border-yellow-200">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm text-gray-600 mb-1">Total Mata</p>
-                        <p className="text-2xl font-bold text-yellow-700">{gamificationStats.points.total.toLocaleString()}</p>
-                      </div>
-                      <Zap className="w-8 h-8 text-yellow-500" />
-                    </div>
-                  </div>
-                  <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-lg p-4 border-2 border-purple-200">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm text-gray-600 mb-1">Pencapaian</p>
-                        <p className="text-2xl font-bold text-purple-700">{gamificationStats.achievementCount}</p>
-                      </div>
-                      <Award className="w-8 h-8 text-purple-500" />
-                    </div>
-                  </div>
-                  <div className="bg-gradient-to-br from-orange-50 to-red-50 rounded-lg p-4 border-2 border-orange-200">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm text-gray-600 mb-1">Streak Terpanjang</p>
-                        <p className="text-2xl font-bold text-orange-700">
-                          {Math.max(
-                            gamificationStats.streaks.attendance?.longest || 0,
-                            gamificationStats.streaks.login?.longest || 0
-                          )}
-                        </p>
-                      </div>
-                      <Flame className="w-8 h-8 text-orange-500" />
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {gamificationStats && (
-                <div className="space-y-6">
-                  <LevelProgress
-                    level={gamificationStats.points.level}
-                    xp={gamificationStats.points.xp}
-                    pointsToNextLevel={gamificationStats.points.pointsToNextLevel}
-                    progress={gamificationStats.points.progress}
-                  />
-
-                  {/* Detailed Stats */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="bg-white rounded-xl shadow-lg p-6">
-                      <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center space-x-2">
-                        <Zap className="w-5 h-5 text-yellow-500" />
-                        <span>Mata & XP</span>
-                      </h3>
-                      <div className="space-y-3">
-                        <div className="flex justify-between items-center">
-                          <span className="text-gray-600">Total Mata:</span>
-                          <span className="font-bold text-yellow-600">{gamificationStats.points.total.toLocaleString()}</span>
-                        </div>
-                        <div className="flex justify-between items-center">
-                          <span className="text-gray-600">Experience Points:</span>
-                          <span className="font-bold text-blue-600">{gamificationStats.points.xp.toLocaleString()}</span>
-                        </div>
-                        <div className="flex justify-between items-center">
-                          <span className="text-gray-600">Level Semasa:</span>
-                          <span className="font-bold text-emerald-600">Level {gamificationStats.points.level}</span>
-                        </div>
-                        <div className="flex justify-between items-center">
-                          <span className="text-gray-600">XP ke Level Seterusnya:</span>
-                          <span className="font-bold text-gray-800">{gamificationStats.points.pointsToNextLevel.toLocaleString()}</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="bg-white rounded-xl shadow-lg p-6">
-                      <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center space-x-2">
-                        <Flame className="w-5 h-5 text-orange-500" />
-                        <span>Streak</span>
-                      </h3>
-                      <div className="space-y-3">
-                        {gamificationStats.streaks.attendance && (
-                          <div>
-                            <div className="flex justify-between items-center mb-1">
-                              <span className="text-gray-600">Kehadiran:</span>
-                              <span className="font-bold text-orange-600">{gamificationStats.streaks.attendance.current} 🔥</span>
-                            </div>
-                            <p className="text-xs text-gray-500">Terpanjang: {gamificationStats.streaks.attendance.longest} hari</p>
-                          </div>
-                        )}
-                        {gamificationStats.streaks.login && (
-                          <div>
-                            <div className="flex justify-between items-center mb-1">
-                              <span className="text-gray-600">Log Masuk:</span>
-                              <span className="font-bold text-blue-600">{gamificationStats.streaks.login.current} 🔥</span>
-                            </div>
-                            <p className="text-xs text-gray-500">Terpanjang: {gamificationStats.streaks.login.longest} hari</p>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
         </Card.Content>
       </Card>
 

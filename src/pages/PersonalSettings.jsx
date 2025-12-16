@@ -405,42 +405,6 @@ const PersonalSettings = () => {
         </Card.Content>
       </Card>
 
-      {/* Gamification Settings */}
-      {currentUser && currentUser.role === 'student' && (
-        <Card className="border-2 border-emerald-100 shadow-lg">
-          <Card.Header className="bg-gradient-to-r from-emerald-50 to-green-50 border-b-2 border-emerald-200">
-            <Card.Title className="flex items-center space-x-2 text-emerald-800">
-              <Trophy className="w-5 h-5 text-emerald-600" />
-              <span>{localPreferences.language === 'ms' ? 'Gamifikasi' : 'Gamification'}</span>
-            </Card.Title>
-          </Card.Header>
-          <Card.Content className="bg-white">
-            <div className="space-y-4">
-              <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border-2 border-gray-200">
-                <div className="flex-1">
-                  <label className="block text-sm font-semibold text-gray-800 mb-1">
-                    {localPreferences.language === 'ms' ? 'Aktifkan Gamifikasi' : 'Enable Gamification'}
-                  </label>
-                  <p className="text-xs text-gray-600">
-                    {localPreferences.language === 'ms'
-                      ? 'Hidupkan atau matikan ciri gamifikasi seperti mata, level, dan pencapaian.'
-                      : 'Turn on or off gamification features like points, levels, and achievements.'}
-                  </p>
-                </div>
-                <label className="relative inline-flex items-center cursor-pointer ml-4">
-                  <input
-                    type="checkbox"
-                    checked={localPreferences.gamificationEnabled !== false}
-                    onChange={(e) => handlePreferenceChange('gamificationEnabled', e.target.checked)}
-                    className="sr-only peer"
-                  />
-                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-emerald-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
-                </label>
-              </div>
-            </div>
-          </Card.Content>
-        </Card>
-      )}
 
       {/* Font Settings */}
       <Card className="border-2 border-emerald-100 shadow-lg">

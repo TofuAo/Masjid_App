@@ -23,6 +23,8 @@ import { scheduleAdminActionCleanup } from './schedulers/adminActionCleanupJob.j
 import { scheduleMonthlyFeeGeneration, scheduleFeeSyncJob } from './schedulers/monthlyFeeGenerationJob.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { ensureLoginAttemptsTable } from './services/accountLockoutService.js';
+import { ensureMaintenanceModeTable } from './utils/maintenanceMode.js';
+import { checkMaintenanceMode, addMaintenanceHeaders } from './middleware/maintenanceMode.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -215,6 +217,15 @@ app.use(sanitizeInput);
 
 // ==================== END SECURITY MIDDLEWARE ====================
 
+// ==================== MAINTENANCE MODE ====================
+// Check maintenance mode on every request (before routes)
+// This middleware will block access based on maintenance mode settings
+app.use(checkMaintenanceMode);
+
+// Add maintenance status to response headers
+app.use(addMaintenanceHeaders);
+// ==================== END MAINTENANCE MODE ====================
+
 // Test database connection on startup
 try {
   await testConnection();
@@ -300,7 +311,7 @@ app.use('/uploads', (req, res, next) => {
 app.get('/', (req, res) => {
   res.json({ 
     status: 'ok', 
-    message: 'Masjid App API Server',
+    message: 'e-Sistem Kelas Pengajian Al-quran API Server',
     version: '1.0.0',
     endpoints: {
       health: '/health',
@@ -361,6 +372,7 @@ Promise.all([
   ensureAdminAccounts(), 
   ensureIbRole(), 
   ensureLoginAttemptsTable(),
+  ensureMaintenanceModeTable(),
   testConnection()
 ]).then(() => {
   app.listen(PORT, "0.0.0.0", () => {

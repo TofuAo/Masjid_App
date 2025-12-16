@@ -1,0 +1,39 @@
+# Cursor Rules for MyMasjidApp
+
+## Code Quality Principles
+
+- Prefer clarity and maintainability over cleverness
+- Follow existing project conventions
+- Keep functions small and single-purpose
+- Do not invent APIs or dependencies
+- Validate inputs and handle errors explicitly
+- Refactor before rewriting
+- Explain reasoning when suggesting changes
+
+## Project-Specific Guidelines
+
+### Code Style
+- Use ES modules (import/export)
+- Follow existing file structure (middleware, routes, controllers, services, utils)
+- Maintain clear separation of concerns
+
+### Error Handling
+- Always use explicit try-catch blocks where errors may occur
+- Provide meaningful error messages
+- Use the project's error handler middleware
+
+### Security
+- Validate and sanitize all inputs
+- Follow existing security middleware patterns (helmet, CORS, rate limiting)
+- Never expose sensitive information in error messages
+
+### Database
+- Use the existing database connection pool
+- Validate database inputs before queries
+- Handle connection errors gracefully
+
+### Function Design
+- Single responsibility principle - one function, one purpose
+- Keep functions focused and testable
+- Use descriptive function and variable names
+

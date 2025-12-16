@@ -2,6 +2,8 @@ import { pool, testConnection } from '../config/database.js';
 import { validationResult } from 'express-validator';
 import { sendFeePaymentConfirmation } from '../utils/emailService.js';
 import { generateMonthlyFeesManually, syncCurrentMonthFeesWithClassYuran } from '../schedulers/monthlyFeeGenerationJob.js';
+import { generateFeeReceipt } from '../utils/receiptService.js';
+import { getSafePagination } from '../utils/pagination.js';
 
 export const getAllFees = async (req, res) => {
   try {
@@ -112,9 +114,8 @@ export const getAllFees = async (req, res) => {
       queryParams.push(tahun, tahun);
     }
     
-    // Add pagination (inline to avoid ER_WRONG_ARGUMENTS on LIMIT/OFFSET)
-    const safeLimit = Math.max(1, parseInt(limit));
-    const offset = (Math.max(1, parseInt(page)) - 1) * safeLimit;
+    // Add pagination (using safe pagination utility to prevent SQL injection)
+    const { limit: safeLimit, offset } = getSafePagination(page, limit, 1, 1000);
     query += ` ORDER BY u.nama ASC LIMIT ${safeLimit} OFFSET ${offset}`;
     
     const [fees] = await pool.execute(query, queryParams);
@@ -356,6 +357,18 @@ export const createFee = async (req, res) => {
     // Set tarikh_bayar if status is paid
     const tarikh_bayar = (backendStatus === 'terbayar' || backendStatus === 'Bayar') ? feeDate : null;
     
+    // Generate receipt if fee is being created as paid
+    let receiptNumber = no_resit || null;
+    let receiptPath = resit_img || null;
+    if ((backendStatus === 'terbayar' || backendStatus === 'Bayar') && !receiptNumber) {
+      try {
+        const { generateUniqueReceiptNumber } = await import('../utils/receiptService.js');
+        receiptNumber = await generateUniqueReceiptNumber();
+      } catch (error) {
+        console.error('Error generating receipt number:', error);
+      }
+    }
+    
     // Ensure all values are not undefined (convert to null if undefined)
     const safeActualStudentIC = actualStudentIC || null;
     const safeJumlah = jumlah || 0;
@@ -365,13 +378,32 @@ export const createFee = async (req, res) => {
     const safeFeeBulan = feeBulan || null;
     const safeFeeTahun = feeTahun || null;
     const safeCaraBayar = cara_bayar || null;
-    const safeNoResit = no_resit || null;
-    const safeResitImg = resit_img || null;
+    const safeNoResit = receiptNumber || null;
+    const safeResitImg = receiptPath || null;
     
     const [result] = await pool.execute(`
       INSERT INTO fees (student_ic, jumlah, status, tarikh, tarikh_bayar, bulan, tahun, cara_bayar, no_resit, resit_img)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `, [safeActualStudentIC, safeJumlah, safeBackendStatus, safeFeeDate, safeTarikhBayar, safeFeeBulan, safeFeeTahun, safeCaraBayar, safeNoResit, safeResitImg]);
+    
+    // Generate receipt if fee is paid
+    if ((backendStatus === 'terbayar' || backendStatus === 'Bayar') && result.insertId) {
+      try {
+        const receipt = await generateFeeReceipt(result.insertId, {
+          receiptNumber: safeNoResit,
+          paymentMethod: safeCaraBayar || 'Tunai'
+        });
+        // Update with generated receipt path
+        await pool.execute(
+          'UPDATE fees SET resit_img = ?, no_resit = ? WHERE id = ?',
+          [receipt.receiptPath, receipt.receiptNumber, result.insertId]
+        );
+        console.log(`✅ Receipt generated for new fee ${result.insertId}: ${receipt.receiptNumber}`);
+      } catch (receiptError) {
+        console.error('Error generating receipt for new fee:', receiptError);
+        // Continue even if receipt generation fails
+      }
+    }
     
     const [newFee] = await pool.execute(`
       SELECT f.*, u.nama as pelajar_nama, u.ic as pelajar_ic, c.nama_kelas
@@ -468,11 +500,51 @@ export const updateFee = async (req, res) => {
     // Set tarikh_bayar if status is paid
     const tarikh_bayar = (backendStatus === 'terbayar' || backendStatus === 'Bayar') ? tarikh : null;
     
+    // Check if status is changing to paid
+    const [currentFee] = await pool.execute('SELECT status, no_resit, resit_img FROM fees WHERE id = ?', [id]);
+    const wasPaid = currentFee[0]?.status === 'terbayar' || currentFee[0]?.status === 'Bayar';
+    const isNowPaid = backendStatus === 'terbayar' || backendStatus === 'Bayar';
+    const statusChangedToPaid = !wasPaid && isNowPaid;
+    
+    // Generate receipt if status changed to paid and receipt doesn't exist
+    let receiptNumber = no_resit || currentFee[0]?.no_resit || null;
+    let receiptPath = resit_img || currentFee[0]?.resit_img || null;
+    
+    if (statusChangedToPaid && !receiptNumber) {
+      try {
+        const { generateUniqueReceiptNumber } = await import('../utils/receiptService.js');
+        receiptNumber = await generateUniqueReceiptNumber(id);
+      } catch (error) {
+        console.error('Error generating receipt number:', error);
+      }
+    }
+    
     await pool.execute(`
       UPDATE fees 
       SET student_ic = ?, jumlah = ?, status = ?, tarikh = ?, tarikh_bayar = ?, bulan = ?, tahun = ?, cara_bayar = ?, no_resit = ?, resit_img = ?, updated_at = CURRENT_TIMESTAMP
       WHERE id = ?
-    `, [actualStudentIC, jumlah, backendStatus, tarikh, tarikh_bayar, bulan, tahun, cara_bayar, no_resit, resit_img, id]);
+    `, [actualStudentIC, jumlah, backendStatus, tarikh, tarikh_bayar, bulan, tahun, cara_bayar, receiptNumber, receiptPath, id]);
+    
+    // Generate receipt if status changed to paid
+    if (statusChangedToPaid && !receiptPath) {
+      try {
+        const receipt = await generateFeeReceipt(id, {
+          receiptNumber: receiptNumber,
+          paymentMethod: cara_bayar || 'Tunai'
+        });
+        // Update with generated receipt path
+        await pool.execute(
+          'UPDATE fees SET resit_img = ?, no_resit = ? WHERE id = ?',
+          [receipt.receiptPath, receipt.receiptNumber, id]
+        );
+        receiptPath = receipt.receiptPath;
+        receiptNumber = receipt.receiptNumber;
+        console.log(`✅ Receipt generated for fee ${id}: ${receipt.receiptNumber}`);
+      } catch (receiptError) {
+        console.error('Error generating receipt for updated fee:', receiptError);
+        // Continue even if receipt generation fails
+      }
+    }
     
     const [updatedFee] = await pool.execute(`
       SELECT f.*, u.nama as pelajar_nama, u.ic as pelajar_ic, c.nama_kelas
@@ -536,15 +608,35 @@ export const markAsPaid = async (req, res) => {
       tahun = now.getFullYear();
     }
     
-    // Generate receipt number if not provided
-    const receiptNumber = no_resit || `R${String(id).padStart(3, '0')}`;
+    // Generate unique receipt number if not provided
+    let receiptNumber = no_resit;
+    if (!receiptNumber) {
+      const { generateUniqueReceiptNumber } = await import('../utils/receiptService.js');
+      receiptNumber = await generateUniqueReceiptNumber(id);
+    }
     const paymentMethod = cara_bayar || 'Tunai';
+    
+    // Always generate and save receipt for paid fees
+    let receiptPath = resit_img || null;
+    try {
+      const receipt = await generateFeeReceipt(id, {
+        receiptNumber,
+        paymentMethod
+      });
+      receiptPath = receipt.receiptPath;
+      receiptNumber = receipt.receiptNumber; // Use the receipt number from generated receipt
+      console.log(`✅ Receipt generated for fee ${id}: ${receipt.receiptNumber}`);
+    } catch (receiptError) {
+      console.error('Error generating receipt:', receiptError);
+      // If receipt generation fails, we should still proceed but log the error
+      // The receipt number will still be saved to the fee record
+    }
     
     await pool.execute(`
       UPDATE fees 
       SET status = 'terbayar', tarikh = CURDATE(), tarikh_bayar = CURDATE(), bulan = ?, tahun = ?, cara_bayar = ?, no_resit = ?, resit_img = ?, updated_at = CURRENT_TIMESTAMP
       WHERE id = ?
-    `, [bulan, tahun, paymentMethod, receiptNumber, resit_img || null, id]);
+    `, [bulan, tahun, paymentMethod, receiptNumber, receiptPath, id]);
     
     // Send confirmation email to student
     try {
@@ -570,9 +662,24 @@ export const markAsPaid = async (req, res) => {
       // Don't fail the request if email fails
     }
     
+    // Get updated fee with receipt info
+    const [updatedFee] = await pool.execute(`
+      SELECT f.*, u.nama as pelajar_nama, c.nama_kelas
+      FROM fees f
+      JOIN users u ON f.student_ic = u.ic
+      LEFT JOIN students s ON u.ic = s.user_ic
+      LEFT JOIN classes c ON s.kelas_id = c.id
+      WHERE f.id = ?
+    `, [id]);
+    
     res.json({
       success: true,
-      message: 'Fee marked as paid successfully'
+      message: 'Fee marked as paid successfully',
+      data: {
+        ...updatedFee[0],
+        receiptNumber,
+        receiptPath: receiptPath ? `/uploads/${receiptPath}` : null
+      }
     });
   } catch (error) {
     console.error('Mark as paid error:', error);

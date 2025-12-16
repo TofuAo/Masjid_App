@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Receipt - R03567</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Arial', 'Helvetica', sans-serif;
+            padding: 40px 20px;
+            background-color: #ffffff;
+        }
+        .receipt-container {
+            max-width: 700px;
+            margin: 0 auto;
+            background: white;
+            padding: 40px;
+            border: 1px solid #e0e0e0;
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 30px;
+        }
+        .logo-section {
+            flex: 0 0 auto;
+        }
+        .logo {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            object-fit: cover;
+            background-color: #ff9800;
+            padding: 10px;
+        }
+        .title-section {
+            flex: 1;
+            text-align: right;
+        }
+        .receipt-title {
+            font-size: 36px;
+            font-weight: bold;
+            color: #424242;
+            margin-bottom: 10px;
+        }
+        .receipt-number {
+            font-size: 14px;
+            color: #616161;
+            margin-bottom: 5px;
+        }
+        .receipt-date {
+            font-size: 14px;
+            color: #616161;
+        }
+        .content-section {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 30px;
+        }
+        .issuer-info {
+            flex: 1;
+        }
+        .issuer-name {
+            font-size: 16px;
+            font-weight: bold;
+            color: #212121;
+            margin-bottom: 10px;
+        }
+        .issuer-address {
+            font-size: 14px;
+            color: #616161;
+            line-height: 1.6;
+        }
+        .payer-info {
+            flex: 1;
+            text-align: right;
+        }
+        .payer-label {
+            font-size: 14px;
+            color: #616161;
+            margin-bottom: 5px;
+        }
+        .payer-name {
+            font-size: 16px;
+            font-weight: bold;
+            color: #212121;
+        }
+        .items-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+        .items-table thead {
+            background-color: #f5f5f5;
+        }
+        .items-table th {
+            padding: 12px;
+            text-align: left;
+            font-size: 14px;
+            font-weight: bold;
+            color: #424242;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        .items-table td {
+            padding: 12px;
+            font-size: 14px;
+            color: #212121;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        .items-table th:last-child,
+        .items-table td:last-child {
+            text-align: right;
+        }
+        .payment-summary {
+            margin-bottom: 30px;
+        }
+        .summary-row {
+            margin-bottom: 10px;
+        }
+        .summary-label {
+            font-size: 14px;
+            color: #616161;
+            display: inline-block;
+            min-width: 200px;
+        }
+        .summary-value {
+            font-size: 14px;
+            font-weight: bold;
+            color: #212121;
+        }
+        .total-amount {
+            font-size: 18px;
+            font-weight: bold;
+            color: #212121;
+            margin-top: 10px;
+        }
+        .issued-by {
+            border: 2px solid #f44336;
+            padding: 10px;
+            margin-top: 20px;
+            display: inline-block;
+        }
+        .issued-by-label {
+            font-size: 14px;
+            font-weight: bold;
+            color: #f44336;
+        }
+        .issued-by-value {
+            font-size: 14px;
+            color: #212121;
+            margin-top: 5px;
+        }
+        .transaction-section {
+            margin-top: 30px;
+        }
+        .transaction-title {
+            font-size: 16px;
+            font-weight: bold;
+            color: #212121;
+            margin-bottom: 15px;
+        }
+        .transaction-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .transaction-table thead {
+            background-color: #f5f5f5;
+        }
+        .transaction-table th {
+            padding: 12px;
+            text-align: left;
+            font-size: 14px;
+            font-weight: bold;
+            color: #424242;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        .transaction-table td {
+            padding: 12px;
+            font-size: 14px;
+            color: #212121;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        .transaction-table th:last-child,
+        .transaction-table td:last-child {
+            text-align: right;
+        }
+        .note-section {
+            margin-top: 20px;
+            font-size: 14px;
+            color: #616161;
+        }
+        @media print {
+            body {
+                padding: 0;
+            }
+            .receipt-container {
+                border: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="receipt-container">
+        <div class="header">
+            <div class="logo-section">
+                <img src="http://localhost:3000/logomnsa1.jpeg" alt="Logo" class="logo" onerror="this.style.display='none'">
+            </div>
+            <div class="title-section">
+                <div class="receipt-title">RECEIPT</div>
+                <div class="receipt-number">Receipt No.: R03567</div>
+                <div class="receipt-date">Receipt Date: 01-03-2025</div>
+            </div>
+        </div>
+        
+        <div class="content-section">
+            <div class="issuer-info">
+                <div class="issuer-name">Masjid App</div>
+                
+            </div>
+            <div class="payer-info">
+                <div class="payer-label">Received From:</div>
+                <div class="payer-name">Mohd Sawadihisam Bin Che Siok</div>
+            </div>
+        </div>
+        
+        <table class="items-table">
+            <thead>
+                <tr>
+                    <th>Description</th>
+                    <th>Amount (RM)</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Fee Mac 2025</td>
+                    <td>150.00</td>
+                </tr>
+            </tbody>
+        </table>
+        
+        <div class="payment-summary">
+            <div class="summary-row">
+                <span class="summary-label">TOTAL AMOUNT RECEIVED:</span>
+                <span class="summary-value total-amount">150.00</span>
+            </div>
+            <div class="summary-row">
+                <span class="summary-label">Payment Method:</span>
+                <span class="summary-value">ONLINE</span>
+            </div>
+            <div class="summary-row">
+                <span class="summary-label">Payment Date:</span>
+                <span class="summary-value">01-03-2025</span>
+            </div>
+            <div class="issued-by">
+                <div class="issued-by-label">Issued By:</div>
+                <div class="issued-by-value">Masjid App</div>
+            </div>
+            
+        </div>
+        
+        
+        <div class="transaction-section">
+            <div class="transaction-title">Transaction</div>
+            <table class="transaction-table">
+                <thead>
+                    <tr>
+                        <th>Invoice No.</th>
+                        <th>Date</th>
+                        <th>Amount (RM)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>IV0007040</td>
+                        <td>01-03-2025</td>
+                        <td>150.00</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        
+    </div>
+</body>
+</html>

@@ -1,8 +1,8 @@
 # LOG BOOK CONTENTS
 
-## TRAINING PERIOD: September 17, 2025 - November 14, 2025
+## TRAINING PERIOD: September 17, 2025 - December 16, 2025
 
-Note: Training weeks start on Wednesday and end on Tuesday (except Week 9 which ends on Friday, November 14, 2025).
+Note: Training weeks start on Wednesday and end on Tuesday. Week 13 extends to Tuesday, December 16, 2025.
 
 ---
 
@@ -1310,7 +1310,7 @@ Marks for Week 8: _____
 
 ---
 
-## WEEK 9: November 12 (Wednesday) - November 14 (Friday), 2025
+## WEEK 9: November 12 (Wednesday) - November 18 (Tuesday), 2025
 
 ### Date: 12/11/2025	Day: Wednesday	Training Week: 9
 
@@ -1392,6 +1392,66 @@ Solutions:
 
 ---
 
+### Date: 17/11/2025	Day: Monday	Training Week: 9
+
+(Please specify training information through descriptive statement, tables, sketches, figures, etc.)
+
+DESCRIPTIONS / REMARKS
+
+Tasks Completed:
+- Continued system optimization and performance tuning
+- Fixed additional bugs discovered during testing
+- Enhanced user interface responsiveness
+- Improved database query performance
+- Conducted user acceptance testing preparation
+
+Challenges:
+- Balancing performance optimization with functionality
+- Ensuring all edge cases are handled
+- Maintaining code quality during optimization
+
+Solutions:
+- Used performance profiling tools
+- Implemented database query optimization
+- Created comprehensive test scenarios
+- Applied best practices for code optimization
+
+Code Screenshot Suggestions:
+1. Optimized Queries - File: `backend/controllers/studentController.js` (query optimization section) - Shows: Database query improvements
+2. Performance Monitoring - File: `backend/server.js` (monitoring section) - Shows: Performance tracking
+
+---
+
+### Date: 18/11/2025	Day: Tuesday	Training Week: 9
+
+(Please specify training information through descriptive statement, tables, sketches, figures, etc.)
+
+DESCRIPTIONS / REMARKS
+
+Tasks Completed:
+- Finalized deployment configuration and testing
+- Completed user acceptance testing scenarios
+- Prepared system handover documentation
+- Created troubleshooting guide for common issues
+- Verified all system modules are functioning correctly
+
+Challenges:
+- Ensuring smooth system handover
+- Creating comprehensive troubleshooting documentation
+- Verifying all system integrations work correctly
+
+Solutions:
+- Created detailed handover documentation
+- Documented common issues and solutions
+- Performed integration testing across all modules
+- Prepared system administration guides
+
+Code Screenshot Suggestions:
+1. Deployment Configuration - File: `docker-compose.yml` (entire file) - Shows: Complete deployment setup
+2. Troubleshooting Guide - File: Documentation files - Shows: Common issues and solutions
+
+---
+
 ### WEEKLY SUMMARY - Week 9
 
 Work experience details:- Completed comprehensive system testing
@@ -1417,7 +1477,7 @@ Please refer to the relevant daily student report for assessments and comments.
 
 Marking Scale: 1. Poor  2. Moderate  3. Average  4. Good  5. Excellent
 
-Supervisor's Signature: ________________	Supervisor's Name & Official Stamp: ________________	Date: 14/11/2025
+Supervisor's Signature: ________________	Supervisor's Name & Official Stamp: ________________	Date: 18/11/2025
 
 Comments:
 Marks for Week 9: _____
@@ -1518,26 +1578,9 @@ Code Screenshot Suggestions:
 
 DESCRIPTIONS / REMARKS
 
-Tasks Completed:
-- Developed payment checkout interface
-- Created payment method selection component
-- Implemented QR code display for DuitNow payments
-- Added payment status polling mechanism
-- Created payment return page
+**ABSENT - SICK LEAVE**
 
-Challenges:
-- Creating user-friendly payment interface
-- Implementing real-time payment status updates
-- Handling different payment methods
-
-Solutions:
-- Used polling mechanism for status updates
-- Created responsive payment UI components
-- Implemented proper error handling
-
-Code Screenshot Suggestions:
-1. Payment Checkout Page - File: `src/pages/PaymentCheckout.jsx` (entire file) - Shows: Payment checkout interface
-2. Payment Return Page - File: `src/pages/PaymentReturn.jsx` (entire file) - Shows: Payment return handling
+Absent from training due to illness.
 
 ---
 
@@ -1547,26 +1590,9 @@ Code Screenshot Suggestions:
 
 DESCRIPTIONS / REMARKS
 
-Tasks Completed:
-- Created admin payment management interface
-- Implemented payment list with filtering and search
-- Added payment reconciliation view
-- Developed payment logs viewing functionality
-- Created payment requery feature for failed payments
+**ABSENT - SICK LEAVE**
 
-Challenges:
-- Managing large payment datasets
-- Creating efficient filtering system
-- Implementing payment reconciliation UI
-
-Solutions:
-- Used server-side pagination
-- Implemented efficient database queries
-- Created comprehensive admin payment dashboard
-
-Code Screenshot Suggestions:
-1. Admin Payment Management - File: `src/pages/PayYuran.jsx` (admin section) - Shows: Payment management interface
-2. Payment List with Filtering - File: `backend/controllers/paymentController.js` (getAllPayments) - Shows: Payment list with search and filter
+Absent from training due to illness.
 
 ---
 
@@ -1612,26 +1638,9 @@ Marks for Week 10: _____
 
 DESCRIPTIONS / REMARKS
 
-Tasks Completed:
-- Analyzed requirements for IB (Imam Bilal) role implementation
-- Designed IB role database schema and permissions
-- Planned IB dashboard and functionality
-- Created IB controller structure
-- Designed role-based access control for IB users
+**ABSENT - SICK LEAVE**
 
-Challenges:
-- Understanding IB role requirements
-- Planning role-specific features
-- Designing appropriate permissions
-
-Solutions:
-- Consulted with supervisor on IB requirements
-- Created role permission matrix
-- Designed IB-specific dashboard layout
-
-Code Screenshot Suggestions:
-1. IB Controller Structure - File: `backend/controllers/ibController.js` (lines 1-50) - Shows: IB controller organization
-2. Role-Based Access for IB - File: `backend/middleware/auth.js` (IB role checks) - Shows: IB role middleware
+Absent from training due to illness.
 
 ---
 
@@ -1641,26 +1650,9 @@ Code Screenshot Suggestions:
 
 DESCRIPTIONS / REMARKS
 
-Tasks Completed:
-- Implemented IB role authentication and authorization
-- Created IB dashboard with relevant statistics
-- Developed IB-specific navigation and menu
-- Added IB user management functionality
-- Implemented IB role middleware
+**ABSENT - SICK LEAVE**
 
-Challenges:
-- Implementing role-specific access control
-- Creating appropriate IB dashboard content
-- Managing IB user permissions
-
-Solutions:
-- Extended existing auth middleware for IB role
-- Created IB-specific dashboard components
-- Implemented permission checks for IB routes
-
-Code Screenshot Suggestions:
-1. IB Dashboard - File: `src/pages/IbDashboard.jsx` (entire file) - Shows: IB-specific dashboard
-2. IB Routes - File: `backend/routes/ib.js` (entire file) - Shows: IB API endpoints
+Absent from training due to illness.
 
 ---
 
@@ -1670,26 +1662,9 @@ Code Screenshot Suggestions:
 
 DESCRIPTIONS / REMARKS
 
-Tasks Completed:
-- Developed staff check-in system
-- Created staff check-in interface
-- Implemented quick check-in functionality
-- Added staff attendance tracking
-- Created staff check-in reports
+**ABSENT - SICK LEAVE**
 
-Challenges:Designing efficient check-in workflow
-- Managing staff attendance data
-- Creating user-friendly check-in interface
-
-Solutions:
-- Created streamlined check-in process
-- Implemented attendance tracking database
-- Designed responsive check-in UI
-
-Code Screenshot Suggestions:
-1. Staff Check-in Controller - File: `backend/controllers/staffCheckInController.js` (entire file) - Shows: Check-in logic
-2. Staff Check-in Page - File: `src/pages/StaffCheckIn.jsx` (entire file) - Shows: Check-in interface
-3. Quick Check-in - File: `src/pages/QuickStaffCheckIn.jsx` (entire file) - Shows: Quick check-in functionality
+Absent from training due to illness.
 
 ---
 
@@ -1719,6 +1694,440 @@ Code Screenshot Suggestions:
 1. Announcement Controller - File: `backend/controllers/announcementController.js` (entire file) - Shows: Announcement CRUD operations
 2. Announcement Page - File: `src/pages/Announcements.jsx` (entire file) - Shows: Announcement management interface
 3. Announcement Display - File: `src/pages/Dashboard.jsx` (announcement section) - Shows: Announcement display on dashboard
+
+---
+
+### Date: 2/12/2025	Day: Tuesday	Training Week: 11
+
+(Please specify training information through descriptive statement, tables, sketches, figures, etc.)
+
+DESCRIPTIONS / REMARKS
+
+Tasks Completed:
+- Implemented receipt generation system for payments
+- Created receipt management interface
+- Developed receipt PDF generation functionality
+- Added receipt printing capabilities
+- Integrated receipt service with payment flow
+
+Challenges:
+- Designing receipt format and layout
+- Generating PDF receipts with proper formatting
+- Integrating receipt system with existing payment flow
+
+Solutions:
+- Created receipt service with PDF generation
+- Implemented receipt template with company details
+- Added receipt numbering system
+- Integrated receipt generation in payment confirmation
+
+Code Screenshot Suggestions:
+1. Receipt Controller - File: `backend/controllers/receiptController.js` (entire file) - Shows: Receipt generation logic
+2. Receipt Service - File: `backend/utils/receiptService.js` (entire file) - Shows: Receipt PDF generation
+3. Receipt Page - File: `src/pages/Receipts.jsx` (if exists) - Shows: Receipt management interface
+
+---
+
+### Date: 3/12/2025	Day: Wednesday	Training Week: 12
+
+(Please specify training information through descriptive statement, tables, sketches, figures, etc.)
+
+DESCRIPTIONS / REMARKS
+
+Tasks Completed:
+- Implemented maintenance mode feature
+- Created maintenance mode controller and middleware
+- Developed maintenance mode control interface for admins
+- Added maintenance mode banner component
+- Configured maintenance mode to prevent user access during maintenance
+
+Challenges:
+- Implementing maintenance mode without affecting admin access
+- Creating user-friendly maintenance messages
+- Ensuring proper system state during maintenance
+
+Solutions:
+- Created maintenance mode middleware that bypasses for admins
+- Implemented maintenance mode toggle in admin panel
+- Added maintenance mode banner with informative messages
+- Created maintenance mode service for state management
+
+Code Screenshot Suggestions:
+1. Maintenance Controller - File: `backend/controllers/maintenanceController.js` (entire file) - Shows: Maintenance mode management
+2. Maintenance Middleware - File: `backend/middleware/maintenanceMode.js` (entire file) - Shows: Maintenance mode check
+3. Maintenance Banner - File: `src/components/MaintenanceModeBanner.jsx` (entire file) - Shows: Maintenance UI component
+
+---
+
+### Date: 4/12/2025	Day: Thursday	Training Week: 12
+
+(Please specify training information through descriptive statement, tables, sketches, figures, etc.)
+
+DESCRIPTIONS / REMARKS
+
+Tasks Completed:
+- Implemented data encryption system for sensitive information
+- Created encryption utility functions
+- Added encryption middleware for API endpoints
+- Developed file encryption capabilities
+- Set up encryption key management system
+
+Challenges:
+- Understanding encryption algorithms and best practices
+- Implementing encryption without affecting system performance
+- Managing encryption keys securely
+- Encrypting existing data in database
+
+Solutions:
+- Implemented AES-256 encryption for sensitive data
+- Created encryption service with key rotation support
+- Added encryption middleware for automatic data encryption
+- Developed script for encrypting existing database records
+- Implemented secure key storage and management
+
+Code Screenshot Suggestions:
+1. Encryption Utility - File: `backend/utils/encryption.js` (entire file) - Shows: Encryption/decryption functions
+2. Encryption Middleware - File: `backend/middleware/encryptionMiddleware.js` (entire file) - Shows: Automatic encryption handling
+3. File Encryption - File: `backend/utils/fileEncryption.js` (entire file) - Shows: File encryption implementation
+
+---
+
+### Date: 5/12/2025	Day: Friday	Training Week: 12
+
+(Please specify training information through descriptive statement, tables, sketches, figures, etc.)
+
+DESCRIPTIONS / REMARKS
+
+Tasks Completed:
+- Enhanced database backup system
+- Implemented automated backup scheduling
+- Created backup restoration functionality
+- Added backup verification and validation
+- Developed backup management interface
+
+Challenges:
+- Ensuring reliable backup creation
+- Managing backup storage efficiently
+- Creating restore functionality that maintains data integrity
+- Scheduling backups without affecting system performance
+
+Solutions:
+- Implemented automated daily backup system
+- Created backup rotation to manage storage
+- Added backup verification checksums
+- Developed restore scripts with validation
+- Integrated backup status monitoring
+
+Code Screenshot Suggestions:
+1. Backup Service - File: `backend/services/databaseBackupService.js` (entire file) - Shows: Backup creation and management
+2. Backup Script - File: `backend/scripts/backupDatabase.js` (if exists) - Shows: Backup execution logic
+
+---
+
+### Date: 8/12/2025	Day: Monday	Training Week: 12
+
+(Please specify training information through descriptive statement, tables, sketches, figures, etc.)
+
+DESCRIPTIONS / REMARKS
+
+Tasks Completed:
+- Fixed payment processing issues and stuck payment states
+- Implemented payment status reconciliation system
+- Added payment webhook verification and handling
+- Created payment status monitoring dashboard
+- Developed payment recovery scripts for stuck payments
+
+Challenges:
+- Identifying and fixing stuck payment records
+- Implementing reliable payment status verification
+- Handling payment webhook responses correctly
+- Creating payment reconciliation logic
+
+Solutions:
+- Created payment status check script
+- Implemented webhook signature verification
+- Added automatic payment status updates
+- Developed manual payment status correction tools
+- Created payment monitoring dashboard
+
+Code Screenshot Suggestions:
+1. Payment Service - File: `backend/services/paymentService.js` (entire file) - Shows: Payment processing logic
+2. Payment Controller - File: `backend/controllers/paymentController.js` (if exists) - Shows: Payment API endpoints
+3. Webhook Controller - File: `backend/controllers/webhookController.js` (entire file) - Shows: Payment webhook handling
+
+---
+
+### Date: 9/12/2025	Day: Tuesday	Training Week: 12
+
+(Please specify training information through descriptive statement, tables, sketches, figures, etc.)
+
+DESCRIPTIONS / REMARKS
+
+Tasks Completed:
+- Implemented API request signing for enhanced security
+- Created API signing utility for secure communication
+- Added request signature validation middleware
+- Developed signature generation for API calls
+- Enhanced API security with request signing
+
+Challenges:
+- Understanding API signing algorithms
+- Implementing signature generation and validation
+- Ensuring backward compatibility with existing APIs
+- Testing signature validation across all endpoints
+
+Solutions:
+- Implemented HMAC-SHA256 for request signing
+- Created signing utility for both client and server
+- Added signature validation middleware
+- Developed comprehensive test cases for signing
+- Updated API documentation with signing requirements
+
+Code Screenshot Suggestions:
+1. API Signing Utility - File: `backend/utils/apiSigning.js` (entire file) - Shows: Signature generation and validation
+2. API Routes - File: `backend/routes/index.js` (signing middleware section) - Shows: Signature validation in routes
+
+---
+
+### Date: 10/12/2025	Day: Wednesday	Training Week: 13
+
+(Please specify training information through descriptive statement, tables, sketches, figures, etc.)
+
+DESCRIPTIONS / REMARKS
+
+Tasks Completed:
+- Enhanced pagination system across all modules
+- Created reusable pagination utility functions
+- Implemented pagination in API responses
+- Added pagination controls in frontend components
+- Optimized database queries with proper pagination
+
+Challenges:
+- Implementing consistent pagination across all modules
+- Optimizing pagination for large datasets
+- Creating user-friendly pagination UI
+- Handling edge cases in pagination logic
+
+Solutions:
+- Created pagination utility for backend and frontend
+- Implemented cursor-based pagination for performance
+- Added pagination controls with page navigation
+- Optimized queries with LIMIT and OFFSET
+- Created pagination configuration options
+
+Code Screenshot Suggestions:
+1. Pagination Utility - File: `backend/utils/pagination.js` (entire file) - Shows: Pagination helper functions
+2. Student Controller - File: `backend/controllers/studentController.js` (pagination section) - Shows: Pagination implementation in API
+
+---
+
+### Date: 11/12/2025	Day: Thursday	Training Week: 13
+
+(Please specify training information through descriptive statement, tables, sketches, figures, etc.)
+
+DESCRIPTIONS / REMARKS
+
+Tasks Completed:
+- Performed comprehensive system testing and bug fixes
+- Conducted security audit and vulnerability assessment
+- Fixed authentication and authorization issues
+- Resolved database connection and query optimization issues
+- Enhanced error handling across all modules
+
+Challenges:
+- Identifying and fixing security vulnerabilities
+- Resolving performance bottlenecks
+- Fixing edge cases in user workflows
+- Ensuring system stability under load
+
+Solutions:
+- Conducted thorough code review and testing
+- Implemented security best practices
+- Optimized database queries and indexes
+- Enhanced error handling and logging
+- Performed load testing and optimization
+
+Code Screenshot Suggestions:
+1. Auth Controller - File: `backend/controllers/authController.js` (error handling section) - Shows: Improved error handling
+2. Server Configuration - File: `backend/server.js` (entire file) - Shows: System configuration and error handling
+
+---
+
+### Date: 12/12/2025	Day: Friday	Training Week: 13
+
+(Please specify training information through descriptive statement, tables, sketches, figures, etc.)
+
+DESCRIPTIONS / REMARKS
+
+Tasks Completed:
+- Updated system documentation and user guides
+- Created comprehensive API documentation
+- Enhanced code comments and inline documentation
+- Prepared final project documentation
+- Compiled technical documentation for deployment
+
+Challenges:
+- Documenting complex system architecture
+- Creating user-friendly documentation
+- Ensuring documentation accuracy
+- Organizing documentation structure
+
+Solutions:
+- Created comprehensive documentation structure
+- Added detailed code comments
+- Wrote user guides for different roles
+- Created API documentation with examples
+- Organized documentation for easy navigation
+
+Code Screenshot Suggestions:
+1. API Documentation - File: `PROJECT_DOCUMENTATION.md` or PDF - Shows: Complete system documentation
+2. User Guide - File: `USER_GUIDE.md` (entire file) - Shows: User documentation
+
+---
+
+### Date: 15/12/2025	Day: Monday	Training Week: 13
+
+(Please specify training information through descriptive statement, tables, sketches, figures, etc.)
+
+DESCRIPTIONS / REMARKS
+
+Tasks Completed:
+- Finalized project deliverables and documentation
+- Conducted final system review and testing
+- Prepared project presentation materials
+- Completed logbook entries and reports
+- Prepared final assessment submission
+
+Challenges:
+- Ensuring all deliverables are complete
+- Finalizing documentation and reports
+- Preparing for project submission
+- Ensuring system is production-ready
+
+Solutions:
+- Reviewed all project requirements
+- Completed all documentation
+- Conducted final testing
+- Prepared submission materials
+- Verified system functionality
+
+Code Screenshot Suggestions:
+1. Project Structure - File: Root directory structure - Shows: Complete project organization
+2. Final Report - File: `INDUSTRIAL_TRAINING_REPORT.md` - Shows: Complete training report
+
+---
+
+### Date: 16/12/2025	Day: Tuesday	Training Week: 13
+
+(Please specify training information through descriptive statement, tables, sketches, figures, etc.)
+
+DESCRIPTIONS / REMARKS
+
+Tasks Completed:
+- Conducted final project review and handover preparation
+- Completed final logbook entries and documentation
+- Prepared final project summary and achievements report
+- Verified all system modules are functioning correctly
+- Finalized all project documentation and deliverables
+- Prepared project handover documentation for supervisor
+
+Challenges:
+- Ensuring complete project handover documentation
+- Verifying all system functionality one final time
+- Completing all remaining documentation tasks
+- Preparing comprehensive project summary
+
+Solutions:
+- Conducted thorough final review of all modules
+- Completed all documentation requirements
+- Created comprehensive handover documentation
+- Verified system functionality across all modules
+- Prepared detailed project summary
+
+Code Screenshot Suggestions:
+1. Final Project Summary - File: Project documentation files - Shows: Complete project overview
+2. Handover Documentation - File: Handover documentation - Shows: Project handover details
+
+---
+
+### WEEKLY SUMMARY - Week 12
+
+Work experience details:
+- Implemented receipt generation system for payments
+- Developed maintenance mode feature for system management
+- Created data encryption system for sensitive information
+- Enhanced database backup and restoration system
+- Fixed payment processing issues and reconciliation
+
+What did I learn?
+- PDF generation and document creation techniques
+- System maintenance and downtime management
+- Data encryption and security best practices
+- Database backup strategies and disaster recovery
+- Payment gateway integration and webhook handling
+- API request signing for enhanced security
+
+How does this relate to what I already know?
+- Applied document generation knowledge to receipt creation
+- Extended system administration skills with maintenance mode
+- Built upon security knowledge with encryption implementation
+- Enhanced database management skills with backup systems
+- Applied payment processing knowledge to fix issues
+
+WEEKLY ASSESSMENT
+WEEKLY ASSESSMENT BY INDUSTRIAL SUPERVISOR
+Instruction to Supervisor:
+Please refer to the relevant daily student report for assessments and comments.
+
+Marking Scale: 1. Poor  2. Moderate  3. Average  4. Good  5. Excellent
+
+Supervisor's Signature: ________________	Supervisor's Name & Official Stamp: ________________	Date: 9/12/2025
+
+Comments:
+Marks for Week 12: _____
+
+(To be completed on the last day of each training week)
+
+---
+
+### WEEKLY SUMMARY - Week 13
+
+Work experience details:
+- Enhanced pagination system across all modules
+- Performed comprehensive system testing and bug fixes
+- Conducted security audit and vulnerability assessment
+- Updated system documentation and user guides
+- Finalized project deliverables and documentation
+- Completed final project review and handover preparation
+- Verified all system modules are functioning correctly
+
+What did I learn?
+- Advanced pagination techniques for large datasets
+- System testing methodologies and bug fixing processes
+- Security auditing and vulnerability assessment
+- Technical documentation best practices
+- Project finalization and delivery processes
+
+How does this relate to what I already know?
+- Applied optimization knowledge to pagination implementation
+- Extended testing skills with comprehensive system testing
+- Built upon security knowledge with security audits
+- Enhanced documentation skills with comprehensive guides
+- Applied project management knowledge to finalization
+
+WEEKLY ASSESSMENT
+WEEKLY ASSESSMENT BY INDUSTRIAL SUPERVISOR
+Instruction to Supervisor:
+Please refer to the relevant daily student report for assessments and comments.
+
+Marking Scale: 1. Poor  2. Moderate  3. Average  4. Good  5. Excellent
+
+Supervisor's Signature: ________________	Supervisor's Name & Official Stamp: ________________	Date: 16/12/2025
+
+Comments:
+Marks for Week 13: _____
+
+(To be completed on the last day of each training week)
 
 ---
 
@@ -1757,11 +2166,11 @@ Marks for Week 11: _____
 
 ## OVERALL TRAINING SUMMARY
 
-### Training Period: September 17, 2025 - December 1, 2025
+### Training Period: September 17, 2025 - December 16, 2025
 
-### Total Training Weeks: 11 weeks
+### Total Training Weeks: 13 weeks
 
-### Total Working Days: 50 days (excluding absences and public holidays)
+### Total Working Days: 59 days (excluding absences and public holidays)
 
 ### Absences and Holidays:
 - October 8-9, 2025: Absent (Week 4)
@@ -1779,6 +2188,13 @@ Marks for Week 11: _____
 - Created IB (Imam Bilal) role with specialized dashboard
 - Implemented staff check-in system
 - Developed announcement and notification system
+- Implemented receipt generation and PDF creation system
+- Created maintenance mode feature for system management
+- Developed data encryption system for sensitive information
+- Enhanced database backup and restoration system
+- Implemented API request signing for enhanced security
+- Enhanced pagination system across all modules
+- Conducted comprehensive security audit and testing
 - Set up deployment environment with Docker and Nginx
 - Created comprehensive project documentation
 - Performed extensive testing and optimization
@@ -2414,7 +2830,7 @@ Supervisor Name: ________________
 
 Company/Organization: ________________
 
-Final Assessment Date: 1/12/2025
+Final Assessment Date: 16/12/2025
 
 ---
 

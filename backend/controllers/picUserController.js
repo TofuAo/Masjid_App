@@ -2,6 +2,7 @@ import bcrypt from 'bcryptjs';
 import { validationResult } from 'express-validator';
 import { pool } from '../config/database.js';
 import { formatICWithHyphen } from '../utils/icFormatter.js';
+import { createSnapshot } from '../utils/adminActionSnapshots.js';
 
 const PIC_ROLE = 'pic';
 
@@ -525,12 +526,49 @@ export const deletePicUser = async (req, res) => {
     
     const actualIc = user.ic;
     const normalizedIc = ic.replace(/\D/g, '');
+    const adminIc = req.user?.ic || req.user?.userId;
     
     console.log('[DeletePIC] Found user:', actualIc, 'Role:', user.role);
     console.log('[DeletePIC] User verified (found by listPicUsers query logic). Proceeding with delete.');
 
+    // Get all user roles for snapshot
+    const [allUserRoles] = await pool.execute(
+      `SELECT role FROM user_roles 
+       WHERE (REPLACE(user_ic, '-', '') = ? OR user_ic = ?)`,
+      [normalizedIc, actualIc]
+    );
+    const userRolesList = allUserRoles.map(r => r.role);
+
+    // Prepare snapshot data
+    const snapshotData = {
+      user: {
+        ic: user.ic,
+        nama: user.nama,
+        email: user.email,
+        telefon: user.telefon,
+        status: user.status,
+        role: user.role,
+        created_at: user.created_at,
+        updated_at: user.updated_at
+      },
+      roles: userRolesList,
+      primary_role: user.role,
+      has_other_roles: user.role !== PIC_ROLE
+    };
+
     if (user.role !== PIC_ROLE) {
       // Delete PIC role from user_roles using actual IC from database
+      // Create snapshot before deletion for undo capability
+      await createSnapshot({
+        entityType: 'picUser',
+        entityId: 0, // Not using entity_id for PIC users, using entity_identifier instead
+        entityIdentifier: actualIc,
+        operation: 'delete',
+        data: snapshotData,
+        metadata: { action_type: 'remove_pic_role' },
+        actorIc: adminIc
+      });
+
       await pool.execute(
         `DELETE FROM user_roles 
          WHERE (REPLACE(user_ic, '-', '') = ? OR user_ic = ?) AND role = ?`,
@@ -548,6 +586,24 @@ export const deletePicUser = async (req, res) => {
        WHERE (REPLACE(user_ic, '-', '') = ? OR user_ic = ?) AND role <> ?`,
       [normalizedIc, actualIc, PIC_ROLE]
     );
+
+    // Create snapshot before deletion for undo capability
+    const willDeleteUser = otherRoles.length === 0;
+    await createSnapshot({
+      entityType: 'picUser',
+      entityId: 0, // Not using entity_id for PIC users, using entity_identifier instead
+      entityIdentifier: actualIc,
+      operation: 'delete',
+      data: {
+        ...snapshotData,
+        other_roles: otherRoles.map(r => r.role),
+        will_delete_user: willDeleteUser
+      },
+      metadata: { 
+        action_type: willDeleteUser ? 'delete_pic_user' : 'remove_pic_role_and_update_primary'
+      },
+      actorIc: adminIc
+    });
 
     // Delete PIC role using actual IC
     await pool.execute(

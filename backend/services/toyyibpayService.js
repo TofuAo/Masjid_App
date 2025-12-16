@@ -390,6 +390,12 @@ export async function updatePaymentAfterCallback(paymentId, callbackData) {
             : payments[0].metadata || {};
 
           if (metadata.fee_id) {
+            const feeId = metadata.fee_id;
+            
+            // Generate unique receipt number
+            const { generateUniqueReceiptNumber } = await import('../utils/receiptService.js');
+            const receiptNumber = await generateUniqueReceiptNumber(feeId);
+            
             // Update fee status to paid
             await connection.execute(
               `UPDATE fees 
@@ -399,8 +405,28 @@ export async function updatePaymentAfterCallback(paymentId, callbackData) {
                    no_resit = ?,
                    updated_at = CURRENT_TIMESTAMP
                WHERE id = ?`,
-              [parsed.transactionId || `TPAY-${Date.now()}`, metadata.fee_id]
+              [receiptNumber, feeId]
             );
+            
+            // Generate receipt for the fee
+            try {
+              const { generateFeeReceipt } = await import('../utils/receiptService.js');
+              const receipt = await generateFeeReceipt(feeId, {
+                receiptNumber,
+                paymentMethod: 'ToyyibPay',
+                paymentId: paymentId,
+                billId: parsed.transactionId || parsed.billcode || null
+              });
+              // Update with generated receipt path
+              await connection.execute(
+                'UPDATE fees SET resit_img = ?, no_resit = ? WHERE id = ?',
+                [receipt.receiptPath, receipt.receiptNumber, feeId]
+              );
+              console.log(`✅ Receipt generated for fee ${feeId} via ToyyibPay: ${receipt.receiptNumber}`);
+            } catch (receiptError) {
+              console.error('Error generating receipt for ToyyibPay payment:', receiptError);
+              // Continue even if receipt generation fails
+            }
           }
         } catch (e) {
           console.error('Error updating fee record:', e);

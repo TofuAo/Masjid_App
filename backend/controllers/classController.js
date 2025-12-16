@@ -2,6 +2,7 @@ import { pool, testConnection } from '../config/database.js';
 import { validationResult } from 'express-validator';
 import { safeParseJSON } from '../utils/jsonParser.js';
 import { createSnapshot, SNAPSHOT_TTL_HOURS } from '../utils/adminActionSnapshots.js';
+import { getSafePagination } from '../utils/pagination.js';
 
 export const getAllClasses = async (req, res) => {
   try {
@@ -49,9 +50,8 @@ export const getAllClasses = async (req, res) => {
       queryParams.push(guru_id);
     }
     
-    // Add pagination (inline to avoid ER_WRONG_ARGUMENTS on LIMIT/OFFSET)
-    const safeLimit = Math.max(1, defaultLimit);
-    const offset = (Math.max(1, parseInt(page)) - 1) * safeLimit;
+    // Add pagination (using safe pagination utility to prevent SQL injection)
+    const { limit: safeLimit, offset } = getSafePagination(page, defaultLimit, 1, defaultLimit);
     query += ` GROUP BY c.id, c.nama_kelas, c.level, c.sessions, c.yuran, c.guru_ic, c.kapasiti, c.status, u.nama ORDER BY c.created_at DESC LIMIT ${safeLimit} OFFSET ${offset}`;
     
     const [classes] = await pool.execute(query, queryParams);

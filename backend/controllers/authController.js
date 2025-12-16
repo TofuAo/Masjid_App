@@ -1682,8 +1682,7 @@ export const getPreferences = async (req, res) => {
       colorScheme: 'summer', // Default to green emerald (summer)
       language: 'ms',
       fontFamily: 'system',
-      fontSize: 'medium',
-      gamificationEnabled: true // Default to enabled
+      fontSize: 'medium'
     };
 
     res.json({
@@ -1711,7 +1710,7 @@ export const updatePreferences = async (req, res) => {
       });
     }
 
-    const { theme, colorScheme, language, fontFamily, fontSize, gamificationEnabled } = req.body;
+    const { theme, colorScheme, language, fontFamily, fontSize } = req.body;
 
     // Validate preferences
     const validThemes = ['light', 'dark', 'auto'];
@@ -1735,9 +1734,6 @@ export const updatePreferences = async (req, res) => {
     }
     if (fontSize && validFontSizes.includes(fontSize)) {
       preferences.fontSize = fontSize;
-    }
-    if (typeof gamificationEnabled === 'boolean') {
-      preferences.gamificationEnabled = gamificationEnabled;
     }
 
     // Get existing preferences and merge

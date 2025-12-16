@@ -536,13 +536,6 @@ export const exportAPI = {
     }),
 };
 
-// Payment Method Settings API
-export const paymentMethodSettingsAPI = {
-  getAll: () => api.get('/payment-methods'),
-  getEnabled: () => api.get('/payment-methods/enabled'),
-  update: (methodCode, data) => api.put(`/payment-methods/${methodCode}`, data),
-  bulkUpdate: (methods) => api.put('/payment-methods/bulk', { methods }),
-};
 
 // Payment Gateway Settings API
 export const paymentGatewaySettingsAPI = {
@@ -578,6 +571,14 @@ export const ibAPI = {
   confirmClassAttendance: (data) => api.post('/ib/confirm-class-attendance', data),
   confirmClassFees: (data) => api.post('/ib/confirm-class-fees', data),
   approvePaymentsByDate: (data) => api.post('/ib/approve-payments-by-date', data),
+};
+
+// Receipt API
+export const receiptAPI = {
+  getByNumber: (receiptNumber) => api.get(`/receipts/${receiptNumber}`),
+  getFeeReceipt: (feeId) => api.get(`/receipts/fee/${feeId}`),
+  getPaymentReceipt: (paymentId) => api.get(`/receipts/payment/${paymentId}`),
+  getUserReceipts: (userId) => api.get(`/receipts/user/${userId}`),
 };
 
 export default api;

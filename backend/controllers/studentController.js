@@ -6,6 +6,7 @@ import {
   updateStudentRecord,
   deleteStudentRecord
 } from '../services/studentService.js';
+import { getSafePagination } from '../utils/pagination.js';
 
 const normalizeIcForQuery = (ic) => {
   if (typeof ic !== 'string') {
@@ -60,9 +61,8 @@ export const getAllStudents = async (req, res) => {
       queryParams.push(kelas_id);
     }
 
-    // Add pagination (inline to avoid ER_WRONG_ARGUMENTS on LIMIT/OFFSET)
-    const safeLimit = Math.max(1, defaultLimit);
-    const offset = (Math.max(1, parseInt(page)) - 1) * safeLimit;
+    // Add pagination (using safe pagination utility to prevent SQL injection)
+    const { limit: safeLimit, offset } = getSafePagination(page, defaultLimit, 1, defaultLimit);
     query += ` ORDER BY u.created_at DESC LIMIT ${safeLimit} OFFSET ${offset}`;
 
     const [students] = await pool.execute(query, queryParams);

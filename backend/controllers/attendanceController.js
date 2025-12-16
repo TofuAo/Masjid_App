@@ -1,6 +1,6 @@
 import { pool, testConnection } from '../config/database.js';
 import { validationResult } from 'express-validator';
-import { handleAttendanceGamification } from '../utils/gamificationIntegration.js';
+import { getSafePagination } from '../utils/pagination.js';
 
 export const getAttendance = async (req, res) => {
   try {
@@ -88,9 +88,8 @@ export const getAttendance = async (req, res) => {
       queryParams.push(pelajar_id);
     }
 
-    // Add pagination (inline to avoid ER_WRONG_ARGUMENTS on LIMIT/OFFSET)
-    const safeLimit = Math.max(1, parseInt(limit));
-    const offset = (Math.max(1, parseInt(page)) - 1) * safeLimit;
+    // Add pagination (using safe pagination utility to prevent SQL injection)
+    const { limit: safeLimit, offset } = getSafePagination(page, limit, 1, 50);
     query += ` ORDER BY a.tarikh DESC, u.nama ASC LIMIT ${safeLimit} OFFSET ${offset}`;
 
     // Debug logging for month view
@@ -425,29 +424,9 @@ export const markAttendance = async (req, res) => {
         [student_ic, class_id, attendanceDate, status]
       );
 
-      // Trigger gamification for attendance (only for students)
-      let gamificationResult = null;
-      try {
-        const [userCheck] = await pool.execute(
-          'SELECT role FROM users WHERE ic = ?',
-          [student_ic]
-        );
-        if (userCheck.length > 0 && userCheck[0].role === 'student') {
-          gamificationResult = await handleAttendanceGamification(
-            student_ic,
-            status,
-            class_id
-          );
-        }
-      } catch (gamError) {
-        console.error('Gamification error (non-blocking):', gamError);
-        // Don't fail the request if gamification fails
-      }
-
       res.status(201).json({
         success: true,
-        message: 'Attendance marked successfully',
-        gamification: gamificationResult
+        message: 'Attendance marked successfully'
       });
     }
   } catch (error) {

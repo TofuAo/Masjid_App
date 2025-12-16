@@ -258,7 +258,7 @@ export const emailTemplates = {
   }),
 
   welcome: (userNama, loginLink, tempPassword) => ({
-    subject: 'Selamat Datang ke Masjid App',
+    subject: 'Selamat Datang ke e-Sistem Kelas Pengajian Al-quran',
     html: `
       <!DOCTYPE html>
       <html>
@@ -280,9 +280,9 @@ export const emailTemplates = {
             <h2>Masjid Negeri Sultan Ahmad 1</h2>
           </div>
           <div class="content">
-            <h3>Selamat Datang ke Sistem Masjid App!</h3>
+            <h3>Selamat Datang ke e-Sistem Kelas Pengajian Al-quran!</h3>
             <p>Assalamualaikum ${userNama},</p>
-            <p>Akaun anda telah berjaya dicipta dalam sistem Masjid App.</p>
+            <p>Akaun anda telah berjaya dicipta dalam sistem e-Sistem Kelas Pengajian Al-quran.</p>
             ${tempPassword ? `
               <div class="info-box">
                 <p><strong>Maklumat Log Masuk:</strong></p>
@@ -292,7 +292,7 @@ export const emailTemplates = {
             ` : ''}
             <p>Klik butang di bawah untuk log masuk:</p>
             <a href="${loginLink}" class="button">Log Masuk Sekarang</a>
-            <p>Salam hormat,<br>Pasukan Sistem Masjid App</p>
+            <p>Salam hormat,<br>Pasukan e-Sistem Kelas Pengajian Al-quran</p>
           </div>
           <div class="footer">
             <p>Emel ini dihantar secara automatik. Jangan balas emel ini.</p>
@@ -302,17 +302,17 @@ export const emailTemplates = {
       </html>
     `,
     text: `
-      Selamat Datang ke Masjid App
+      Selamat Datang ke e-Sistem Kelas Pengajian Al-quran
       
       Assalamualaikum ${userNama},
       
-      Akaun anda telah berjaya dicipta dalam sistem Masjid App.
+      Akaun anda telah berjaya dicipta dalam sistem e-Sistem Kelas Pengajian Al-quran.
       ${tempPassword ? `\nKata Laluan Sementara: ${tempPassword}\nSila tukar kata laluan selepas log masuk pertama kali.` : ''}
       
       Log masuk di: ${loginLink}
       
       Salam hormat,
-      Pasukan Sistem Masjid App
+      Pasukan e-Sistem Kelas Pengajian Al-quran
     `
   }),
 
@@ -347,7 +347,7 @@ export const emailTemplates = {
             </div>
             <p>Sila selesaikan pembayaran secepat mungkin untuk mengelakkan tunggakan.</p>
             <a href="${paymentLink}" class="button">Bayar Yuran Sekarang</a>
-            <p>Salam hormat,<br>Pasukan Sistem Masjid App</p>
+            <p>Salam hormat,<br>Pasukan e-Sistem Kelas Pengajian Al-quran</p>
           </div>
           <div class="footer">
             <p>Emel ini dihantar secara automatik. Jangan balas emel ini.</p>
@@ -370,7 +370,7 @@ export const emailTemplates = {
       Bayar di: ${paymentLink}
       
       Salam hormat,
-      Pasukan Sistem Masjid App
+      Pasukan e-Sistem Kelas Pengajian Al-quran
     `
   }),
 
@@ -405,7 +405,7 @@ export const emailTemplates = {
               <p>Tarikh Pembayaran: ${new Date().toLocaleDateString('ms-MY')}</p>
             </div>
             <p>Terima kasih kerana menyelesaikan pembayaran yuran anda tepat pada masanya.</p>
-            <p>Salam hormat,<br>Pasukan Sistem Masjid App</p>
+            <p>Salam hormat,<br>Pasukan e-Sistem Kelas Pengajian Al-quran</p>
           </div>
           <div class="footer">
             <p>Emel ini dihantar secara automatik. Jangan balas emel ini.</p>
@@ -428,7 +428,7 @@ export const emailTemplates = {
       Terima kasih kerana menyelesaikan pembayaran yuran anda tepat pada masanya.
       
       Salam hormat,
-      Pasukan Sistem Masjid App
+      Pasukan e-Sistem Kelas Pengajian Al-quran
     `
   }),
 
@@ -462,7 +462,7 @@ export const emailTemplates = {
               <p><strong>Status:</strong> ${status}</p>
             </div>
             <p>Terima kasih.</p>
-            <p>Salam hormat,<br>Pasukan Sistem Masjid App</p>
+            <p>Salam hormat,<br>Pasukan e-Sistem Kelas Pengajian Al-quran</p>
           </div>
           <div class="footer">
             <p>Emel ini dihantar secara automatik. Jangan balas emel ini.</p>
@@ -482,7 +482,7 @@ export const emailTemplates = {
       Status: ${status}
       
       Salam hormat,
-      Pasukan Sistem Masjid App
+      Pasukan e-Sistem Kelas Pengajian Al-quran
     `
   }),
 };

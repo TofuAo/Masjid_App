@@ -2,16 +2,13 @@ import { pool, testConnection } from '../config/database.js';
 import { validationResult } from 'express-validator';
 import { createSnapshot, SNAPSHOT_TTL_HOURS } from '../utils/adminActionSnapshots.js';
 import { normalizePhone } from '../utils/phoneNormalizer.js';
+import { getSafePagination } from '../utils/pagination.js';
 
 export const getAllTeachers = async (req, res) => {
   try {
     const { search, status, page = 1, limit } = req.query;
     // Default to a large limit to show all teachers, or use pagination if specified
     const defaultLimit = limit ? parseInt(limit) : 1000;
-    
-    // Add pagination (inline to avoid ER_WRONG_ARGUMENTS on LIMIT/OFFSET)
-    const safeLimit = Math.max(1, defaultLimit);
-    const offset = (Math.max(1, parseInt(page)) - 1) * safeLimit;
     
     // Use subquery to pick one user per normalized IC (prefer hyphenated format)
     // This handles duplicate user entries with same IC but different formats
@@ -62,6 +59,8 @@ export const getAllTeachers = async (req, res) => {
       queryParams.push(status);
     }
     
+    // Add pagination (using safe pagination utility to prevent SQL injection)
+    const { limit: safeLimit, offset } = getSafePagination(page, defaultLimit, 1, defaultLimit);
     query += ` GROUP BY REPLACE(REPLACE(u.ic, '-', ''), ' ', ''), u.ic, u.nama, u.email, u.telefon, u.status, t.kepakaran, u.created_at, ur.user_ic ORDER BY u.created_at DESC LIMIT ${safeLimit} OFFSET ${offset}`;
     
     const [teachers] = await pool.execute(query, queryParams);
@@ -803,6 +802,9 @@ export const registerTeacher = async (req, res) => {
     }
 
     const { nama, ic, telefon, email, password, kepakaran } = req.body;
+    
+    // Normalize email (optional field)
+    const emailValue = email && email.trim() !== '' ? email.trim() : null;
 
     const connection = await pool.getConnection();
     await connection.beginTransaction();
@@ -900,16 +902,31 @@ export const registerTeacher = async (req, res) => {
           [...updateParams, ic]
         );
 
+        // Insert teacher role (ignore if already exists)
         await connection.execute(
-          'INSERT INTO user_roles (user_ic, role) VALUES (?, ?)',
+          'INSERT IGNORE INTO user_roles (user_ic, role) VALUES (?, ?)',
           [ic, 'teacher']
         );
 
-        await connection.execute(
-          `INSERT INTO teachers (user_ic, kepakaran) 
-           VALUES (?, ?)`,
-          [ic, JSON.stringify(kepakaran)]
+        // Check if teachers entry already exists
+        const [existingTeacher] = await connection.execute(
+          'SELECT user_ic FROM teachers WHERE user_ic = ?',
+          [ic]
         );
+
+        if (existingTeacher.length === 0) {
+          await connection.execute(
+            `INSERT INTO teachers (user_ic, kepakaran) 
+             VALUES (?, ?)`,
+            [ic, JSON.stringify(kepakaran)]
+          );
+        } else {
+          // Update existing teachers entry
+          await connection.execute(
+            `UPDATE teachers SET kepakaran = ? WHERE user_ic = ?`,
+            [JSON.stringify(kepakaran), ic]
+          );
+        }
 
         await connection.commit();
 
@@ -1035,9 +1052,8 @@ export const getUnassignedStaffTeachers = async (req, res) => {
       queryParams.push(searchTerm, searchTerm);
     }
     
-    // Add pagination (but with very high limit to show all)
-    const safeLimit = Math.max(1, defaultLimit);
-    const offset = (Math.max(1, parseInt(page)) - 1) * safeLimit;
+    // Add pagination (using safe pagination utility to prevent SQL injection)
+    const { limit: safeLimit, offset } = getSafePagination(page, defaultLimit, 1, defaultLimit);
     query += ` ORDER BY u.created_at DESC LIMIT ${safeLimit} OFFSET ${offset}`;
     
     const [users] = await pool.execute(query, queryParams);

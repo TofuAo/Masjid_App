@@ -29,26 +29,78 @@ async function ensureBackupTable() {
     return;
   }
 
-  const createTableSQL = `
-    CREATE TABLE IF NOT EXISTS backup_logs (
-      id INT AUTO_INCREMENT PRIMARY KEY,
-      file_name VARCHAR(255) NOT NULL,
-      file_size BIGINT,
-      file_checksum VARCHAR(128),
-      integrity_signature VARCHAR(128),
-      drive_file_id VARCHAR(255),
-      drive_view_link TEXT,
-      drive_download_link TEXT,
-      trigger_type VARCHAR(64) DEFAULT 'manual',
-      triggered_by VARCHAR(100),
-      status ENUM('success','failed') DEFAULT 'success',
-      error_message TEXT,
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    ) ENGINE=InnoDB;
-  `;
+  try {
+    // Create table if it doesn't exist
+    const createTableSQL = `
+      CREATE TABLE IF NOT EXISTS backup_logs (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        file_name VARCHAR(255) NOT NULL,
+        file_size BIGINT,
+        file_checksum VARCHAR(128),
+        integrity_signature VARCHAR(128),
+        drive_file_id VARCHAR(255),
+        drive_view_link TEXT,
+        drive_download_link TEXT,
+        trigger_type VARCHAR(64) DEFAULT 'manual',
+        triggered_by VARCHAR(100),
+        status ENUM('success','failed') DEFAULT 'success',
+        error_message TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      ) ENGINE=InnoDB;
+    `;
 
-  await pool.execute(createTableSQL);
-  backupTableEnsured = true;
+    await pool.execute(createTableSQL);
+
+    // Check and add missing columns if table already existed with old schema
+    try {
+      // Get list of existing columns
+      const [existingColumns] = await pool.query(`
+        SELECT COLUMN_NAME 
+        FROM INFORMATION_SCHEMA.COLUMNS 
+        WHERE TABLE_SCHEMA = DATABASE() 
+        AND TABLE_NAME = 'backup_logs'
+      `);
+      
+      const existingColumnNames = existingColumns.map(col => col.COLUMN_NAME.toLowerCase());
+      
+      // Define columns that should exist
+      const columnsToAdd = [
+        { name: 'file_checksum', def: 'VARCHAR(128)', after: 'file_size' },
+        { name: 'integrity_signature', def: 'VARCHAR(128)', after: 'file_checksum' },
+        { name: 'drive_file_id', def: 'VARCHAR(255)', after: 'integrity_signature' },
+        { name: 'drive_view_link', def: 'TEXT', after: 'drive_file_id' },
+        { name: 'drive_download_link', def: 'TEXT', after: 'drive_view_link' },
+        { name: 'trigger_type', def: "VARCHAR(64) DEFAULT 'manual'", after: 'drive_download_link' },
+        { name: 'triggered_by', def: 'VARCHAR(100)', after: 'trigger_type' },
+        { name: 'status', def: "ENUM('success','failed') DEFAULT 'success'", after: 'triggered_by' },
+        { name: 'error_message', def: 'TEXT', after: 'status' },
+      ];
+
+      // Add missing columns one by one
+      for (const col of columnsToAdd) {
+        if (!existingColumnNames.includes(col.name.toLowerCase())) {
+          try {
+            await pool.execute(`
+              ALTER TABLE backup_logs 
+              ADD COLUMN \`${col.name}\` ${col.def}${col.after ? ` AFTER \`${col.after}\`` : ''}
+            `);
+            console.log(`Added missing column: ${col.name}`);
+          } catch (colError) {
+            console.warn(`Could not add column ${col.name}:`, colError.message);
+          }
+        }
+      }
+    } catch (alterError) {
+      console.warn('Could not check/add missing columns:', alterError.message);
+      // Continue anyway - the table exists, columns might be missing but we'll handle it in queries
+    }
+
+    backupTableEnsured = true;
+  } catch (error) {
+    console.error('Failed to ensure backup_logs table exists:', error);
+    // Don't set backupTableEnsured to true so it will retry on next call
+    throw error;
+  }
 }
 
 function getDatabaseConfig() {
@@ -307,25 +359,59 @@ export async function createAndUploadDatabaseBackup({ triggerType = 'manual', tr
 }
 
 export async function getBackupHistory(limit = 10) {
-  await ensureBackupTable();
-  const safeLimit = Number.isFinite(limit) && limit > 0 ? Math.min(Math.floor(limit), 100) : 10;
-  const [rows] = await pool.query(
-    `SELECT id, file_name AS fileName, file_size AS fileSize,
-      file_checksum AS fileChecksum,
-      integrity_signature AS integritySignature,
-      drive_file_id AS driveFileId,
-      drive_view_link AS driveViewLink,
-      drive_download_link AS driveDownloadLink,
-      trigger_type AS triggerType,
-      triggered_by AS triggeredBy,
-      status,
-      error_message AS errorMessage,
-      created_at AS createdAt
-    FROM backup_logs
-    ORDER BY created_at DESC
-    LIMIT ${safeLimit}`
-  );
-  return rows;
+  try {
+    await ensureBackupTable();
+    // Validate and sanitize limit (safe to use directly in query after validation)
+    const safeLimit = Number.isFinite(limit) && limit > 0 ? Math.min(Math.floor(limit), 100) : 10;
+    
+    // Check which columns exist in the table
+    const [columns] = await pool.query(`
+      SELECT COLUMN_NAME 
+      FROM INFORMATION_SCHEMA.COLUMNS 
+      WHERE TABLE_SCHEMA = DATABASE() 
+      AND TABLE_NAME = 'backup_logs'
+    `);
+    
+    const existingColumns = columns.map(col => col.COLUMN_NAME.toLowerCase());
+    
+    // Build SELECT clause based on available columns
+    const selectFields = [];
+    if (existingColumns.includes('id')) selectFields.push('id');
+    if (existingColumns.includes('file_name')) selectFields.push('file_name AS fileName');
+    if (existingColumns.includes('file_size')) selectFields.push('file_size AS fileSize');
+    if (existingColumns.includes('file_checksum')) selectFields.push('file_checksum AS fileChecksum');
+    if (existingColumns.includes('integrity_signature')) selectFields.push('integrity_signature AS integritySignature');
+    if (existingColumns.includes('drive_file_id')) selectFields.push('drive_file_id AS driveFileId');
+    if (existingColumns.includes('drive_view_link')) selectFields.push('drive_view_link AS driveViewLink');
+    if (existingColumns.includes('drive_download_link')) selectFields.push('drive_download_link AS driveDownloadLink');
+    if (existingColumns.includes('trigger_type')) selectFields.push('trigger_type AS triggerType');
+    if (existingColumns.includes('triggered_by')) selectFields.push('triggered_by AS triggeredBy');
+    if (existingColumns.includes('status')) selectFields.push('status');
+    if (existingColumns.includes('error_message')) selectFields.push('error_message AS errorMessage');
+    if (existingColumns.includes('created_at')) selectFields.push('created_at AS createdAt');
+    
+    if (selectFields.length === 0) {
+      // No columns found, return empty array
+      return [];
+    }
+    
+    // MySQL LIMIT doesn't support placeholders in all versions, so we use the validated number directly
+    // This is safe because we've already validated and sanitized the limit value
+    const query = `
+      SELECT ${selectFields.join(', ')}
+      FROM backup_logs
+      ${existingColumns.includes('created_at') ? 'ORDER BY created_at DESC' : ''}
+      LIMIT ${safeLimit}
+    `;
+    
+    const [rows] = await pool.query(query);
+    return rows || [];
+  } catch (error) {
+    console.error('Error in getBackupHistory:', error);
+    // If table doesn't exist or query fails, return empty array instead of throwing
+    // This allows the UI to show "no backups yet" instead of an error
+    return [];
+  }
 }
 
 // Archive 1 year of data

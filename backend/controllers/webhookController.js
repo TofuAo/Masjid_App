@@ -1,5 +1,6 @@
 import { getPaymentById, updatePaymentStatus } from '../services/paymentService.js';
 import { getPaymentGatewayService } from '../services/paymentGatewayService.js';
+import { generatePaymentReceipt } from '../utils/receiptService.js';
 import crypto from 'crypto';
 
 /**
@@ -79,7 +80,7 @@ export const handlePaymentWebhook = async (req, res) => {
     const mappedStatus = statusMap[status] || 'processing';
 
     // Update payment status
-    await updatePaymentStatus(
+    const updatedPayment = await updatePaymentStatus(
       paymentId,
       mappedStatus,
       providerReference,
@@ -89,6 +90,21 @@ export const handlePaymentWebhook = async (req, res) => {
         received_at: new Date().toISOString()
       }
     );
+
+    // Generate receipt if payment is completed
+    if (mappedStatus === 'completed') {
+      try {
+        // Check if payment is linked to a fee
+        const metadata = payment.metadata ? JSON.parse(payment.metadata) : {};
+        const feeId = metadata.fee_id || null;
+        
+        await generatePaymentReceipt(paymentId, feeId);
+        console.log(`✅ Receipt generated for payment ${paymentId}`);
+      } catch (receiptError) {
+        console.error('Error generating receipt in webhook:', receiptError);
+        // Don't fail webhook if receipt generation fails
+      }
+    }
 
     // Return success response (gateway expects 200)
     res.status(200).json({

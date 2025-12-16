@@ -37,12 +37,15 @@ export const formatIC = (value, autoFormat = false) => {
 
 /**
  * Validates if IC number is in valid format (with or without hyphens)
+ * STRICT: Only accepts 12 digits starting with a digit (rejects T0-prefixed, letters, etc.)
  * @param {string} ic - IC number to validate
  * @returns {boolean} - True if valid
  */
 export const isValidIC = (ic) => {
   if (!ic) return false;
   const digitsOnly = ic.replace(/\D/g, '');
-  return digitsOnly.length === 12;
+  // STRICT: Must be exactly 12 digits and must start with a digit (not T, not letter)
+  // Reject any IC that starts with non-digit characters (like T0, etc.)
+  return digitsOnly.length === 12 && /^\d/.test(ic.toString().trim());
 };
 

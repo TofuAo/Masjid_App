@@ -120,7 +120,6 @@ const LayoutContent = ({ children, user, onLogout, onRoleChange }) => {
       { icon: <FileText className="w-5 h-5" />, label: 'Keputusan', link: '/keputusan' },
       { icon: <BarChart3 className="w-5 h-5" />, label: 'Laporan', link: '/laporan' },
       { icon: <Settings className="w-5 h-5" />, label: 'Tetapan', link: '/settings' },
-      { icon: <Wallet className="w-5 h-5" />, label: 'Kaedah Pembayaran', link: '/payment-method-settings' },
       { icon: <CreditCard className="w-5 h-5" />, label: 'Tetapan ToyyibPay', link: '/toyyibpay-settings' },
     ];
   } else if (effectiveRole === 'pic') {

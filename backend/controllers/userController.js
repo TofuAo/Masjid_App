@@ -1,5 +1,6 @@
 import { pool } from '../config/database.js';
 import { fetchUserRoles } from '../services/userRoleService.js';
+import { getSafePagination } from '../utils/pagination.js';
 
 const VALID_ROLES = ['admin', 'teacher', 'student', 'pic', 'staff', 'ib'];
 
@@ -18,9 +19,6 @@ export const getAllUsers = async (req, res) => {
     }
 
     const { search, role, status, page = 1, limit } = req.query;
-    const defaultLimit = limit ? parseInt(limit) : 1000;
-    const safeLimit = Math.max(1, defaultLimit);
-    const offset = (Math.max(1, parseInt(page)) - 1) * safeLimit;
 
     // Get all users with deduplication (prefer hyphenated IC format)
     // Include all role information from both users table and role-specific tables
@@ -97,6 +95,8 @@ export const getAllUsers = async (req, res) => {
       queryParams.push(status);
     }
 
+    // Add pagination (using safe pagination utility to prevent SQL injection)
+    const { limit: safeLimit, offset } = getSafePagination(page, limit, 1, 1000);
     query += ` GROUP BY u.ic, u.nama, u.email, u.telefon, u.umur, u.alamat, u.role, u.status, u.created_at, u.updated_at ORDER BY u.nama, u.created_at DESC LIMIT ${safeLimit} OFFSET ${offset}`;
 
     const [users] = await pool.execute(query, queryParams);

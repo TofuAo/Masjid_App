@@ -3,6 +3,7 @@ import { validationResult } from 'express-validator';
 import bcrypt from 'bcryptjs';
 import { formatICWithHyphen } from '../utils/icFormatter.js';
 import { ensureSingleIb } from '../middleware/ensureSingleIb.js';
+import { getSafePagination } from '../utils/pagination.js';
 
 export const getAllAdmins = async (req, res) => {
   try {
@@ -28,8 +29,8 @@ export const getAllAdmins = async (req, res) => {
       queryParams.push(status);
     }
     
-    const safeLimit = Math.max(1, defaultLimit);
-    const offset = (Math.max(1, parseInt(page)) - 1) * safeLimit;
+    // Add pagination (using safe pagination utility to prevent SQL injection)
+    const { limit: safeLimit, offset } = getSafePagination(page, defaultLimit, 1, defaultLimit);
     query += ` ORDER BY created_at DESC LIMIT ${safeLimit} OFFSET ${offset}`;
     
     const [admins] = await pool.execute(query, queryParams);

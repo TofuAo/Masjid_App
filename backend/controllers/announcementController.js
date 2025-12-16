@@ -5,6 +5,7 @@ import {
   updateAnnouncementRecord,
   deleteAnnouncementRecord
 } from '../services/announcementService.js';
+import { getSafePagination } from '../utils/pagination.js';
 
 export const getAllAnnouncements = async (req, res) => {
   try {
@@ -55,9 +56,8 @@ export const getAllAnnouncements = async (req, res) => {
       query += ` AND (a.end_date IS NULL OR a.end_date >= NOW())`;
     }
 
-    // Pagination
-    const safeLimit = Math.max(1, parseInt(limit));
-    const offset = (Math.max(1, parseInt(page)) - 1) * safeLimit;
+    // Add pagination (using safe pagination utility to prevent SQL injection)
+    const { limit: safeLimit, offset } = getSafePagination(page, limit, 1, 50);
     query += ` ORDER BY a.priority DESC, a.created_at DESC LIMIT ${safeLimit} OFFSET ${offset}`;
     
     const [announcements] = await pool.execute(query, queryParams);

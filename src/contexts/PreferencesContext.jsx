@@ -89,7 +89,6 @@ const defaultPreferences = {
   language: 'ms',
   fontFamily: 'system',
   fontSize: 'medium',
-  gamificationEnabled: true // Default to enabled
 };
 
 const PreferencesContext = createContext();

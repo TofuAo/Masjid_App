@@ -1,12 +1,67 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import Card from '../ui/Card';
 import Button from '../ui/Button';
 import BackButton from '../ui/BackButton';
-import { User, Phone, MapPin, Calendar, BookOpen, Edit } from 'lucide-react';
+import Badge from '../ui/Badge';
+import ReceiptViewer from '../receipt/ReceiptViewer';
+import { User, Phone, MapPin, Calendar, BookOpen, Edit, FileText, Eye, ExternalLink } from 'lucide-react';
 import { formatIC } from '../../utils/icUtils';
 import { formatPhoneForDisplay } from '../../utils/phoneUtils';
+import { receiptAPI } from '../../services/api';
 
 const PelajarDetail = ({ pelajar, onEdit, onClose }) => {
+  const [receipts, setReceipts] = useState([]);
+  const [loadingReceipts, setLoadingReceipts] = useState(false);
+  const [selectedReceipt, setSelectedReceipt] = useState(null);
+  const [showReceiptViewer, setShowReceiptViewer] = useState(false);
+
+  useEffect(() => {
+    if (pelajar && (pelajar.ic || pelajar.IC)) {
+      fetchReceipts();
+    }
+  }, [pelajar]);
+
+  const fetchReceipts = async () => {
+    try {
+      setLoadingReceipts(true);
+      const studentIc = pelajar.ic || pelajar.IC;
+      const response = await receiptAPI.getUserReceipts(studentIc);
+      if (response?.success && response?.data) {
+        setReceipts(response.data);
+      } else {
+        setReceipts([]);
+      }
+    } catch (error) {
+      console.error('Failed to fetch receipts:', error);
+      setReceipts([]);
+    } finally {
+      setLoadingReceipts(false);
+    }
+  };
+
+  const viewReceipt = (receipt) => {
+    setSelectedReceipt({
+      receiptNumber: receipt.no_resit,
+      feeId: receipt.fee_id || null,
+      paymentId: receipt.payment_id || null
+    });
+    setShowReceiptViewer(true);
+  };
+
+  const formatDate = (dateString) => {
+    if (!dateString) return '-';
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleDateString('en-GB', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
+      });
+    } catch (error) {
+      return '-';
+    }
+  };
+
   if (!pelajar) return null;
 
   // Get class name from API response, fallback to 'Tiada Kelas'
@@ -96,6 +151,56 @@ const PelajarDetail = ({ pelajar, onEdit, onClose }) => {
               </div>
             </Card.Content>
           </Card>
+
+          {/* Payment Receipts Section */}
+          <Card>
+            <Card.Header>
+              <Card.Title className="flex items-center">
+                <FileText className="w-5 h-5 mr-2 text-emerald-600" />
+                Payment Receipts
+              </Card.Title>
+            </Card.Header>
+            <Card.Content>
+              {loadingReceipts ? (
+                <div className="text-center py-4">
+                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-emerald-600 mx-auto"></div>
+                  <p className="mt-2 text-sm text-gray-500">Loading receipts...</p>
+                </div>
+              ) : receipts.length === 0 ? (
+                <div className="text-center py-4">
+                  <FileText className="w-12 h-12 text-gray-400 mx-auto mb-2" />
+                  <p className="text-sm text-gray-500">No receipts found</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {receipts.map((receipt, index) => (
+                    <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200">
+                      <div className="flex-1">
+                        <div className="flex items-center space-x-2">
+                          <FileText className="w-4 h-4 text-emerald-600" />
+                          <span className="text-sm font-medium text-gray-900">
+                            Receipt: {receipt.no_resit || 'N/A'}
+                          </span>
+                        </div>
+                        <div className="mt-1 text-xs text-gray-500">
+                          {formatDate(receipt.tarikh_bayar)} • RM {parseFloat(receipt.jumlah || 0).toFixed(2)}
+                        </div>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => viewReceipt(receipt)}
+                        className="flex items-center space-x-1"
+                      >
+                        <Eye className="w-4 h-4" />
+                        <span>View</span>
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </Card.Content>
+          </Card>
         </div>
 
         {/* Sidebar Information */}
@@ -155,6 +260,20 @@ const PelajarDetail = ({ pelajar, onEdit, onClose }) => {
           </Card>
         </div>
       </div>
+
+      {/* Receipt Viewer Modal */}
+      {showReceiptViewer && selectedReceipt && (
+        <ReceiptViewer
+          isOpen={showReceiptViewer}
+          onClose={() => {
+            setShowReceiptViewer(false);
+            setSelectedReceipt(null);
+          }}
+          receiptNumber={selectedReceipt.receiptNumber}
+          feeId={selectedReceipt.feeId}
+          paymentId={selectedReceipt.paymentId}
+        />
+      )}
     </div>
   );
 };

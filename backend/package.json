@@ -10,6 +10,8 @@
     "migrate": "node scripts/migrateDatabase.js",
     "create-master-admin": "node scripts/createMasterAdmin.js",
     "reset-master-admin-password": "node scripts/resetMasterAdminPassword.js",
+    "setup-encryption": "node scripts/setupEncryption.js",
+    "encrypt-existing-data": "node scripts/encryptExistingData.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],

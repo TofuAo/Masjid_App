@@ -185,6 +185,22 @@ export const updatePaymentStatus = async (paymentId, newStatus, providerReferenc
 
     await connection.commit();
 
+    // Generate receipt if payment is completed
+    if (newStatus === 'completed' && oldStatus !== 'completed') {
+      try {
+        const { generatePaymentReceipt } = await import('../utils/receiptService.js');
+        // Get fee_id from metadata if available
+        const metadata = currentPayment.metadata ? JSON.parse(currentPayment.metadata) : {};
+        const feeId = metadata.fee_id || null;
+        
+        await generatePaymentReceipt(paymentId, feeId);
+        console.log(`✅ Receipt generated for payment ${paymentId}`);
+      } catch (receiptError) {
+        console.error('Error generating receipt:', receiptError);
+        // Don't fail the payment update if receipt generation fails
+      }
+    }
+
     // Fetch updated payment
     const [updatedPayments] = await connection.execute(
       'SELECT * FROM payments WHERE id = ?',
