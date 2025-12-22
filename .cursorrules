@@ -1,5 +1,7 @@
 # Cursor Rules for MyMasjidApp
 
+**IMPORTANT**: Always deploy changes immediately after making them. See `.cursor/rules/auto-deploy.mdc` for deployment instructions.
+
 ## Code Quality Principles
 
 - Prefer clarity and maintainability over cleverness

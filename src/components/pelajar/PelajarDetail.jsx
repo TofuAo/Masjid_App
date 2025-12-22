@@ -1,30 +1,75 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Card from '../ui/Card';
 import Button from '../ui/Button';
 import BackButton from '../ui/BackButton';
 import Badge from '../ui/Badge';
 import ReceiptViewer from '../receipt/ReceiptViewer';
-import { User, Phone, MapPin, Calendar, BookOpen, Edit, FileText, Eye, ExternalLink } from 'lucide-react';
+import { User, Phone, MapPin, Calendar, BookOpen, Edit, FileText, Eye, ExternalLink, GraduationCap } from 'lucide-react';
 import { formatIC } from '../../utils/icUtils';
 import { formatPhoneForDisplay } from '../../utils/phoneUtils';
-import { receiptAPI } from '../../services/api';
+import { receiptAPI, studentsAPI } from '../../services/api';
 
 const PelajarDetail = ({ pelajar, onEdit, onClose }) => {
+  const navigate = useNavigate();
   const [receipts, setReceipts] = useState([]);
   const [loadingReceipts, setLoadingReceipts] = useState(false);
   const [selectedReceipt, setSelectedReceipt] = useState(null);
   const [showReceiptViewer, setShowReceiptViewer] = useState(false);
+  const [studentData, setStudentData] = useState(pelajar);
+  const [loadingStudent, setLoadingStudent] = useState(false);
+
+  // Fetch fresh student data to ensure we have teacher information
+  useEffect(() => {
+    const fetchStudentData = async () => {
+      if (pelajar && (pelajar.ic || pelajar.IC)) {
+        const studentIc = pelajar.ic || pelajar.IC;
+        try {
+          setLoadingStudent(true);
+          const response = await studentsAPI.getById(studentIc);
+          console.log('Student data response:', response);
+          
+          // Handle different response structures
+          let fetchedData = null;
+          if (response?.success && response?.data) {
+            fetchedData = response.data;
+          } else if (response?.data) {
+            fetchedData = response.data;
+          } else if (response && typeof response === 'object' && !response.success) {
+            // Direct data object
+            fetchedData = response;
+          }
+          
+          if (fetchedData) {
+            console.log('Setting student data:', fetchedData);
+            setStudentData(fetchedData);
+          } else {
+            console.warn('No student data found in response, using original pelajar data');
+            setStudentData(pelajar);
+          }
+        } catch (error) {
+          console.error('Failed to fetch student data:', error);
+          // Fallback to original pelajar data if fetch fails
+          setStudentData(pelajar);
+        } finally {
+          setLoadingStudent(false);
+        }
+      }
+    };
+
+    fetchStudentData();
+  }, [pelajar]);
 
   useEffect(() => {
-    if (pelajar && (pelajar.ic || pelajar.IC)) {
+    if (studentData && (studentData.ic || studentData.IC)) {
       fetchReceipts();
     }
-  }, [pelajar]);
+  }, [studentData]);
 
   const fetchReceipts = async () => {
     try {
       setLoadingReceipts(true);
-      const studentIc = pelajar.ic || pelajar.IC;
+      const studentIc = studentData.ic || studentData.IC;
       const response = await receiptAPI.getUserReceipts(studentIc);
       if (response?.success && response?.data) {
         setReceipts(response.data);
@@ -62,18 +107,28 @@ const PelajarDetail = ({ pelajar, onEdit, onClose }) => {
     }
   };
 
-  if (!pelajar) return null;
+  // Use studentData (fresh data) if available, otherwise fallback to pelajar
+  const displayData = studentData || pelajar;
+  
+  if (!displayData) return null;
 
   // Get class name from API response, fallback to 'Tiada Kelas'
   const getKelasName = () => {
-    return pelajar.nama_kelas || 'Tiada Kelas';
+    return displayData.nama_kelas || 'Tiada Kelas';
+  };
+
+  // Handle class name click to navigate to class detail page
+  const handleClassClick = () => {
+    if (displayData.kelas_id) {
+      navigate(`/kelas?view=detail&id=${displayData.kelas_id}`);
+    }
   };
 
   // Format registration date safely
   const formatTarikhDaftar = () => {
-    if (!pelajar.tarikh_daftar) return '-';
+    if (!displayData.tarikh_daftar) return '-';
     try {
-      const date = new Date(pelajar.tarikh_daftar);
+      const date = new Date(displayData.tarikh_daftar);
       if (isNaN(date.getTime())) return '-';
       return date.toLocaleDateString('ms-MY');
     } catch (error) {
@@ -93,7 +148,7 @@ const PelajarDetail = ({ pelajar, onEdit, onClose }) => {
           <Button variant="secondary" onClick={onClose}>
             Tutup
           </Button>
-          <Button onClick={() => onEdit(pelajar)}>
+          <Button onClick={() => onEdit(displayData)}>
             <Edit className="w-4 h-4 mr-2" />
             Edit
           </Button>
@@ -114,15 +169,15 @@ const PelajarDetail = ({ pelajar, onEdit, onClose }) => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-500">Nama Penuh</label>
-                  <p className="mt-1 text-sm text-gray-900">{pelajar.nama}</p>
+                  <p className="mt-1 text-sm text-gray-900">{displayData.nama}</p>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-500">Nombor IC</label>
-                  <p className="mt-1 text-sm text-gray-900">{(pelajar.IC || pelajar.ic) ? formatIC(pelajar.IC || pelajar.ic, true) : '-'}</p>
+                  <p className="mt-1 text-sm text-gray-900">{(displayData.IC || displayData.ic) ? formatIC(displayData.IC || displayData.ic, true) : '-'}</p>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-500">Umur</label>
-                  <p className="mt-1 text-sm text-gray-900">{pelajar.umur} tahun</p>
+                  <p className="mt-1 text-sm text-gray-900">{displayData.umur} tahun</p>
                 </div>
               </div>
             </Card.Content>
@@ -139,13 +194,13 @@ const PelajarDetail = ({ pelajar, onEdit, onClose }) => {
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-500">Alamat</label>
-                  <p className="mt-1 text-sm text-gray-900">{pelajar.alamat}</p>
+                  <p className="mt-1 text-sm text-gray-900">{displayData.alamat}</p>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-500">Nombor Telefon</label>
                   <p className="mt-1 text-sm text-gray-900 flex items-center">
                     <Phone className="w-4 h-4 mr-2 text-emerald-600" />
-                    {formatPhoneForDisplay(pelajar.telefon) || '-'}
+                    {formatPhoneForDisplay(displayData.telefon) || '-'}
                   </p>
                 </div>
               </div>
@@ -216,7 +271,24 @@ const PelajarDetail = ({ pelajar, onEdit, onClose }) => {
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-500">Kelas</label>
-                  <p className="mt-1 text-sm text-gray-900">{getKelasName()}</p>
+                  {displayData.kelas_id ? (
+                    <button
+                      onClick={handleClassClick}
+                      className="mt-1 text-sm text-emerald-600 hover:text-emerald-700 font-medium hover:underline flex items-center cursor-pointer"
+                    >
+                      {getKelasName()}
+                      <ExternalLink className="w-3 h-3 ml-1" />
+                    </button>
+                  ) : (
+                    <p className="mt-1 text-sm text-gray-900">{getKelasName()}</p>
+                  )}
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-500">Guru Kelas</label>
+                  <p className="mt-1 text-sm text-gray-900 flex items-center">
+                    <GraduationCap className="w-4 h-4 mr-2 text-emerald-600" />
+                    {loadingStudent ? 'Memuatkan...' : (displayData.guru_nama || 'Tiada Guru Ditetapkan')}
+                  </p>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-500">Tarikh Daftar</label>

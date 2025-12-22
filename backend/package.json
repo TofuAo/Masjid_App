@@ -8,6 +8,7 @@
     "start": "node server.js",
     "dev": "nodemon server.js",
     "migrate": "node scripts/migrateDatabase.js",
+    "fix-invalid-ics": "node scripts/fixInvalidICFormats.js",
     "create-master-admin": "node scripts/createMasterAdmin.js",
     "reset-master-admin-password": "node scripts/resetMasterAdminPassword.js",
     "setup-encryption": "node scripts/setupEncryption.js",

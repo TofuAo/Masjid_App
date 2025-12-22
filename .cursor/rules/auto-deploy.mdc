@@ -4,7 +4,7 @@ alwaysApply: true
 
 # Auto-Deploy Rule
 
-**CRITICAL**: After making ANY changes to the codebase (frontend or backend), you MUST automatically update the deployed version.
+**CRITICAL**: After making ANY changes to the codebase (frontend or backend), you MUST automatically update the deployed version. Deployment is MANDATORY and must happen immediately after code changes.
 
 ## Deployment Process
 
@@ -30,32 +30,68 @@ alwaysApply: true
 
 ## When to Deploy
 
-- **ALWAYS deploy after:**
-  - Making changes to any React components (src/components/)
-  - Modifying pages (src/pages/)
-  - Updating services or utilities (src/services/, src/utils/)
-  - Changing API routes (backend/routes/)
-  - Modifying controllers (backend/controllers/)
-  - Updating middleware (backend/middleware/)
-  - Changing database schema or migrations
-  - Any configuration changes
+**MANDATORY - Deploy after EVERY code change:**
 
-- **Backend changes** (controllers, routes, middleware):
-  - Restart backend container: `docker-compose restart backend`
+- **Frontend changes:**
+  - React components (src/components/)
+  - Pages (src/pages/)
+  - Services or utilities (src/services/, src/utils/)
+  - Styles, CSS, or styling changes
+  - Configuration files (package.json, vite.config.js, etc.)
+  - Public assets (images, fonts, etc.)
 
-- **Database changes** (schema, migrations):
-  - Run migrations: `docker-compose exec backend npm run migrate`
+- **Backend changes:**
+  - API routes (backend/routes/)
+  - Controllers (backend/controllers/)
+  - Middleware (backend/middleware/)
+  - Services (backend/services/)
+  - Utils (backend/utils/)
+  - Models or database helpers
+  - Configuration files (backend/.env, etc.)
 
-## Quick Deployment Command
+- **Database changes:**
+  - Schema changes
+  - Migrations
+  - Seed files
 
-For quick frontend-only updates:
+- **Infrastructure changes:**
+  - Docker files (Dockerfile, docker-compose.yml)
+  - Nginx configuration
+  - Environment variables
+
+## Deployment Commands by Change Type
+
+### Frontend Changes Only:
 ```bash
 npm run build && docker-compose build frontend && docker-compose up -d frontend
 ```
 
+### Backend Changes Only:
+```bash
+docker-compose restart backend
+```
+
+### Backend + Frontend Changes:
+```bash
+npm run build && docker-compose build frontend && docker-compose up -d frontend && docker-compose restart backend
+```
+
+### Database Changes:
+```bash
+docker-compose exec backend npm run migrate
+docker-compose restart backend
+```
+
+### Full Deployment (when in doubt):
+```bash
+npm run build && docker-compose build frontend && docker-compose up -d frontend && docker-compose restart backend
+```
+
 ## Important Notes
 
-- Always verify services are running after deployment
-- Check logs if deployment fails: `docker-compose logs frontend`
-- Never skip deployment - it's a required step after code changes
-- Inform the user when deployment is complete
+- **NEVER skip deployment** - it's a required step after ANY code changes
+- **ALWAYS verify** services are running after deployment: `docker-compose ps`
+- **ALWAYS inform** the user when deployment is complete
+- Check logs if deployment fails: `docker-compose logs [service-name]`
+- If a service fails to start, investigate immediately and fix the issue
+- For backend changes, wait a few seconds after restart to verify the service is healthy

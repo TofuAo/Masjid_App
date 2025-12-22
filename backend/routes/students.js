@@ -238,28 +238,85 @@ router.put(
 router.delete(
   '/:ic',
   requireRole(['admin', 'pic']),
-  icValidation,
+  // Store original IC before normalization middleware (for special IDs)
+  (req, res, next) => {
+    req.originalIc = req.params.ic;
+    next();
+  },
   normalizeICMiddleware,
   requirePicApproval({
     actionKey: 'students:delete',
     entityType: 'student',
     message: 'Permintaan padam pelajar dihantar untuk kelulusan admin.',
     prepare: async (req) => {
-      const cleanedIc = normalizeIcForQuery(req.params.ic);
-      const [rows] = await pool.execute(
+      // Use original IC if normalizeIC returned null (for special IDs like SPUTERIZULAIQHA001)
+      const ic = req.params.ic || req.originalIc;
+      if (!ic) {
+        const error = new Error('IC pelajar diperlukan.');
+        error.status = 400;
+        throw error;
+      }
+      
+      const cleanedIc = normalizeIcForQuery(ic);
+      console.log('[PIC Delete Prepare] Looking up student with IC:', ic, 'cleaned:', cleanedIc);
+      
+      // Try multiple lookup strategies to handle both standard ICs and special student IDs
+      // Strategy 1: Direct match (for special IDs like SSITIHAWA001, SPUTERIZULAIQHA001)
+      let [rows] = await pool.execute(
         `SELECT u.ic, u.nama, u.email, u.telefon, s.kelas_id, s.tarikh_daftar
          FROM users u
-         JOIN students s ON u.ic = s.user_ic
-         WHERE REPLACE(u.ic, '-', '') = ?`,
-        [cleanedIc]
+         LEFT JOIN students s ON u.ic = s.user_ic
+         WHERE u.ic = ? AND u.role = 'student'`,
+        [ic]
       );
+      console.log('[PIC Delete Prepare] Strategy 1 (direct match) found:', rows.length, 'rows');
+      
+      // Strategy 2: If not found, try with cleaned IC (remove hyphens) - only for standard ICs
+      if (rows.length === 0 && cleanedIc !== ic && cleanedIc.length === 12) {
+        [rows] = await pool.execute(
+          `SELECT u.ic, u.nama, u.email, u.telefon, s.kelas_id, s.tarikh_daftar
+           FROM users u
+           LEFT JOIN students s ON u.ic = s.user_ic
+           WHERE REPLACE(u.ic, '-', '') = ? AND u.role = 'student'`,
+          [cleanedIc]
+        );
+        console.log('[PIC Delete Prepare] Strategy 2 (cleaned IC) found:', rows.length, 'rows');
+      }
+      
+      // Strategy 3: Try case-insensitive match (for special IDs and case variations)
       if (rows.length === 0) {
+        [rows] = await pool.execute(
+          `SELECT u.ic, u.nama, u.email, u.telefon, s.kelas_id, s.tarikh_daftar
+           FROM users u
+           LEFT JOIN students s ON u.ic = s.user_ic
+           WHERE UPPER(u.ic) = UPPER(?) AND u.role = 'student'`,
+          [ic]
+        );
+        console.log('[PIC Delete Prepare] Strategy 3 (case-insensitive) found:', rows.length, 'rows');
+      }
+      
+      // Strategy 4: Try exact match with original IC from URL (in case of encoding issues)
+      if (rows.length === 0 && req.originalIc && req.originalIc !== ic) {
+        [rows] = await pool.execute(
+          `SELECT u.ic, u.nama, u.email, u.telefon, s.kelas_id, s.tarikh_daftar
+           FROM users u
+           LEFT JOIN students s ON u.ic = s.user_ic
+           WHERE u.ic = ? AND u.role = 'student'`,
+          [req.originalIc]
+        );
+        console.log('[PIC Delete Prepare] Strategy 4 (original IC) found:', rows.length, 'rows');
+      }
+      
+      if (rows.length === 0) {
+        console.error('[PIC Delete Prepare] Student not found after all strategies. IC:', ic, 'originalIc:', req.originalIc);
         const error = new Error('Pelajar tidak dijumpai.');
         error.status = 404;
         throw error;
       }
+      
+      console.log('[PIC Delete Prepare] Found student:', rows[0].ic, rows[0].nama);
       return {
-        entityId: cleanedIc,
+        entityId: rows[0].ic, // Use the actual IC from database
         metadata: {
           summary: `Padam pelajar ${rows[0].nama}`,
           current: rows[0]

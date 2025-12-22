@@ -86,26 +86,35 @@ export const generateReceiptHTML = async (receiptData) => {
     receiptNumber,
     studentName,
     studentIc,
+    studentEmail,
     amount,
     paymentDate,
     paymentMethod,
     bulan,
     tahun,
     kelasNama,
+    peringkat = 'N/A',
+    teacherName = 'N/A',
     invoiceNumber,
     billId,
+    orderId,
     masjidName = 'e-Sistem Kelas Pengajian Al-quran',
     masjidAddress = '',
     masjidPhone = '',
-    logoPath = '/logomnsa1.jpeg'
+    logoPath = '/logomnsa1.jpeg',
+    discountAmount = 0,
+    discountType = null
   } = receiptData;
 
-  // Format date as DD-MM-YYYY
-  const formattedDate = new Date(paymentDate).toLocaleDateString('en-GB', {
+  // Format date as Month Day, Year (e.g., "August 24, 2025")
+  const formattedDate = new Date(paymentDate).toLocaleDateString('en-US', {
     year: 'numeric',
-    month: '2-digit',
-    day: '2-digit'
-  }).split('/').join('-');
+    month: 'long',
+    day: 'numeric'
+  });
+
+  // Format date for order date (same format)
+  const orderDate = formattedDate;
 
   // Get logo URL - use public path
   const logoUrl = logoPath.startsWith('http') ? logoPath : `${process.env.FRONTEND_URL || 'http://localhost:3000'}${logoPath}`;
@@ -113,13 +122,24 @@ export const generateReceiptHTML = async (receiptData) => {
   // Format payment method
   const formattedPaymentMethod = paymentMethod ? paymentMethod.toUpperCase() : 'ONLINE PAYMENT';
 
+  // Generate Order ID if not provided
+  const finalOrderId = orderId || billId || invoiceNumber || receiptNumber;
+
+  // Calculate totals
+  const subtotal = parseFloat(amount || 0);
+  const discount = parseFloat(discountAmount || 0);
+  const total = subtotal - discount;
+
+  // Description for the item
+  const itemDescription = bulan && tahun ? `Fee ${bulan} ${tahun}` : 'Payment';
+
   return `
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Receipt - ${receiptNumber}</title>
+    <title>Invoice - ${receiptNumber}</title>
     <style>
         * {
             margin: 0;
@@ -130,87 +150,76 @@ export const generateReceiptHTML = async (receiptData) => {
             font-family: 'Arial', 'Helvetica', sans-serif;
             padding: 40px 20px;
             background-color: #ffffff;
+            color: #333333;
         }
         .receipt-container {
             max-width: 700px;
             margin: 0 auto;
             background: white;
             padding: 40px;
-            border: 1px solid #e0e0e0;
         }
-        .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            margin-bottom: 30px;
+        .logo-container {
+            text-align: center;
+            margin-bottom: 20px;
         }
-        .logo-section {
-            flex: 0 0 auto;
+        .logo-container img {
+            max-width: 150px;
+            height: auto;
         }
-        .logo {
-            width: 80px;
-            height: 80px;
-            border-radius: 50%;
-            object-fit: cover;
-            background-color: #ff9800;
-            padding: 10px;
-        }
-        .title-section {
-            flex: 1;
-            text-align: right;
-        }
-        .receipt-title {
-            font-size: 36px;
-            font-weight: bold;
-            color: #424242;
+        .greeting {
+            font-size: 18px;
+            color: #333333;
             margin-bottom: 10px;
         }
-        .receipt-number {
-            font-size: 14px;
-            color: #616161;
-            margin-bottom: 5px;
-        }
-        .receipt-date {
-            font-size: 14px;
-            color: #616161;
-        }
-        .content-section {
-            display: flex;
-            justify-content: space-between;
+        .thank-you {
+            font-size: 16px;
+            color: #666666;
             margin-bottom: 30px;
         }
-        .issuer-info {
-            flex: 1;
+        .invoice-id {
+            font-size: 32px;
+            font-weight: bold;
+            color: #000000;
+            margin-bottom: 40px;
+            letter-spacing: 1px;
         }
-        .issuer-name {
+        .section-title {
             font-size: 16px;
             font-weight: bold;
-            color: #212121;
-            margin-bottom: 10px;
+            color: #333333;
+            margin-bottom: 15px;
+            margin-top: 30px;
         }
-        .issuer-address {
+        .order-info {
+            margin-bottom: 30px;
+        }
+        .info-row {
+            margin-bottom: 8px;
             font-size: 14px;
-            color: #616161;
-            line-height: 1.6;
+            color: #333333;
         }
-        .payer-info {
-            flex: 1;
-            text-align: right;
-        }
-        .payer-label {
-            font-size: 14px;
-            color: #616161;
-            margin-bottom: 5px;
-        }
-        .payer-name {
-            font-size: 16px;
+        .info-label {
             font-weight: bold;
-            color: #212121;
+            display: inline-block;
+            min-width: 120px;
+        }
+        .info-value {
+            color: #333333;
+        }
+        .info-value a {
+            color: #0066cc;
+            text-decoration: none;
+        }
+        .info-value a:hover {
+            text-decoration: underline;
+        }
+        .items-section {
+            margin-bottom: 30px;
         }
         .items-table {
             width: 100%;
             border-collapse: collapse;
-            margin-bottom: 20px;
+            margin-top: 15px;
         }
         .items-table thead {
             background-color: #f5f5f5;
@@ -220,41 +229,101 @@ export const generateReceiptHTML = async (receiptData) => {
             text-align: left;
             font-size: 14px;
             font-weight: bold;
-            color: #424242;
+            color: #333333;
             border-bottom: 1px solid #e0e0e0;
         }
         .items-table td {
             padding: 12px;
             font-size: 14px;
-            color: #212121;
+            color: #333333;
             border-bottom: 1px solid #f0f0f0;
         }
         .items-table th:last-child,
         .items-table td:last-child {
             text-align: right;
         }
-        .payment-summary {
+        .discounts-section {
             margin-bottom: 30px;
         }
-        .summary-row {
-            margin-bottom: 10px;
+        .discounts-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
         }
-        .summary-label {
-            font-size: 14px;
-            color: #616161;
-            display: inline-block;
-            min-width: 200px;
+        .discounts-table thead {
+            background-color: #f5f5f5;
         }
-        .summary-value {
+        .discounts-table th {
+            padding: 12px;
+            text-align: left;
             font-size: 14px;
             font-weight: bold;
-            color: #212121;
+            color: #333333;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        .discounts-table td {
+            padding: 12px;
+            font-size: 14px;
+            color: #333333;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        .discounts-table th:last-child,
+        .discounts-table td:last-child {
+            text-align: right;
+        }
+        .total-section {
+            margin-top: 30px;
+            margin-bottom: 30px;
         }
         .total-amount {
-            font-size: 18px;
+            font-size: 20px;
             font-weight: bold;
-            color: #212121;
-            margin-top: 10px;
+            color: #000000;
+        }
+        .footer {
+            margin-top: 40px;
+            font-size: 14px;
+            color: #666666;
+            text-align: center;
+        }
+        .student-info-section {
+            margin-top: 30px;
+            padding: 20px;
+            background-color: #f9f9f9;
+            border-radius: 8px;
+            border: 1px solid #e0e0e0;
+        }
+        .student-info-title {
+            font-size: 16px;
+            font-weight: bold;
+            color: #333333;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #e0e0e0;
+        }
+        .student-info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-top: 15px;
+        }
+        .student-info-item {
+            background-color: white;
+            padding: 12px;
+            border-radius: 5px;
+            border: 1px solid #e0e0e0;
+        }
+        .student-info-label {
+            font-size: 12px;
+            color: #666666;
+            margin-bottom: 5px;
+            text-transform: uppercase;
+            font-weight: 600;
+        }
+        .student-info-value {
+            font-size: 14px;
+            color: #333333;
+            font-weight: bold;
         }
         .issued-by {
             border: 2px solid #f44336;
@@ -269,142 +338,151 @@ export const generateReceiptHTML = async (receiptData) => {
         }
         .issued-by-value {
             font-size: 14px;
-            color: #212121;
+            color: #333333;
             margin-top: 5px;
-        }
-        .transaction-section {
-            margin-top: 30px;
-        }
-        .transaction-title {
-            font-size: 16px;
-            font-weight: bold;
-            color: #212121;
-            margin-bottom: 15px;
-        }
-        .transaction-table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-        .transaction-table thead {
-            background-color: #f5f5f5;
-        }
-        .transaction-table th {
-            padding: 12px;
-            text-align: left;
-            font-size: 14px;
-            font-weight: bold;
-            color: #424242;
-            border-bottom: 1px solid #e0e0e0;
-        }
-        .transaction-table td {
-            padding: 12px;
-            font-size: 14px;
-            color: #212121;
-            border-bottom: 1px solid #f0f0f0;
-        }
-        .transaction-table th:last-child,
-        .transaction-table td:last-child {
-            text-align: right;
-        }
-        .note-section {
-            margin-top: 20px;
-            font-size: 14px;
-            color: #616161;
         }
         @media print {
             body {
                 padding: 0;
             }
             .receipt-container {
-                border: none;
+                padding: 20px;
             }
         }
     </style>
 </head>
 <body>
     <div class="receipt-container">
-        <div class="header">
-            <div class="logo-section">
-                <img src="${logoUrl}" alt="Logo" class="logo" onerror="this.style.display='none'">
+        <div class="logo-container">
+            <img src="${logoUrl}" alt="Masjid Logo" />
+        </div>
+        <div class="greeting">Hi ${studentName || 'Customer'}!</div>
+        <div class="thank-you">Thank you for your payment</div>
+        <div class="invoice-id">INVOICE ID: ${receiptNumber}</div>
+        
+        <div class="order-info">
+            <div class="section-title">YOUR ORDER INFORMATION</div>
+            <div class="info-row">
+                <span class="info-label">Order ID:</span>
+                <span class="info-value">${finalOrderId}</span>
             </div>
-            <div class="title-section">
-                <div class="receipt-title">RECEIPT</div>
-                <div class="receipt-number">Receipt No.: ${receiptNumber}</div>
-                <div class="receipt-date">Receipt Date: ${formattedDate}</div>
+            <div class="info-row">
+                <span class="info-label">Order Date:</span>
+                <span class="info-value">${orderDate}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Bill To:</span>
+                <span class="info-value">
+                    ${studentEmail ? `<a href="mailto:${studentEmail}">${studentEmail}</a>` : (studentIc || 'N/A')}
+                </span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">Source:</span>
+                <span class="info-value">${masjidName}</span>
             </div>
         </div>
         
-        <div class="content-section">
-            <div class="issuer-info">
-                <div class="issuer-name">${masjidName}</div>
-                ${masjidAddress ? `<div class="issuer-address">${masjidAddress.split(',').join('<br>')}</div>` : ''}
-            </div>
-            <div class="payer-info">
-                <div class="payer-label">Received From:</div>
-                <div class="payer-name">${studentName}</div>
-            </div>
-        </div>
-        
-        <table class="items-table">
-            <thead>
-                <tr>
-                    <th>Description</th>
-                    <th>Amount (RM)</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr>
-                    <td>${bulan ? `Fee ${bulan} ${tahun}` : 'Payment'}</td>
-                    <td>${parseFloat(amount).toFixed(2)}</td>
-                </tr>
-            </tbody>
-        </table>
-        
-        <div class="payment-summary">
-            <div class="summary-row">
-                <span class="summary-label">TOTAL AMOUNT RECEIVED:</span>
-                <span class="summary-value total-amount">${parseFloat(amount).toFixed(2)}</span>
-            </div>
-            <div class="summary-row">
-                <span class="summary-label">Payment Method:</span>
-                <span class="summary-value">${formattedPaymentMethod}</span>
-            </div>
-            <div class="summary-row">
-                <span class="summary-label">Payment Date:</span>
-                <span class="summary-value">${formattedDate}</span>
-            </div>
-            <div class="issued-by">
-                <div class="issued-by-label">Issued By:</div>
-                <div class="issued-by-value">${masjidName}</div>
-            </div>
-            ${billId ? `
-            <div class="note-section">
-                <strong>Note:</strong> Bill ID = ${billId}
-            </div>
-            ` : ''}
-        </div>
-        
-        ${invoiceNumber ? `
-        <div class="transaction-section">
-            <div class="transaction-title">Transaction</div>
-            <table class="transaction-table">
+        <div class="items-section">
+            <div class="section-title">HERE'S WHAT YOU ORDERED</div>
+            <table class="items-table">
                 <thead>
                     <tr>
-                        <th>Invoice No.</th>
-                        <th>Date</th>
-                        <th>Amount (RM)</th>
+                        <th>Description</th>
+                        <th>Publisher</th>
+                        <th>Price</th>
                     </tr>
                 </thead>
                 <tbody>
                     <tr>
-                        <td>${invoiceNumber}</td>
-                        <td>${formattedDate}</td>
-                        <td>${parseFloat(amount).toFixed(2)}</td>
+                        <td>${itemDescription}</td>
+                        <td>${kelasNama || 'N/A'}</td>
+                        <td>RM${subtotal.toFixed(2)} MYR</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        
+        ${discount > 0 ? `
+        <div class="discounts-section">
+            <div class="section-title">Discounts</div>
+            <table class="discounts-table">
+                <thead>
+                    <tr>
+                        <th>Discount Type</th>
+                        <th>Discount Amount</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>${discountType || 'Discount'}</td>
+                        <td>- RM${discount.toFixed(2)} MYR</td>
                     </tr>
                 </tbody>
             </table>
         </div>
         ` : ''}
+        
+        <div class="total-section">
+            <div class="section-title">TOTAL</div>
+            <div class="total-amount">RM${total.toFixed(2)} MYR</div>
+        </div>
+        
+        <div class="student-info-section">
+            <div class="student-info-title">STUDENT INFORMATION</div>
+            <div class="student-info-grid">
+                <div class="student-info-item">
+                    <div class="student-info-label">Full Name</div>
+                    <div class="student-info-value">${studentName || 'N/A'}</div>
+                </div>
+                <div class="student-info-item">
+                    <div class="student-info-label">IC Number</div>
+                    <div class="student-info-value">${studentIc || 'N/A'}</div>
+                </div>
+                <div class="student-info-item">
+                    <div class="student-info-label">Class (Kelas)</div>
+                    <div class="student-info-value">${kelasNama || 'N/A'}</div>
+                </div>
+                <div class="student-info-item">
+                    <div class="student-info-label">Level (Peringkat)</div>
+                    <div class="student-info-value">${peringkat || 'N/A'}</div>
+                </div>
+                <div class="student-info-item">
+                    <div class="student-info-label">Teacher Name</div>
+                    <div class="student-info-value">${teacherName || 'N/A'}</div>
+                </div>
+                <div class="student-info-item">
+                    <div class="student-info-label">Payment Method</div>
+                    <div class="student-info-value">${formattedPaymentMethod}</div>
+                </div>
+            </div>
+        </div>
+        
+        ${invoiceNumber ? `
+        <div class="order-info" style="margin-top: 30px;">
+            <div class="info-row">
+                <span class="info-label">Invoice Number:</span>
+                <span class="info-value">${invoiceNumber}</span>
+            </div>
+        </div>
+        ` : ''}
+        
+        ${billId ? `
+        <div class="order-info" style="margin-top: 15px;">
+            <div class="info-row">
+                <span class="info-label">Bill ID:</span>
+                <span class="info-value">${billId}</span>
+            </div>
+        </div>
+        ` : ''}
+        
+        <div class="issued-by">
+            <div class="issued-by-label">Issued By:</div>
+            <div class="issued-by-value">${masjidName}</div>
+        </div>
+        
+        <div class="footer">
+            Please keep a copy of this receipt for your records.
+        </div>
     </div>
 </body>
 </html>
@@ -435,18 +513,21 @@ export const saveReceiptFile = async (receiptHTML, receiptNumber) => {
  */
 export const generateFeeReceipt = async (feeId, paymentData = {}) => {
   try {
-    // Get fee details with student and class info
+    // Get fee details with student, class, and teacher info
     const [fees] = await pool.execute(`
       SELECT 
         f.*,
         u.nama as student_name,
         u.ic as student_ic,
         u.email as student_email,
-        c.nama_kelas as kelas_nama
+        c.nama_kelas as kelas_nama,
+        c.level as peringkat,
+        t.nama as teacher_name
       FROM fees f
       JOIN users u ON f.student_ic = u.ic
       LEFT JOIN students s ON u.ic = s.user_ic
       LEFT JOIN classes c ON s.kelas_id = c.id
+      LEFT JOIN users t ON c.guru_ic = t.ic
       WHERE f.id = ?
     `, [feeId]);
 
@@ -474,18 +555,30 @@ export const generateFeeReceipt = async (feeId, paymentData = {}) => {
     const logoPath = paymentData.logoPath || '/logomnsa1.jpeg';
     
     // Prepare receipt data
+    // Log for debugging
+    console.log('Receipt Data:', {
+      studentName: fee.student_name,
+      peringkat: fee.peringkat,
+      teacherName: fee.teacher_name,
+      amount: fee.jumlah
+    });
+    
     const receiptData = {
       receiptNumber,
-      studentName: fee.student_name,
+      studentName: fee.student_name || 'N/A',
       studentIc: fee.student_ic,
+      studentEmail: fee.student_email || null,
       amount: fee.jumlah,
       paymentDate: fee.tarikh_bayar || fee.tarikh || new Date(),
       paymentMethod: fee.cara_bayar || paymentData.paymentMethod || 'ONLINE PAYMENT',
       bulan: fee.bulan,
       tahun: fee.tahun,
       kelasNama: fee.kelas_nama,
+      peringkat: fee.peringkat || fee.level || 'N/A',
+      teacherName: fee.teacher_name || fee.guru_nama || 'N/A',
       invoiceNumber,
       billId,
+      orderId: billId || invoiceNumber || receiptNumber,
       masjidName,
       masjidAddress,
       logoPath,
@@ -523,11 +616,21 @@ export const generateFeeReceipt = async (feeId, paymentData = {}) => {
  */
 export const generatePaymentReceipt = async (paymentId, feeId = null) => {
   try {
-    // Get payment details
+    // Get payment details with student, class, and teacher info
     const [payments] = await pool.execute(`
-      SELECT p.*, u.nama as user_name, u.ic as user_ic, u.email as user_email
+      SELECT 
+        p.*, 
+        u.nama as user_name, 
+        u.ic as user_ic, 
+        u.email as user_email,
+        c.nama_kelas as kelas_nama,
+        c.level as peringkat,
+        t.nama as teacher_name
       FROM payments p
       JOIN users u ON p.user_ic = u.ic
+      LEFT JOIN students s ON u.ic = s.user_ic
+      LEFT JOIN classes c ON s.kelas_id = c.id
+      LEFT JOIN users t ON c.guru_ic = t.ic
       WHERE p.id = ?
     `, [paymentId]);
 
@@ -550,7 +653,7 @@ export const generatePaymentReceipt = async (paymentId, feeId = null) => {
       });
     }
 
-    // Otherwise generate standalone payment receipt
+    // Otherwise generate standalone payment receipt with class and teacher info
     const receiptNumber = await generateUniqueReceiptNumber();
     const invoiceNumber = `IV${paymentId.substring(0, 7).padStart(7, '0')}`;
     const metadata = payment.metadata ? JSON.parse(payment.metadata) : {};
@@ -564,14 +667,18 @@ export const generatePaymentReceipt = async (paymentId, feeId = null) => {
       receiptNumber,
       studentName: payment.user_name,
       studentIc: payment.user_ic,
+      studentEmail: payment.user_email || null,
       amount: payment.amount,
       paymentDate: payment.updated_at || payment.created_at,
       paymentMethod: payment.method || 'ONLINE PAYMENT',
       bulan: new Date().toLocaleString('en-US', { month: 'long' }),
       tahun: new Date().getFullYear(),
-      kelasNama: null,
+      kelasNama: payment.kelas_nama || 'N/A',
+      peringkat: payment.peringkat || 'N/A',
+      teacherName: payment.teacher_name || 'N/A',
       invoiceNumber,
       billId: payment.provider_reference || metadata.billId,
+      orderId: payment.provider_reference || metadata.billId || invoiceNumber || receiptNumber,
       masjidName,
       masjidAddress,
       logoPath,
@@ -633,12 +740,44 @@ export const getReceipt = async (receiptNumber) => {
 
       for (const filePath of possiblePaths) {
         if (fs.existsSync(filePath)) {
+          const html = fs.readFileSync(filePath, 'utf8');
+          
+          // Check if receipt has STUDENT INFORMATION section and logo (new format)
+          // If not, regenerate it with updated template
+          const hasNewFormat = html.includes('STUDENT INFORMATION') && html.includes('logo-container');
+          if (!hasNewFormat && fee.status === 'terbayar') {
+            const missingParts = [];
+            if (!html.includes('STUDENT INFORMATION')) missingParts.push('STUDENT INFORMATION');
+            if (!html.includes('logo-container')) missingParts.push('logo');
+            console.log(`Receipt ${receiptNumber} missing ${missingParts.join(' and ')}, regenerating...`);
+            try {
+              const receipt = await generateFeeReceipt(fee.id);
+              const receiptsDir = ensureReceiptsDirectory();
+              const newFilePath = path.join(receiptsDir, path.basename(receipt.receiptPath));
+              
+              if (fs.existsSync(newFilePath)) {
+                const newHtml = fs.readFileSync(newFilePath, 'utf8');
+                console.log(`Receipt ${receiptNumber} successfully regenerated with new format`);
+                return {
+                  type: 'fee',
+                  receiptNumber: fee.no_resit,
+                  receiptPath: receipt.receiptPath,
+                  feeId: fee.id,
+                  html: newHtml
+                };
+              }
+            } catch (regenerateError) {
+              console.error('Error regenerating receipt:', regenerateError);
+              // Fall through to return old receipt if regeneration fails
+            }
+          }
+          
           return {
             type: 'fee',
             receiptNumber: fee.no_resit,
             receiptPath: fee.resit_img,
             feeId: fee.id,
-            html: fs.readFileSync(filePath, 'utf8')
+            html: html
           };
         }
       }
@@ -684,12 +823,44 @@ export const getReceipt = async (receiptNumber) => {
 
         for (const filePath of possiblePaths) {
           if (fs.existsSync(filePath)) {
+            const html = fs.readFileSync(filePath, 'utf8');
+            
+            // Check if receipt has STUDENT INFORMATION section and logo (new format)
+            // If not, regenerate it with updated template
+            const hasNewFormat = html.includes('STUDENT INFORMATION') && html.includes('logo-container');
+            if (!hasNewFormat && payment.status === 'completed') {
+              const missingParts = [];
+              if (!html.includes('STUDENT INFORMATION')) missingParts.push('STUDENT INFORMATION');
+              if (!html.includes('logo-container')) missingParts.push('logo');
+              console.log(`Receipt ${receiptNumber} missing ${missingParts.join(' and ')}, regenerating...`);
+              try {
+                const receipt = await generatePaymentReceipt(payment.id);
+                const receiptsDir = ensureReceiptsDirectory();
+                const newFilePath = path.join(receiptsDir, path.basename(receipt.receiptPath));
+                
+                if (fs.existsSync(newFilePath)) {
+                  const newHtml = fs.readFileSync(newFilePath, 'utf8');
+                  console.log(`Receipt ${receiptNumber} successfully regenerated with new format`);
+                  return {
+                    type: 'payment',
+                    receiptNumber: metadata.receiptNumber,
+                    receiptPath: receipt.receiptPath,
+                    paymentId: payment.id,
+                    html: newHtml
+                  };
+                }
+              } catch (regenerateError) {
+                console.error('Error regenerating payment receipt:', regenerateError);
+                // Fall through to return old receipt if regeneration fails
+              }
+            }
+            
             return {
               type: 'payment',
               receiptNumber: metadata.receiptNumber,
               receiptPath: metadata.receiptPath,
               paymentId: payment.id,
-              html: fs.readFileSync(filePath, 'utf8')
+              html: html
             };
           }
         }

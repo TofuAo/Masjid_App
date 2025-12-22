@@ -207,15 +207,31 @@ const useCrud = (api, itemName) => {
       }
     }
     
-    // If we have an ic field but it wasn't 12 digits, try to extract from it anyway
-    // This handles edge cases where the IC might be in an unexpected format
+    // If we have an ic field but it wasn't 12 digits, still use it for special student IDs
+    // This handles special IDs like SSITIHAWA001, SPUTERIZULAIQHA001, etc.
     if (item.ic !== undefined && item.ic !== null && item.ic !== '') {
       const normalized = String(item.ic).replace(/\D/g, '');
       if (normalized.length === 12) {
         console.log(`[useCrud] Resolved identifier from ic field: ${item.ic}`);
         return item.ic; // Return original format
       } else {
-        console.warn(`[useCrud] IC field found but not 12 digits: ${item.ic} (normalized: ${normalized})`);
+        // For special student IDs (not 12 digits), still use the IC field
+        // The backend can handle these special formats
+        console.log(`[useCrud] Using special student ID format: ${item.ic}`);
+        return item.ic; // Return original format even if not 12 digits
+      }
+    }
+    
+    // Also check IC field (uppercase)
+    if (item.IC !== undefined && item.IC !== null && item.IC !== '') {
+      const normalized = String(item.IC).replace(/\D/g, '');
+      if (normalized.length === 12) {
+        console.log(`[useCrud] Resolved identifier from IC field: ${item.IC}`);
+        return item.IC; // Return original format
+      } else {
+        // For special student IDs (not 12 digits), still use the IC field
+        console.log(`[useCrud] Using special student ID format: ${item.IC}`);
+        return item.IC; // Return original format even if not 12 digits
       }
     }
     

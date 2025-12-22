@@ -35,10 +35,23 @@ export const getAllStudents = async (req, res) => {
 
     // Only show active students (those with entries in students table, not archived)
     let query = `
-      SELECT u.ic, u.nama, u.email, u.telefon, u.umur, u.alamat, s.kelas_id, s.tarikh_daftar, c.nama_kelas
+      SELECT 
+        u.ic, 
+        u.nama, 
+        u.email, 
+        u.telefon, 
+        u.umur, 
+        u.alamat, 
+        s.kelas_id, 
+        s.tarikh_daftar, 
+        c.nama_kelas,
+        c.level,
+        t.nama as guru_nama,
+        t.ic as guru_ic
       FROM users u
       INNER JOIN students s ON u.ic = s.user_ic
       LEFT JOIN classes c ON s.kelas_id = c.id
+      LEFT JOIN users t ON c.guru_ic = t.ic
       WHERE u.role = 'student'
     `;
 
@@ -137,17 +150,31 @@ export const getStudentById = async (req, res) => {
     const cleanedIc = normalizeIcForQuery(ic);
     const cacheKey = `student:${ic}`;
 
-    // Check if data is in cache
+    // Clear cache for this student to ensure fresh data with teacher information
+    // This ensures we always get the latest data including teacher details
     if (studentCache.has(cacheKey)) {
-      console.log("Data retrieved from cache");
-      return res.json(studentCache.get(cacheKey));
+      studentCache.delete(cacheKey);
     }
 
     const [students] = await pool.execute(`
-      SELECT u.ic, u.nama, u.email, u.status, u.umur, u.alamat, s.kelas_id, s.tarikh_daftar, c.nama_kelas
+      SELECT 
+        u.ic, 
+        u.nama, 
+        u.email, 
+        u.status, 
+        u.umur, 
+        u.alamat, 
+        u.telefon,
+        s.kelas_id, 
+        s.tarikh_daftar, 
+        c.nama_kelas,
+        c.level,
+        t.nama as guru_nama,
+        t.ic as guru_ic
       FROM users u
       JOIN students s ON u.ic = s.user_ic
       LEFT JOIN classes c ON s.kelas_id = c.id
+      LEFT JOIN users t ON c.guru_ic = t.ic
       WHERE REPLACE(u.ic, '-', '') = ? AND u.role = 'student'
     `, [cleanedIc]);
 
@@ -158,9 +185,19 @@ export const getStudentById = async (req, res) => {
       });
     }
 
+    const studentData = students[0];
+    console.log('Student data fetched:', {
+      ic: studentData.ic,
+      nama: studentData.nama,
+      kelas_id: studentData.kelas_id,
+      nama_kelas: studentData.nama_kelas,
+      guru_nama: studentData.guru_nama,
+      guru_ic: studentData.guru_ic
+    });
+
     const response = {
       success: true,
-      data: students[0]
+      data: studentData
     };
 
     // Store data in cache

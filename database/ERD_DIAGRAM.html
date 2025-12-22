@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MyMasjidApp - Entity Relationship Diagram</title>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            padding: 30px;
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 10px;
+            font-size: 2.5em;
+        }
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 1.1em;
+        }
+        .diagram-container {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            overflow-x: auto;
+        }
+        .info-section {
+            margin-top: 40px;
+            padding-top: 30px;
+            border-top: 2px solid #e0e0e0;
+        }
+        .info-section h2 {
+            color: #667eea;
+            margin-bottom: 20px;
+        }
+        .info-section ul {
+            line-height: 1.8;
+            color: #555;
+        }
+        .info-section li {
+            margin-bottom: 10px;
+        }
+        .legend {
+            background: #f0f0f0;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 20px;
+        }
+        .legend h3 {
+            margin-top: 0;
+            color: #333;
+        }
+        .legend-item {
+            margin: 8px 0;
+            padding-left: 20px;
+        }
+        .legend-item strong {
+            color: #667eea;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🏛️ MyMasjidApp Database</h1>
+        <p class="subtitle">Entity Relationship Diagram (ERD)</p>
+        
+        <div class="diagram-container">
+            <div class="mermaid">
+erDiagram
+    users ||--o{ students : "has"
+    users ||--o{ teachers : "has"
+    users ||--o{ classes : "teaches"
+    users ||--o{ attendance : "attends"
+    users ||--o{ results : "receives"
+    users ||--o{ fees : "pays"
+    users ||--o{ announcements : "creates"
+    users ||--o{ staff_checkin : "checks_in"
+    
+    classes ||--o{ students : "enrolls"
+    classes ||--o{ attendance : "tracks"
+    classes ||--o{ exams : "conducts"
+    
+    exams ||--o{ results : "produces"
+    
+    users {
+        VARCHAR ic PK "Primary Key"
+        VARCHAR nama "NOT NULL"
+        INT umur
+        VARCHAR alamat
+        VARCHAR telefon
+        VARCHAR email "UNIQUE"
+        VARCHAR password
+        ENUM role "student,teacher,admin"
+        ENUM status "aktif,tidak_aktif,cuti"
+        TIMESTAMP created_at
+        TIMESTAMP updated_at
+    }
+    
+    students {
+        VARCHAR user_ic PK "FK -> users.ic"
+        INT kelas_id "FK -> classes.id"
+        DATE tarikh_daftar
+    }
+    
+    teachers {
+        VARCHAR user_ic PK "FK -> users.ic"
+        JSON kepakaran
+    }
+    
+    classes {
+        INT id PK "Auto Increment"
+        VARCHAR nama_kelas "NOT NULL"
+        VARCHAR level
+        VARCHAR jadual
+        JSON sessions
+        DECIMAL yuran
+        VARCHAR guru_ic "FK -> users.ic"
+        INT kapasiti
+        ENUM status "aktif,tidak_aktif,penuh"
+        TIMESTAMP created_at
+        TIMESTAMP updated_at
+    }
+    
+    attendance {
+        INT id PK "Auto Increment"
+        VARCHAR student_ic "FK -> users.ic"
+        INT class_id "FK -> classes.id"
+        DATE tarikh
+        ENUM status "Hadir,Tidak Hadir,Cuti"
+        TEXT catatan
+        TIMESTAMP created_at
+        TIMESTAMP updated_at
+    }
+    
+    exams {
+        INT id PK "Auto Increment"
+        INT class_id "FK -> classes.id"
+        VARCHAR subject
+        DATE tarikh_exam
+        TIMESTAMP created_at
+        TIMESTAMP updated_at
+    }
+    
+    results {
+        INT id PK "Auto Increment"
+        VARCHAR student_ic "FK -> users.ic"
+        INT exam_id "FK -> exams.id"
+        INT markah
+        VARCHAR gred
+        VARCHAR slip_img
+        TEXT catatan
+        TIMESTAMP created_at
+        TIMESTAMP updated_at
+    }
+    
+    fees {
+        INT id PK "Auto Increment"
+        VARCHAR student_ic "FK -> users.ic"
+        DECIMAL jumlah
+        ENUM status "Bayar,Belum Bayar,terbayar,tunggak,pending"
+        DATE tarikh
+        DATE tarikh_bayar
+        VARCHAR bulan
+        INT tahun
+        VARCHAR cara_bayar
+        VARCHAR no_resit
+        VARCHAR resit_img
+        TIMESTAMP created_at
+        TIMESTAMP updated_at
+    }
+    
+    announcements {
+        INT id PK "Auto Increment"
+        VARCHAR title "NOT NULL"
+        TEXT content "NOT NULL"
+        VARCHAR author_ic "FK -> users.ic"
+        ENUM status "draft,published,archived"
+        ENUM priority "low,normal,high,urgent"
+        ENUM target_audience "all,students,teachers,admin"
+        DATETIME start_date
+        DATETIME end_date
+        TIMESTAMP created_at
+        TIMESTAMP updated_at
+    }
+    
+    staff_checkin {
+        INT id PK "Auto Increment"
+        VARCHAR staff_ic "FK -> users.ic"
+        TIMESTAMP check_in_time
+        TIMESTAMP check_out_time
+        DECIMAL check_in_latitude
+        DECIMAL check_in_longitude
+        DECIMAL check_out_latitude
+        DECIMAL check_out_longitude
+        ENUM status "checked_in,checked_out"
+        DECIMAL distance_from_masjid
+        TIMESTAMP created_at
+        TIMESTAMP updated_at
+    }
+            </div>
+        </div>
+
+        <div class="info-section">
+            <h2>📊 Database Overview</h2>
+            <p><strong>Total Tables:</strong> 10 core tables</p>
+            
+            <h3>Core Relationships</h3>
+            <ul>
+                <li><strong>users</strong> - Central master table for all people (students, teachers, admins)</li>
+                <li><strong>students</strong> - Extension of users with class enrollment information</li>
+                <li><strong>teachers</strong> - Extension of users with expertise information</li>
+                <li><strong>classes</strong> - Classes taught by teachers, enrolled by students</li>
+                <li><strong>attendance</strong> - Tracks student attendance in classes</li>
+                <li><strong>exams</strong> - Exams conducted for classes</li>
+                <li><strong>results</strong> - Exam results for students</li>
+                <li><strong>fees</strong> - Fee payments by students</li>
+                <li><strong>announcements</strong> - System announcements created by users</li>
+                <li><strong>staff_checkin</strong> - Staff check-in/check-out records with geolocation</li>
+            </ul>
+
+            <div class="legend">
+                <h3>Legend</h3>
+                <div class="legend-item"><strong>PK</strong> = Primary Key</div>
+                <div class="legend-item"><strong>FK</strong> = Foreign Key</div>
+                <div class="legend-item"><strong>||--o{</strong> = One-to-Many relationship</div>
+                <div class="legend-item"><strong>||--||</strong> = One-to-One relationship</div>
+            </div>
+
+            <h3>Key Features</h3>
+            <ul>
+                <li>All relationships use foreign key constraints for data integrity</li>
+                <li>Most relationships use <code>ON DELETE CASCADE</code> for automatic cleanup</li>
+                <li>Some relationships use <code>ON DELETE SET NULL</code> to preserve data (e.g., class assignments)</li>
+                <li>All tables include <code>created_at</code> and <code>updated_at</code> timestamps</li>
+                <li>Uses MySQL/MariaDB with InnoDB engine for transaction support</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        mermaid.initialize({ 
+            startOnLoad: true,
+            theme: 'default',
+            er: {
+                fontSize: 12,
+                entityPadding: 15,
+                fill: '#f9f9f9',
+                stroke: '#333',
+                strokeWidth: 2
+            }
+        });
+    </script>
+</body>
+</html>

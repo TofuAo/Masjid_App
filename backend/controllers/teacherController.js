@@ -163,12 +163,15 @@ export const getTeacherById = async (req, res) => {
   try {
     const { ic } = req.params;
     
+    // Normalize IC for comparison (remove hyphens and spaces)
+    const normalizedIC = ic.replace(/[-\s]/g, '');
+    
     const [teachers] = await pool.execute(`
       SELECT u.ic, u.nama, u.email, u.telefon, u.status, COALESCE(t.kepakaran, '[]') as kepakaran
       FROM users u
-      LEFT JOIN teachers t ON u.ic = t.user_ic
-      WHERE u.ic = ? AND u.role IN ('teacher', 'staff')
-    `, [ic]);
+      LEFT JOIN teachers t ON REPLACE(REPLACE(u.ic, '-', ''), ' ', '') = REPLACE(REPLACE(t.user_ic, '-', ''), ' ', '')
+      WHERE REPLACE(REPLACE(u.ic, '-', ''), ' ', '') = ? AND u.role IN ('teacher', 'staff', 'admin')
+    `, [normalizedIC]);
     
     if (teachers.length === 0) {
       return res.status(404).json({
@@ -177,7 +180,7 @@ export const getTeacherById = async (req, res) => {
       });
     }
     
-    // Get teacher's classes
+    // Get teacher's classes - match by normalized IC to handle format differences
     const [classes] = await pool.execute(`
       SELECT 
         c.id, 
@@ -194,10 +197,10 @@ export const getTeacherById = async (req, res) => {
         COUNT(DISTINCT s.user_ic) as student_count
       FROM classes c
       LEFT JOIN students s ON c.id = s.kelas_id
-      WHERE c.guru_ic = ?
+      WHERE REPLACE(REPLACE(c.guru_ic, '-', ''), ' ', '') = ?
       GROUP BY c.id, c.nama_kelas, c.level, c.sessions, c.yuran, c.guru_ic, c.kapasiti, c.status, c.jadual, c.created_at, c.updated_at
       ORDER BY c.created_at DESC
-    `, [ic]);
+    `, [normalizedIC]);
     
     const teacherData = {
       ...teachers[0],

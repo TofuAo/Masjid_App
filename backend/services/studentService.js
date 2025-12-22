@@ -488,10 +488,28 @@ export const deleteStudentRecord = async (ic, { actorIc, requestedBy = null } = 
   const shouldManageTransaction = !connection;
 
   try {
-    const [userRows] = await ownConnection.execute(
-      `SELECT * FROM users WHERE REPLACE(ic, '-', '') = ? AND role = 'student'`,
-      [cleanedIc]
+    // Try multiple lookup strategies to handle both standard ICs and special student IDs
+    // Strategy 1: Direct match (for special IDs like SPUTERIZULAIQHA001)
+    let [userRows] = await ownConnection.execute(
+      `SELECT * FROM users WHERE ic = ? AND role = 'student'`,
+      [ic]
     );
+
+    // Strategy 2: Match with cleaned IC (remove hyphens) - for standard ICs
+    if (userRows.length === 0 && cleanedIc !== ic) {
+      [userRows] = await ownConnection.execute(
+        `SELECT * FROM users WHERE REPLACE(ic, '-', '') = ? AND role = 'student'`,
+        [cleanedIc]
+      );
+    }
+
+    // Strategy 3: Case-insensitive match (for special IDs)
+    if (userRows.length === 0) {
+      [userRows] = await ownConnection.execute(
+        `SELECT * FROM users WHERE UPPER(ic) = UPPER(?) AND role = 'student'`,
+        [ic]
+      );
+    }
 
     if (userRows.length === 0) {
       const error = new Error('Pelajar tidak dijumpai.');
@@ -499,12 +517,14 @@ export const deleteStudentRecord = async (ic, { actorIc, requestedBy = null } = 
       throw error;
     }
 
+    const userRecord = userRows[0];
+    const actualIc = userRecord.ic; // Use the actual IC from database
+
     const [studentRows] = await ownConnection.execute(
-      `SELECT * FROM students WHERE REPLACE(user_ic, '-', '') = ?`,
-      [cleanedIc]
+      `SELECT * FROM students WHERE user_ic = ?`,
+      [actualIc]
     );
 
-    const userRecord = userRows[0];
     const studentRecord = studentRows[0] || null;
 
     const undoSnapshotId = await createSnapshot({
@@ -530,13 +550,14 @@ export const deleteStudentRecord = async (ic, { actorIc, requestedBy = null } = 
       await ownConnection.beginTransaction();
     }
 
+    // Use actual IC from database for deletion (handles both standard and special IDs)
     await ownConnection.execute(
-      `DELETE FROM students WHERE REPLACE(user_ic, '-', '') = ?`,
-      [cleanedIc]
+      `DELETE FROM students WHERE user_ic = ?`,
+      [actualIc]
     );
     await ownConnection.execute(
-      `DELETE FROM users WHERE REPLACE(ic, '-', '') = ? AND role = 'student'`,
-      [cleanedIc]
+      `DELETE FROM users WHERE ic = ? AND role = 'student'`,
+      [actualIc]
     );
 
     if (shouldManageTransaction) {
