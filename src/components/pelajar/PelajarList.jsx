@@ -131,7 +131,7 @@ const PelajarList = ({ pelajars = [], onEdit, onView, onDelete, onAdd, user }) =
                               <Edit className="w-4 h-4" />
                             </button>
                             <button
-                              onClick={() => onDelete(pelajar.ic || pelajar.IC)}
+                              onClick={() => onDelete(pelajar.ic || pelajar.IC, pelajar)}
                               className="text-red-600 hover:text-red-900"
                               title="Padam"
                             >

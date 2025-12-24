@@ -52,7 +52,8 @@ export const useAccurateGPS = (options = {}) => {
       });
       setLocationError(null);
     } catch (error) {
-      setLocationError(error.message || 'Unable to retrieve your location');
+      const errorMsg = error.message || 'Tidak dapat mendapatkan lokasi anda. Sila pastikan kebenaran lokasi dibenarkan.';
+      setLocationError(errorMsg);
       setLocation({ latitude: null, longitude: null, accuracy: null });
     } finally {
       setCheckingLocation(false);

@@ -63,7 +63,7 @@ const PicUserList = ({ picUsers = [], onAdd, onEdit, onDelete, loading }) => {
                       <Button
                         variant="outline"
                         className="border-red-200 text-red-600 hover:bg-red-50 flex items-center gap-2"
-                        onClick={() => onDelete(pic.ic)}
+                        onClick={() => onDelete(pic.ic, pic)}
                       >
                         <Trash2 className="w-4 h-4" />
                         Padam

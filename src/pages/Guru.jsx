@@ -40,6 +40,7 @@ const Guru = () => {
     error,
     handlers,
     fetchItems,
+    DeleteModal,
   } = useCrud(teachersAPI, 'guru');
 
   const {
@@ -497,6 +498,7 @@ const Guru = () => {
   return (
     <div>
       {renderContent()}
+      <DeleteModal />
     </div>
   );
 };

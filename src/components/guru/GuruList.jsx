@@ -105,7 +105,7 @@ const GuruList = ({ gurus = [], onEdit, onView, onDelete, onAdd, user }) => {
                           <button onClick={() => onEdit(guru)} className="text-blue-600 hover:text-blue-800" title="Edit">
                             <Edit size={16} />
                           </button>
-                          <button onClick={() => onDelete(guru.ic)} className="text-red-600 hover:text-red-800" title="Padam">
+                          <button onClick={() => onDelete(guru.ic, guru)} className="text-red-600 hover:text-red-800" title="Padam">
                             <Trash2 size={16} />
                           </button>
                         </>

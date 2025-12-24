@@ -16,6 +16,7 @@ const Announcements = ({ user }) => {
     error,
     handlers,
     fetchItems,
+    DeleteModal,
   } = useCrud(announcementsAPI, 'announcement');
 
   const {
@@ -205,7 +206,12 @@ const Announcements = ({ user }) => {
     }
   };
 
-  return <div>{renderContent()}</div>;
+  return (
+    <div>
+      {renderContent()}
+      <DeleteModal />
+    </div>
+  );
 };
 
 export default Announcements;

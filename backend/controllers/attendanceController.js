@@ -1,6 +1,7 @@
 import { pool, testConnection } from '../config/database.js';
 import { validationResult } from 'express-validator';
 import { getSafePagination } from '../utils/pagination.js';
+import { createSnapshot, getSnapshotById, SNAPSHOT_TTL_HOURS } from '../utils/adminActionSnapshots.js';
 
 export const getAttendance = async (req, res) => {
   try {
@@ -341,6 +342,41 @@ export const markAttendance = async (req, res) => {
         }
       }
       
+      const existingData = existingAttendance[0];
+      const actorIc = req.user?.ic;
+      
+      // Create snapshot before update (for admin/PIC/teacher)
+      if (actorIc && (req.user?.role === 'admin' || req.user?.role === 'pic' || req.user?.role === 'teacher')) {
+        // Get student and class names for better metadata
+        const [studentInfo] = await pool.execute(
+          'SELECT nama FROM users WHERE ic = ?',
+          [existingData.student_ic]
+        );
+        const [classInfo] = await pool.execute(
+          'SELECT nama_kelas FROM classes WHERE id = ?',
+          [existingData.class_id]
+        );
+        
+        const studentName = studentInfo[0]?.nama || existingData.student_ic;
+        const className = classInfo[0]?.nama_kelas || 'Kelas';
+        
+        await createSnapshot({
+          entityType: 'attendance',
+          entityId: attendanceId,
+          entityIdentifier: `${existingData.student_ic}-${existingData.class_id}-${existingData.tarikh}`,
+          operation: 'update',
+          data: existingData,
+          metadata: {
+            title: studentName,
+            nama: studentName,
+            operationLabel: 'Kemas kini kehadiran',
+            redirectPath: `/kehadiran?start_date=${existingData.tarikh}&end_date=${existingData.tarikh}&class_id=${existingData.class_id}`,
+            notes: `Status kehadiran diubah: ${studentName} - ${className} - dari ${existingData.status} kepada ${status} pada ${existingData.tarikh}`
+          },
+          actorIc
+        });
+      }
+      
       // Update attendance
       await pool.execute(
         'UPDATE attendance SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
@@ -400,6 +436,52 @@ export const markAttendance = async (req, res) => {
     );
 
     if (existingAttendance.length > 0) {
+      // Get existing data for snapshot
+      const [existingDataFull] = await pool.execute(
+        `SELECT a.*, u.nama as pelajar_nama, c.nama_kelas
+         FROM attendance a
+         LEFT JOIN users u ON a.student_ic = u.ic
+         LEFT JOIN classes c ON a.class_id = c.id
+         WHERE a.id = ?`,
+        [existingAttendance[0].id]
+      );
+      const existingData = existingDataFull[0] || existingAttendance[0];
+      
+      // Log admin action for undo capability (exactly like teacher UPDATE)
+      const actorIc = req.user?.ic;
+      if (actorIc && (req.user?.role === 'admin' || req.user?.role === 'pic' || req.user?.role === 'teacher')) {
+        const studentName = existingData.pelajar_nama || existingData.student_ic;
+        const className = existingData.nama_kelas || 'Kelas';
+        
+        await createSnapshot({
+          entityType: 'attendance',
+          entityId: existingData.id,
+          entityIdentifier: `${existingData.student_ic}-${existingData.class_id}-${attendanceDate}`,
+          operation: 'update',
+          data: {
+            id: existingData.id,
+            student_ic: existingData.student_ic,
+            class_id: existingData.class_id,
+            tarikh: existingData.tarikh,
+            status: existingData.status,
+            proof_image: existingData.proof_image || null,
+            marked_by: existingData.marked_by || null,
+            document_confirmed: existingData.document_confirmed || null,
+            confirmed_by: existingData.confirmed_by || null,
+            created_at: existingData.created_at,
+            updated_at: existingData.updated_at
+          },
+          metadata: {
+            title: studentName,
+            nama: studentName,
+            operationLabel: 'Kemas kini kehadiran',
+            redirectPath: `/kehadiran?start_date=${attendanceDate}&end_date=${attendanceDate}&class_id=${existingData.class_id}`,
+            notes: `Status kehadiran diubah: ${studentName} - ${className} - dari ${existingData.status} kepada ${status} pada ${attendanceDate}`
+          },
+          actorIc
+        });
+      }
+      
       // Update existing attendance
       await pool.execute(
         `
@@ -416,13 +498,74 @@ export const markAttendance = async (req, res) => {
       });
     } else {
       // Create new attendance record
-      await pool.execute(
+      const [result] = await pool.execute(
         `
         INSERT INTO attendance (student_ic, class_id, tarikh, status)
         VALUES (?, ?, ?, ?)
       `,
         [student_ic, class_id, attendanceDate, status]
       );
+
+      // Log admin action for undo capability (exactly like teacher CREATE)
+      const actorIc = req.user?.ic;
+      if (actorIc && (req.user?.role === 'admin' || req.user?.role === 'pic' || req.user?.role === 'teacher')) {
+        const [newAttendance] = await pool.execute(
+          `SELECT a.*, u.nama as pelajar_nama, c.nama_kelas
+           FROM attendance a
+           LEFT JOIN users u ON a.student_ic = u.ic
+           LEFT JOIN classes c ON a.class_id = c.id
+           WHERE a.id = ?`,
+          [result.insertId]
+        );
+        
+        if (newAttendance.length > 0) {
+          const attendanceData = newAttendance[0];
+          const studentName = attendanceData.pelajar_nama || student_ic;
+          const className = attendanceData.nama_kelas || 'Kelas';
+          
+          const attendanceDataForSnapshot = {
+            id: attendanceData.id,
+            student_ic: attendanceData.student_ic,
+            class_id: attendanceData.class_id,
+            tarikh: attendanceData.tarikh,
+            status: attendanceData.status,
+            proof_image: attendanceData.proof_image || null,
+            marked_by: attendanceData.marked_by || null,
+            document_confirmed: attendanceData.document_confirmed || null,
+            confirmed_by: attendanceData.confirmed_by || null,
+            created_at: attendanceData.created_at,
+            updated_at: attendanceData.updated_at
+          };
+          
+          await createSnapshot({
+            entityType: 'attendance',
+            entityId: result.insertId,
+            entityIdentifier: `${student_ic}-${class_id}-${attendanceDate}`,
+            operation: 'create',
+            data: {
+              id: attendanceData.id,
+              student_ic: attendanceData.student_ic,
+              class_id: attendanceData.class_id,
+              tarikh: attendanceData.tarikh,
+              status: attendanceData.status,
+              proof_image: attendanceData.proof_image || null,
+              marked_by: attendanceData.marked_by || null,
+              document_confirmed: attendanceData.document_confirmed || null,
+              confirmed_by: attendanceData.confirmed_by || null,
+              created_at: attendanceData.created_at,
+              updated_at: attendanceData.updated_at
+            },
+            metadata: {
+              title: studentName,
+              nama: studentName,
+              operationLabel: 'Tambah kehadiran',
+              redirectPath: `/kehadiran?start_date=${attendanceDate}&end_date=${attendanceDate}&class_id=${class_id}`,
+              notes: `Kehadiran baru ditambah: ${studentName} - ${className} - ${status} pada ${attendanceDate}`
+            },
+            actorIc
+          });
+        }
+      }
 
       res.status(201).json({
         success: true,
@@ -471,6 +614,8 @@ export const bulkMarkAttendance = async (req, res) => {
 
     // Get a connection from the pool for transaction
     const connection = await pool.getConnection();
+    const actorIc = req.user?.ic;
+    const shouldCreateSnapshots = actorIc && (req.user?.role === 'admin' || req.user?.role === 'pic' || req.user?.role === 'teacher');
 
     try {
       // Start transaction
@@ -490,11 +635,55 @@ export const bulkMarkAttendance = async (req, res) => {
 
         // Check if attendance already exists
         const [existingAttendance] = await connection.execute(
-          'SELECT id FROM attendance WHERE student_ic = ? AND class_id = ? AND tarikh = ?',
+          `SELECT a.*, u.nama as pelajar_nama, c.nama_kelas
+           FROM attendance a
+           LEFT JOIN users u ON a.student_ic = u.ic
+           LEFT JOIN classes c ON a.class_id = c.id
+           WHERE a.student_ic = ? AND a.class_id = ? AND a.tarikh = ?`,
           [student_ic, class_id, attendanceDate]
         );
 
         if (existingAttendance.length > 0) {
+          // Create snapshot before update
+          const existingData = existingAttendance[0];
+          if (shouldCreateSnapshots) {
+            try {
+              const studentName = existingData.pelajar_nama || student_ic;
+              const className = existingData.nama_kelas || 'Kelas';
+              
+              await createSnapshot({
+                entityType: 'attendance',
+                entityId: existingData.id,
+                entityIdentifier: `${student_ic}-${class_id}-${attendanceDate}`,
+                operation: 'update',
+                data: {
+                  id: existingData.id,
+                  student_ic: existingData.student_ic,
+                  class_id: existingData.class_id,
+                  tarikh: existingData.tarikh,
+                  status: existingData.status,
+                  proof_image: existingData.proof_image || null,
+                  marked_by: existingData.marked_by || null,
+                  document_confirmed: existingData.document_confirmed || null,
+                  confirmed_by: existingData.confirmed_by || null,
+                  created_at: existingData.created_at,
+                  updated_at: existingData.updated_at
+                },
+                metadata: {
+                  title: studentName,
+                  nama: studentName,
+                  operationLabel: 'Kemas kini kehadiran (bulk)',
+                  redirectPath: `/kehadiran?start_date=${attendanceDate}&end_date=${attendanceDate}&class_id=${class_id}`,
+                  notes: `Status kehadiran diubah (bulk): ${studentName} - ${className} - dari ${existingData.status} kepada ${status} pada ${attendanceDate}`
+                },
+                actorIc
+              });
+            } catch (snapshotError) {
+              console.error('[BULK ATTENDANCE] Failed to create snapshot for update:', snapshotError);
+              // Continue with update even if snapshot fails
+            }
+          }
+          
           // Update existing
           await connection.execute(
             `
@@ -506,13 +695,64 @@ export const bulkMarkAttendance = async (req, res) => {
           );
         } else {
           // Insert new
-          await connection.execute(
+          const [insertResult] = await connection.execute(
             `
             INSERT INTO attendance (student_ic, class_id, tarikh, status)
             VALUES (?, ?, ?, ?)
           `,
             [student_ic, class_id, attendanceDate, status]
           );
+          
+          // Create snapshot after create
+          if (shouldCreateSnapshots && insertResult.insertId) {
+            try {
+              const [newAttendance] = await connection.execute(
+                `SELECT a.*, u.nama as pelajar_nama, c.nama_kelas
+                 FROM attendance a
+                 LEFT JOIN users u ON a.student_ic = u.ic
+                 LEFT JOIN classes c ON a.class_id = c.id
+                 WHERE a.id = ?`,
+                [insertResult.insertId]
+              );
+              
+              if (newAttendance.length > 0) {
+                const attendanceData = newAttendance[0];
+                const studentName = attendanceData.pelajar_nama || student_ic;
+                const className = attendanceData.nama_kelas || 'Kelas';
+                
+                await createSnapshot({
+                  entityType: 'attendance',
+                  entityId: insertResult.insertId,
+                  entityIdentifier: `${student_ic}-${class_id}-${attendanceDate}`,
+                  operation: 'create',
+                  data: {
+                    id: attendanceData.id,
+                    student_ic: attendanceData.student_ic,
+                    class_id: attendanceData.class_id,
+                    tarikh: attendanceData.tarikh,
+                    status: attendanceData.status,
+                    proof_image: attendanceData.proof_image || null,
+                    marked_by: attendanceData.marked_by || null,
+                    document_confirmed: attendanceData.document_confirmed || null,
+                    confirmed_by: attendanceData.confirmed_by || null,
+                    created_at: attendanceData.created_at,
+                    updated_at: attendanceData.updated_at
+                  },
+                  metadata: {
+                    title: studentName,
+                    nama: studentName,
+                    operationLabel: 'Tambah kehadiran (bulk)',
+                    redirectPath: `/kehadiran?start_date=${attendanceDate}&end_date=${attendanceDate}&class_id=${class_id}`,
+                    notes: `Kehadiran baru ditambah (bulk): ${studentName} - ${className} - ${status} pada ${attendanceDate}`
+                  },
+                  actorIc
+                });
+              }
+            } catch (snapshotError) {
+              console.error('[BULK ATTENDANCE] Failed to create snapshot for create:', snapshotError);
+              // Continue even if snapshot fails
+            }
+          }
         }
       }
 
@@ -597,6 +837,8 @@ export const bulkMarkAttendanceWithProof = async (req, res) => {
 
     // Get a connection from the pool for transaction
     const connection = await pool.getConnection();
+    const actorIc = req.user?.ic;
+    const shouldCreateSnapshots = actorIc && (req.user?.role === 'admin' || req.user?.role === 'pic' || req.user?.role === 'teacher');
     
     try {
       // Start transaction
@@ -617,11 +859,55 @@ export const bulkMarkAttendanceWithProof = async (req, res) => {
 
         // Check if attendance already exists
         const [existingAttendance] = await connection.execute(
-          'SELECT id FROM attendance WHERE student_ic = ? AND class_id = ? AND tarikh = ?',
+          `SELECT a.*, u.nama as pelajar_nama, c.nama_kelas
+           FROM attendance a
+           LEFT JOIN users u ON a.student_ic = u.ic
+           LEFT JOIN classes c ON a.class_id = c.id
+           WHERE a.student_ic = ? AND a.class_id = ? AND a.tarikh = ?`,
           [student_ic, class_id, attendanceDate]
         );
 
         if (existingAttendance.length > 0) {
+          // Create snapshot before update
+          const existingData = existingAttendance[0];
+          if (shouldCreateSnapshots) {
+            try {
+              const studentName = existingData.pelajar_nama || student_ic;
+              const className = existingData.nama_kelas || 'Kelas';
+              
+              await createSnapshot({
+                entityType: 'attendance',
+                entityId: existingData.id,
+                entityIdentifier: `${student_ic}-${class_id}-${attendanceDate}`,
+                operation: 'update',
+                data: {
+                  id: existingData.id,
+                  student_ic: existingData.student_ic,
+                  class_id: existingData.class_id,
+                  tarikh: existingData.tarikh,
+                  status: existingData.status,
+                  proof_image: existingData.proof_image || null,
+                  marked_by: existingData.marked_by || null,
+                  document_confirmed: existingData.document_confirmed || null,
+                  confirmed_by: existingData.confirmed_by || null,
+                  created_at: existingData.created_at,
+                  updated_at: existingData.updated_at
+                },
+                metadata: {
+                  title: studentName,
+                  nama: studentName,
+                  operationLabel: 'Kemas kini kehadiran (bulk dengan bukti)',
+                  redirectPath: `/kehadiran?start_date=${attendanceDate}&end_date=${attendanceDate}&class_id=${class_id}`,
+                  notes: `Status kehadiran diubah (bulk dengan bukti): ${studentName} - ${className} - dari ${existingData.status} kepada ${status} pada ${attendanceDate}`
+                },
+                actorIc
+              });
+            } catch (snapshotError) {
+              console.error('[BULK ATTENDANCE WITH PROOF] Failed to create snapshot for update:', snapshotError);
+              // Continue with update even if snapshot fails
+            }
+          }
+          
           // Update existing - always update all fields (use NULL if not provided)
           await connection.execute(
             `
@@ -636,13 +922,64 @@ export const bulkMarkAttendanceWithProof = async (req, res) => {
           );
         } else {
           // Insert new - always include all fields (use NULL if not provided)
-          await connection.execute(
+          const [insertResult] = await connection.execute(
             `
             INSERT INTO attendance (student_ic, class_id, tarikh, status, proof_image, marked_by)
             VALUES (?, ?, ?, ?, ?, ?)
           `,
             [student_ic, class_id, attendanceDate, status, proofImagePath || null, markedBy || null]
           );
+          
+          // Create snapshot after create
+          if (shouldCreateSnapshots && insertResult.insertId) {
+            try {
+              const [newAttendance] = await connection.execute(
+                `SELECT a.*, u.nama as pelajar_nama, c.nama_kelas
+                 FROM attendance a
+                 LEFT JOIN users u ON a.student_ic = u.ic
+                 LEFT JOIN classes c ON a.class_id = c.id
+                 WHERE a.id = ?`,
+                [insertResult.insertId]
+              );
+              
+              if (newAttendance.length > 0) {
+                const attendanceData = newAttendance[0];
+                const studentName = attendanceData.pelajar_nama || student_ic;
+                const className = attendanceData.nama_kelas || 'Kelas';
+                
+                await createSnapshot({
+                  entityType: 'attendance',
+                  entityId: insertResult.insertId,
+                  entityIdentifier: `${student_ic}-${class_id}-${attendanceDate}`,
+                  operation: 'create',
+                  data: {
+                    id: attendanceData.id,
+                    student_ic: attendanceData.student_ic,
+                    class_id: attendanceData.class_id,
+                    tarikh: attendanceData.tarikh,
+                    status: attendanceData.status,
+                    proof_image: attendanceData.proof_image || null,
+                    marked_by: attendanceData.marked_by || null,
+                    document_confirmed: attendanceData.document_confirmed || null,
+                    confirmed_by: attendanceData.confirmed_by || null,
+                    created_at: attendanceData.created_at,
+                    updated_at: attendanceData.updated_at
+                  },
+                  metadata: {
+                    title: studentName,
+                    nama: studentName,
+                    operationLabel: 'Tambah kehadiran (bulk dengan bukti)',
+                    redirectPath: `/kehadiran?start_date=${attendanceDate}&end_date=${attendanceDate}&class_id=${class_id}`,
+                    notes: `Kehadiran baru ditambah (bulk dengan bukti): ${studentName} - ${className} - ${status} pada ${attendanceDate}`
+                  },
+                  actorIc
+                });
+              }
+            } catch (snapshotError) {
+              console.error('[BULK ATTENDANCE WITH PROOF] Failed to create snapshot for create:', snapshotError);
+              // Continue even if snapshot fails
+            }
+          }
         }
       }
 
@@ -670,46 +1007,248 @@ export const bulkMarkAttendanceWithProof = async (req, res) => {
 };
 
 export const deleteAttendance = async (req, res) => {
+  console.log(`\n${'🎯'.repeat(40)}`);
+  console.log('[DELETE ATTENDANCE CONTROLLER] ===== CONTROLLER CALLED =====');
+  console.log('[DELETE ATTENDANCE CONTROLLER] ID:', req.params.id);
+  console.log('[DELETE ATTENDANCE CONTROLLER] User:', req.user?.ic, 'Role:', req.user?.role);
+  console.log('[DELETE ATTENDANCE CONTROLLER] Timestamp:', new Date().toISOString());
+  console.log(`${'🎯'.repeat(40)}\n`);
+  
   try {
     const { id } = req.params;
     const attendanceId = parseInt(id);
     
     if (isNaN(attendanceId)) {
+      console.error('[DELETE ATTENDANCE] ❌ Invalid attendance ID:', id);
       return res.status(400).json({
         success: false,
-        message: 'Invalid attendance ID',
+        message: 'Invalid attendance ID'
       });
     }
     
-    // Check if attendance record exists
+    // STEP 1: Fetch attendance data BEFORE deletion (MANDATORY for Recycle Bin)
+    console.log('[DELETE ATTENDANCE] STEP 1: Fetching attendance data for ID:', attendanceId);
     const [existingAttendance] = await pool.execute(
-      'SELECT * FROM attendance WHERE id = ?',
+      `SELECT a.*, u.nama as pelajar_nama, c.nama_kelas
+       FROM attendance a
+       LEFT JOIN users u ON a.student_ic = u.ic
+       LEFT JOIN classes c ON a.class_id = c.id
+       WHERE a.id = ?`,
       [attendanceId]
     );
-    
+
     if (existingAttendance.length === 0) {
+      console.error('[DELETE ATTENDANCE] ❌ Attendance record not found for ID:', attendanceId);
       return res.status(404).json({
         success: false,
-        message: 'Attendance record not found',
+        message: 'Attendance record not found'
+      });
+    }
+
+    const attendanceData = existingAttendance[0];
+    const studentName = attendanceData.pelajar_nama || attendanceData.student_ic;
+    console.log('[DELETE ATTENDANCE] ✅ STEP 1: Attendance data fetched:', {
+      id: attendanceData.id,
+      student_ic: attendanceData.student_ic,
+      class_id: attendanceData.class_id,
+      tarikh: attendanceData.tarikh,
+      status: attendanceData.status
+    });
+
+    // STEP 2: Create snapshot for Recycle Bin BEFORE deletion (MANDATORY)
+    // This must happen BEFORE the actual deletion for recovery purposes
+    if (!req.user || !req.user.ic) {
+      console.error('[DELETE ATTENDANCE] ❌ No user or IC found in request');
+      return res.status(401).json({
+        success: false,
+        message: 'Unauthorized'
+      });
+    }
+
+    if (req.user.role !== 'admin' && req.user.role !== 'pic' && req.user.role !== 'teacher') {
+      console.error('[DELETE ATTENDANCE] ❌ Insufficient permissions. User role:', req.user.role);
+      return res.status(403).json({
+        success: false,
+        message: 'You do not have permission to delete attendance records.'
+      });
+    }
+
+    // Prepare snapshot data - ensure all required fields are present
+    const attendanceDataForSnapshot = {
+      id: attendanceData.id,
+      student_ic: attendanceData.student_ic,
+      class_id: attendanceData.class_id,
+      tarikh: attendanceData.tarikh,
+      status: attendanceData.status,
+      proof_image: attendanceData.proof_image || null,
+      marked_by: attendanceData.marked_by || null,
+      document_confirmed: attendanceData.document_confirmed || null,
+      confirmed_by: attendanceData.confirmed_by || null,
+      created_at: attendanceData.created_at,
+      updated_at: attendanceData.updated_at
+    };
+    
+    // Create snapshot BEFORE deletion (MANDATORY - deletion will abort if this fails)
+    console.log('[DELETE ATTENDANCE] STEP 2: Creating snapshot for Recycle Bin');
+    console.log('[DELETE ATTENDANCE] Snapshot parameters:', {
+      entityType: 'attendance',
+      entityId: attendanceId,
+      entityIdentifier: `${attendanceData.student_ic}-${attendanceData.class_id}-${attendanceData.tarikh}`,
+      operation: 'delete',
+      actorIc: req.user.ic,
+      hasData: !!attendanceDataForSnapshot,
+      dataKeys: Object.keys(attendanceDataForSnapshot)
+    });
+    
+    let snapshotId;
+    try {
+      // Ensure entityId is a number
+      const numericEntityId = Number(attendanceId);
+      if (isNaN(numericEntityId)) {
+        throw new Error(`Invalid entity ID: ${attendanceId}`);
+      }
+      
+      snapshotId = await createSnapshot({
+        entityType: 'attendance',
+        entityId: numericEntityId,
+        entityIdentifier: `${attendanceData.student_ic}-${attendanceData.class_id}-${attendanceData.tarikh}`,
+        operation: 'delete',
+        data: attendanceDataForSnapshot,
+        metadata: {
+          title: studentName,
+          nama: studentName,
+          operationLabel: 'Padam kehadiran',
+          redirectPath: `/kehadiran?start_date=${attendanceData.tarikh}&end_date=${attendanceData.tarikh}&class_id=${attendanceData.class_id}`
+        },
+        actorIc: req.user.ic
+      });
+      
+      if (!snapshotId || snapshotId <= 0) {
+        throw new Error(`Snapshot creation returned invalid ID: ${snapshotId}`);
+      }
+      
+      console.log('[DELETE ATTENDANCE] ✅ STEP 2: Snapshot created successfully with ID:', snapshotId);
+    } catch (snapshotError) {
+      console.error('[DELETE ATTENDANCE] ❌ CRITICAL: Failed to create snapshot:', snapshotError);
+      console.error('[DELETE ATTENDANCE] ❌ Snapshot error details:', {
+        message: snapshotError.message,
+        stack: snapshotError.stack,
+        entityId: attendanceId,
+        actorIc: req.user.ic
+      });
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to create Recycle Bin entry. Deletion aborted for data safety.',
+        error: snapshotError.message
       });
     }
     
-    // Delete attendance record
-    await pool.execute(
+    // Verify snapshot exists in database (CRITICAL CHECK)
+    console.log('[DELETE ATTENDANCE] Verifying snapshot exists in database...');
+    let verifySnapshot;
+    try {
+      [verifySnapshot] = await pool.execute(
+        'SELECT id, entity_type, entity_id, operation, created_at, expires_at, was_undone FROM admin_action_snapshots WHERE id = ?',
+        [snapshotId]
+      );
+    } catch (verifyError) {
+      console.error('[DELETE ATTENDANCE] ❌ CRITICAL: Failed to verify snapshot:', verifyError);
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to verify Recycle Bin entry. Deletion aborted for data safety.',
+        error: verifyError.message
+      });
+    }
+    
+    if (!verifySnapshot || verifySnapshot.length === 0) {
+      console.error('[DELETE ATTENDANCE] ❌ CRITICAL: Snapshot was created but cannot be found in database!');
+      console.error('[DELETE ATTENDANCE] Snapshot ID that was returned:', snapshotId);
+      console.error('[DELETE ATTENDANCE] Attempting to query database directly...');
+      
+      // Try to find any attendance snapshots for this entity
+      try {
+        const [allSnapshots] = await pool.execute(
+          'SELECT id, entity_type, entity_id, operation FROM admin_action_snapshots WHERE entity_type = ? AND entity_id = ? ORDER BY created_at DESC LIMIT 5',
+          ['attendance', attendanceId]
+        );
+        console.error('[DELETE ATTENDANCE] Found snapshots for this entity:', allSnapshots);
+      } catch (queryError) {
+        console.error('[DELETE ATTENDANCE] Failed to query for snapshots:', queryError);
+      }
+      
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to verify Recycle Bin entry. Deletion aborted for data safety.'
+      });
+    }
+    
+    console.log('[DELETE ATTENDANCE] ✅ Snapshot verified in database:', {
+      id: verifySnapshot[0].id,
+      entity_type: verifySnapshot[0].entity_type,
+      entity_id: verifySnapshot[0].entity_id,
+      operation: verifySnapshot[0].operation,
+      created_at: verifySnapshot[0].created_at,
+      expires_at: verifySnapshot[0].expires_at,
+      was_undone: verifySnapshot[0].was_undone
+    });
+    
+    // STEP 3: Delete attendance record (only after snapshot is safely created and verified)
+    console.log('[DELETE ATTENDANCE] STEP 3: Deleting attendance record from database');
+    const [result] = await pool.execute(
       'DELETE FROM attendance WHERE id = ?',
       [attendanceId]
     );
+
+    if (result.affectedRows === 0) {
+      console.error('[DELETE ATTENDANCE] ❌ No rows affected by DELETE query. Record may have been deleted already.');
+      return res.status(404).json({
+        success: false,
+        message: 'Attendance record not found'
+      });
+    }
+    
+    console.log('[DELETE ATTENDANCE] ✅ STEP 3: Attendance record deleted successfully');
+    console.log('[DELETE ATTENDANCE] ✅ COMPLETE: Deletion successful. Snapshot ID:', snapshotId);
+    console.log(`${'✅'.repeat(40)}\n`);
+    
+    // Final verification: Query the snapshot one more time to ensure it exists
+    try {
+      const [finalCheck] = await pool.execute(
+        'SELECT id, entity_type, entity_id, operation, created_at, expires_at FROM admin_action_snapshots WHERE id = ?',
+        [snapshotId]
+      );
+      if (finalCheck.length > 0) {
+        console.log('[DELETE ATTENDANCE] ✅✅✅ FINAL VERIFICATION: Snapshot confirmed in database:', finalCheck[0]);
+      } else {
+        console.error('[DELETE ATTENDANCE] ❌❌❌ FINAL VERIFICATION FAILED: Snapshot not found after deletion!');
+      }
+    } catch (checkError) {
+      console.error('[DELETE ATTENDANCE] ❌ Error during final verification:', checkError);
+    }
+    
+    // Set response headers to confirm this controller was called
+    res.setHeader('X-Snapshot-Created', 'true');
+    res.setHeader('X-Snapshot-Id', String(snapshotId));
+    res.setHeader('X-Attendance-Deleted', 'true');
     
     res.json({
       success: true,
       message: 'Attendance record deleted successfully',
+      snapshotId: snapshotId, // Include snapshot ID in response for debugging
+      debug: {
+        snapshotCreated: true,
+        snapshotId: snapshotId,
+        entityType: 'attendance',
+        entityId: attendanceId
+      }
     });
   } catch (error) {
-    console.error('Delete attendance error:', error);
+    console.error('[DELETE ATTENDANCE] ❌ ERROR:', error);
+    console.error('[DELETE ATTENDANCE] ❌ Error stack:', error.stack);
     res.status(500).json({
       success: false,
       message: 'Internal server error',
-      error: error.message,
+      error: error.message
     });
   }
 };
@@ -741,6 +1280,65 @@ export const confirmAttendanceDocument = async (req, res) => {
     }
 
     const isConfirmed = confirmed === true || confirmed === 1 || confirmed === '1';
+
+    // Create snapshot before update (for admin/PIC/teacher)
+    const actorIc = req.user?.ic;
+    const userRole = req.user?.role;
+    const shouldCreateSnapshot = actorIc && (userRole === 'admin' || userRole === 'pic' || userRole === 'teacher');
+    
+    if (shouldCreateSnapshot) {
+      try {
+        // Get full attendance data with student and class names for snapshot
+        const [attendanceForSnapshot] = await pool.execute(
+          `SELECT a.*, u.nama as pelajar_nama, c.nama_kelas
+           FROM attendance a
+           LEFT JOIN users u ON a.student_ic = u.ic
+           LEFT JOIN classes c ON a.class_id = c.id
+           WHERE a.id = ?`,
+          [id]
+        );
+        
+        if (attendanceForSnapshot.length > 0) {
+          const attendanceData = attendanceForSnapshot[0];
+          const studentName = attendanceData.pelajar_nama || attendanceData.student_ic;
+          const className = attendanceData.nama_kelas || 'Kelas';
+          const confirmationStatus = attendanceData.document_confirmed ? 'Disahkan' : 'Tidak disahkan';
+          const newStatus = isConfirmed ? 'Disahkan' : 'Tidak disahkan';
+          
+          await createSnapshot({
+            entityType: 'attendance',
+            entityId: parseInt(id),
+            entityIdentifier: `${attendanceData.student_ic}-${attendanceData.class_id}-${attendanceData.tarikh}`,
+            operation: 'update',
+            data: {
+              id: attendanceData.id,
+              student_ic: attendanceData.student_ic,
+              class_id: attendanceData.class_id,
+              tarikh: attendanceData.tarikh,
+              status: attendanceData.status,
+              proof_image: attendanceData.proof_image || null,
+              marked_by: attendanceData.marked_by || null,
+              document_confirmed: attendanceData.document_confirmed || null,
+              confirmed_by: attendanceData.confirmed_by || null,
+              confirmation_notes: attendanceData.confirmation_notes || null,
+              created_at: attendanceData.created_at,
+              updated_at: attendanceData.updated_at
+            },
+            metadata: {
+              title: studentName,
+              nama: studentName,
+              operationLabel: 'Kemas kini pengesahan dokumen kehadiran',
+              redirectPath: `/kehadiran?start_date=${attendanceData.tarikh}&end_date=${attendanceData.tarikh}&class_id=${attendanceData.class_id}`,
+              notes: `Status pengesahan dokumen diubah: ${studentName} - ${className} - dari ${confirmationStatus} kepada ${newStatus} pada ${attendanceData.tarikh}`
+            },
+            actorIc
+          });
+        }
+      } catch (snapshotError) {
+        console.error('[CONFIRM ATTENDANCE DOCUMENT] Failed to create snapshot:', snapshotError);
+        // Continue with update even if snapshot fails
+      }
+    }
 
     // Update confirmation status
     await pool.execute(

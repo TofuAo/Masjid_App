@@ -1,6 +1,7 @@
 import { pool } from '../config/database.js';
 import { validationResult } from 'express-validator';
 import { getSafePagination } from '../utils/pagination.js';
+import { createSnapshot, SNAPSHOT_TTL_HOURS } from '../utils/adminActionSnapshots.js';
 
 export const getAllExams = async (req, res) => {
   try {
@@ -76,6 +77,23 @@ export const createExam = async (req, res) => {
 
     const [newExam] = await pool.execute('SELECT * FROM exams WHERE id = ?', [result.insertId]);
 
+    // Create snapshot after create (only for admin/PIC)
+    const actorIc = req.user?.ic;
+    if (actorIc && (req.user?.role === 'admin' || req.user?.role === 'pic')) {
+      await createSnapshot({
+        entityType: 'exam',
+        entityId: result.insertId,
+        entityIdentifier: `${subject}-${class_id}`,
+        operation: 'create',
+        data: newExam[0],
+        metadata: {
+          title: `Peperiksaan - ${subject}`,
+          notes: `Peperiksaan baru ditambah: ${subject} untuk kelas ${class_id}`
+        },
+        actorIc
+      });
+    }
+
     res.status(201).json({ success: true, message: 'Exam created successfully', data: newExam[0] });
   } catch (error) {
     console.error('Create exam error:', error);
@@ -93,9 +111,28 @@ export const updateExam = async (req, res) => {
     const { id } = req.params;
     const { class_id, subject, tarikh_exam } = req.body;
 
-    const [existingExam] = await pool.execute('SELECT id FROM exams WHERE id = ?', [id]);
+    const [existingExam] = await pool.execute('SELECT * FROM exams WHERE id = ?', [id]);
     if (existingExam.length === 0) {
       return res.status(404).json({ success: false, message: 'Exam not found' });
+    }
+
+    const existingData = existingExam[0];
+    
+    // Create snapshot before update (only for admin/PIC)
+    const actorIc = req.user?.ic;
+    if (actorIc && (req.user?.role === 'admin' || req.user?.role === 'pic')) {
+      await createSnapshot({
+        entityType: 'exam',
+        entityId: parseInt(id),
+        entityIdentifier: `${existingData.subject}-${existingData.class_id}`,
+        operation: 'update',
+        data: existingData,
+        metadata: {
+          title: `Peperiksaan - ${existingData.subject}`,
+          notes: `Peperiksaan dikemaskini: ${subject}`
+        },
+        actorIc
+      });
     }
 
     await pool.execute(
@@ -116,9 +153,28 @@ export const deleteExam = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const [existingExam] = await pool.execute('SELECT id FROM exams WHERE id = ?', [id]);
+    const [existingExam] = await pool.execute('SELECT * FROM exams WHERE id = ?', [id]);
     if (existingExam.length === 0) {
       return res.status(404).json({ success: false, message: 'Exam not found' });
+    }
+
+    const examData = existingExam[0];
+    const actorIc = req.user?.ic;
+    
+    // Create snapshot before delete (only for admin/PIC)
+    if (actorIc && (req.user?.role === 'admin' || req.user?.role === 'pic')) {
+      await createSnapshot({
+        entityType: 'exam',
+        entityId: parseInt(id),
+        entityIdentifier: `${examData.subject}-${examData.class_id}`,
+        operation: 'delete',
+        data: examData,
+        metadata: {
+          title: `Peperiksaan - ${examData.subject}`,
+          notes: `Peperiksaan dipadam: ${examData.subject}`
+        },
+        actorIc
+      });
     }
 
     await pool.execute('DELETE FROM exams WHERE id = ?', [id]);

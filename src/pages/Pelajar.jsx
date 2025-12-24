@@ -21,6 +21,7 @@ const Pelajar = ({ user }) => {
     error,
     handlers,
     fetchItems,
+    DeleteModal,
   } = useCrud(studentsAPI, 'pelajar');
 
   // Prevent students from accessing this page
@@ -201,6 +202,7 @@ const Pelajar = ({ user }) => {
         <Route path="/" element={renderContent()} />
         <Route path="/import" element={<PelajarImport />} />
       </Routes>
+      <DeleteModal />
     </div>
   );
 };

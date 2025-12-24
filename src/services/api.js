@@ -32,7 +32,22 @@ const api = axios.create({
 // Request interceptor to add auth token
 api.interceptors.request.use(
   (config) => {
+    // Log DELETE requests for debugging
+    if (config.method === 'delete' || config.method === 'DELETE') {
+      console.log(`\n${'🟡'.repeat(40)}`);
+      console.log('[API INTERCEPTOR] DELETE request intercepted');
+      console.log('[API INTERCEPTOR] URL:', config.url);
+      console.log('[API INTERCEPTOR] Method:', config.method);
+      console.log('[API INTERCEPTOR] Base URL:', config.baseURL);
+      console.log('[API INTERCEPTOR] Full URL:', `${config.baseURL}${config.url}`);
+      console.log('[API INTERCEPTOR] Headers:', config.headers);
+      console.log('[API INTERCEPTOR] Cancel Token:', config.cancelToken ? 'present' : 'absent');
+      console.log('[API INTERCEPTOR] Request ID:', Date.now());
+      console.log(`${'🟡'.repeat(40)}\n`);
+    }
+    
     if (isTokenExpired()) {
+      console.log('[API INTERCEPTOR] Token expired, rejecting request');
       removeStoredAuth();
       return Promise.reject({
         message: 'Sesi anda telah tamat tempoh. Sila log masuk semula.',
@@ -45,10 +60,25 @@ api.interceptors.request.use(
     // Only log if there's an issue (handled in response interceptor)
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
+      if (config.method === 'delete' || config.method === 'DELETE') {
+        console.log('[API INTERCEPTOR] ✅ Auth token added to DELETE request');
+      }
+    } else if (config.method === 'delete' || config.method === 'DELETE') {
+      console.warn('[API INTERCEPTOR] ⚠️ DELETE request has no auth token!');
     }
+    
+    if (config.method === 'delete' || config.method === 'DELETE') {
+      console.log('[API INTERCEPTOR] ✅ DELETE request config finalized, returning config');
+      console.log('[API INTERCEPTOR] About to send DELETE request to:', `${config.baseURL}${config.url}`);
+    }
+    
     return config;
   },
   (error) => {
+    console.error('[API INTERCEPTOR] ❌ Request interceptor error:', error);
+    if (error.config?.method === 'delete' || error.config?.method === 'DELETE') {
+      console.error('[API INTERCEPTOR] ❌ DELETE request failed in interceptor:', error);
+    }
     return Promise.reject(error);
   }
 );
@@ -56,12 +86,34 @@ api.interceptors.request.use(
 // Response interceptor to handle errors
 api.interceptors.response.use(
   (response) => {
+    // Log DELETE responses for debugging
+    if (response.config?.method === 'delete' || response.config?.method === 'DELETE') {
+      console.log(`\n${'🟢'.repeat(40)}`);
+      console.log('[API INTERCEPTOR] ✅ DELETE response received');
+      console.log('[API INTERCEPTOR] Status:', response.status);
+      console.log('[API INTERCEPTOR] Status Text:', response.statusText);
+      console.log('[API INTERCEPTOR] URL:', response.config?.url);
+      console.log('[API INTERCEPTOR] Response Data:', response.data);
+      console.log(`${'🟢'.repeat(40)}\n`);
+    }
     // Don't log successful responses to reduce console noise
     // Only log errors (handled in error handler below)
     // Return full response.data (which may contain adminLimit for /admins endpoint)
     return response.data;
   },
   (error) => {
+    // Log DELETE errors specifically
+    if (error.config?.method === 'delete' || error.config?.method === 'DELETE') {
+      console.error(`\n${'🔴'.repeat(40)}`);
+      console.error('[API INTERCEPTOR] ❌ DELETE response error');
+      console.error('[API INTERCEPTOR] URL:', error.config?.url);
+      console.error('[API INTERCEPTOR] Status:', error.response?.status);
+      console.error('[API INTERCEPTOR] Response Data:', error.response?.data);
+      console.error('[API INTERCEPTOR] Error Message:', error.message);
+      console.error('[API INTERCEPTOR] Full Error:', error);
+      console.error(`${'🔴'.repeat(40)}\n`);
+    }
+    
     // Handle rate limiting (429) - don't spam console
     if (error.response?.status === 429) {
       // Silently handle rate limit errors - don't log to reduce noise
@@ -99,6 +151,30 @@ api.interceptors.response.use(
       }
     }
 
+    // Don't log expected 404s for settings that don't exist yet (e.g., google_maps_api_key)
+    // Check both params object and URL for the key
+    const requestUrl = error.config?.url || '';
+    const requestParams = error.config?.params || {};
+    const urlHasSettings = requestUrl.includes('/settings');
+    const keyMatches = requestParams.key === 'google_maps_api_key' || 
+                       requestUrl.includes('key=google_maps_api_key') ||
+                       requestUrl.includes('key=') && requestUrl.includes('google_maps_api_key');
+    
+    const isExpected404 = error.response?.status === 404 && 
+      urlHasSettings && 
+      keyMatches;
+    
+    if (isExpected404) {
+      // Return a clean error object without logging - this is expected behavior
+      // The browser console will still show the network error, but our code won't log it
+      return Promise.reject({ 
+        message: 'Setting not found',
+        status: 404,
+        response: error.response,
+        isExpected404: true
+      });
+    }
+
     // Don't log auth/permission errors to reduce console noise
     const isAuthError = error.response?.status === 401 || error.response?.status === 403;
     const errorMessage = error.response?.data?.message || '';
@@ -113,9 +189,15 @@ api.interceptors.response.use(
       }
       // Don't log permission errors - they're handled by the UI
     } else if (error.response && error.response.status >= 500) {
-      // Only log server errors (500+)
-      console.error('API Error:', error.config?.url, 'Status:', error.response?.status);
-      console.error('Error Response Data:', error.response?.data);
+      // Only log server errors (500+) - skip expected 404s
+      if (!isExpected404) {
+        console.error('API Error:', error.config?.url, 'Status:', error.response?.status);
+        console.error('Error Response Data:', error.response?.data);
+      }
+    } else if (error.response && error.response.status === 404 && !isExpected404) {
+      // Log 404s only if they're not expected (e.g., not for missing settings)
+      // Most 404s are expected (resource doesn't exist), so we don't log them
+      // This reduces console noise
     }
     
     // Return error with proper message structure
@@ -327,7 +409,18 @@ export const attendanceAPI = {
     });
   },
   update: (id, data) => api.put(`/attendance/${id}`, data),
-  delete: (id) => api.delete(`/attendance/${id}`),
+  delete: async (id) => {
+    console.log('[ATTENDANCE API] delete() called with ID:', id);
+    console.log('[ATTENDANCE API] Full URL will be:', `${api.defaults.baseURL}/attendance/${id}`);
+    try {
+      const response = await api.delete(`/attendance/${id}`);
+      console.log('[ATTENDANCE API] delete() response received:', response);
+      return response;
+    } catch (error) {
+      console.error('[ATTENDANCE API] delete() error:', error);
+      throw error;
+    }
+  },
   getStats: (params) => api.get('/attendance/stats', { params }),
   getStudentHistory: (id, params) => api.get(`/attendance/student/${id}`, { params }),
   confirmDocument: (id, data) => api.post(`/attendance/${id}/confirm-document`, data),
@@ -433,7 +526,7 @@ export const clearAuth = () => {
 // Settings API
 export const settingsAPI = {
   getAll: () => api.get('/settings'),
-  getByKey: (key) => api.get(`/settings?key=${key}`),
+  getByKey: (key) => api.get('/settings', { params: { key } }),
   getMasjidLocation: () => api.get('/settings/masjid-location'),
   getQRCode: () => api.get('/settings/qr-code'),
   getGradeRanges: () => api.get('/settings/grade-ranges'),
@@ -459,7 +552,18 @@ export const announcementsAPI = {
 };
 
 export const adminActionsAPI = {
-  list: (params) => api.get('/admin-actions', { params }),
+  list: (params) => {
+    // Add timestamp to prevent caching (query parameter, no CORS issues)
+    const cacheBustingParams = {
+      ...params,
+      _t: Date.now() // Timestamp to bust cache
+    };
+    return api.get('/admin-actions', { 
+      params: cacheBustingParams
+      // Removed cache-busting headers to avoid CORS issues
+      // The timestamp query parameter is sufficient for cache-busting
+    });
+  },
   undo: (snapshotId) => api.post(`/admin-actions/${snapshotId}/undo`)
 };
 
@@ -501,10 +605,56 @@ export const adminsAPI = {
 };
 
 export const pendingPicChangesAPI = {
-  list: (params) => api.get('/pending-pic-changes', { params }),
-  getById: (id) => api.get(`/pending-pic-changes/${id}`),
-  approve: (id, data) => api.post(`/pending-pic-changes/${id}/approve`, data),
-  reject: (id, data) => api.post(`/pending-pic-changes/${id}/reject`, data),
+  list: async (params) => {
+    try {
+      const response = await api.get('/pending-pic-changes', { params });
+      return response?.success ? response : { success: true, data: response?.data || response || [] };
+    } catch (error) {
+      // Enhanced error handling
+      if (error.isNetworkError || error.status === 0) {
+        throw { ...error, message: 'Tidak dapat menyambung ke pelayan. Sila semak sambungan internet anda.' };
+      }
+      if (error.status === 403) {
+        throw { ...error, message: 'Anda tidak mempunyai kebenaran untuk mengakses halaman ini. Sila log masuk sebagai pentadbir.' };
+      }
+      throw error;
+    }
+  },
+  getById: async (id) => {
+    try {
+      const response = await api.get(`/pending-pic-changes/${id}`);
+      return response?.success ? response : { success: true, data: response?.data || response };
+    } catch (error) {
+      if (error.status === 404) {
+        throw { ...error, message: 'Permintaan tidak ditemui. Mungkin telah dipadam atau tidak wujud.' };
+      }
+      throw error;
+    }
+  },
+  approve: async (id, data) => {
+    try {
+      return await api.post(`/pending-pic-changes/${id}/approve`, data);
+    } catch (error) {
+      // Preserve specific error messages from backend
+      const backendMessage = error?.response?.data?.message || error?.message;
+      if (backendMessage) {
+        throw { ...error, message: backendMessage };
+      }
+      throw error;
+    }
+  },
+  reject: async (id, data) => {
+    try {
+      return await api.post(`/pending-pic-changes/${id}/reject`, data);
+    } catch (error) {
+      // Preserve specific error messages from backend
+      const backendMessage = error?.response?.data?.message || error?.message;
+      if (backendMessage) {
+        throw { ...error, message: backendMessage };
+      }
+      throw error;
+    }
+  },
 };
 
 // Google Form API

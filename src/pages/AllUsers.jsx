@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Navigate } from 'react-router-dom';
 import { usersAPI } from '../services/api';
 import Card from '../components/ui/Card';
@@ -32,24 +32,6 @@ const AllUsers = ({ user }) => {
         setError(null);
         const response = await usersAPI.getAll({ limit: 10000, page: 1 });
         if (response?.success && response?.data) {
-          // Debug: Log Amir's data to see what we're receiving
-          const amirUser = response.data.find(u => 
-            (u.nama || '').toLowerCase().includes('amir') || 
-            (u.ic || '').includes('920312')
-          );
-          if (amirUser) {
-            console.log('🔍 [AllUsers] Amir user data from API:', {
-              nama: amirUser.nama,
-              ic: amirUser.ic,
-              roles: amirUser.roles,
-              primary_role: amirUser.primary_role,
-              role: amirUser.role,
-              is_admin: amirUser.is_admin,
-              is_teacher: amirUser.is_teacher,
-              is_pic: amirUser.is_pic,
-              fullUser: amirUser
-            });
-          }
           setUsers(response.data);
           if (response.statistics) {
             setStatistics(response.statistics);
@@ -68,48 +50,94 @@ const AllUsers = ({ user }) => {
     fetchUsers();
   }, []);
 
-  // Filter users
-  const filteredUsers = users.filter(userItem => {
-    const matchesSearch = !searchTerm.trim() || 
-      (userItem.nama || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (userItem.ic || userItem.IC || '').includes(searchTerm) ||
-      (userItem.email || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (userItem.telefon || '').includes(searchTerm);
+  // Memoize user role extraction to avoid recalculating on every render
+  const extractUserRoles = useCallback((userItem) => {
+    const rolesSet = new Set();
     
-    // Check if user matches role filter - check all roles
-    const matchesRole = !roleFilter || 
-      userItem.role === roleFilter || 
-      userItem.primary_role === roleFilter ||
-      (userItem.roles && Array.isArray(userItem.roles) && userItem.roles.includes(roleFilter)) ||
-      (roleFilter === 'teacher' && userItem.is_teacher) ||
-      (roleFilter === 'student' && userItem.is_student) ||
-      (roleFilter === 'admin' && userItem.is_admin) ||
-      (roleFilter === 'pic' && userItem.is_pic) ||
-      (roleFilter === 'staff' && userItem.is_staff) ||
-      (roleFilter === 'ib' && userItem.is_ib);
-    const matchesStatus = !statusFilter || userItem.status === statusFilter;
-
-    return matchesSearch && matchesRole && matchesStatus;
-  });
-
-  // Group users by role for display - show users in ALL their role sections
-  const groupedUsers = filteredUsers.reduce((acc, userItem) => {
-    // If user has multiple roles, show them in all relevant sections
-    const rolesToShow = userItem.roles && Array.isArray(userItem.roles) && userItem.roles.length > 0
-      ? userItem.roles
-      : [userItem.role || userItem.primary_role || 'other'];
+    // 1. Add roles from roles array (primary source)
+    if (userItem.roles && Array.isArray(userItem.roles) && userItem.roles.length > 0) {
+      userItem.roles.forEach(r => {
+        if (r) {
+          const normalizedRole = String(r).trim().toLowerCase();
+          if (normalizedRole) rolesSet.add(normalizedRole);
+        }
+      });
+    }
     
-    rolesToShow.forEach(role => {
-      if (!acc[role]) {
-        acc[role] = [];
-      }
-      // Only add if not already added to this role group
-      if (!acc[role].some(u => (u.ic || u.IC) === (userItem.ic || userItem.IC))) {
-        acc[role].push(userItem);
-      }
+    // 2. Add primary role (duplicate check)
+    if (userItem.primary_role) {
+      const normalized = String(userItem.primary_role).trim().toLowerCase();
+      if (normalized) rolesSet.add(normalized);
+    }
+    
+    // 3. Add role field (duplicate check)
+    if (userItem.role) {
+      const normalized = String(userItem.role).trim().toLowerCase();
+      if (normalized) rolesSet.add(normalized);
+    }
+    
+    // 4. Add from role indicator flags (most reliable source)
+    if (userItem.is_admin === true || userItem.is_admin === 1) {
+      rolesSet.add('admin');
+    }
+    if (userItem.is_teacher === true || userItem.is_teacher === 1) {
+      rolesSet.add('teacher');
+    }
+    if (userItem.is_pic === true || userItem.is_pic === 1) {
+      rolesSet.add('pic');
+    }
+    if (userItem.is_staff === true || userItem.is_staff === 1) {
+      rolesSet.add('staff');
+    }
+    if (userItem.is_student === true || userItem.is_student === 1) {
+      rolesSet.add('student');
+    }
+    if (userItem.is_ib === true || userItem.is_ib === 1) {
+      rolesSet.add('ib');
+    }
+    
+    return Array.from(rolesSet);
+  }, []);
+
+  // Memoize filtered users to avoid recalculating on every render
+  const filteredUsers = useMemo(() => {
+    return users.filter(userItem => {
+      const matchesSearch = !searchTerm.trim() || 
+        (userItem.nama || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (userItem.ic || userItem.IC || '').includes(searchTerm) ||
+        (userItem.email || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (userItem.telefon || '').includes(searchTerm);
+      
+      // Check if user matches role filter - check all roles
+      const userRoles = extractUserRoles(userItem);
+      const matchesRole = !roleFilter || userRoles.includes(roleFilter);
+      const matchesStatus = !statusFilter || userItem.status === statusFilter;
+
+      return matchesSearch && matchesRole && matchesStatus;
     });
-    return acc;
-  }, {});
+  }, [users, searchTerm, roleFilter, statusFilter, extractUserRoles]);
+
+  // Memoize grouped users to avoid recalculating on every render
+  const groupedUsers = useMemo(() => {
+    return filteredUsers.reduce((acc, userItem) => {
+      // If user has multiple roles, show them in all relevant sections
+      const rolesToShow = extractUserRoles(userItem);
+      if (rolesToShow.length === 0) {
+        rolesToShow.push('other');
+      }
+      
+      rolesToShow.forEach(role => {
+        if (!acc[role]) {
+          acc[role] = [];
+        }
+        // Only add if not already added to this role group
+        if (!acc[role].some(u => (u.ic || u.IC) === (userItem.ic || userItem.IC))) {
+          acc[role].push(userItem);
+        }
+      });
+      return acc;
+    }, {});
+  }, [filteredUsers, extractUserRoles]);
 
   const roleLabels = {
     admin: 'Admin',
@@ -316,68 +344,7 @@ const AllUsers = ({ user }) => {
                             <td className="px-4 py-3">
                               <div className="flex flex-wrap gap-1">
                                 {(() => {
-                                  // Collect all roles from multiple sources - be very aggressive
-                                  const rolesSet = new Set();
-                                  
-                                  // 1. Add roles from roles array (primary source)
-                                  if (userItem.roles && Array.isArray(userItem.roles) && userItem.roles.length > 0) {
-                                    userItem.roles.forEach(r => {
-                                      if (r) {
-                                        const normalizedRole = String(r).trim().toLowerCase();
-                                        if (normalizedRole) rolesSet.add(normalizedRole);
-                                      }
-                                    });
-                                  }
-                                  
-                                  // 2. Add primary role (duplicate check)
-                                  if (userItem.primary_role) {
-                                    const normalized = String(userItem.primary_role).trim().toLowerCase();
-                                    if (normalized) rolesSet.add(normalized);
-                                  }
-                                  
-                                  // 3. Add role field (duplicate check)
-                                  if (userItem.role) {
-                                    const normalized = String(userItem.role).trim().toLowerCase();
-                                    if (normalized) rolesSet.add(normalized);
-                                  }
-                                  
-                                  // 4. Add from role indicator flags (most reliable source)
-                                  // These come directly from the database SQL query
-                                  if (userItem.is_admin === true || userItem.is_admin === 1) {
-                                    rolesSet.add('admin');
-                                  }
-                                  if (userItem.is_teacher === true || userItem.is_teacher === 1) {
-                                    rolesSet.add('teacher');
-                                  }
-                                  if (userItem.is_pic === true || userItem.is_pic === 1) {
-                                    rolesSet.add('pic');
-                                  }
-                                  if (userItem.is_staff === true || userItem.is_staff === 1) {
-                                    rolesSet.add('staff');
-                                  }
-                                  if (userItem.is_student === true || userItem.is_student === 1) {
-                                    rolesSet.add('student');
-                                  }
-                                  if (userItem.is_ib === true || userItem.is_ib === 1) {
-                                    rolesSet.add('ib');
-                                  }
-                                  
-                                  const allRoles = Array.from(rolesSet);
-                                  
-                                  // Debug for Amir
-                                  if ((userItem.nama || '').toLowerCase().includes('amir')) {
-                                    console.log('🔍 [AllUsers] Rendering Amir roles:', {
-                                      nama: userItem.nama,
-                                      ic: userItem.ic,
-                                      rolesArray: userItem.roles,
-                                      primary_role: userItem.primary_role,
-                                      role: userItem.role,
-                                      is_admin: userItem.is_admin,
-                                      is_teacher: userItem.is_teacher,
-                                      is_pic: userItem.is_pic,
-                                      finalRolesSet: allRoles
-                                    });
-                                  }
+                                  const allRoles = extractUserRoles(userItem);
                                   
                                   return allRoles.length > 0 ? (
                                     allRoles.map((r, idx) => (

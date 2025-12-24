@@ -82,6 +82,30 @@ const idValidation = [
 // Apply authentication to all routes
 router.use(authenticateToken);
 
+// ============================================
+// CLEAR ROUTING LOGGING - Track all requests
+// ============================================
+router.use((req, res, next) => {
+  // Log ALL requests to attendance router for debugging
+  if (req.method === 'DELETE' || req.path.match(/\d+$/)) {
+    console.log(`\n${'='.repeat(80)}`);
+    console.log(`[ATTENDANCE ROUTER] 🔴🔴🔴 REQUEST REACHED ATTENDANCE ROUTER 🔴🔴🔴`);
+    console.log(`[ATTENDANCE ROUTER] Method: ${req.method}`);
+    console.log(`[ATTENDANCE ROUTER] Path: ${req.path}`);
+    console.log(`[ATTENDANCE ROUTER] URL: ${req.url}`);
+    console.log(`[ATTENDANCE ROUTER] Original URL: ${req.originalUrl}`);
+    console.log(`[ATTENDANCE ROUTER] Base URL: ${req.baseUrl}`);
+    console.log(`[ATTENDANCE ROUTER] User: ${req.user?.ic} (${req.user?.role})`);
+    console.log(`[ATTENDANCE ROUTER] Params:`, req.params);
+    console.log(`[ATTENDANCE ROUTER] Timestamp: ${new Date().toISOString()}`);
+    if (req.method === 'DELETE') {
+      console.log(`[ATTENDANCE ROUTER] 🔴🔴🔴 DELETE REQUEST DETECTED IN ROUTER 🔴🔴🔴`);
+    }
+    console.log(`${'='.repeat(80)}\n`);
+  }
+  next();
+});
+
 // Routes
 router.get('/', getAttendance);
 router.get('/stats', getAttendanceStats);
@@ -154,16 +178,50 @@ router.put(
   }),
   markAttendance
 );
-router.delete(
-  '/:id',
-  requireRole(['admin', 'pic']),
+// ============================================
+// DELETE ROUTE - Clear step-by-step flow
+// ============================================
+router.delete('/:id', 
+  // STEP 0: Authentication (REQUIRED for requireRole)
+  authenticateToken,
+  // STEP 1: Route matched - log immediately
+  (req, res, next) => {
+    console.log(`\n${'🟢'.repeat(40)}`);
+    console.log('[DELETE ROUTE] ✅ ROUTE MATCHED: DELETE /:id');
+    console.log(`[DELETE ROUTE] ID: ${req.params.id}`);
+    console.log(`[DELETE ROUTE] User: ${req.user?.ic} (${req.user?.role})`);
+    console.log(`${'🟢'.repeat(40)}\n`);
+    next();
+  },
+  
+  // STEP 2: Role check
+  requireRole(['admin', 'pic', 'teacher']),
+  (req, res, next) => {
+    console.log('[DELETE ROUTE] ✅ STEP 2: Role check passed');
+    next();
+  },
+  
+  // STEP 3: Validation
   idValidation,
+  (req, res, next) => {
+    console.log('[DELETE ROUTE] ✅ STEP 3: ID validation passed');
+    next();
+  },
+  
+  // STEP 4: Normalize IC
   normalizeICMiddleware,
+  (req, res, next) => {
+    console.log('[DELETE ROUTE] ✅ STEP 4: IC normalization passed');
+    next();
+  },
+  
+  // STEP 5: PIC approval check (bypasses for admin/teacher, intercepts for PIC)
   requirePicApproval({
     actionKey: 'attendance:delete',
     entityType: 'attendance',
     message: 'Permintaan padam kehadiran dihantar untuk kelulusan admin.',
     prepare: async (req) => {
+      console.log('[DELETE ROUTE] STEP 5: PIC approval prepare - user role:', req.user?.role);
       const { id } = req.params;
       const [existing] = await pool.execute(
         'SELECT * FROM attendance WHERE id = ?',
@@ -183,8 +241,35 @@ router.delete(
       };
     }
   }),
+  (req, res, next) => {
+    console.log('[DELETE ROUTE] ✅ STEP 5: PIC approval check passed (or bypassed for admin/teacher)');
+    next();
+  },
+  
+  // STEP 6: Call controller
+  (req, res, next) => {
+    console.log(`[DELETE ROUTE] ✅ STEP 6: Calling deleteAttendance controller for ID: ${req.params.id}`);
+    next();
+  },
   deleteAttendance
 );
+
+// Catch-all for DELETE requests that don't match (for debugging)
+router.delete('*', (req, res, next) => {
+  console.log(`\n${'⚠️'.repeat(40)}`);
+  console.log('[DELETE ROUTE] ❌ NO ROUTE MATCHED!');
+  console.log(`[DELETE ROUTE] Path: ${req.path}`);
+  console.log(`[DELETE ROUTE] Original URL: ${req.originalUrl}`);
+  console.log(`[DELETE ROUTE] Method: ${req.method}`);
+  console.log(`${'⚠️'.repeat(40)}\n`);
+  res.status(404).json({
+    success: false,
+    message: 'DELETE route not found'
+  });
+});
+
 router.post('/:id/confirm-document', requireRole(['admin', 'pic', 'ib']), idValidation, confirmAttendanceDocument);
 
+// IMPORTANT: This must be LAST - catch-all for any DELETE that doesn't match above
+// This helps debug if DELETE requests aren't matching the /:id route
 export default router;

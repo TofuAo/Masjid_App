@@ -27,6 +27,7 @@ import {
   Network,
   FileCheck,
   HelpCircle,
+  Trash2,
 } from 'lucide-react';
 import { SidebarProvider, useSidebar } from './components/ui/SidebarProvider';
 import { usePreferences } from './hooks/usePreferences';
@@ -36,6 +37,7 @@ import SidebarThemeAnimation from './components/seasonal/SidebarThemeAnimation';
 import AnimatedForestBackground from './components/seasonal/AnimatedForestBackground';
 import GlobalClickSpark from './components/ui/GlobalClickSpark';
 import { getAvailableRoles, getEffectiveRole } from './utils/userRoles';
+import { useLanguage } from './contexts/LanguageContext';
 
 const LayoutContent = ({ children, user, onLogout, onRoleChange }) => {
   const location = useLocation();
@@ -43,6 +45,7 @@ const LayoutContent = ({ children, user, onLogout, onRoleChange }) => {
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const userMenuRef = useRef(null);
   const { preferences } = usePreferences();
+  const { t } = useLanguage();
   // Get color scheme - this will update when preferences change
   const colorScheme = getScheme(preferences?.colorScheme || 'summer');
   const effectiveRole = getEffectiveRole(user) || 'admin';
@@ -77,23 +80,23 @@ const LayoutContent = ({ children, user, onLogout, onRoleChange }) => {
     };
   }, [userMenuOpen]);
 
-  // Get role label in Bahasa Malaysia
+  // Get role label
   const getRoleLabel = (role) => {
     const roleLabels = {
-      'ib': 'IB (Pengesah Pembayaran)',
-      'admin': 'Pentadbir',
-      'teacher': 'Guru',
-      'student': 'Pelajar',
-      'pic': 'PIC Masjid',
+      'ib': t('role') === 'الدور' ? 'IB (مؤكد الدفع)' : t('role') === 'Role' ? 'IB (Payment Approver)' : 'IB (Pengesah Pembayaran)',
+      'admin': t('admin'),
+      'teacher': t('teacher'),
+      'student': t('student'),
+      'pic': t('pic'),
       'staff': 'Staff'
     };
     return roleLabels[role] || role;
   };
 
   let menuItems = [
-    { icon: <Home className="w-5 h-5" />, label: 'Dashboard', link: '/' },
-    { icon: <HelpCircle className="w-5 h-5" />, label: 'Bantuan', link: '/help' },
-    { icon: <MessageSquare className="w-5 h-5" />, label: 'Hubungi Kami', link: '/contact' },
+    { icon: <Home className="w-5 h-5" />, label: t('menuDashboard'), link: '/' },
+    { icon: <HelpCircle className="w-5 h-5" />, label: t('menuHelp'), link: '/help' },
+    { icon: <MessageSquare className="w-5 h-5" />, label: t('menuContact'), link: '/contact' },
   ];
 
   // Admin menu - show for admin role OR IB users who have admin role and selected it
@@ -103,69 +106,69 @@ const LayoutContent = ({ children, user, onLogout, onRoleChange }) => {
   if (isAdminMode) {
     menuItems = [
       ...menuItems,
-      { icon: <Megaphone className="w-5 h-5" />, label: 'Pengumuman', link: '/announcements' },
-      { icon: <Clock className="w-5 h-5" />, label: 'Check In / Out', link: '/staff-checkin' },
-      { icon: <UserCheck className="w-5 h-5" />, label: 'Kelulusan Pendaftaran', link: '/pending-registrations' },
-      { icon: <ShieldCheck className="w-5 h-5" />, label: 'Kelulusan PIC', link: '/pic-approvals' },
-      { icon: <UserCog className="w-5 h-5" />, label: 'Pengguna PIC', link: '/pic-users' },
-      { icon: <ShieldCheck className="w-5 h-5" />, label: 'Pengurusan Admin', link: '/admins' },
-      { icon: <Users className="w-5 h-5" />, label: 'Semua Pengguna', link: '/all-users' },
-      { icon: <History className="w-5 h-5" />, label: 'Tindakan Admin', link: '/admin-actions' },
-      { icon: <Network className="w-5 h-5" />, label: 'Hierarki Sistem', link: '/hierarchy' },
-      { icon: <Users className="w-5 h-5" />, label: 'Pelajar', link: '/pelajar' },
-      { icon: <GraduationCap className="w-5 h-5" />, label: 'Guru', link: '/guru' },
-      { icon: <BookOpen className="w-5 h-5" />, label: 'Kelas', link: '/kelas' },
-      { icon: <Calendar className="w-5 h-5" />, label: 'Kehadiran', link: '/kehadiran' },
-      { icon: <CreditCard className="w-5 h-5" />, label: 'Yuran', link: '/yuran' },
-      { icon: <FileText className="w-5 h-5" />, label: 'Keputusan', link: '/keputusan' },
-      { icon: <BarChart3 className="w-5 h-5" />, label: 'Laporan', link: '/laporan' },
-      { icon: <Settings className="w-5 h-5" />, label: 'Tetapan', link: '/settings' },
-      { icon: <CreditCard className="w-5 h-5" />, label: 'Tetapan ToyyibPay', link: '/toyyibpay-settings' },
+      { icon: <Megaphone className="w-5 h-5" />, label: t('menuAnnouncements'), link: '/announcements' },
+      { icon: <Clock className="w-5 h-5" />, label: t('menuCheckIn'), link: '/staff-checkin' },
+      { icon: <UserCheck className="w-5 h-5" />, label: t('menuRegistrationApproval'), link: '/pending-registrations' },
+      { icon: <ShieldCheck className="w-5 h-5" />, label: t('menuPicApproval'), link: '/pic-approvals' },
+      { icon: <UserCog className="w-5 h-5" />, label: t('menuPicUsers'), link: '/pic-users' },
+      { icon: <ShieldCheck className="w-5 h-5" />, label: t('menuAdminManagement'), link: '/admins' },
+      { icon: <Users className="w-5 h-5" />, label: t('menuAllUsers'), link: '/all-users' },
+      { icon: <Trash2 className="w-5 h-5" />, label: t('menuRecycleBin'), link: '/admin-actions' },
+      { icon: <Network className="w-5 h-5" />, label: t('menuSystemHierarchy'), link: '/hierarchy' },
+      { icon: <Users className="w-5 h-5" />, label: t('menuStudents'), link: '/pelajar' },
+      { icon: <GraduationCap className="w-5 h-5" />, label: t('menuTeachers'), link: '/guru' },
+      { icon: <BookOpen className="w-5 h-5" />, label: t('menuClasses'), link: '/kelas' },
+      { icon: <Calendar className="w-5 h-5" />, label: t('menuAttendance'), link: '/kehadiran' },
+      { icon: <CreditCard className="w-5 h-5" />, label: t('menuFees'), link: '/yuran' },
+      { icon: <FileText className="w-5 h-5" />, label: t('menuResults'), link: '/keputusan' },
+      { icon: <BarChart3 className="w-5 h-5" />, label: t('menuReports'), link: '/laporan' },
+      { icon: <Settings className="w-5 h-5" />, label: t('menuSettings'), link: '/settings' },
+      { icon: <CreditCard className="w-5 h-5" />, label: t('menuToyyibPaySettings'), link: '/toyyibpay-settings' },
     ];
   } else if (effectiveRole === 'pic') {
     menuItems = [
       ...menuItems,
-      { icon: <Megaphone className="w-5 h-5" />, label: 'Pengumuman', link: '/announcements' },
-      { icon: <Clock className="w-5 h-5" />, label: 'Check In / Out', link: '/staff-checkin' },
-      { icon: <Network className="w-5 h-5" />, label: 'Hierarki Sistem', link: '/hierarchy' },
-      { icon: <Users className="w-5 h-5" />, label: 'Pelajar', link: '/pelajar' },
-      { icon: <GraduationCap className="w-5 h-5" />, label: 'Guru', link: '/guru' },
-      { icon: <BookOpen className="w-5 h-5" />, label: 'Kelas', link: '/kelas' },
-      { icon: <Calendar className="w-5 h-5" />, label: 'Kehadiran', link: '/kehadiran' },
-      { icon: <CreditCard className="w-5 h-5" />, label: 'Yuran', link: '/yuran' },
-      { icon: <FileText className="w-5 h-5" />, label: 'Keputusan', link: '/keputusan' },
-      { icon: <BarChart3 className="w-5 h-5" />, label: 'Laporan', link: '/laporan' },
+      { icon: <Megaphone className="w-5 h-5" />, label: t('menuAnnouncements'), link: '/announcements' },
+      { icon: <Clock className="w-5 h-5" />, label: t('menuCheckIn'), link: '/staff-checkin' },
+      { icon: <Network className="w-5 h-5" />, label: t('menuSystemHierarchy'), link: '/hierarchy' },
+      { icon: <Users className="w-5 h-5" />, label: t('menuStudents'), link: '/pelajar' },
+      { icon: <GraduationCap className="w-5 h-5" />, label: t('menuTeachers'), link: '/guru' },
+      { icon: <BookOpen className="w-5 h-5" />, label: t('menuClasses'), link: '/kelas' },
+      { icon: <Calendar className="w-5 h-5" />, label: t('menuAttendance'), link: '/kehadiran' },
+      { icon: <CreditCard className="w-5 h-5" />, label: t('menuFees'), link: '/yuran' },
+      { icon: <FileText className="w-5 h-5" />, label: t('menuResults'), link: '/keputusan' },
+      { icon: <BarChart3 className="w-5 h-5" />, label: t('menuReports'), link: '/laporan' },
     ];
   } else if (effectiveRole === 'teacher') {
     menuItems = [
       ...menuItems,
-      { icon: <Megaphone className="w-5 h-5" />, label: 'Pengumuman', link: '/announcements' },
-      { icon: <Clock className="w-5 h-5" />, label: 'Check In / Out', link: '/staff-checkin' },
-      { icon: <Network className="w-5 h-5" />, label: 'Hierarki Sistem', link: '/hierarchy' },
-      { icon: <Users className="w-5 h-5" />, label: 'Pelajar', link: '/pelajar' },
-      { icon: <BookOpen className="w-5 h-5" />, label: 'Kelas', link: '/kelas' },
-      { icon: <Calendar className="w-5 h-5" />, label: 'Kehadiran', link: '/kehadiran' },
-      { icon: <FileText className="w-5 h-5" />, label: 'Keputusan', link: '/keputusan' },
-      { icon: <Settings className="w-5 h-5" />, label: 'Tetapan', link: '/personal-settings' },
+      { icon: <Megaphone className="w-5 h-5" />, label: t('menuAnnouncements'), link: '/announcements' },
+      { icon: <Clock className="w-5 h-5" />, label: t('menuCheckIn'), link: '/staff-checkin' },
+      { icon: <Network className="w-5 h-5" />, label: t('menuSystemHierarchy'), link: '/hierarchy' },
+      { icon: <Users className="w-5 h-5" />, label: t('menuStudents'), link: '/pelajar' },
+      { icon: <BookOpen className="w-5 h-5" />, label: t('menuClasses'), link: '/kelas' },
+      { icon: <Calendar className="w-5 h-5" />, label: t('menuAttendance'), link: '/kehadiran' },
+      { icon: <FileText className="w-5 h-5" />, label: t('menuResults'), link: '/keputusan' },
+      { icon: <Settings className="w-5 h-5" />, label: t('menuSettings'), link: '/personal-settings' },
     ];
   } else if (effectiveRole === 'student') {
     menuItems = [
       ...menuItems,
-      { icon: <User className="w-5 h-5" />, label: 'Akaun Saya', link: '/account' },
-      { icon: <Megaphone className="w-5 h-5" />, label: 'Pengumuman', link: '/announcements' },
-      { icon: <Calendar className="w-5 h-5" />, label: 'Kehadiran', link: '/kehadiran' },
-      { icon: <FileText className="w-5 h-5" />, label: 'Keputusan', link: '/keputusan' },
-      { icon: <CreditCard className="w-5 h-5" />, label: 'Yuran', link: '/yuran' },
-      { icon: <Settings className="w-5 h-5" />, label: 'Tetapan', link: '/personal-settings' },
+      { icon: <User className="w-5 h-5" />, label: t('menuMyAccount'), link: '/account' },
+      { icon: <Megaphone className="w-5 h-5" />, label: t('menuAnnouncements'), link: '/announcements' },
+      { icon: <Calendar className="w-5 h-5" />, label: t('menuAttendance'), link: '/kehadiran' },
+      { icon: <FileText className="w-5 h-5" />, label: t('menuResults'), link: '/keputusan' },
+      { icon: <CreditCard className="w-5 h-5" />, label: t('menuFees'), link: '/yuran' },
+      { icon: <Settings className="w-5 h-5" />, label: t('menuSettings'), link: '/personal-settings' },
     ];
   } else if (effectiveRole === 'ib') {
     menuItems = [
       ...menuItems,
-      { icon: <User className="w-5 h-5" />, label: 'Akaun IB', link: '/ib-account' },
-      { icon: <FileCheck className="w-5 h-5" />, label: 'Dashboard IB', link: '/ib-dashboard' },
-      { icon: <Megaphone className="w-5 h-5" />, label: 'Pengumuman', link: '/announcements' },
-      { icon: <BarChart3 className="w-5 h-5" />, label: 'Laporan', link: '/laporan' },
-      { icon: <Settings className="w-5 h-5" />, label: 'Tetapan', link: '/personal-settings' },
+      { icon: <User className="w-5 h-5" />, label: t('menuIbAccount'), link: '/ib-account' },
+      { icon: <FileCheck className="w-5 h-5" />, label: t('menuIbDashboard'), link: '/ib-dashboard' },
+      { icon: <Megaphone className="w-5 h-5" />, label: t('menuAnnouncements'), link: '/announcements' },
+      { icon: <BarChart3 className="w-5 h-5" />, label: t('menuReports'), link: '/laporan' },
+      { icon: <Settings className="w-5 h-5" />, label: t('menuSettings'), link: '/personal-settings' },
     ];
   }
 
@@ -460,7 +463,7 @@ const LayoutContent = ({ children, user, onLogout, onRoleChange }) => {
 
                     {availableRoles.length > 1 && onRoleChange && (
                       <div className="px-4 py-3 bg-white border-b border-gray-200 space-y-2">
-                        <p className="text-xs uppercase tracking-wide text-gray-500">Peranan aktif</p>
+                        <p className="text-xs uppercase tracking-wide text-gray-500">{t('role')}</p>
                         <div className="flex flex-wrap gap-2">
                           {availableRoles.map((roleOption) => (
                             <button
@@ -493,7 +496,7 @@ const LayoutContent = ({ children, user, onLogout, onRoleChange }) => {
                         className="flex items-center gap-3 px-4 py-3 text-black hover:bg-gray-100 transition-colors"
                       >
                         <User className="w-5 h-5 text-blue-500" />
-                        <span className="text-sm">Profil</span>
+                        <span className="text-sm">{t('profile')}</span>
                       </Link>
                       <button
                         onClick={() => {
@@ -503,7 +506,7 @@ const LayoutContent = ({ children, user, onLogout, onRoleChange }) => {
                         className="w-full flex items-center gap-3 px-4 py-3 text-black hover:bg-gray-100 transition-colors"
                       >
                         <LogOut className="w-5 h-5 text-blue-500" />
-                        <span className="text-sm">Log Keluar</span>
+                        <span className="text-sm">{t('logout')}</span>
                       </button>
                     </div>
                   </div>

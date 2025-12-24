@@ -1,5 +1,6 @@
 import { pool } from '../config/database.js';
 import { validationResult } from 'express-validator';
+import { createSnapshot, SNAPSHOT_TTL_HOURS } from '../utils/adminActionSnapshots.js';
 
 /**
  * Get all payment gateway settings
@@ -159,6 +160,19 @@ export const updatePaymentGateway = async (req, res) => {
       [gatewayName]
     );
 
+    // Store previous data for snapshot before update
+    const previousData = existing.length > 0 ? {
+      gateway_name: existing[0].gateway_name,
+      enabled: existing[0].enabled,
+      is_test_mode: existing[0].is_test_mode,
+      credentials: existing[0].credentials,
+      enabled_methods: existing[0].enabled_methods,
+      redirect_urls: existing[0].redirect_urls,
+      webhook_url: existing[0].webhook_url,
+      callback_url: existing[0].callback_url,
+      notes: existing[0].notes
+    } : null;
+
     if (existing.length === 0) {
       // Create the gateway if it doesn't exist
       await pool.execute(
@@ -273,6 +287,24 @@ export const updatePaymentGateway = async (req, res) => {
       } catch (e) {
         redirectUrls = {};
       }
+    }
+
+    // Log admin action for undo capability
+    if (req.user && req.user.role === 'admin' && previousData) {
+      await createSnapshot({
+        entityType: 'settings',
+        entityId: 0, // Use 0 for name-based entities
+        entityIdentifier: gatewayName,
+        operation: 'update',
+        data: previousData,
+        metadata: {
+          title: `Payment Gateway: ${gatewayName}`,
+          operationLabel: 'Kemas kini tetapan payment gateway',
+          redirectPath: '/toyyibpay-settings',
+          notes: `Updated payment gateway settings for ${gatewayName}`
+        },
+        actorIc: req.user.ic
+      });
     }
 
     res.json({

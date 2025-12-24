@@ -7,6 +7,7 @@ const GoogleMapPicker = ({
   radius, 
   onLocationChange, 
   onRadiusChange,
+  apiKey,
   height = '400px' 
 }) => {
   const mapRef = useRef(null);
@@ -103,10 +104,10 @@ const GoogleMapPicker = ({
       return;
     }
 
-    // Check if we have an API key
-    const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
-    if (!apiKey || apiKey === '' || apiKey === 'AIzaSyDummyKey') {
-      setError('Google Maps API key tidak dikonfigurasi. Sila gunakan input manual di bawah atau tambahkan VITE_GOOGLE_MAPS_API_KEY dalam fail .env');
+    // Check if we have an API key (from prop only - env variable removed)
+    const mapsApiKey = apiKey;
+    if (!mapsApiKey || mapsApiKey === '' || mapsApiKey === 'AIzaSyDummyKey') {
+      setError('Google Maps API key tidak dikonfigurasi. Sila masukkan API key dalam tetapan.');
       setIsLoading(false);
       return;
     }
@@ -130,7 +131,7 @@ const GoogleMapPicker = ({
     }
 
     const script = document.createElement('script');
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places`;
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${mapsApiKey}&libraries=places`;
     script.async = true;
     script.defer = true;
     
@@ -144,7 +145,7 @@ const GoogleMapPicker = ({
     };
 
     document.head.appendChild(script);
-  }, [initializeMap]);
+  }, [initializeMap, apiKey]);
 
   // Update marker position when latitude/longitude change externally
   useEffect(() => {

@@ -16,6 +16,7 @@ import {
 import { getPaymentGatewayService } from '../services/paymentGatewayService.js';
 import { validationResult } from 'express-validator';
 import crypto from 'crypto';
+import { createSnapshot, SNAPSHOT_TTL_HOURS } from '../utils/adminActionSnapshots.js';
 
 /**
  * Create Payment Intent
@@ -282,7 +283,43 @@ export const updateStatus = async (req, res) => {
       });
     }
 
+    // Get payment data before update for snapshot
+    const previousPayment = await getPaymentById(id);
+    if (!previousPayment) {
+      return res.status(404).json({
+        success: false,
+        message: 'Payment not found'
+      });
+    }
+
     const payment = await updatePaymentStatus(id, status);
+
+    // Log admin action for undo capability
+    if (req.user && req.user.role === 'admin') {
+      await createSnapshot({
+        entityType: 'payment',
+        entityId: Number(id),
+        entityIdentifier: String(id),
+        operation: 'update',
+        data: {
+          id: previousPayment.id,
+          user_ic: previousPayment.user_ic,
+          amount: previousPayment.amount,
+          currency: previousPayment.currency,
+          method: previousPayment.method,
+          provider: previousPayment.provider,
+          status: previousPayment.status,
+          metadata: previousPayment.metadata
+        },
+        metadata: {
+          title: `Payment #${id}`,
+          operationLabel: 'Kemas kini status pembayaran',
+          redirectPath: `/payments/${id}`,
+          notes: `Status changed from ${previousPayment.status} to ${status}`
+        },
+        actorIc: req.user.ic
+      });
+    }
 
     res.json({
       success: true,

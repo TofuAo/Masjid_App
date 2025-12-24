@@ -395,10 +395,13 @@ const PersonalSettings = () => {
             >
               <option value="ms">Bahasa Melayu</option>
               <option value="en">English</option>
+              <option value="ar">العربية (Arabic)</option>
             </select>
             <p className="text-xs text-gray-600 mt-2">
               {localPreferences.language === 'ms'
                 ? 'Pilih bahasa untuk antaramuka anda. (Nota: Beberapa teks mungkin masih dalam bahasa asal)'
+                : localPreferences.language === 'ar'
+                ? 'اختر اللغة لواجهة المستخدم. (ملاحظة: قد يكون بعض النص لا يزال باللغة الأصلية)'
                 : 'Choose language for your interface. (Note: Some text may still be in the original language)'}
             </p>
           </div>

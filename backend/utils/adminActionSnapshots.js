@@ -68,6 +68,29 @@ export async function createSnapshot({
     throw new Error('Missing required fields when creating admin action snapshot.');
   }
 
+  // Check for existing active snapshot for the same entity/operation to prevent duplicates
+  // Only check for delete operations to allow multiple create/update snapshots
+  // NOTE: We allow new snapshots if the old one was already undone or expired
+  if (operation === 'delete') {
+    const [existing] = await pool.execute(
+      `SELECT id FROM admin_action_snapshots 
+       WHERE entity_type = ? 
+         AND entity_id = ? 
+         AND operation = 'delete' 
+         AND was_undone = 0 
+         AND expires_at >= NOW()
+       ORDER BY created_at DESC
+       LIMIT 1`,
+      [entityType, entityId]
+    );
+
+    if (existing.length > 0) {
+      console.warn(`[SNAPSHOT] Active delete snapshot already exists for ${entityType}:${entityId} (ID: ${existing[0].id}). Creating new snapshot anyway to track the deletion.`);
+      // Continue to create new snapshot - this allows tracking if same record is deleted multiple times
+      // The listSnapshots function will show the most recent one
+    }
+  }
+
   const jsonData = JSON.stringify(data);
   const metadataJson = metadata ? JSON.stringify(metadata) : null;
 
@@ -78,6 +101,7 @@ export async function createSnapshot({
     [entityType, entityId, entityIdentifier, operation, jsonData, metadataJson, actorIc, SNAPSHOT_TTL_HOURS]
   );
 
+  console.log(`[SNAPSHOT] Created snapshot ID ${result.insertId} for ${entityType}:${entityId} operation:${operation} by ${actorIc}`);
   return result.insertId;
 }
 
@@ -124,23 +148,60 @@ export async function getSnapshotById(id) {
 
 export async function listSnapshots({ entityType = null } = {}) {
   await ensureSnapshotTable();
-  const whereClauses = ['was_undone = 0', 'expires_at >= NOW()'];
+  const whereClauses = ['aas.was_undone = 0', 'aas.expires_at >= NOW()'];
   const params = [];
 
   if (entityType) {
-    whereClauses.push('entity_type = ?');
+    whereClauses.push('aas.entity_type = ?');
     params.push(entityType);
   }
 
   const where = whereClauses.length ? `WHERE ${whereClauses.join(' AND ')}` : '';
 
+  console.log('[LIST SNAPSHOTS] Query:', {
+    entityType,
+    whereClauses,
+    params
+  });
+
+  // First, let's check ALL snapshots (including expired/undone) to see if attendance ones exist
+  const [allSnapshots] = await pool.execute(
+    `SELECT entity_type, COUNT(*) as count 
+     FROM admin_action_snapshots 
+     GROUP BY entity_type`
+  );
+  console.log('[LIST SNAPSHOTS] All snapshots in database by type:', allSnapshots);
+
   const [rows] = await pool.execute(
-    `SELECT *
-     FROM admin_action_snapshots
+    `SELECT aas.*, u.nama as created_by_nama
+     FROM admin_action_snapshots aas
+     LEFT JOIN users u ON aas.created_by = u.ic
      ${where}
-     ORDER BY created_at DESC`,
+     ORDER BY aas.created_at DESC`,
     params
   );
+
+  console.log('[LIST SNAPSHOTS] Found', rows.length, 'active snapshots');
+  if (rows.length > 0) {
+    const entityTypes = [...new Set(rows.map(r => r.entity_type))];
+    console.log('[LIST SNAPSHOTS] Entity types found:', entityTypes);
+    
+    // Check specifically for attendance
+    const attendanceRows = rows.filter(r => r.entity_type === 'attendance');
+    console.log('[LIST SNAPSHOTS] Attendance snapshots in results:', attendanceRows.length);
+    if (attendanceRows.length > 0) {
+      console.log('[LIST SNAPSHOTS] Attendance snapshot details:', attendanceRows.map(r => ({
+        id: r.id,
+        entity_id: r.entity_id,
+        operation: r.operation,
+        was_undone: r.was_undone,
+        expires_at: r.expires_at,
+        created_at: r.created_at
+      })));
+    }
+  } else {
+    console.log('[LIST SNAPSHOTS] ⚠️ No active snapshots found');
+  }
 
   const parseJson = (value, context) => {
     if (value === null || value === undefined) {

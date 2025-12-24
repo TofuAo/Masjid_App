@@ -2,19 +2,22 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { adminActionsAPI } from '../services/api';
 import Card from '../components/ui/Card';
+import ActionDetailsModal from '../components/admin/ActionDetailsModal';
 import { RotateCcw, RefreshCw, Filter, Search, Clock, ShieldAlert, User as UserIcon } from 'lucide-react';
 import { toast } from 'react-toastify';
+import { useLanguage } from '../contexts/LanguageContext';
 
-const ENTITY_LABELS = {
-  announcement: 'Pengumuman',
-  student: 'Pelajar',
-  teacher: 'Guru',
-  class: 'Kelas',
-  fee: 'Yuran',
-  result: 'Keputusan',
-  attendance: 'Kehadiran',
-  staff_checkin: 'Check In / Out',
-  settings: 'Tetapan',
+// Entity labels will be translated in the component
+const ENTITY_KEYS = {
+  announcement: 'menuAnnouncements',
+  student: 'menuStudents',
+  teacher: 'menuTeachers',
+  class: 'menuClasses',
+  fee: 'menuFees',
+  result: 'menuResults',
+  attendance: 'menuAttendance',
+  staff_checkin: 'menuCheckIn',
+  settings: 'menuSettings',
 };
 
 const ENTITY_ROUTE_MAP = {
@@ -29,46 +32,46 @@ const ENTITY_ROUTE_MAP = {
   settings: '/settings',
 };
 
-const formatDate = (value) => {
-  if (!value) return 'Tidak tersedia';
+const formatDate = (value, t) => {
+  if (!value) return t('notAvailable');
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) {
-    return 'Tidak tersedia';
+    return t('notAvailable');
   }
   return date.toLocaleString('ms-MY');
 };
 
-const formatRemainingTime = (expiresAt) => {
-  if (!expiresAt) return 'Tidak diketahui';
+const formatRemainingTime = (expiresAt, t) => {
+  if (!expiresAt) return t('unknown');
   const diffMs = new Date(expiresAt) - new Date();
   if (diffMs <= 0) {
-    return 'Tamat';
+    return t('expired');
   }
   const totalMinutes = Math.floor(diffMs / (1000 * 60));
   const hours = Math.floor(totalMinutes / 60);
   const minutes = totalMinutes % 60;
   if (hours <= 0) {
-    return `${minutes} minit lagi`;
+    return t('minutesRemaining', { minutes });
   }
   if (minutes === 0) {
-    return `${hours} jam lagi`;
+    return t('hoursRemaining', { hours });
   }
-  return `${hours} jam ${minutes} minit lagi`;
+  return t('hoursMinutesRemaining', { hours, minutes });
 };
 
-const getOperationLabel = (action) => {
+const getOperationLabel = (action, t) => {
   if (action?.metadata?.operationLabel) {
     return action.metadata.operationLabel;
   }
   switch (action?.operation) {
     case 'create':
-      return 'Cipta';
+      return t('create');
     case 'update':
-      return 'Kemas kini';
+      return t('update');
     case 'delete':
-      return 'Padam';
+      return t('delete');
     default:
-      return action?.operation || 'Tidak diketahui';
+      return action?.operation || t('unknown');
   }
 };
 
@@ -113,12 +116,15 @@ const resolveActionLink = (action) => {
 };
 
 const AdminActions = ({ user }) => {
+  const { t } = useLanguage();
   const [actions, setActions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [entityType, setEntityType] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [undoingId, setUndoingId] = useState(null);
+  const [selectedAction, setSelectedAction] = useState(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   const canAccess = user?.role === 'admin';
 
@@ -136,7 +142,22 @@ const AdminActions = ({ user }) => {
         params.entityType = entityType;
       }
       const response = await adminActionsAPI.list(params);
-      setActions(response?.data || []);
+      const actionsData = response?.data || [];
+      
+      // Debug logging
+      console.log('[RECYCLE BIN] Loaded actions:', {
+        total: actionsData.length,
+        entityTypes: [...new Set(actionsData.map(a => a.entity_type))],
+        attendanceCount: actionsData.filter(a => a.entity_type === 'attendance').length,
+        allActions: actionsData.map(a => ({
+          id: a.id,
+          entity_type: a.entity_type,
+          operation: a.operation,
+          title: a.metadata?.title || a.metadata?.nama || 'N/A'
+        }))
+      });
+      
+      setActions(actionsData);
     } catch (err) {
       console.error('Failed to load admin actions:', err);
       setError(err);
@@ -162,7 +183,7 @@ const AdminActions = ({ user }) => {
     return actions.filter((action) => {
       const title = extractTitle(action);
       const actor = action.created_by || '';
-      const operation = getOperationLabel(action);
+      const operation = getOperationLabel(action, t);
       const entity = action.entity_type || '';
       const serializedData = JSON.stringify(action.data || {});
       return [
@@ -177,32 +198,42 @@ const AdminActions = ({ user }) => {
         .toLowerCase()
         .includes(term);
     });
-  }, [actions, searchTerm]);
+  }, [actions, searchTerm, t]);
 
   const handleUndo = async (action) => {
-    if (!window.confirm('Anda pasti mahu mengundur tindakan ini?')) {
+    if (!window.confirm(t('confirmUndo'))) {
       return;
     }
     setUndoingId(action.id);
     try {
       await adminActionsAPI.undo(action.id);
-      toast.success('Tindakan berjaya diundur.');
+      toast.success(t('undoSuccess'));
       await loadActions();
     } catch (err) {
       console.error('Failed to undo admin action:', err);
       const message =
         err?.message ||
-        'Gagal mengundur tindakan. Sila cuba lagi.';
+        t('undoFailed');
       toast.error(message);
     } finally {
       setUndoingId(null);
     }
   };
 
+  const handleOpenModal = (action) => {
+    setSelectedAction(action);
+    setIsModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setSelectedAction(null);
+  };
+
   if (!canAccess) {
     return (
       <div className="py-10 text-center text-red-600">
-        Anda tidak mempunyai akses ke halaman ini.
+        {t('noAccess')}
       </div>
     );
   }
@@ -210,9 +241,9 @@ const AdminActions = ({ user }) => {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Sejarah Tindakan Admin</h1>
+        <h1 className="text-2xl font-bold text-gray-900">{t('recycleBin')}</h1>
         <p className="mt-1 text-sm text-gray-600">
-          Semak tindakan terbaru yang boleh diundur dalam tempoh 25 jam.
+          {t('recycleBinDescription')}
         </p>
       </div>
 
@@ -220,7 +251,7 @@ const AdminActions = ({ user }) => {
         <Card.Header>
           <Card.Title className="flex items-center gap-2">
             <RotateCcw className="w-5 h-5 text-emerald-600" />
-            Tindakan Boleh Diundur
+            {t('undoableActions')}
           </Card.Title>
         </Card.Header>
         <Card.Content>
@@ -228,17 +259,17 @@ const AdminActions = ({ user }) => {
             <div className="flex flex-col md:flex-row md:items-center gap-3 flex-1">
               <label className="flex items-center gap-2 text-sm text-gray-600">
                 <Filter className="w-4 h-4 text-gray-600" />
-                <span>Pilih Entiti</span>
+                <span>{t('selectEntity')}</span>
               </label>
               <select
                 value={entityType}
                 onChange={(event) => setEntityType(event.target.value)}
                 className="w-full md:w-60 rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
               >
-                <option value="">Semua entiti</option>
+                <option value="">{t('allEntities')}</option>
                 {uniqueEntityTypes.map((type) => (
                   <option key={type} value={type}>
-                    {ENTITY_LABELS[type] || type}
+                    {t(ENTITY_KEYS[type] || type)}
                   </option>
                 ))}
               </select>
@@ -251,7 +282,7 @@ const AdminActions = ({ user }) => {
                   type="text"
                   value={searchTerm}
                   onChange={(event) => setSearchTerm(event.target.value)}
-                  placeholder="Cari tajuk, ID atau pelaku..."
+                  placeholder={t('searchPlaceholder')}
                   className="pl-9 pr-3 py-2 rounded-md border border-gray-300 text-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 w-full md:w-72"
                 />
               </div>
@@ -262,7 +293,7 @@ const AdminActions = ({ user }) => {
                 className="inline-flex items-center gap-1 rounded-md bg-emerald-600 px-3 py-2 text-sm font-medium text-white hover:bg-emerald-700 transition-colors disabled:opacity-60"
               >
                 <RefreshCw className="w-4 h-4" />
-                Segar semula
+                {t('refresh')}
               </button>
             </div>
           </div>
@@ -270,17 +301,17 @@ const AdminActions = ({ user }) => {
           {error && (
             <div className="flex items-center gap-2 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 mb-4">
               <ShieldAlert className="w-4 h-4" />
-              <span>Gagal memuatkan data. Sila cuba lagi.</span>
+              <span>{t('failedToLoadData')}</span>
             </div>
           )}
 
           {loading ? (
             <div className="py-10 text-center text-sm text-gray-600">
-              Memuatkan tindakan admin...
+              {t('loadingRecycleBin')}
             </div>
           ) : filteredActions.length === 0 ? (
             <div className="py-10 text-center text-sm text-gray-600">
-              Tiada tindakan boleh diundur ditemui.
+              {t('noUndoableActions')}
             </div>
           ) : (
             <div className="overflow-x-auto -mx-4 sm:mx-0">
@@ -288,27 +319,27 @@ const AdminActions = ({ user }) => {
                 <thead className="bg-gray-50">
                   <tr>
                     <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
-                      Tindakan
+                      {t('action')}
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
-                      Butiran
+                      {t('details')}
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
-                      Tempoh Baki
+                      {t('remainingTime')}
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
-                      Pelaku
+                      {t('actor')}
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
-                      Tindakan
+                      {t('actions')}
                     </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100 bg-white">
                   {filteredActions.map((action) => {
                     const title = extractTitle(action);
-                    const operationLabel = getOperationLabel(action);
-                    const entityLabel = ENTITY_LABELS[action.entity_type] || action.entity_type;
+                    const operationLabel = getOperationLabel(action, t);
+                    const entityLabel = t(ENTITY_KEYS[action.entity_type] || action.entity_type);
                     return (
                       <tr key={action.id}>
                         <td className="px-4 py-4 align-top">
@@ -319,7 +350,7 @@ const AdminActions = ({ user }) => {
                         </td>
                         <td className="px-4 py-4 align-top">
                           <div className="text-xs text-gray-600 space-y-1">
-                            <p>Dilakukan pada: {formatDate(action.created_at)}</p>
+                            <p>{t('performedOn')} {formatDate(action.created_at, t)}</p>
                             {action.metadata?.notes && (
                               <p className="text-gray-500">{action.metadata.notes}</p>
                             )}
@@ -328,27 +359,33 @@ const AdminActions = ({ user }) => {
                         <td className="px-4 py-4 align-top">
                           <div className="flex items-center gap-1 text-xs text-amber-600">
                             <Clock className="w-3 h-3" />
-                            <span>{formatRemainingTime(action.expires_at)}</span>
+                            <span>{formatRemainingTime(action.expires_at, t)}</span>
                           </div>
                         </td>
                         <td className="px-4 py-4 align-top">
                           <div className="flex items-center gap-2 text-xs text-gray-600">
                             <UserIcon className="w-3 h-3 text-gray-600" />
-                            <span>{action.created_by || 'Tidak diketahui'}</span>
+                            <div>
+                              {action.created_by_nama ? (
+                                <>
+                                  <div className="font-medium text-gray-900">{action.created_by_nama}</div>
+                                  <div className="text-gray-500">{action.created_by || ''}</div>
+                                </>
+                              ) : (
+                                <span>{action.created_by || t('unknown')}</span>
+                              )}
+                            </div>
                           </div>
                         </td>
                         <td className="px-4 py-4 align-top">
                           <div className="flex flex-col gap-2">
-                            {resolveActionLink(action) ? (
-                              <Link
-                                to={resolveActionLink(action)}
-                                className="inline-flex items-center justify-center rounded-md border border-emerald-600 px-3 py-2 text-xs font-semibold text-emerald-700 hover:bg-emerald-50 transition-colors"
-                              >
-                                Buka Modul
-                              </Link>
-                            ) : (
-                              <span className="text-xs text-gray-600">Tiada pautan modul</span>
-                            )}
+                            <button
+                              type="button"
+                              onClick={() => handleOpenModal(action)}
+                              className="inline-flex items-center justify-center rounded-md border border-emerald-600 px-3 py-2 text-xs font-semibold text-emerald-700 hover:bg-emerald-50 transition-colors"
+                            >
+                              {t('openModule')}
+                            </button>
                             <button
                               type="button"
                               onClick={() => handleUndo(action)}
@@ -356,7 +393,7 @@ const AdminActions = ({ user }) => {
                               className="inline-flex items-center gap-1 rounded-md bg-emerald-600 px-3 py-2 text-xs font-semibold text-white hover:bg-emerald-700 transition-colors disabled:opacity-60"
                             >
                               <RotateCcw className="w-4 h-4" />
-                              {undoingId === action.id ? 'Mengundur...' : 'Undo'}
+                              {undoingId === action.id ? t('undoing') : t('undo')}
                             </button>
                           </div>
                         </td>
@@ -369,6 +406,13 @@ const AdminActions = ({ user }) => {
           )}
         </Card.Content>
       </Card>
+
+      {/* Action Details Modal */}
+      <ActionDetailsModal
+        isOpen={isModalOpen}
+        onClose={handleCloseModal}
+        action={selectedAction}
+      />
     </div>
   );
 };

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import useCrud from '../hooks/useCrud';
 import { attendanceAPI, classesAPI, googleFormAPI } from '../services/api';
 import { toast } from 'react-toastify';
@@ -6,6 +6,7 @@ import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import Badge from '../components/ui/Badge';
 import LoadingSkeleton from '../components/ui/LoadingSkeleton';
+import DeleteConfirmationModal from '../components/ui/DeleteConfirmationModal';
 import GoogleFormModal from '../components/kehadiran/GoogleFormModal';
 import AttendanceFormModal from '../components/kehadiran/AttendanceFormModal';
 import ClassAttendanceModal from '../components/kehadiran/ClassAttendanceModal';
@@ -24,6 +25,12 @@ const Kehadiran = () => {
   const [selectedClassAttendance, setSelectedClassAttendance] = useState(null);
   const [googleFormUrl, setGoogleFormUrl] = useState(null);
   const [editingAttendance, setEditingAttendance] = useState(null);
+  const [deleteModal, setDeleteModal] = useState({
+    isOpen: false,
+    attendanceId: null,
+    attendanceData: null
+  });
+  const [deleting, setDeleting] = useState(false);
 
   const {
     items: kehadiran,
@@ -72,16 +79,37 @@ const Kehadiran = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.ic]); // Only re-fetch if user IC changes
 
-  // Fetch attendance data when filters change
+  // Debounce function for filter changes
+  const debounce = useCallback((func, wait) => {
+    let timeout;
+    return function executedFunction(...args) {
+      const later = () => {
+        clearTimeout(timeout);
+        func(...args);
+      };
+      clearTimeout(timeout);
+      timeout = setTimeout(later, wait);
+    };
+  }, []);
+
+  // Debounced fetch function
+  const debouncedFetch = useMemo(
+    () => debounce((params) => {
+      fetchAttendanceData(params);
+    }, 300),
+    [debounce, fetchAttendanceData]
+  );
+
+  // Fetch attendance data when filters change (with debouncing)
   useEffect(() => {
-    fetchAttendanceData({ 
+    debouncedFetch({ 
       start_date: startDate,
       end_date: endDate,
       class_id: selectedKelas === 'semua' ? undefined : selectedKelas,
-      limit: 10000
+      limit: 1000 // Reduced from 10000 to 1000 for better performance
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [startDate, endDate, selectedKelas]); // Only depend on filter values
+  }, [startDate, endDate, selectedKelas, debouncedFetch]); // Only depend on filter values
 
   // Normalize status values from backend ('Hadir' -> 'hadir', 'Tidak Hadir' -> 'tidak_hadir', etc.)
   const normalizeStatus = (status) => {
@@ -96,73 +124,78 @@ const Kehadiran = () => {
     return statusMap[status] || status.toLowerCase().replace(/\s+/g, '_');
   };
 
-  const kehadiranArray = Array.isArray(kehadiran) ? kehadiran : [];
-  const filteredKehadiran = kehadiranArray.filter(k => {
-    // Normalize date for comparison - handle both string and Date object formats
-    const attendanceDate = k.tarikh ? (typeof k.tarikh === 'string' ? k.tarikh.split('T')[0] : new Date(k.tarikh).toISOString().split('T')[0]) : '';
+  // Memoize expensive data processing operations
+  const { filteredKehadiran, classGroups } = useMemo(() => {
+    const kehadiranArray = Array.isArray(kehadiran) ? kehadiran : [];
     
-    // Filter by date range
-    const matchesDate = attendanceDate >= startDate && attendanceDate <= endDate;
-    
-    // Normalize class_id for comparison - handle both string and number
-    const attendanceClassId = k.class_id || k.kelas_id;
-    const selectedClassId = selectedKelas === 'semua' ? null : parseInt(selectedKelas);
-    const matchesKelas = selectedKelas === 'semua' || attendanceClassId === selectedClassId || parseInt(attendanceClassId) === selectedClassId;
-    
-    // Normalize status for comparison
-    k.normalizedStatus = normalizeStatus(k.status);
-    return matchesDate && matchesKelas;
-  });
+    // Filter attendance records
+    const filtered = kehadiranArray.filter(k => {
+      // Normalize date for comparison - handle both string and Date object formats
+      const attendanceDate = k.tarikh ? (typeof k.tarikh === 'string' ? k.tarikh.split('T')[0] : new Date(k.tarikh).toISOString().split('T')[0]) : '';
+      
+      // Filter by date range
+      const matchesDate = attendanceDate >= startDate && attendanceDate <= endDate;
+      
+      // Normalize class_id for comparison - handle both string and number
+      const attendanceClassId = k.class_id || k.kelas_id;
+      const selectedClassId = selectedKelas === 'semua' ? null : parseInt(selectedKelas);
+      const matchesKelas = selectedKelas === 'semua' || attendanceClassId === selectedClassId || parseInt(attendanceClassId) === selectedClassId;
+      
+      // Normalize status for comparison
+      k.normalizedStatus = normalizeStatus(k.status);
+      return matchesDate && matchesKelas;
+    });
 
-  // Group attendance by date first, then by class
-  const groupedData = filteredKehadiran.reduce((acc, record) => {
-    const classId = record.class_id || record.kelas_id;
-    const className = record.kelas_nama || record.nama_kelas || 'Tiada Kelas';
-    const attendanceDate = record.tarikh ? (typeof record.tarikh === 'string' ? record.tarikh.split('T')[0] : new Date(record.tarikh).toISOString().split('T')[0]) : '';
-    
-    // Group by date first, then by class
-    if (!acc[attendanceDate]) {
-      acc[attendanceDate] = {};
-    }
-    
-    const groupKey = `${classId}_${attendanceDate}`;
-    if (!acc[attendanceDate][groupKey]) {
-      acc[attendanceDate][groupKey] = {
-        classId,
-        className,
-        date: attendanceDate,
-        records: [],
-        total: 0,
-        hadir: 0,
-        tidakHadir: 0,
-        lewat: 0,
-        sakit: 0,
-        other: 0
-      };
-    }
-    
-    acc[attendanceDate][groupKey].records.push(record);
-    acc[attendanceDate][groupKey].total++;
-    
-    const status = record.status || '';
-    if (status === 'Hadir') acc[attendanceDate][groupKey].hadir++;
-    else if (status === 'Tidak Hadir') acc[attendanceDate][groupKey].tidakHadir++;
-    else if (status === 'Lewat') acc[attendanceDate][groupKey].lewat++;
-    else if (status === 'Sakit') acc[attendanceDate][groupKey].sakit++;
-    else acc[attendanceDate][groupKey].other++;
-    
-    return acc;
-  }, {});
+    // Group attendance by date first, then by class
+    const groupedData = filtered.reduce((acc, record) => {
+      const classId = record.class_id || record.kelas_id;
+      const className = record.kelas_nama || record.nama_kelas || 'Tiada Kelas';
+      const attendanceDate = record.tarikh ? (typeof record.tarikh === 'string' ? record.tarikh.split('T')[0] : new Date(record.tarikh).toISOString().split('T')[0]) : '';
+      
+      // Group by date first, then by class
+      if (!acc[attendanceDate]) {
+        acc[attendanceDate] = {};
+      }
+      
+      const groupKey = `${classId}_${attendanceDate}`;
+      if (!acc[attendanceDate][groupKey]) {
+        acc[attendanceDate][groupKey] = {
+          classId,
+          className,
+          date: attendanceDate,
+          records: [],
+          total: 0,
+          hadir: 0,
+          tidakHadir: 0,
+          lewat: 0,
+          sakit: 0,
+          other: 0
+        };
+      }
+      
+      acc[attendanceDate][groupKey].records.push(record);
+      acc[attendanceDate][groupKey].total++;
+      
+      const status = record.status || '';
+      if (status === 'Hadir') acc[attendanceDate][groupKey].hadir++;
+      else if (status === 'Tidak Hadir') acc[attendanceDate][groupKey].tidakHadir++;
+      else if (status === 'Lewat') acc[attendanceDate][groupKey].lewat++;
+      else if (status === 'Sakit') acc[attendanceDate][groupKey].sakit++;
+      else acc[attendanceDate][groupKey].other++;
+      
+      return acc;
+    }, {});
 
-  // Process groups - always group by date then class
-  const dateGroups = Object.keys(groupedData)
-    .sort()
-    .map(date => ({
-      date,
-      classes: Object.values(groupedData[date]).sort((a, b) => a.className.localeCompare(b.className))
-    }));
-  
-  const classGroups = dateGroups;
+    // Process groups - always group by date then class
+    const dateGroups = Object.keys(groupedData)
+      .sort()
+      .map(date => ({
+        date,
+        classes: Object.values(groupedData[date]).sort((a, b) => a.className.localeCompare(b.className))
+      }));
+    
+    return { filteredKehadiran: filtered, classGroups: dateGroups };
+  }, [kehadiran, startDate, endDate, selectedKelas]);
 
   const handleClassClick = (classGroup) => {
     setSelectedClassAttendance(classGroup);
@@ -210,7 +243,7 @@ const Kehadiran = () => {
         start_date: startDate,
         end_date: endDate,
         class_id: selectedKelas === 'semua' ? undefined : selectedKelas,
-        limit: 10000
+        limit: 1000
       });
     } catch (err) {
       console.error('Failed to update attendance:', err);
@@ -218,41 +251,114 @@ const Kehadiran = () => {
     }
   };
 
-  const deleteKehadiran = async (id) => {
-    if (!window.confirm('Adakah anda pasti mahu memadam rekod kehadiran ini?')) {
+  const handleDeleteClick = (id) => {
+    const attendance = filteredKehadiran.find(k => k.id === id);
+    if (!attendance) {
+      toast.error('Rekod kehadiran tidak ditemui.');
+      return;
+    }
+
+    // Get student name for display
+    const studentName = attendance.nama || attendance.student_ic || 'Pelajar';
+    const className = attendance.kelas_nama || attendance.nama_kelas || 'Kelas';
+    const date = attendance.tarikh ? new Date(attendance.tarikh).toLocaleDateString('ms-MY') : 'Tarikh tidak diketahui';
+    
+    setDeleteModal({
+      isOpen: true,
+      attendanceId: id,
+      attendanceData: attendance
+    });
+  };
+
+  const handleDeleteConfirm = async () => {
+    const { attendanceId, attendanceData } = deleteModal;
+    
+    if (!attendanceId) {
+      setDeleteModal({ isOpen: false, attendanceId: null, attendanceData: null });
       return;
     }
     
+    console.log('[FRONTEND] Starting attendance deletion:', {
+      attendanceId,
+      attendanceData: attendanceData ? {
+        id: attendanceData.id,
+        student_ic: attendanceData.student_ic,
+        class_id: attendanceData.class_id,
+        tarikh: attendanceData.tarikh
+      } : null
+    });
+    
+    setDeleting(true);
+    
     try {
-      const attendance = filteredKehadiran.find(k => k.id === id);
-      if (!attendance) {
-        throw new Error('Attendance record not found');
-      }
+      console.log('[FRONTEND] Calling attendanceAPI.delete with ID:', attendanceId);
+      const response = await attendanceAPI.delete(attendanceId);
+      console.log('[FRONTEND] Delete API response:', response);
       
-      await attendanceAPI.delete(id);
-      toast.success('Rekod kehadiran berjaya dipadam!');
+      // Show success message with details
+      const studentName = attendanceData?.nama || attendanceData?.student_ic || 'Pelajar';
+      const date = attendanceData?.tarikh ? new Date(attendanceData.tarikh).toLocaleDateString('ms-MY') : '';
+      toast.success(`Rekod kehadiran berjaya dipadam! (${studentName} - ${date})`);
+      
+      // Close modal
+      setDeleteModal({ isOpen: false, attendanceId: null, attendanceData: null });
       
       // Refetch data after delete
       fetchAttendanceData({ 
         start_date: startDate,
         end_date: endDate,
         class_id: selectedKelas === 'semua' ? undefined : selectedKelas,
-        limit: 10000
+        limit: 1000
       });
     } catch (err) {
-      console.error('Failed to delete attendance:', err);
-      toast.error('Gagal memadam rekod kehadiran.');
+      console.error('[FRONTEND] Delete API error:', err);
+      // If record not found (404), treat as success - record already deleted
+      if (err?.response?.status === 404 || err?.status === 404 || 
+          err?.message?.includes('not found') || err?.message?.includes('Attendance record not found')) {
+        toast.success('Rekod kehadiran telah dipadam atau tidak wujud.');
+        setDeleteModal({ isOpen: false, attendanceId: null, attendanceData: null });
+        // Refresh data to sync with server
+        fetchAttendanceData({ 
+          start_date: startDate,
+          end_date: endDate,
+          class_id: selectedKelas === 'semua' ? undefined : selectedKelas,
+          limit: 1000
+        });
+      } else {
+        console.error('Failed to delete attendance:', err);
+        toast.error(err?.message || 'Gagal memadam rekod kehadiran.');
+      }
+    } finally {
+      setDeleting(false);
     }
   };
 
-  // Calculate statistics
-  const totalPelajar = filteredKehadiran.length;
-  const hadirCount = filteredKehadiran.filter(k => normalizeStatus(k.status) === 'hadir' || k.status === 'Hadir').length;
-  const tidakHadirCount = filteredKehadiran.filter(k => normalizeStatus(k.status) === 'tidak_hadir' || k.status === 'Tidak Hadir').length;
-  const lewatCount = filteredKehadiran.filter(k => normalizeStatus(k.status) === 'lewat' || k.status === 'Lewat').length;
-  const sakitCount = filteredKehadiran.filter(k => normalizeStatus(k.status) === 'sakit' || k.status === 'Sakit').length;
-  const cutiCount = filteredKehadiran.filter(k => normalizeStatus(k.status) === 'cuti' || k.status === 'Cuti').length;
-  const kehadiranRate = totalPelajar > 0 ? ((hadirCount + lewatCount) / totalPelajar * 100).toFixed(1) : 0;
+  const handleDeleteCancel = () => {
+    setDeleteModal({ isOpen: false, attendanceId: null, attendanceData: null });
+  };
+
+  // Memoize statistics calculations
+  const statistics = useMemo(() => {
+    const totalPelajar = filteredKehadiran.length;
+    const hadirCount = filteredKehadiran.filter(k => normalizeStatus(k.status) === 'hadir' || k.status === 'Hadir').length;
+    const tidakHadirCount = filteredKehadiran.filter(k => normalizeStatus(k.status) === 'tidak_hadir' || k.status === 'Tidak Hadir').length;
+    const lewatCount = filteredKehadiran.filter(k => normalizeStatus(k.status) === 'lewat' || k.status === 'Lewat').length;
+    const sakitCount = filteredKehadiran.filter(k => normalizeStatus(k.status) === 'sakit' || k.status === 'Sakit').length;
+    const cutiCount = filteredKehadiran.filter(k => normalizeStatus(k.status) === 'cuti' || k.status === 'Cuti').length;
+    const kehadiranRate = totalPelajar > 0 ? ((hadirCount + lewatCount) / totalPelajar * 100).toFixed(1) : 0;
+    
+    return {
+      totalPelajar,
+      hadirCount,
+      tidakHadirCount,
+      lewatCount,
+      sakitCount,
+      cutiCount,
+      kehadiranRate
+    };
+  }, [filteredKehadiran]);
+
+  const { totalPelajar, hadirCount, tidakHadirCount, lewatCount, sakitCount, cutiCount, kehadiranRate } = statistics;
 
   // Handle Ambil Kehadiran button click - show attendance form modal
   const handleAmbilKehadiran = () => {
@@ -285,7 +391,7 @@ const Kehadiran = () => {
         start_date: startDate,
         end_date: endDate,
         class_id: selectedKelas === 'semua' ? undefined : selectedKelas,
-        limit: 10000
+        limit: 1000
       });
     } catch (error) {
       console.error('Error submitting attendance:', error);
@@ -589,7 +695,7 @@ const Kehadiran = () => {
             start_date: startDate,
             end_date: endDate,
             class_id: selectedKelas === 'semua' ? undefined : selectedKelas,
-            limit: 10000
+            limit: 1000
           });
         }}
         classId={selectedKelas}
@@ -601,7 +707,7 @@ const Kehadiran = () => {
             start_date: startDate,
             end_date: endDate,
             class_id: selectedKelas === 'semua' ? undefined : selectedKelas,
-            limit: 10000
+            limit: 1000
           });
         }}
       />
@@ -618,7 +724,7 @@ const Kehadiran = () => {
         students={selectedClassAttendance?.records || selectedClassAttendance?.students || []}
         userRole={userRole}
         onUpdate={updateKehadiran}
-        onDelete={deleteKehadiran}
+        onDelete={handleDeleteClick}
       />
 
       {/* Google Form Modal (kept for backward compatibility) */}
@@ -633,6 +739,21 @@ const Kehadiran = () => {
         className={selectedClassName}
         selectedDate={startDate}
         onFormSubmit={handleFormSubmit}
+      />
+
+      {/* Delete Confirmation Modal with Two-Step Verification */}
+      <DeleteConfirmationModal
+        isOpen={deleteModal.isOpen}
+        onClose={handleDeleteCancel}
+        onConfirm={handleDeleteConfirm}
+        itemName={deleteModal.attendanceData?.nama || deleteModal.attendanceData?.pelajar_nama || deleteModal.attendanceData?.student_ic || 'Pelajar'}
+        itemIdentifier={
+          deleteModal.attendanceData
+            ? `${deleteModal.attendanceData.nama || deleteModal.attendanceData.pelajar_nama || deleteModal.attendanceData.student_ic} - ${deleteModal.attendanceData.kelas_nama || deleteModal.attendanceData.nama_kelas || 'Kelas'} - ${deleteModal.attendanceData.tarikh ? new Date(deleteModal.attendanceData.tarikh).toLocaleDateString('ms-MY') : ''}`
+            : ''
+        }
+        itemType="Rekod Kehadiran"
+        isLoading={deleting}
       />
     </div>
   );

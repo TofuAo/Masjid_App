@@ -182,7 +182,7 @@ const KelasList = ({ kelass = [], onEdit, onView, onDelete, onAdd, gurus = [], u
                           <button onClick={() => onEdit(kelas)} className="text-blue-600 hover:text-blue-800" title="Edit">
                             <Edit size={16} />
                           </button>
-                          <button onClick={() => onDelete(kelas.id)} className="text-red-600 hover:text-red-800" title="Padam">
+                          <button onClick={() => onDelete(kelas.id, kelas)} className="text-red-600 hover:text-red-800" title="Padam">
                             <Trash2 size={16} />
                           </button>
                         </>

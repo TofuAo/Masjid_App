@@ -36,6 +36,7 @@ const Kelas = () => {
     error,
     handlers,
     fetchItems,
+    DeleteModal,
   } = useCrud(classesAPI, 'kelas');
 
   // Fetch all classes with high limit - only on mount
@@ -521,6 +522,7 @@ const Kelas = () => {
   return (
     <div>
       {renderContent()}
+      <DeleteModal />
     </div>
   );
 };

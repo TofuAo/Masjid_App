@@ -203,7 +203,7 @@ Setelah log masuk, anda akan melihat Dashboard yang menampilkan:
 - Kelulusan pendaftaran baru
 - Tetapkan peranan pengguna
 - Reset kata laluan
-- Lihat tindakan admin
+- Lihat Recycle Bin
 
 **11. Tetapan Sistem**
 - Konfigurasi sistem
@@ -215,7 +215,7 @@ Setelah log masuk, anda akan melihat Dashboard yang menampilkan:
 - ✅ Kelulusan pendaftaran baru setiap hari
 - ✅ Semak statistik sistem secara berkala
 - ✅ Buat backup data secara berkala
-- ✅ Pantau aktiviti admin melalui "Tindakan Admin"
+- ✅ Pantau aktiviti admin melalui "Recycle Bin"
 - ✅ Pastikan pengumuman penting sentiasa terkini
 
 ---
@@ -352,7 +352,7 @@ Notifikasi akan hilang secara automatik selepas beberapa saat.
 ### Q: Bagaimana untuk lihat sejarah tindakan saya?
 **A:** 
 - **Pelajar/Guru:** Pergi ke "Akaun Saya" untuk melihat sejarah aktiviti
-- **Pentadbir:** Pergi ke "Tindakan Admin" untuk melihat semua tindakan admin
+- **Pentadbir:** Pergi ke "Recycle Bin" untuk melihat semua tindakan admin
 
 ---
 

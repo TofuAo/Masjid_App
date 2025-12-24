@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { pendingPicChangesAPI } from '../services/api';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
+import Badge from '../components/ui/Badge';
 import { toast } from 'react-toastify';
 import {
   ShieldCheck,
@@ -9,7 +10,8 @@ import {
   Clock,
   CheckCircle,
   XCircle,
-  FileJson
+  FileJson,
+  AlertCircle
 } from 'lucide-react';
 
 const statusLabels = {
@@ -50,7 +52,27 @@ const PicApprovals = ({ user }) => {
       }
     } catch (error) {
       console.error('Failed to load pending PIC changes:', error);
-      toast.error('Gagal memuatkan permintaan PIC.');
+      
+      // Extract specific error message
+      let errorMessage = 'Gagal memuatkan permintaan PIC.';
+      
+      if (error?.status === 401) {
+        errorMessage = 'Sesi anda telah tamat tempoh. Sila log masuk semula.';
+      } else if (error?.status === 403) {
+        errorMessage = 'Anda tidak mempunyai kebenaran untuk mengakses halaman ini. Sila log masuk sebagai pentadbir.';
+      } else if (error?.status === 404) {
+        errorMessage = 'Endpoint tidak ditemui. Sila semak konfigurasi API.';
+      } else if (error?.status === 500) {
+        errorMessage = 'Ralat pelayan. Sila cuba lagi atau hubungi pentadbir sistem.';
+      } else if (error?.isNetworkError || error?.status === 0) {
+        errorMessage = 'Tidak dapat menyambung ke pelayan. Sila semak sambungan internet anda.';
+      } else if (error?.message) {
+        errorMessage = error.message;
+      } else if (error?.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      }
+      
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -78,7 +100,46 @@ const PicApprovals = ({ user }) => {
       await loadChanges();
     } catch (error) {
       console.error('Failed to resolve PIC change:', error);
-      toast.error('Gagal memproses tindakan. Sila cuba lagi.');
+      
+      // Extract specific error message based on error type
+      let errorMessage = 'Gagal memproses tindakan. Sila cuba lagi.';
+      
+      if (error?.status === 400) {
+        errorMessage = error?.message || error?.response?.data?.message || 'Permintaan tidak sah. Sila semak maklumat yang dimasukkan.';
+      } else if (error?.status === 401) {
+        errorMessage = 'Sesi anda telah tamat tempoh. Sila log masuk semula.';
+      } else if (error?.status === 403) {
+        errorMessage = 'Anda tidak mempunyai kebenaran untuk melaksanakan tindakan ini.';
+      } else if (error?.status === 404) {
+        errorMessage = 'Permintaan tidak ditemui. Mungkin telah diproses atau dipadam.';
+      } else if (error?.status === 409) {
+        errorMessage = 'Permintaan telah diproses oleh pengguna lain. Sila segar semula senarai.';
+      } else if (error?.status === 500) {
+        // Check for specific error messages from backend
+        const backendMessage = error?.message || error?.response?.data?.message || '';
+        
+        if (backendMessage.includes('handler') || backendMessage.includes('No handler registered')) {
+          errorMessage = 'Handler untuk tindakan ini tidak didaftarkan. Sila hubungi pentadbir sistem.';
+        } else if (backendMessage.includes('already resolved') || backendMessage.includes('Pending change already resolved')) {
+          errorMessage = 'Permintaan ini telah diproses. Sila segar semula senarai untuk melihat status terkini.';
+        } else if (backendMessage.includes('not found') || backendMessage.includes('Pending change not found')) {
+          errorMessage = 'Permintaan tidak ditemui. Mungkin telah dipadam.';
+        } else if (backendMessage) {
+          errorMessage = backendMessage;
+        } else {
+          errorMessage = 'Ralat pelayan semasa memproses permintaan. Sila cuba lagi atau hubungi pentadbir sistem.';
+        }
+      } else if (error?.isNetworkError || error?.status === 0) {
+        errorMessage = 'Tidak dapat menyambung ke pelayan. Sila semak sambungan internet anda.';
+      } else if (error?.message) {
+        errorMessage = error.message;
+      } else if (error?.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error?.response?.data?.error) {
+        errorMessage = error.response.data.error;
+      }
+      
+      toast.error(errorMessage);
     } finally {
       setSubmitting(false);
     }
@@ -167,10 +228,20 @@ const PicApprovals = ({ user }) => {
         </Card.Header>
         <Card.Content>
           {loading ? (
-            <div className="text-center py-8 text-gray-500">Memuatkan permintaan...</div>
+            <div className="text-center py-8 text-gray-500">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600 mx-auto mb-2"></div>
+              Memuatkan permintaan...
+            </div>
           ) : changes.length === 0 ? (
             <div className="text-center py-8 text-gray-500">
-              Tiada permintaan dalam status ini.
+              <p className="text-sm font-medium mb-1">Tiada permintaan dalam status ini.</p>
+              <p className="text-xs text-gray-400">
+                {statusFilter === 'pending' 
+                  ? 'Tiada permintaan menunggu kelulusan pada masa ini.'
+                  : statusFilter === 'approved'
+                  ? 'Tiada permintaan yang telah diluluskan.'
+                  : 'Tiada permintaan yang telah ditolak.'}
+              </p>
             </div>
           ) : (
             <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
@@ -306,7 +377,22 @@ const PicApprovals = ({ user }) => {
                             className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
                             placeholder="Catatan kepada PIC (jika perlu)"
                           />
+                          <p className="text-xs text-gray-500 mt-1">
+                            Catatan ini akan dipaparkan kepada PIC yang membuat permintaan.
+                          </p>
                         </div>
+                        
+                        {/* Warning for handler-related issues */}
+                        {selectedChange.action_key && (
+                          <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 flex items-start gap-2">
+                            <AlertCircle className="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" />
+                            <div className="text-xs text-amber-800">
+                              <p className="font-medium mb-1">Perhatian:</p>
+                              <p>Pastikan handler untuk tindakan "{selectedChange.action_key}" telah didaftarkan. Jika tidak, kelulusan akan gagal.</p>
+                            </div>
+                          </div>
+                        )}
+                        
                         <div className="flex flex-col sm:flex-row gap-2 sm:justify-end">
                           <Button
                             variant="outline"
@@ -315,7 +401,7 @@ const PicApprovals = ({ user }) => {
                             disabled={submitting}
                           >
                             <XCircle className="w-4 h-4" />
-                            Tolak
+                            {submitting ? 'Memproses...' : 'Tolak'}
                           </Button>
                           <Button
                             className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700"
@@ -323,9 +409,48 @@ const PicApprovals = ({ user }) => {
                             disabled={submitting}
                           >
                             <CheckCircle className={`w-4 h-4 ${submitting ? 'animate-pulse' : ''}`} />
-                            Luluskan
+                            {submitting ? 'Memproses...' : 'Luluskan'}
                           </Button>
                         </div>
+                      </div>
+                    )}
+                    
+                    {/* Show status badge for non-pending requests */}
+                    {selectedChange.status !== 'pending' && (
+                      <div className="border border-gray-200 rounded-lg p-4">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Badge 
+                            variant={selectedChange.status === 'approved' ? 'success' : 'danger'}
+                            className="flex items-center gap-1"
+                          >
+                            {selectedChange.status === 'approved' ? (
+                              <>
+                                <CheckCircle className="w-3 h-3" />
+                                Diluluskan
+                              </>
+                            ) : (
+                              <>
+                                <XCircle className="w-3 h-3" />
+                                Ditolak
+                              </>
+                            )}
+                          </Badge>
+                          {selectedChange.approved_at && (
+                            <span className="text-xs text-gray-500">
+                              pada {new Date(selectedChange.approved_at).toLocaleString('ms-MY')}
+                            </span>
+                          )}
+                        </div>
+                        {selectedChange.notes && (
+                          <p className="text-sm text-gray-600 mt-2">
+                            <strong>Catatan:</strong> {selectedChange.notes}
+                          </p>
+                        )}
+                        {selectedChange.approver_name && (
+                          <p className="text-xs text-gray-500 mt-1">
+                            Diproses oleh: {selectedChange.approver_name}
+                          </p>
+                        )}
                       </div>
                     )}
                   </div>

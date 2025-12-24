@@ -1,13 +1,21 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { toast } from 'react-toastify';
 import { adminActionsAPI } from '../services/api';
+import DeleteConfirmationModal from '../components/ui/DeleteConfirmationModal';
 
-const useCrud = (api, itemName) => {
+const useCrud = (api, itemName, itemType = null) => {
   const [items, setItems] = useState([]);
   const [currentItem, setCurrentItem] = useState(null);
   const [view, setView] = useState('list'); // 'list', 'form', 'detail'
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [deleteModal, setDeleteModal] = useState({
+    isOpen: false,
+    itemId: null,
+    itemName: '',
+    itemIdentifier: '',
+    isLoading: false
+  });
 
   const fetchItems = useCallback(async (params = {}) => {
     setLoading(true);
@@ -20,7 +28,10 @@ const useCrud = (api, itemName) => {
       }
       
       const response = await api.getAll(params);
-      console.log(`Fetched ${itemName}s:`, response);
+      // Only log in development to reduce console noise
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`Fetched ${itemName}s:`, response);
+      }
       // Handle both array responses and object responses with data property
       const items = Array.isArray(response) ? response : (response.data || []);
       setItems(items);
@@ -147,23 +158,62 @@ const useCrud = (api, itemName) => {
     [renderUndoToastContent]
   );
 
-  const handleDelete = async (id) => {
-    if (window.confirm(`Adakah anda pasti mahu memadam ${itemName} ini?`)) {
-      try {
-        const response = await api.delete(id);
-        if (response?.pendingApproval) {
-          toast.info(
-            response.message || `Permintaan padam ${itemName} dihantar untuk kelulusan admin.`
-          );
-        } else {
-        showSuccessWithUndo(`${itemName} berjaya dipadam!`, response);
-        }
-        fetchItems(); // Refetch data after deletion
-      } catch (err) {
-        console.error(`Failed to delete ${itemName}:`, err);
-        toast.error(`Gagal memadam ${itemName}.`);
+  const handleDelete = (id, item = null) => {
+    // Find the item to get its name/identifier for display
+    let displayName = '';
+    let displayIdentifier = '';
+    
+    if (item) {
+      displayName = item.nama || item.nama_kelas || item.title || item.subject || item.name || `ID ${id}`;
+      displayIdentifier = item.ic || item.IC || item.id || id;
+    } else {
+      // Try to find item in items array
+      const foundItem = items.find(i => {
+        const identifier = resolveIdentifier(i);
+        return identifier === id || String(identifier) === String(id);
+      });
+      if (foundItem) {
+        displayName = foundItem.nama || foundItem.nama_kelas || foundItem.title || foundItem.subject || foundItem.name || `ID ${id}`;
+        displayIdentifier = foundItem.ic || foundItem.IC || foundItem.id || id;
+      } else {
+        displayName = `ID ${id}`;
+        displayIdentifier = id;
       }
     }
+    
+    setDeleteModal({
+      isOpen: true,
+      itemId: id,
+      itemName: displayName,
+      itemIdentifier: displayIdentifier,
+      isLoading: false
+    });
+  };
+
+  const handleDeleteConfirm = async () => {
+    const { itemId } = deleteModal;
+    setDeleteModal(prev => ({ ...prev, isLoading: true }));
+    
+    try {
+      const response = await api.delete(itemId);
+      if (response?.pendingApproval) {
+        toast.info(
+          response.message || `Permintaan padam ${itemName} dihantar untuk kelulusan admin.`
+        );
+      } else {
+        showSuccessWithUndo(`${itemName} berjaya dipadam!`, response);
+      }
+      setDeleteModal({ isOpen: false, itemId: null, itemName: '', itemIdentifier: '', isLoading: false });
+      fetchItems(); // Refetch data after deletion
+    } catch (err) {
+      console.error(`Failed to delete ${itemName}:`, err);
+      toast.error(`Gagal memadam ${itemName}.`);
+      setDeleteModal(prev => ({ ...prev, isLoading: false }));
+    }
+  };
+
+  const handleDeleteCancel = () => {
+    setDeleteModal({ isOpen: false, itemId: null, itemName: '', itemIdentifier: '', isLoading: false });
   };
 
   const resolveIdentifier = (item) => {
@@ -356,6 +406,18 @@ const useCrud = (api, itemName) => {
     setCurrentItem(null);
   };
 
+  const DeleteModal = () => {
+    return React.createElement(DeleteConfirmationModal, {
+      isOpen: deleteModal.isOpen,
+      onClose: handleDeleteCancel,
+      onConfirm: handleDeleteConfirm,
+      itemName: deleteModal.itemName,
+      itemIdentifier: deleteModal.itemIdentifier,
+      itemType: itemType || itemName,
+      isLoading: deleteModal.isLoading
+    });
+  };
+
   return {
     items,
     currentItem,
@@ -371,6 +433,7 @@ const useCrud = (api, itemName) => {
       submit: handleSubmit,
       cancel: handleCancel,
     },
+    DeleteModal,
   };
 };
 

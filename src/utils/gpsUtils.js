@@ -119,7 +119,7 @@ export function getAccurateLocation(options = {}) {
 
   return new Promise((resolve, reject) => {
     if (!navigator.geolocation) {
-      reject(new Error('Geolocation is not supported by your browser'));
+      reject(new Error('Geolokasi tidak disokong oleh pelayar anda. Sila gunakan pelayar yang lebih moden.'));
       return;
     }
 
@@ -152,7 +152,7 @@ export function getAccurateLocation(options = {}) {
         if (averaged) {
           resolve(averaged);
         } else {
-          reject(new Error('Failed to calculate accurate location'));
+          reject(new Error('Gagal mengira lokasi yang tepat. Sila cuba lagi.'));
         }
       }
     }, timeout);
@@ -185,25 +185,25 @@ export function getAccurateLocation(options = {}) {
           if (averaged) {
             resolve(averaged);
           } else {
-            reject(new Error('Failed to calculate accurate location'));
+            reject(new Error('Gagal mengira lokasi yang tepat. Sila cuba lagi.'));
           }
         }
       },
       (error) => {
         cleanup();
-        let errorMessage = 'Unable to retrieve your location';
+        let errorMessage = 'Tidak dapat mendapatkan lokasi anda';
         switch (error.code) {
           case error.PERMISSION_DENIED:
-            errorMessage = 'Location access denied. Please enable location permissions.';
+            errorMessage = 'Akses lokasi ditolak. Sila benarkan kebenaran lokasi dalam tetapan pelayar anda.';
             break;
           case error.POSITION_UNAVAILABLE:
-            errorMessage = 'Location information unavailable.';
+            errorMessage = 'Maklumat lokasi tidak tersedia. Sila pastikan GPS dihidupkan.';
             break;
           case error.TIMEOUT:
-            errorMessage = 'Location request timed out.';
+            errorMessage = 'Permintaan lokasi tamat tempoh. Sila cuba lagi.';
             break;
           default:
-            errorMessage = 'An unknown error occurred.';
+            errorMessage = 'Ralat tidak diketahui berlaku semasa mendapatkan lokasi.';
             break;
         }
         reject(new Error(errorMessage));
@@ -224,7 +224,7 @@ export function getAccurateLocation(options = {}) {
         if (averaged) {
           resolve(averaged);
         } else {
-          reject(new Error('Failed to calculate accurate location'));
+          reject(new Error('Gagal mengira lokasi yang tepat. Sila cuba lagi.'));
         }
       }
     }, sampleInterval * sampleCount + 2000);

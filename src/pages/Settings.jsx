@@ -5,10 +5,13 @@ import { toast } from 'react-toastify';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import Badge from '../components/ui/Badge';
-import { Settings as SettingsIcon, QrCode, Key, Upload, Link, Save, Users, Eye, EyeOff, MapPin, Database, CloudUpload, History, DownloadCloud, Loader2, Search, X, CreditCard, Mail, Phone, Archive, Contact, Clock } from 'lucide-react';
+import GoogleMapPicker from '../components/ui/GoogleMapPicker';
+import { Settings as SettingsIcon, QrCode, Key, Upload, Link, Save, Users, Eye, EyeOff, MapPin, Database, CloudUpload, History, DownloadCloud, Loader2, Search, X, CreditCard, Mail, Phone, Archive, Contact, Clock, Globe } from 'lucide-react';
 import { formatIC } from '../utils/icUtils';
 import { getEffectiveRole } from '../utils/userRoles';
 import { formatPhoneForDisplay } from '../utils/phoneUtils';
+import { useLanguage } from '../contexts/LanguageContext';
+import { usePreferences } from '../hooks/usePreferences';
 
 const Settings = () => {
   // Check if user is admin - redirect non-admins to personal settings
@@ -19,7 +22,10 @@ const Settings = () => {
   if (!user || userRole !== 'admin') {
     return <Navigate to="/personal-settings" replace />;
   }
-  const [activeTab, setActiveTab] = useState('qr'); // 'qr', 'password', 'checkin', 'backup', or 'contact'
+  
+  const { t, changeLanguage } = useLanguage();
+  const { preferences, updatePreferences } = usePreferences();
+  const [activeTab, setActiveTab] = useState('qr'); // 'qr', 'password', 'checkin', 'backup', 'contact', or 'language'
   const [loading, setLoading] = useState(false);
   const [exportingBackup, setExportingBackup] = useState(false);
   const [archivingYear, setArchivingYear] = useState(false);
@@ -183,6 +189,7 @@ const Settings = () => {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [showApiKey, setShowApiKey] = useState(false);
   const [loadingUsers, setLoadingUsers] = useState(false);
   const [userSearchQuery, setUserSearchQuery] = useState('');
   const [showPasswordModal, setShowPasswordModal] = useState(false);
@@ -192,7 +199,8 @@ const Settings = () => {
   const [checkInSettings, setCheckInSettings] = useState({
     masjid_latitude: '',
     masjid_longitude: '',
-    masjid_checkin_radius: '100'
+    masjid_checkin_radius: '100',
+    google_maps_api_key: ''
   });
 
   // Contact Information Settings
@@ -239,8 +247,24 @@ const Settings = () => {
   const fetchCheckInSettings = async () => {
     try {
       setLoadingCheckInSettings(true);
-      const response = await settingsAPI.getMasjidLocation();
-      const payload = response?.data ? response.data : response;
+      const [locationResponse, apiKeyResponse] = await Promise.all([
+        settingsAPI.getMasjidLocation().catch(() => null),
+        settingsAPI.getByKey('google_maps_api_key').catch((err) => {
+          // Silently handle 404 - setting doesn't exist yet (this is expected)
+          // Don't log 404 errors as they're normal when the setting hasn't been created
+          if (err?.response?.status === 404 || err?.status === 404) {
+            return null;
+          }
+          // Only log non-404 errors
+          if (err?.response?.status !== 404 && err?.status !== 404) {
+            console.warn('Failed to fetch Google Maps API key:', err);
+          }
+          return null;
+        })
+      ]);
+      
+      const payload = locationResponse?.data ? locationResponse.data : locationResponse;
+      const apiKey = apiKeyResponse?.data?.setting_value || apiKeyResponse?.setting_value || '';
 
       setCheckInSettings({
         masjid_latitude:
@@ -254,14 +278,16 @@ const Settings = () => {
         masjid_checkin_radius:
           payload?.radius !== undefined && payload?.radius !== null
             ? formatRadius(payload.radius)
-            : '100'
+            : '100',
+        google_maps_api_key: apiKey || ''
       });
     } catch (error) {
       console.error('Failed to fetch check-in settings:', error);
       setCheckInSettings({
         masjid_latitude: '',
         masjid_longitude: '',
-        masjid_checkin_radius: '100'
+        masjid_checkin_radius: '100',
+        google_maps_api_key: ''
       });
     } finally {
       setLoadingCheckInSettings(false);
@@ -274,29 +300,29 @@ const Settings = () => {
     const radius = parseFloat(checkInSettings.masjid_checkin_radius);
 
     if (Number.isNaN(latitude) || latitude < -90 || latitude > 90) {
-      toast.error('Latitude tidak sah. Nilai mesti di antara -90 dan 90.');
+      toast.error(t('invalidLatitude'));
       return;
     }
 
     if (Number.isNaN(longitude) || longitude < -180 || longitude > 180) {
-      toast.error('Longitude tidak sah. Nilai mesti di antara -180 dan 180.');
+      toast.error(t('invalidLongitude'));
       return;
     }
 
     if (Number.isNaN(radius) || radius <= 0) {
-      toast.error('Jejari tidak sah. Sila masukkan nombor positif.');
+      toast.error(t('invalidRadius'));
       return;
     }
 
     if (radius > 10000) {
-      toast.error('Jejari check-in tidak boleh melebihi 10,000 meter.');
+      toast.error(t('radiusTooLarge'));
       return;
     }
 
     try {
       setLoading(true);
 
-      await Promise.all([
+      const updatePromises = [
         settingsAPI.update('masjid_latitude', {
           value: latitude.toFixed(6),
           type: 'text',
@@ -312,18 +338,29 @@ const Settings = () => {
           type: 'text',
           description: 'Maximum allowed distance from masjid for check-in (in meters)'
         })
-      ]);
+      ];
+
+      // Save Google Maps API key (always save, even if empty, to clear it from database)
+      updatePromises.push(
+        settingsAPI.update('google_maps_api_key', {
+          value: checkInSettings.google_maps_api_key?.trim() || '',
+          type: 'text',
+          description: 'Google Maps API key for interactive map functionality'
+        })
+      );
+
+      await Promise.all(updatePromises);
 
       await fetchCheckInSettings();
       window.dispatchEvent(new CustomEvent('masjidLocationUpdated'));
-      toast.success(
-        `Tetapan lokasi masjid berjaya disimpan (Lat: ${latitude.toFixed(6)}, Long: ${longitude.toFixed(
-          6
-        )}, Jejari: ${radius.toFixed(0)}m).`
-      );
+      toast.success(t('locationSettingsSaved', {
+        lat: latitude.toFixed(6),
+        lng: longitude.toFixed(6),
+        radius: radius.toFixed(0)
+      }));
     } catch (error) {
       console.error('Failed to save check-in settings:', error);
-      toast.error(error?.message || 'Gagal menyimpan tetapan lokasi. Sila cuba lagi.');
+      toast.error(error?.message || t('locationSettingsFailed'));
     } finally {
       setLoading(false);
     }
@@ -426,11 +463,11 @@ const Settings = () => {
         description: 'Enable custom QR code'
       });
 
-      toast.success('Tetapan QR code berjaya disimpan!');
+      toast.success(t('settingsSaved'));
       fetchQRSettings();
     } catch (error) {
       console.error('Failed to save QR settings:', error);
-      toast.error('Gagal menyimpan tetapan QR code.');
+      toast.error(t('error'));
     } finally {
       setLoading(false);
     }
@@ -452,17 +489,17 @@ const Settings = () => {
 
   const handleChangePassword = async () => {
     if (!modalUser) {
-      toast.error('Sila pilih pengguna.');
+      toast.error(t('selectUser'));
       return;
     }
 
     if (!newPassword || newPassword.length < 6) {
-      toast.error('Kata laluan mesti sekurang-kurangnya 6 aksara.');
+      toast.error(t('passwordMinLength'));
       return;
     }
 
     if (newPassword !== confirmPassword) {
-      toast.error('Kata laluan tidak sepadan.');
+      toast.error(t('passwordsDoNotMatch'));
       return;
     }
 
@@ -473,11 +510,11 @@ const Settings = () => {
         newPassword: newPassword
       });
       
-      toast.success(`Kata laluan untuk ${modalUser.nama} telah berjaya ditukar!`);
+      toast.success(t('passwordChangedSuccess', { name: modalUser.nama }));
       handleCloseModal();
     } catch (error) {
       console.error('Failed to change password:', error);
-      toast.error(error?.message || 'Gagal menukar kata laluan.');
+      toast.error(error?.message || t('passwordChangeFailed'));
     } finally {
       setLoading(false);
     }
@@ -564,11 +601,11 @@ const Settings = () => {
         })
       ]);
 
-      toast.success('Maklumat perhubungan berjaya disimpan!');
+      toast.success(t('contactInfoSaved'));
       fetchContactInfo();
     } catch (error) {
       console.error('Failed to save contact info:', error);
-      toast.error('Gagal menyimpan maklumat perhubungan.');
+      toast.error(t('contactInfoFailed'));
     } finally {
       setLoading(false);
     }
@@ -582,7 +619,7 @@ const Settings = () => {
         <Card.Header>
           <Card.Title className="flex items-center space-x-2">
             <SettingsIcon className="w-5 h-5" />
-            <span>Tetapan Sistem</span>
+            <span>{t('systemSettings')}</span>
           </Card.Title>
         </Card.Header>
         <Card.Content>
@@ -596,7 +633,7 @@ const Settings = () => {
               }`}
             >
               <QrCode className="w-4 h-4 inline mr-2" />
-              QR Code Bayaran
+              {t('qrCodePayment')}
             </button>
             <button
               onClick={() => setActiveTab('password')}
@@ -607,7 +644,7 @@ const Settings = () => {
               }`}
             >
               <Key className="w-4 h-4 inline mr-2" />
-              Pengurusan Kata Laluan
+              {t('passwordManagement')}
             </button>
             <button
               onClick={() => setActiveTab('checkin')}
@@ -618,7 +655,7 @@ const Settings = () => {
               }`}
             >
               <MapPin className="w-4 h-4 inline mr-2" />
-              Tetapan Check-In
+              {t('checkInSettings')}
             </button>
             <button
               onClick={() => setActiveTab('backup')}
@@ -629,7 +666,7 @@ const Settings = () => {
               }`}
             >
               <Database className="w-4 h-4 inline mr-2" />
-              Eksport Pangkalan Data
+              {t('databaseExport')}
             </button>
             <button
               onClick={() => setActiveTab('contact')}
@@ -640,7 +677,18 @@ const Settings = () => {
               }`}
             >
               <Contact className="w-4 h-4 inline mr-2" />
-              Maklumat Perhubungan
+              {t('contactInformation')}
+            </button>
+            <button
+              onClick={() => setActiveTab('language')}
+              className={`px-4 py-2 font-medium transition-colors ${
+                activeTab === 'language'
+                  ? 'border-b-2 border-emerald-600 text-emerald-600'
+                  : 'text-black hover:text-black'
+              }`}
+            >
+              <Globe className="w-4 h-4 inline mr-2" />
+              {t('language')}
             </button>
           </div>
           
@@ -651,44 +699,44 @@ const Settings = () => {
       {activeTab === 'qr' && (
         <Card>
           <Card.Header>
-            <Card.Title>Tetapan QR Code Bayaran</Card.Title>
+            <Card.Title>{t('qrCodeSettings')}</Card.Title>
           </Card.Header>
           <Card.Content>
             <div className="space-y-6">
               {/* Enable/Disable Custom QR */}
               <div>
                 <label className="block text-sm font-medium text-black mb-2">
-                  Gunakan QR Code Kustom
+                  {t('useCustomQR')}
                 </label>
                 <select
                   value={qrSettings.qr_code_enabled}
                   onChange={(e) => setQrSettings({ ...qrSettings, qr_code_enabled: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 >
-                  <option value="1">Ya (Guna QR Code Kustom)</option>
-                  <option value="0">Tidak (Guna QR Code Auto-Generated)</option>
+                  <option value="1">{t('useCustomQRYes')}</option>
+                  <option value="0">{t('useCustomQRNo')}</option>
                 </select>
                 <p className="text-xs text-gray-500 mt-1">
-                  Jika tidak, sistem akan menjana QR code secara automatik berdasarkan maklumat bayaran.
+                  {t('qrCodeAutoGenerated')}
                 </p>
               </div>
 
               {/* QR Code Image Upload/URL */}
               <div>
                 <label className="block text-sm font-medium text-black mb-2">
-                  URL Gambar QR Code
+                  {t('qrCodeImageUrl')}
                 </label>
                 <div className="flex items-center space-x-2">
                   <input
                     type="text"
                     value={qrSettings.qr_code_image}
                     onChange={(e) => setQrSettings({ ...qrSettings, qr_code_image: e.target.value })}
-                    placeholder="https://example.com/qr-code.png atau muat naik gambar"
+                    placeholder={t('qrCodeImageUrlPlaceholder')}
                     className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   />
                   <label className="px-4 py-2 bg-emerald-100 text-emerald-700 rounded-md hover:bg-emerald-200 cursor-pointer">
                     <Upload className="w-4 h-4 inline mr-2" />
-                    Muat Naik
+                    {t('uploadImage')}
                     <input
                       type="file"
                       accept="image/*"
@@ -707,14 +755,14 @@ const Settings = () => {
                   </div>
                 )}
                 <p className="text-xs text-gray-500 mt-1">
-                  Masukkan URL gambar QR code atau muat naik fail gambar.
+                  {t('qrCodeImageHelp')}
                 </p>
               </div>
 
               {/* QR Code Link */}
               <div>
                 <label className="block text-sm font-medium text-black mb-2">
-                  Pautan QR Code (Alternatif)
+                  {t('qrCodeLink')}
                 </label>
                 <div className="flex items-center space-x-2">
                   <Link className="w-5 h-5 text-gray-600" />
@@ -722,12 +770,12 @@ const Settings = () => {
                     type="text"
                     value={qrSettings.qr_code_link}
                     onChange={(e) => setQrSettings({ ...qrSettings, qr_code_link: e.target.value })}
-                    placeholder="https://example.com/payment-link"
+                    placeholder={t('qrCodeLinkPlaceholder')}
                     className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   />
                 </div>
                 <p className="text-xs text-gray-500 mt-1">
-                  Pautan alternatif jika menggunakan QR code yang boleh diimbas terus ke pautan.
+                  {t('qrCodeLinkHelp')}
                 </p>
               </div>
 
@@ -737,7 +785,7 @@ const Settings = () => {
                 className="w-full"
               >
                 <Save className="w-4 h-4 mr-2" />
-                Simpan Tetapan QR Code
+                {t('saveQRSettings')}
               </Button>
             </div>
           </Card.Content>
@@ -751,7 +799,7 @@ const Settings = () => {
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
               <Card.Title className="flex items-center space-x-2">
                 <Users className="w-5 h-5" />
-                <span>Pengurusan Kata Laluan Pengguna ({filteredUsers.length})</span>
+                <span>{t('passwordManagement')} ({filteredUsers.length})</span>
               </Card.Title>
             </div>
           </Card.Header>
@@ -764,7 +812,7 @@ const Settings = () => {
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 w-4 h-4" />
                     <input
                       type="text"
-                      placeholder="Cari pengguna..."
+                      placeholder={t('searchUsers')}
                       value={userSearchQuery}
                       onChange={(e) => setUserSearchQuery(e.target.value)}
                       className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
@@ -777,7 +825,7 @@ const Settings = () => {
             {loadingUsers ? (
               <div className="text-center py-12">
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600 mx-auto"></div>
-                <p className="mt-4 text-gray-600">Memuatkan pengguna...</p>
+                <p className="mt-4 text-gray-600">{t('loadingUsers')}</p>
               </div>
             ) : (
               <>
@@ -787,19 +835,19 @@ const Settings = () => {
                     <thead className="bg-gray-50">
                       <tr>
                         <th className="px-3 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Pengguna
+                          {t('user')}
                         </th>
                         <th className="px-3 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden sm:table-cell">
                           IC
                         </th>
                         <th className="px-3 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Peranan
+                          {t('role')}
                         </th>
                         <th className="px-3 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden md:table-cell">
-                          Email
+                          {t('email')}
                         </th>
                         <th className="px-3 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Tindakan
+                          {t('actions')}
                         </th>
                       </tr>
                     </thead>
@@ -824,7 +872,7 @@ const Settings = () => {
                           </td>
                           <td className="px-3 sm:px-6 py-3 sm:py-4">
                             <Badge variant="default">
-                              {user.role === 'student' ? 'Pelajar' : user.role === 'teacher' ? 'Guru' : user.role === 'admin' ? 'Admin' : user.role === 'pic' ? 'PIC' : user.role}
+                              {user.role === 'student' ? t('student') : user.role === 'teacher' ? t('teacher') : user.role === 'admin' ? t('admin') : user.role === 'pic' ? t('pic') : user.role}
                             </Badge>
                           </td>
                           <td className="px-3 sm:px-6 py-3 sm:py-4 text-sm text-gray-900 hidden md:table-cell">
@@ -837,10 +885,10 @@ const Settings = () => {
                                 handleUserClick(user);
                               }}
                               className="text-emerald-600 hover:text-emerald-900 flex items-center"
-                              title="Tukar Kata Laluan"
+                              title={t('changePassword')}
                             >
                               <Key className="w-4 h-4 mr-1" />
-                              <span className="hidden sm:inline">Tukar Kata Laluan</span>
+                              <span className="hidden sm:inline">{t('changePassword')}</span>
                             </button>
                           </td>
                         </tr>
@@ -857,11 +905,11 @@ const Settings = () => {
                       </div>
                     </div>
                     <p className="text-gray-500 text-lg font-medium mb-2">
-                      {userSearchQuery ? 'Tiada pengguna ditemui' : 'Tiada pengguna dalam senarai'}
+                      {userSearchQuery ? t('noUsersFound') : t('noUsersInList')}
                     </p>
                     {userSearchQuery && (
                       <p className="text-sm text-gray-600">
-                        Cuba cari dengan kata kunci lain
+                        {t('tryDifferentSearch')}
                       </p>
                     )}
                   </div>
@@ -1009,8 +1057,94 @@ const Settings = () => {
                   <strong>Maklumat:</strong> Tetapan ini menentukan lokasi sebenar masjid yang digunakan untuk semakan jarak ketika staff melakukan check-in/check-out.
                 </p>
                 <p className="text-xs text-blue-700">
-                  Kemaskini koordinat hanya jika masjid berpindah atau terdapat ralat. Gunakan Google Maps / GPS untuk mendapatkan nilai terkini (format perpuluhan).
+                  Gunakan peta interaktif di bawah untuk menetapkan lokasi masjid dengan mudah, atau gunakan input manual untuk koordinat yang tepat.
                 </p>
+              </div>
+
+              {/* Google Maps API Key */}
+              <div>
+                <label className="block text-sm font-medium text-black mb-2">
+                  Google Maps API Key
+                </label>
+                <div className="space-y-2">
+                  <div className="relative">
+                    <input
+                      type={showApiKey ? 'text' : 'password'}
+                      value={checkInSettings.google_maps_api_key || ''}
+                      onChange={(e) =>
+                        setCheckInSettings({
+                          ...checkInSettings,
+                          google_maps_api_key: e.target.value
+                        })
+                      }
+                      placeholder="Masukkan Google Maps API Key (contoh: AIzaSy...)"
+                      className="w-full px-3 py-2 pr-20 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    />
+                    <div className="absolute right-3 top-1/2 transform -translate-y-1/2 flex items-center gap-2">
+                      {checkInSettings.google_maps_api_key && (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setCheckInSettings({
+                              ...checkInSettings,
+                              google_maps_api_key: ''
+                            })
+                          }
+                          className="text-red-600 hover:text-red-800 text-xs"
+                          title="Clear API key"
+                        >
+                          Clear
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => setShowApiKey(!showApiKey)}
+                        className="text-gray-600 hover:text-black"
+                      >
+                        {showApiKey ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                      </button>
+                    </div>
+                  </div>
+                  <p className="text-xs text-gray-500">
+                    API key diperlukan untuk menggunakan peta interaktif. Dapatkan API key dari{' '}
+                    <a
+                      href="https://console.cloud.google.com/google/maps-apis"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-600 hover:underline"
+                    >
+                      Google Cloud Console
+                    </a>
+                    . Kosongkan medan ini untuk membuang API key dari sistem.
+                  </p>
+                </div>
+              </div>
+
+              {/* Interactive Map */}
+              <div>
+                <label className="block text-sm font-medium text-black mb-2">
+                  Peta Interaktif - Tetapkan Lokasi Masjid
+                </label>
+                <GoogleMapPicker
+                  latitude={checkInSettings.masjid_latitude || '3.808236'}
+                  longitude={checkInSettings.masjid_longitude || '103.328054'}
+                  radius={checkInSettings.masjid_checkin_radius || '100'}
+                  apiKey={checkInSettings.google_maps_api_key || undefined}
+                  onLocationChange={(lat, lng) => {
+                    setCheckInSettings({
+                      ...checkInSettings,
+                      masjid_latitude: lat.toFixed(6),
+                      masjid_longitude: lng.toFixed(6)
+                    });
+                  }}
+                  onRadiusChange={(newRadius) => {
+                    setCheckInSettings({
+                      ...checkInSettings,
+                      masjid_checkin_radius: formatRadius(newRadius.toString())
+                    });
+                  }}
+                  height="500px"
+                />
               </div>
 
               {/* Editable Coordinates */}
@@ -1096,7 +1230,7 @@ const Settings = () => {
                   </div>
                 </div>
                 <p className="text-xs text-gray-500 mt-1">
-                  Gunakan slider atau masukkan nilai secara terus. Nilai lalai: 100 meter.
+                  Gunakan slider atau masukkan nilai secara terus. Nilai lalai: 100 meter. Bulatan hijau pada peta akan dikemaskini secara automatik.
                 </p>
                 <div className="mt-2 text-xs text-black">
                   <strong>Jejari semasa:</strong>{' '}
@@ -1434,6 +1568,59 @@ const Settings = () => {
                 ) : (
                   <p className="text-sm text-gray-500">Tiada eksport direkodkan lagi.</p>
                 )}
+              </div>
+            </div>
+          </Card.Content>
+        </Card>
+      )}
+
+      {/* Language Settings */}
+      {activeTab === 'language' && (
+        <Card>
+          <Card.Header>
+            <Card.Title className="flex items-center space-x-2">
+              <Globe className="w-5 h-5" />
+              <span>{t('language')}</span>
+            </Card.Title>
+          </Card.Header>
+          <Card.Content>
+            <div className="space-y-6">
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-1">
+                <p className="text-sm text-blue-800">
+                  <strong>{t('settings')}:</strong> {t('settingsDescription')}
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-black mb-2">
+                  {t('language')}
+                </label>
+                <select
+                  value={preferences?.language || 'ms'}
+                  onChange={async (e) => {
+                    const newLang = e.target.value;
+                    changeLanguage(newLang);
+                    try {
+                      await updatePreferences({ ...preferences, language: newLang });
+                      toast.success(t('settingsSaved'));
+                    } catch (error) {
+                      console.error('Failed to save language preference:', error);
+                      toast.error(t('error'));
+                    }
+                  }}
+                  className="w-full px-4 py-3 border-2 border-emerald-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 bg-white text-gray-900 shadow-sm hover:border-emerald-300 transition-colors"
+                >
+                  <option value="ms">{t('malay')}</option>
+                  <option value="en">{t('english')}</option>
+                  <option value="ar">{t('arabic')}</option>
+                </select>
+                <p className="text-xs text-gray-500 mt-2">
+                  {preferences?.language === 'ms'
+                    ? 'Pilih bahasa untuk seluruh sistem. Perubahan ini akan mempengaruhi semua pengguna.'
+                    : preferences?.language === 'ar'
+                    ? 'اختر لغة للنظام بالكامل. سيؤثر هذا التغيير على جميع المستخدمين.'
+                    : 'Choose language for the entire system. This change will affect all users.'}
+                </p>
               </div>
             </div>
           </Card.Content>

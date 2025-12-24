@@ -447,12 +447,321 @@ const undoPicUserAction = async (snapshot) => {
   }
 };
 
+const undoAttendanceAction = async (snapshot) => {
+  const { operation, entity_id: entityId, data } = snapshot;
+  if (!data || !entityId) {
+    throw new Error('Snapshot data missing for attendance undo.');
+  }
+
+  const connection = await pool.getConnection();
+  try {
+    await connection.beginTransaction();
+
+    switch (operation) {
+      case 'create': {
+        await connection.execute(`DELETE FROM attendance WHERE id = ?`, [entityId]);
+        break;
+      }
+      case 'update': {
+        await connection.execute(
+          `UPDATE attendance 
+           SET student_ic = ?, class_id = ?, tarikh = ?, status = ?, updated_at = ?
+           WHERE id = ?`,
+          [
+            data.student_ic,
+            data.class_id,
+            formatDateTimeForDB(data.tarikh),
+            data.status,
+            formatDateTimeForDB(data.updated_at),
+            entityId
+          ]
+        );
+        break;
+      }
+      case 'delete': {
+        await connection.execute(
+          `INSERT INTO attendance (id, student_ic, class_id, tarikh, status, created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?)
+           ON DUPLICATE KEY UPDATE
+             student_ic = VALUES(student_ic),
+             class_id = VALUES(class_id),
+             tarikh = VALUES(tarikh),
+             status = VALUES(status),
+             updated_at = VALUES(updated_at)`,
+          [
+            entityId,
+            data.student_ic,
+            data.class_id,
+            formatDateTimeForDB(data.tarikh),
+            data.status,
+            formatDateTimeForDB(data.created_at),
+            formatDateTimeForDB(data.updated_at)
+          ]
+        );
+        break;
+      }
+      default:
+        throw new Error(`Unsupported snapshot operation for attendance: ${operation}`);
+    }
+
+    await connection.commit();
+    return {
+      entityId: entityId,
+      entityType: 'attendance',
+      action: operation === 'create' ? 'delete' : operation === 'delete' ? 'restore' : 'update'
+    };
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
+  }
+};
+
+const undoFeeAction = async (snapshot) => {
+  const { operation, entity_id: entityId, data } = snapshot;
+  if (!data || !entityId) {
+    throw new Error('Snapshot data missing for fee undo.');
+  }
+
+  const connection = await pool.getConnection();
+  try {
+    await connection.beginTransaction();
+
+    switch (operation) {
+      case 'create': {
+        await connection.execute(`DELETE FROM fees WHERE id = ?`, [entityId]);
+        break;
+      }
+      case 'update': {
+        await connection.execute(
+          `UPDATE fees 
+           SET student_ic = ?, jumlah = ?, status = ?, tarikh = ?, tarikh_bayar = ?, bulan = ?, tahun = ?, cara_bayar = ?, no_resit = ?, resit_img = ?, updated_at = ?
+           WHERE id = ?`,
+          [
+            data.student_ic,
+            data.jumlah,
+            data.status,
+            formatDateTimeForDB(data.tarikh),
+            formatDateTimeForDB(data.tarikh_bayar),
+            data.bulan,
+            data.tahun,
+            data.cara_bayar,
+            data.no_resit,
+            data.resit_img,
+            formatDateTimeForDB(data.updated_at),
+            entityId
+          ]
+        );
+        break;
+      }
+      case 'delete': {
+        await connection.execute(
+          `INSERT INTO fees (id, student_ic, jumlah, status, tarikh, tarikh_bayar, bulan, tahun, cara_bayar, no_resit, resit_img, created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+           ON DUPLICATE KEY UPDATE
+             student_ic = VALUES(student_ic),
+             jumlah = VALUES(jumlah),
+             status = VALUES(status),
+             tarikh = VALUES(tarikh),
+             tarikh_bayar = VALUES(tarikh_bayar),
+             bulan = VALUES(bulan),
+             tahun = VALUES(tahun),
+             cara_bayar = VALUES(cara_bayar),
+             no_resit = VALUES(no_resit),
+             resit_img = VALUES(resit_img),
+             updated_at = VALUES(updated_at)`,
+          [
+            entityId,
+            data.student_ic,
+            data.jumlah,
+            data.status,
+            formatDateTimeForDB(data.tarikh),
+            formatDateTimeForDB(data.tarikh_bayar),
+            data.bulan,
+            data.tahun,
+            data.cara_bayar,
+            data.no_resit,
+            data.resit_img,
+            formatDateTimeForDB(data.created_at),
+            formatDateTimeForDB(data.updated_at)
+          ]
+        );
+        break;
+      }
+      default:
+        throw new Error(`Unsupported snapshot operation for fee: ${operation}`);
+    }
+
+    await connection.commit();
+    return {
+      entityId: entityId,
+      entityType: 'fee',
+      action: operation === 'create' ? 'delete' : operation === 'delete' ? 'restore' : 'update'
+    };
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
+  }
+};
+
+const undoResultAction = async (snapshot) => {
+  const { operation, entity_id: entityId, data } = snapshot;
+  if (!data || !entityId) {
+    throw new Error('Snapshot data missing for result undo.');
+  }
+
+  const connection = await pool.getConnection();
+  try {
+    await connection.beginTransaction();
+
+    switch (operation) {
+      case 'create': {
+        await connection.execute(`DELETE FROM results WHERE id = ?`, [entityId]);
+        break;
+      }
+      case 'update': {
+        await connection.execute(
+          `UPDATE results 
+           SET student_ic = ?, exam_id = ?, markah = ?, gred = ?, slip_img = ?, catatan = ?, updated_at = ?
+           WHERE id = ?`,
+          [
+            data.student_ic,
+            data.exam_id,
+            data.markah,
+            data.gred,
+            data.slip_img,
+            data.catatan,
+            formatDateTimeForDB(data.updated_at),
+            entityId
+          ]
+        );
+        break;
+      }
+      case 'delete': {
+        await connection.execute(
+          `INSERT INTO results (id, student_ic, exam_id, markah, gred, slip_img, catatan, created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+           ON DUPLICATE KEY UPDATE
+             student_ic = VALUES(student_ic),
+             exam_id = VALUES(exam_id),
+             markah = VALUES(markah),
+             gred = VALUES(gred),
+             slip_img = VALUES(slip_img),
+             catatan = VALUES(catatan),
+             updated_at = VALUES(updated_at)`,
+          [
+            entityId,
+            data.student_ic,
+            data.exam_id,
+            data.markah,
+            data.gred,
+            data.slip_img,
+            data.catatan,
+            formatDateTimeForDB(data.created_at),
+            formatDateTimeForDB(data.updated_at)
+          ]
+        );
+        break;
+      }
+      default:
+        throw new Error(`Unsupported snapshot operation for result: ${operation}`);
+    }
+
+    await connection.commit();
+    return {
+      entityId: entityId,
+      entityType: 'result',
+      action: operation === 'create' ? 'delete' : operation === 'delete' ? 'restore' : 'update'
+    };
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
+  }
+};
+
+const undoExamAction = async (snapshot) => {
+  const { operation, entity_id: entityId, data } = snapshot;
+  if (!data || !entityId) {
+    throw new Error('Snapshot data missing for exam undo.');
+  }
+
+  const connection = await pool.getConnection();
+  try {
+    await connection.beginTransaction();
+
+    switch (operation) {
+      case 'create': {
+        await connection.execute(`DELETE FROM exams WHERE id = ?`, [entityId]);
+        break;
+      }
+      case 'update': {
+        await connection.execute(
+          `UPDATE exams 
+           SET class_id = ?, subject = ?, tarikh_exam = ?, updated_at = ?
+           WHERE id = ?`,
+          [
+            data.class_id,
+            data.subject,
+            formatDateTimeForDB(data.tarikh_exam),
+            formatDateTimeForDB(data.updated_at),
+            entityId
+          ]
+        );
+        break;
+      }
+      case 'delete': {
+        await connection.execute(
+          `INSERT INTO exams (id, class_id, subject, tarikh_exam, created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?)
+           ON DUPLICATE KEY UPDATE
+             class_id = VALUES(class_id),
+             subject = VALUES(subject),
+             tarikh_exam = VALUES(tarikh_exam),
+             updated_at = VALUES(updated_at)`,
+          [
+            entityId,
+            data.class_id,
+            data.subject,
+            formatDateTimeForDB(data.tarikh_exam),
+            formatDateTimeForDB(data.created_at),
+            formatDateTimeForDB(data.updated_at)
+          ]
+        );
+        break;
+      }
+      default:
+        throw new Error(`Unsupported snapshot operation for exam: ${operation}`);
+    }
+
+    await connection.commit();
+    return {
+      entityId: entityId,
+      entityType: 'exam',
+      action: operation === 'create' ? 'delete' : operation === 'delete' ? 'restore' : 'update'
+    };
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
+  }
+};
+
 const entityUndoHandlers = {
   announcement: undoAnnouncementAction,
   student: undoStudentAction,
   teacher: undoTeacherAction,
   class: undoClassAction,
-  picUser: undoPicUserAction
+  picUser: undoPicUserAction,
+  attendance: undoAttendanceAction,
+  fee: undoFeeAction,
+  result: undoResultAction,
+  exam: undoExamAction
 };
 
 export const undoValidators = [
@@ -481,7 +790,29 @@ export const listUndoableActions = async (req, res) => {
 
     const { entityType } = req.query;
 
+    console.log('[LIST UNDOABLE ACTIONS] Request received:', {
+      entityType,
+      query: req.query
+    });
+
     const snapshots = await listSnapshots({ entityType });
+
+    // Debug: Check specifically for attendance snapshots
+    const attendanceSnapshots = snapshots.filter(s => s.entity_type === 'attendance');
+    console.log('[LIST UNDOABLE ACTIONS] Total snapshots:', snapshots.length);
+    console.log('[LIST UNDOABLE ACTIONS] Attendance snapshots:', attendanceSnapshots.length);
+    if (attendanceSnapshots.length > 0) {
+      console.log('[LIST UNDOABLE ACTIONS] Attendance snapshot details:', attendanceSnapshots.map(s => ({
+        id: s.id,
+        entity_id: s.entity_id,
+        operation: s.operation,
+        was_undone: s.was_undone,
+        expires_at: s.expires_at,
+        created_at: s.created_at
+      })));
+    } else {
+      console.log('[LIST UNDOABLE ACTIONS] ⚠️ No attendance snapshots found in results');
+    }
 
     res.json({
       success: true,

@@ -4,6 +4,7 @@ import { sendFeePaymentConfirmation } from '../utils/emailService.js';
 import { generateMonthlyFeesManually, syncCurrentMonthFeesWithClassYuran } from '../schedulers/monthlyFeeGenerationJob.js';
 import { generateFeeReceipt } from '../utils/receiptService.js';
 import { getSafePagination } from '../utils/pagination.js';
+import { createSnapshot, SNAPSHOT_TTL_HOURS } from '../utils/adminActionSnapshots.js';
 
 export const getAllFees = async (req, res) => {
   try {
@@ -414,6 +415,23 @@ export const createFee = async (req, res) => {
       WHERE f.id = ?
     `, [result.insertId]);
     
+    // Create snapshot after create (only for admin/PIC)
+    const actorIc = req.user?.ic;
+    if (actorIc && (req.user?.role === 'admin' || req.user?.role === 'pic')) {
+      await createSnapshot({
+        entityType: 'fee',
+        entityId: result.insertId,
+        entityIdentifier: `${safeActualStudentIC}-${safeFeeBulan}-${safeFeeTahun}`,
+        operation: 'create',
+        data: newFee[0],
+        metadata: {
+          title: `Yuran - ${safeActualStudentIC}`,
+          notes: `Yuran baru ditambah: RM${safeJumlah} - ${safeBackendStatus}`
+        },
+        actorIc
+      });
+    }
+    
     res.status(201).json({
       success: true,
       message: 'Fee record created successfully',
@@ -499,6 +517,27 @@ export const updateFee = async (req, res) => {
     
     // Set tarikh_bayar if status is paid
     const tarikh_bayar = (backendStatus === 'terbayar' || backendStatus === 'Bayar') ? tarikh : null;
+    
+    // Get existing fee data for snapshot
+    const [existingFeeData] = await pool.execute('SELECT * FROM fees WHERE id = ?', [id]);
+    const existingData = existingFeeData[0];
+    
+    // Create snapshot before update (only for admin/PIC)
+    const actorIc = req.user?.ic;
+    if (actorIc && (req.user?.role === 'admin' || req.user?.role === 'pic') && existingData) {
+      await createSnapshot({
+        entityType: 'fee',
+        entityId: parseInt(id),
+        entityIdentifier: `${existingData.student_ic}-${existingData.bulan}-${existingData.tahun}`,
+        operation: 'update',
+        data: existingData,
+        metadata: {
+          title: `Yuran - ${existingData.student_ic}`,
+          notes: `Yuran dikemaskini: RM${jumlah || existingData.jumlah} - ${backendStatus}`
+        },
+        actorIc
+      });
+    }
     
     // Check if status is changing to paid
     const [currentFee] = await pool.execute('SELECT status, no_resit, resit_img FROM fees WHERE id = ?', [id]);
@@ -694,9 +733,9 @@ export const deleteFee = async (req, res) => {
   try {
     const { id } = req.params;
     
-    // Check if fee exists
+    // Check if fee exists and get full data
     const [existingFees] = await pool.execute(
-      'SELECT id FROM fees WHERE id = ?',
+      'SELECT * FROM fees WHERE id = ?',
       [id]
     );
     
@@ -704,6 +743,25 @@ export const deleteFee = async (req, res) => {
       return res.status(404).json({
         success: false,
         message: 'Fee record not found'
+      });
+    }
+    
+    const feeData = existingFees[0];
+    const actorIc = req.user?.ic;
+    
+    // Create snapshot before delete (only for admin/PIC)
+    if (actorIc && (req.user?.role === 'admin' || req.user?.role === 'pic')) {
+      await createSnapshot({
+        entityType: 'fee',
+        entityId: parseInt(id),
+        entityIdentifier: `${feeData.student_ic}-${feeData.bulan}-${feeData.tahun}`,
+        operation: 'delete',
+        data: feeData,
+        metadata: {
+          title: `Yuran - ${feeData.student_ic}`,
+          notes: `Yuran dipadam: RM${feeData.jumlah} - ${feeData.status}`
+        },
+        actorIc
       });
     }
     

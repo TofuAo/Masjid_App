@@ -5,6 +5,7 @@ import {
   determineGradeForMark
 } from '../utils/grading.js';
 import { getSafePagination } from '../utils/pagination.js';
+import { createSnapshot, SNAPSHOT_TTL_HOURS } from '../utils/adminActionSnapshots.js';
 
 export const getAllResults = async (req, res) => {
   try {
@@ -231,6 +232,23 @@ export const createResult = async (req, res) => {
       WHERE r.id = ?
     `, [result.insertId]);
     
+    // Create snapshot after create (only for admin/PIC)
+    const actorIc = req.user?.ic;
+    if (actorIc && (req.user?.role === 'admin' || req.user?.role === 'pic')) {
+      await createSnapshot({
+        entityType: 'result',
+        entityId: result.insertId,
+        entityIdentifier: `${student_ic}-${exam_id}`,
+        operation: 'create',
+        data: newResult[0],
+        metadata: {
+          title: `Keputusan - ${student_ic}`,
+          notes: `Keputusan baru ditambah: ${sanitizedMarkah}% (${computedGrade})`
+        },
+        actorIc
+      });
+    }
+    
     res.status(201).json({
       success: true,
       message: 'Result created successfully',
@@ -262,9 +280,9 @@ export const updateResult = async (req, res) => {
     const sanitizedMarkah = Math.max(0, Math.min(100, parseInt(markah, 10)));
     const computedGrade = determineGradeForMark(sanitizedMarkah, gradeRanges) || 'F';
     
-    // Check if result exists
+    // Check if result exists and get existing data
     const [existingResults] = await pool.execute(
-      'SELECT id FROM results WHERE id = ?',
+      'SELECT * FROM results WHERE id = ?',
       [id]
     );
     
@@ -272,6 +290,25 @@ export const updateResult = async (req, res) => {
       return res.status(404).json({
         success: false,
         message: 'Result not found'
+      });
+    }
+    
+    const existingData = existingResults[0];
+    
+    // Create snapshot before update (only for admin/PIC)
+    const actorIc = req.user?.ic;
+    if (actorIc && (req.user?.role === 'admin' || req.user?.role === 'pic')) {
+      await createSnapshot({
+        entityType: 'result',
+        entityId: parseInt(id),
+        entityIdentifier: `${existingData.student_ic}-${existingData.exam_id}`,
+        operation: 'update',
+        data: existingData,
+        metadata: {
+          title: `Keputusan - ${existingData.student_ic}`,
+          notes: `Keputusan dikemaskini: ${sanitizedMarkah}% (${computedGrade})`
+        },
+        actorIc
       });
     }
     
@@ -322,9 +359,9 @@ export const deleteResult = async (req, res) => {
   try {
     const { id } = req.params;
     
-    // Check if result exists
+    // Check if result exists and get full data
     const [existingResults] = await pool.execute(
-      'SELECT id FROM results WHERE id = ?',
+      'SELECT * FROM results WHERE id = ?',
       [id]
     );
     
@@ -332,6 +369,25 @@ export const deleteResult = async (req, res) => {
       return res.status(404).json({
         success: false,
         message: 'Result not found'
+      });
+    }
+    
+    const resultData = existingResults[0];
+    const actorIc = req.user?.ic;
+    
+    // Create snapshot before delete (only for admin/PIC)
+    if (actorIc && (req.user?.role === 'admin' || req.user?.role === 'pic')) {
+      await createSnapshot({
+        entityType: 'result',
+        entityId: parseInt(id),
+        entityIdentifier: `${resultData.student_ic}-${resultData.exam_id}`,
+        operation: 'delete',
+        data: resultData,
+        metadata: {
+          title: `Keputusan - ${resultData.student_ic}`,
+          notes: `Keputusan dipadam: ${resultData.markah}% (${resultData.gred})`
+        },
+        actorIc
       });
     }
     

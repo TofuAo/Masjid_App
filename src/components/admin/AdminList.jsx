@@ -175,7 +175,7 @@ const AdminList = ({ admins = [], onEdit, onView, onDelete, onAdd, loading, admi
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
-                                onDelete(admin.ic || admin.IC);
+                                onDelete(admin.ic || admin.IC, admin);
                               }}
                               className="text-red-600 hover:text-red-900 flex items-center"
                               title="Padam"

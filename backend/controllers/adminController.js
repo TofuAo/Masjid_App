@@ -4,6 +4,7 @@ import bcrypt from 'bcryptjs';
 import { formatICWithHyphen } from '../utils/icFormatter.js';
 import { ensureSingleIb } from '../middleware/ensureSingleIb.js';
 import { getSafePagination } from '../utils/pagination.js';
+import { createSnapshot, SNAPSHOT_TTL_HOURS } from '../utils/adminActionSnapshots.js';
 
 export const getAllAdmins = async (req, res) => {
   try {
@@ -215,6 +216,31 @@ export const createAdmin = async (req, res) => {
       const admin = newAdmin[0];
       admin.IC = admin.ic;
       admin.ic_formatted = formatICWithHyphen(admin.ic);
+
+      // Log admin action for undo capability
+      if (req.user && req.user.role === 'admin') {
+        await createSnapshot({
+          entityType: 'admin',
+          entityId: 0, // Use 0 for IC-based entities
+          entityIdentifier: ic,
+          operation: 'create',
+          data: {
+            ic,
+            nama,
+            email: emailValue,
+            telefon,
+            status: adminStatus,
+            role: 'admin'
+          },
+          metadata: {
+            title: nama,
+            nama,
+            operationLabel: 'Cipta admin',
+            redirectPath: '/admins'
+          },
+          actorIc: req.user.ic
+        });
+      }
       
       res.status(201).json({
         success: true,
@@ -294,6 +320,16 @@ export const updateAdmin = async (req, res) => {
           message: 'Admin tidak ditemui.'
         });
       }
+
+      // Store previous data for snapshot before update
+      const previousData = {
+        ic: existingUser.ic,
+        nama: existingUser.nama,
+        email: existingUser.email,
+        telefon: existingUser.telefon,
+        status: existingUser.status,
+        role: existingUser.role
+      };
 
       // Check if email is being changed and if it already exists
       if (email && email.trim() !== '') {
@@ -390,6 +426,24 @@ export const updateAdmin = async (req, res) => {
       user.IC = user.ic;
       user.ic_formatted = formatICWithHyphen(user.ic);
 
+      // Log admin action for undo capability
+      if (req.user && req.user.role === 'admin') {
+        await createSnapshot({
+          entityType: 'admin',
+          entityId: 0, // Use 0 for IC-based entities
+          entityIdentifier: ic,
+          operation: 'update',
+          data: previousData,
+          metadata: {
+            title: previousData.nama,
+            nama: previousData.nama,
+            operationLabel: role === 'pic' && existingUser.role === 'admin' ? 'Tukar admin kepada PIC' : 'Kemas kini admin',
+            redirectPath: '/admins'
+          },
+          actorIc: req.user.ic
+        });
+      }
+
       const successMessage = role === 'pic' && existingUser.role === 'admin'
         ? 'Admin berjaya ditukar kepada PIC.'
         : 'Admin berjaya dikemaskini.';
@@ -448,6 +502,17 @@ export const deleteAdmin = async (req, res) => {
         });
       }
 
+      // Store admin data before deletion for snapshot
+      const adminToDelete = existingAdmins[0];
+      const deleteData = {
+        ic: adminToDelete.ic,
+        nama: adminToDelete.nama,
+        email: adminToDelete.email,
+        telefon: adminToDelete.telefon,
+        status: adminToDelete.status,
+        role: adminToDelete.role
+      };
+
       // Delete admin (CASCADE will handle related data if any)
       await connection.execute(
         'DELETE FROM users WHERE ic = ? AND role = ?',
@@ -455,6 +520,24 @@ export const deleteAdmin = async (req, res) => {
       );
 
       await connection.commit();
+
+      // Log admin action for undo capability
+      if (req.user && req.user.role === 'admin') {
+        await createSnapshot({
+          entityType: 'admin',
+          entityId: 0, // Use 0 for IC-based entities
+          entityIdentifier: ic,
+          operation: 'delete',
+          data: deleteData,
+          metadata: {
+            title: deleteData.nama,
+            nama: deleteData.nama,
+            operationLabel: 'Padam admin',
+            redirectPath: '/admins'
+          },
+          actorIc: req.user.ic
+        });
+      }
 
       res.json({
         success: true,

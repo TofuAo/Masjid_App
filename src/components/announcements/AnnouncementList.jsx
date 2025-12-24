@@ -127,7 +127,7 @@ const AnnouncementList = ({ announcements = [], onEdit, onView, onDelete, onAdd,
                         <Edit className="w-4 h-4" />
                       </button>
                       <button
-                        onClick={() => onDelete(announcement.id)}
+                        onClick={() => onDelete(announcement.id, announcement)}
                         className="text-red-600 hover:text-red-900"
                         title="Padam"
                       >

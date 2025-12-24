@@ -29,6 +29,7 @@ const Admins = () => {
     error,
     handlers,
     fetchItems,
+    DeleteModal,
   } = useCrud(adminsAPI, 'admin');
 
   // Destructure handlers (not a hook, but keeping it here for clarity)
@@ -112,26 +113,9 @@ const Admins = () => {
     return <Navigate to="/" replace />;
   }
 
-  const handleDeleteWithConfirm = async (ic) => {
-    if (!window.confirm('Adakah anda pasti mahu memadam admin ini?')) {
-      return;
-    }
-
-    try {
-      await handleDelete(ic);
-      toast.success('Admin berjaya dipadam.');
-      // Refresh admin limit
-      const adminsArray = Array.isArray(admins) ? admins : [];
-      setAdminLimit({
-        max: 5,
-        current: adminsArray.length - 1,
-        canCreate: adminsArray.length - 1 < 5
-      });
-      fetchItems({ limit: 1000 });
-    } catch (err) {
-      console.error('Failed to delete admin:', err);
-      toast.error(err?.message || 'Gagal memadam admin.');
-    }
+  const handleDeleteWithConfirm = (ic, admin = null) => {
+    // Use the new 2-step confirmation modal
+    handleDelete(ic, admin);
   };
 
   // Override handleSubmit to refresh admin limit after create/update
@@ -240,6 +224,13 @@ const Admins = () => {
         </div>
       );
   }
+
+  return (
+    <div>
+      {renderContent()}
+      <DeleteModal />
+    </div>
+  );
 };
 
 export default Admins;

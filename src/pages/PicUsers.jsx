@@ -14,7 +14,8 @@ const PicUsers = () => {
     loading,
     error,
     handlers,
-    fetchItems
+    fetchItems,
+    DeleteModal,
   } = useCrud(picUsersAPI, 'PIC');
 
   const {
@@ -85,6 +86,7 @@ const PicUsers = () => {
           onDelete={handleDelete}
         />
       )}
+      <DeleteModal />
     </div>
   );
 };

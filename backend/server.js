@@ -118,7 +118,7 @@ const corsOptions = {
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Cache-Control', 'Pragma', 'Expires'],
   exposedHeaders: ['Content-Range', 'X-Content-Range'],
   preflightContinue: false,
   optionsSuccessStatus: 204,
@@ -318,6 +318,24 @@ app.get('/', (req, res) => {
       api: '/api'
     }
   });
+});
+
+// Log ALL requests before routing (for debugging DELETE specifically)
+app.use('/api', (req, res, next) => {
+  // Log ALL DELETE requests to attendance
+  if (req.method === 'DELETE' && req.path.includes('attendance')) {
+    console.log(`\n${'🔴'.repeat(40)}`);
+    console.log(`[SERVER] 🔴🔴🔴 DELETE REQUEST DETECTED AT SERVER LEVEL 🔴🔴🔴`);
+    console.log(`[SERVER] Method: ${req.method}`);
+    console.log(`[SERVER] Path: ${req.path}`);
+    console.log(`[SERVER] Original URL: ${req.originalUrl}`);
+    console.log(`[SERVER] Base URL: ${req.baseUrl}`);
+    console.log(`[SERVER] Full URL: ${req.originalUrl}`);
+    console.log(`[SERVER] Headers:`, JSON.stringify(req.headers, null, 2));
+    console.log(`[SERVER] Timestamp: ${new Date().toISOString()}`);
+    console.log(`${'🔴'.repeat(40)}\n`);
+  }
+  next();
 });
 
 app.use('/api', routes);
