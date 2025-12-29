@@ -2821,6 +2821,234 @@ All error handling follows consistent patterns and best practices to ensure syst
 
 ---
 
+## POST-TRAINING PERIOD: December 22-26, 2025
+
+### Date: 22/12/2025	Day: Sunday	Post-Training Period
+
+(Please specify training information through descriptive statement, tables, sketches, figures, etc.)
+
+DESCRIPTIONS / REMARKS
+
+Tasks Completed:
+- Created comprehensive deployment and hosting documentation (DEPLOYMENT_GUIDE.md, EXABYTES_VPS_GUIDE.md, HOSTING_REQUIREMENTS.md, MALAYSIA_HOSTING_GUIDE.md, PRODUCTION_SETUP.md)
+- Worked on website hosting recommendations and deployment strategies
+- Updated auto-deployment configuration rules in .cursor/rules/auto-deploy.mdc
+- Enhanced IC identifier resolution in useCrud hook to support formatted IC fields
+- Improved error logging for identifier resolution failures
+- Created database ERD diagrams (HTML and Markdown formats)
+- Developed database migration scripts for fixing invalid IC formats (migration_fix_invalid_ic_formats.sql, migration_fix_invalid_ic_formats_v2.sql)
+- Created backend scripts for fixing invalid IC formats (fixInvalidICFormats.js, fixInvalidICs.js)
+- Added test routes script (testRoutes.js)
+- Enhanced receipt service with improved template design including student information section
+- Updated receipt generation to include teacher name, class level (peringkat), and enhanced formatting
+- Modified student and teacher controllers for better IC handling
+- Updated attendance and student routes with improved validation
+- Created production deployment configuration files (deploy-production.sh, docker-compose.prod.yml)
+- Worked on code deployment on KV (Key-Value storage) and cloud infrastructure
+- Updated final presentation slides
+
+Challenges:
+- Ensuring IC normalization works across different formats (with/without hyphens)
+- Creating comprehensive deployment documentation for different hosting providers
+- Determining best hosting recommendations for the application
+- Setting up code deployment on cloud infrastructure (KV storage)
+- Improving receipt template to include all necessary student and class information
+- Managing database migrations for existing invalid IC data
+
+Solutions:
+- Implemented multiple query strategies in fetchStudentByIc to handle various IC formats
+- Created comprehensive documentation covering multiple hosting scenarios (VPS, cloud providers, Malaysia-specific hosting)
+- Researched and documented hosting requirements and recommendations
+- Configured deployment scripts for cloud infrastructure
+- Enhanced receipt template with student information grid showing full name, IC, class, level, and teacher
+- Created migration scripts with versioning (v1, v2) to handle edge cases
+- Added test scripts to verify route functionality
+
+Code Screenshot Suggestions:
+1. IC Resolution - File: `src/hooks/useCrud.js` (IC identifier resolution section) - Shows: Enhanced IC handling
+2. Receipt Template - File: `backend/utils/receiptService.js` (generateReceiptHTML function) - Shows: New receipt template with student information
+3. ERD Diagram - File: `database/ERD_DIAGRAM.html` (entire file) - Shows: Database entity relationships
+4. Migration Script - File: `database/migration_fix_invalid_ic_formats_v2.sql` - Shows: IC format normalization
+
+---
+
+### Date: 23/12/2025	Day: Monday	Post-Training Period
+
+(Please specify training information through descriptive statement, tables, sketches, figures, etc.)
+
+DESCRIPTIONS / REMARKS
+
+Tasks Completed:
+- Worked on opening/accessing information module functionality ("Buka modul information")
+- Continued work on receipt display changes and improvements
+- Continued IC user format correction work from previous day
+- Worked on Shinjiru hosting plan selection and configuration
+- Reviewed and tested information module features
+- Verified receipt display functionality with updated templates
+- Tested IC format corrections across different modules
+
+Challenges:
+- Ensuring information module is accessible and displays correctly
+- Verifying receipt display changes work with new template format
+- Testing IC format corrections don't break existing functionality
+- Selecting appropriate Shinjiru hosting plan for application requirements
+
+Solutions:
+- Tested information module access and functionality
+- Verified receipt display with new student information section
+- Confirmed IC format corrections work across all user types
+- Reviewed hosting plan options and requirements
+- Performed integration testing of recent changes
+
+Code Screenshot Suggestions:
+1. Information Module - File: Relevant information/display component - Shows: Module information display
+2. Receipt Display - File: `backend/utils/receiptService.js` - Shows: Updated receipt template
+3. IC Format - File: `backend/middleware/normalizeIC.js` - Shows: IC format normalization
+
+---
+
+### Date: 24/12/2025	Day: Tuesday	Post-Training Period
+
+(Please specify training information through descriptive statement, tables, sketches, figures, etc.)
+
+DESCRIPTIONS / REMARKS
+
+Tasks Completed:
+- Fixed attendance (kehadiran) recycle bin/trash can functionality
+- Worked on renaming "Tindakan admin" (Admin Actions) to "Recycle Bin" for better user understanding
+- Enhanced attendance deletion with two-step verification modal (DeleteConfirmationModal component)
+- Improved attendance page performance with debouncing and memoization
+- Reduced API limit from 10000 to 1000 for better performance
+- Added comprehensive error handling in PIC approval system
+- Worked on PIC function status and approval workflow improvements
+- Created PIC approval testing tools (test-pic-approval.js, test-pic-approval.ps1)
+- Enhanced PIC approvals page with better error messages and status badges
+- Updated admin action snapshots utility for better recycle bin functionality
+- Added DeleteModal component to multiple pages (Kelas, Pelajar, PicUsers)
+- Enhanced error boundary component for better error handling
+- Improved Google Map picker component
+- Worked on GPS distance fluctuation issues and improvements
+- Added Arabic language support to PersonalSettings page (Optional system language feature)
+- Enhanced GPS utilities with Malay error messages
+- Created connection status documentation (CONNECTION_STATUS.md)
+- Created error boundary status documentation (ERROR_BOUNDARY_STATUS.md)
+- Created GPS integration status documentation (GPS_INTEGRATION_STATUS.md)
+- Updated user guide with latest features
+- Created cleanup scripts for demo data (cleanupStudentsForDemo.js)
+- Added test connections script (testConnections.js)
+- Enhanced Settings page with GPS and Google Maps integration
+- Improved all list components with better error handling
+- Updated API service with enhanced error handling
+
+Challenges:
+- Fixing recycle bin functionality for attendance records
+- Renaming and rebranding "Tindakan admin" to "Recycle Bin" throughout the application
+- Implementing two-step verification for deletion to prevent accidental data loss
+- Optimizing attendance page performance with large datasets
+- Resolving GPS distance fluctuation issues affecting location accuracy
+- Creating comprehensive error messages for different error scenarios
+- Ensuring PIC approval system works correctly with proper handler registration
+- Implementing optional system language feature (Arabic support)
+
+Solutions:
+- Created DeleteConfirmationModal component with two-step verification
+- Updated terminology from "Tindakan admin" to "Recycle Bin" in UI and documentation
+- Implemented debouncing for filter changes to reduce API calls
+- Used React useMemo for expensive data processing operations
+- Enhanced GPS utilities with better distance calculation and error handling
+- Created comprehensive error handling with specific messages for different HTTP status codes
+- Added handler verification warnings in PIC approval interface
+- Reduced API limit and optimized queries for better performance
+- Created test scripts to verify PIC approval workflow
+- Added language selection dropdown with Arabic option in PersonalSettings
+
+Code Screenshot Suggestions:
+1. Delete Modal - File: `src/components/ui/DeleteConfirmationModal.jsx` (entire file) - Shows: Two-step verification modal
+2. Attendance Performance - File: `src/pages/Kehadiran.jsx` (debouncing and memoization sections) - Shows: Performance optimizations
+3. PIC Approval Error Handling - File: `src/pages/PicApprovals.jsx` (error handling section) - Shows: Comprehensive error messages
+4. Admin Snapshots - File: `backend/utils/adminActionSnapshots.js` - Shows: Recycle bin functionality
+
+---
+
+### Date: 25/12/2025	Day: Wednesday	Post-Training Period
+
+(Please specify training information through descriptive statement, tables, sketches, figures, etc.)
+
+DESCRIPTIONS / REMARKS
+
+**Status:** Public Holiday (Christmas) - No work
+
+---
+
+### Date: 26/12/2025	Day: Thursday	Post-Training Period
+
+(Please specify training information through descriptive statement, tables, sketches, figures, etc.)
+
+DESCRIPTIONS / REMARKS
+
+Tasks Completed:
+- Attempted to host website using Shinjiru hosting services
+- Configured hosting plan selection for Shinjiru
+- Set up domain and hosting account with Shinjiru
+- Tested deployment process on Shinjiru hosting platform
+- Configured database connection for Shinjiru hosting environment
+- Set up environment variables and configuration files for Shinjiru
+- Tested application deployment and functionality on Shinjiru servers
+- Verified hosting requirements compatibility with Shinjiru platform
+
+Challenges:
+- Understanding Shinjiru hosting platform specifications and requirements
+- Configuring application for Shinjiru hosting environment
+- Setting up database connections on Shinjiru hosting
+- Ensuring all dependencies and requirements are met on Shinjiru platform
+- Configuring domain and DNS settings
+- Testing deployment process and troubleshooting any issues
+
+Solutions:
+- Reviewed Shinjiru hosting documentation and requirements
+- Configured application settings for Shinjiru hosting environment
+- Set up database connection parameters for Shinjiru hosting
+- Tested deployment scripts and configuration files
+- Verified compatibility of application stack with Shinjiru hosting services
+- Documented hosting setup process and configuration steps
+
+Code Screenshot Suggestions:
+1. Hosting Configuration - File: `env.production` or hosting configuration files - Shows: Shinjiru hosting environment variables
+2. Deployment Script - File: `deploy-production.sh` - Shows: Deployment configuration for hosting
+3. Database Configuration - File: `backend/config/database.js` - Shows: Database connection setup
+4. Hosting Documentation - File: `MALAYSIA_HOSTING_GUIDE.md` or `HOSTING_REQUIREMENTS.md` - Shows: Hosting requirements and setup
+
+---
+
+### WEEKLY SUMMARY - Post-Training Period (December 22-26, 2025)
+
+Work experience details:
+- Created comprehensive deployment and hosting documentation
+- Enhanced IC identifier resolution and normalization
+- Fixed attendance recycle bin functionality
+- Improved system performance with debouncing and memoization
+- Enhanced error handling across the application
+- Created PIC approval testing tools
+- Added Arabic language support
+- Improved receipt generation with enhanced templates
+
+What did I learn?
+- Deployment documentation best practices for different hosting providers
+- Performance optimization techniques (debouncing, memoization)
+- Two-step verification patterns for critical operations
+- Comprehensive error handling strategies
+- Testing tool development for workflow verification
+- Multi-language support implementation
+
+How does this relate to what I already know?
+- Applied documentation skills to create comprehensive deployment guides
+- Extended performance optimization knowledge to React components
+- Built upon error handling patterns with user-friendly messages
+- Enhanced testing capabilities with automated workflow tests
+- Applied internationalization concepts to add Arabic support
+
+---
+
 END OF LOG BOOK
 Student Name: ________________
 

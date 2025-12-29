@@ -143,8 +143,80 @@ router.post(
   }),
   markAttendance
 );
-router.post('/bulk', requireRole(['admin', 'staff', 'teacher', 'pic']), bulkAttendanceValidation, normalizeICMiddleware, bulkMarkAttendance);
-router.post('/bulk-with-proof', requireRole(['admin', 'staff', 'teacher', 'pic']), uploadAttendanceProof, normalizeICMiddleware, bulkMarkAttendanceWithProof);
+router.post(
+  '/bulk',
+  requireRole(['admin', 'staff', 'teacher', 'pic']),
+  bulkAttendanceValidation,
+  normalizeICMiddleware,
+  requirePicApproval({
+    actionKey: 'attendance:bulk-create',
+    entityType: 'attendance',
+    message: 'Permintaan kehadiran bulk dihantar untuk kelulusan admin.',
+    prepare: async (req) => {
+      const { class_id, tarikh, attendance_data } = req.body;
+      const attendanceDate = tarikh || new Date().toISOString().split('T')[0];
+      return {
+        payload: {
+          class_id,
+          tarikh: attendanceDate,
+          attendance_data
+        },
+        metadata: {
+          summary: `Tambah kehadiran bulk untuk kelas ${class_id} pada ${attendanceDate}`,
+          class_id,
+          tarikh: attendanceDate,
+          record_count: attendance_data?.length || 0
+        }
+      };
+    }
+  }),
+  bulkMarkAttendance
+);
+router.post(
+  '/bulk-with-proof',
+  requireRole(['admin', 'staff', 'teacher', 'pic']),
+  uploadAttendanceProof,
+  normalizeICMiddleware,
+  requirePicApproval({
+    actionKey: 'attendance:bulk-create-with-proof',
+    entityType: 'attendance',
+    message: 'Permintaan kehadiran bulk dengan bukti dihantar untuk kelulusan admin.',
+    prepare: async (req) => {
+      const { class_id, tarikh, attendance_data } = req.body;
+      const attendanceDate = tarikh || new Date().toISOString().split('T')[0];
+      const proofImagePath = req.file ? `uploads/${req.file.filename}` : null;
+      const markedBy = req.user?.ic || null;
+      
+      // Parse attendance_data if it's a string (from FormData)
+      let parsedAttendanceData;
+      try {
+        parsedAttendanceData = typeof attendance_data === 'string' 
+          ? JSON.parse(attendance_data) 
+          : attendance_data;
+      } catch (parseError) {
+        throw new Error('Invalid attendance_data format');
+      }
+      
+      return {
+        payload: {
+          class_id,
+          tarikh: attendanceDate,
+          attendance_data: parsedAttendanceData,
+          proof_image: proofImagePath,
+          marked_by: markedBy
+        },
+        metadata: {
+          summary: `Tambah kehadiran bulk dengan bukti untuk kelas ${class_id} pada ${attendanceDate}`,
+          class_id,
+          tarikh: attendanceDate,
+          record_count: parsedAttendanceData?.length || 0,
+          has_proof: !!proofImagePath
+        }
+      };
+    }
+  }),
+  bulkMarkAttendanceWithProof
+);
 router.put(
   '/:id',
   requireRole(['admin', 'pic']),

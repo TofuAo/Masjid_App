@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import api, { staffCheckInAPI, setAuthToken } from '../../services/api';
 import { Eye, EyeOff, Lock, User, AlertCircle, Key, LockKeyhole, MapPin, LogIn, LogOut, Clock, CheckCircle, XCircle, UserPlus, ChevronDown } from 'lucide-react';
@@ -59,6 +59,9 @@ const Login = ({ onLogin }) => {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [distanceFromMasjid, setDistanceFromMasjid] = useState(null);
   const [isWithinRadius, setIsWithinRadius] = useState(false);
+  // Ref to store stable distance and location for comparison
+  const stableDistanceRef = useRef(null);
+  const stableLocationRef = useRef(null);
   
   // Use custom hook for masjid location with auto-refresh
   const { masjidLocation } = useMasjidLocation({
@@ -102,19 +105,46 @@ const Login = ({ onLogin }) => {
   }, [activeTab]);
 
   // Calculate distance when location or masjid location changes
+  // Use stabilization to prevent jumping due to GPS fluctuations
   useEffect(() => {
     if (location.latitude && location.longitude && masjidLocation.latitude && masjidLocation.longitude) {
-      const distance = calculateDistance(
+      const calculatedDistance = calculateDistance(
         location.latitude,
         location.longitude,
         masjidLocation.latitude,
         masjidLocation.longitude
       );
-      setDistanceFromMasjid(distance);
-      setIsWithinRadius(distance <= masjidLocation.radius);
+      
+      // Stabilization: Only update if distance changed significantly (> 5 meters)
+      // or if we don't have a stable distance yet
+      const shouldUpdate = stableDistanceRef.current === null || 
+                          Math.abs(calculatedDistance - stableDistanceRef.current) > 5 ||
+                          // Also update if location changed significantly (> 10 meters from last stable location)
+                          (stableLocationRef.current && 
+                           calculateDistance(
+                             location.latitude,
+                             location.longitude,
+                             stableLocationRef.current.latitude,
+                             stableLocationRef.current.longitude
+                           ) > 10);
+      
+      if (shouldUpdate) {
+        stableDistanceRef.current = calculatedDistance;
+        stableLocationRef.current = {
+          latitude: location.latitude,
+          longitude: location.longitude
+        };
+        setDistanceFromMasjid(calculatedDistance);
+      }
+      
+      // Always use the stable distance for radius calculations
+      const distanceToUse = stableDistanceRef.current ?? calculatedDistance;
+      setIsWithinRadius(distanceToUse <= masjidLocation.radius);
     } else {
       setDistanceFromMasjid(null);
       setIsWithinRadius(false);
+      stableDistanceRef.current = null;
+      stableLocationRef.current = null;
     }
   }, [location, masjidLocation]);
 

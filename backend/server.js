@@ -13,6 +13,7 @@ import { ensureCheckInTable } from './utils/ensureCheckInTable.js';
 import { ensurePendingStatus } from './utils/ensurePendingStatus.js';
 import { ensurePendingPicTable } from './utils/pendingPicChanges.js';
 import { ensurePicRole } from './utils/ensurePicRole.js';
+import { ensurePicSnapshotTable } from './utils/picActionSnapshots.js';
 import createArchivedStudentsTable from './scripts/create_archived_students_table.js';
 import { ensureAdminAccounts } from './utils/ensureAdminAccounts.js';
 import { ensureIbRole } from './utils/ensureIbRole.js';
@@ -20,7 +21,9 @@ import { scheduleAnnualDatabaseBackup } from './schedulers/annualBackupJob.js';
 import { scheduleAnnouncementCleanup } from './schedulers/announcementCleanupJob.js';
 import { schedulePaymentReconciliation } from './schedulers/paymentReconciliationJob.js';
 import { scheduleAdminActionCleanup } from './schedulers/adminActionCleanupJob.js';
+import { schedulePicRecycleBinCleanup } from './schedulers/picRecycleBinCleanupJob.js';
 import { scheduleMonthlyFeeGeneration, scheduleFeeSyncJob } from './schedulers/monthlyFeeGenerationJob.js';
+import { startAccountDeactivationScheduler } from './schedulers/accountDeactivationJob.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { ensureLoginAttemptsTable } from './services/accountLockoutService.js';
 import { ensureMaintenanceModeTable } from './utils/maintenanceMode.js';
@@ -358,6 +361,11 @@ ensurePendingPicTable().catch(err => {
   console.error('Failed to ensure pending PIC table:', err);
 });
 
+// Ensure PIC snapshot table exists
+ensurePicSnapshotTable().catch(err => {
+  console.error('Failed to ensure PIC snapshot table:', err);
+});
+
 // Ensure PIC role is present in users table
 ensurePicRole().catch(err => {
   console.error('Failed to ensure PIC role:', err);
@@ -385,6 +393,7 @@ Promise.all([
   ensureCheckInTable(), 
   ensurePendingStatus(), 
   ensurePendingPicTable(), 
+  ensurePicSnapshotTable(),
   ensurePicRole(), 
   createArchivedStudentsTable(), 
   ensureAdminAccounts(), 
@@ -402,7 +411,9 @@ Promise.all([
     scheduleAnnualDatabaseBackup();
     scheduleAnnouncementCleanup();
     schedulePaymentReconciliation();
+    startAccountDeactivationScheduler();
     scheduleAdminActionCleanup();
+    schedulePicRecycleBinCleanup();
     scheduleMonthlyFeeGeneration();
     scheduleFeeSyncJob();
   });
@@ -419,7 +430,9 @@ Promise.all([
     scheduleAnnualDatabaseBackup();
     scheduleAnnouncementCleanup();
     schedulePaymentReconciliation();
+    startAccountDeactivationScheduler();
     scheduleAdminActionCleanup();
+    schedulePicRecycleBinCleanup();
     scheduleMonthlyFeeGeneration();
     scheduleFeeSyncJob();
   });

@@ -34,6 +34,7 @@ import CompleteProfile from './pages/CompleteProfile';
 import PendingRegistrations from './pages/PendingRegistrations';
 import PicApprovals from './pages/PicApprovals';
 import PicUsers from './pages/PicUsers';
+import PicRecycleBin from './pages/PicRecycleBin';
 import Admins from './pages/Admins';
 import AllUsers from './pages/AllUsers';
 import Contact from './pages/Contact';
@@ -301,6 +302,7 @@ function AppContent() {
                 <Route path="/pending-registrations" element={<PendingRegistrations />} />
                 <Route path="/pic-approvals" element={<PicApprovals user={user} />} />
                 <Route path="/pic-users" element={<PicUsers />} />
+                <Route path="/pic-recycle-bin" element={<PicRecycleBin user={user} />} />
                 <Route path="/admins" element={<Admins />} />
                 <Route path="/all-users" element={<AllUsers user={user} />} />
                 <Route path="/contact" element={<Contact user={user} />} />

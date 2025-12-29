@@ -134,12 +134,15 @@ export const emailTemplates = {
             display: inline-block; 
             padding: 14px 32px; 
             background-color: #2563eb; 
-            color: #ffffff; 
+            color: #ffffff !important; 
             text-decoration: none; 
             border-radius: 4px; 
             font-size: 14px;
             font-weight: 500;
             text-align: center;
+          }
+          .reset-button a {
+            color: #ffffff !important;
           }
           .reset-button:hover {
             background-color: #1d4ed8;
@@ -207,7 +210,7 @@ export const emailTemplates = {
               Emel ini dihantar kerana kami telah menerima permintaan anda untuk menetapkan semula kata laluan.
             </div>
             <div class="button-container">
-              <a href="${resetLink}" class="reset-button">Penetapan Semula Kata Laluan Akaun Pengguna</a>
+              <a href="${resetLink}" class="reset-button" style="color: #ffffff !important; text-decoration: none;">Penetapan Semula Kata Laluan Akaun Pengguna</a>
             </div>
             <div class="expiry-notice">
               Pautan penetapan semula kata laluan ini akan tamat dalam tempoh 24 jam.

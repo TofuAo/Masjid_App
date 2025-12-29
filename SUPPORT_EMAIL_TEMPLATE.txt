@@ -1,0 +1,76 @@
+Subject: Need Server Access for Application Deployment - VPS IP: 124.217.248.113
+
+Hello Shinjiru Support Team,
+
+I have purchased a Windows Server 2022 VPS from Shinjiru, but I don't have access to deploy my application.
+
+VPS Details:
+- IP Address: 124.217.248.113
+- Operating System: Windows Server 2022
+- Service: [Your service name/ID from invoice]
+
+I need to deploy a Node.js application (MyMasjidApp) that requires:
+- Docker Desktop for Windows
+- Remote access to the server
+- Ability to upload code and run deployment scripts
+
+I currently don't have:
+- Remote Desktop (RDP) access
+- Control panel access
+- noVNC console access
+- Any way to access my server
+
+Please provide one of the following:
+
+OPTION 1 (Preferred): Remote Desktop Access
+- Enable Remote Desktop on my VPS
+- Open port 3389 in firewall
+- Provide Administrator username and password
+- Provide RDP connection details
+
+OPTION 2: Control Panel Access
+- Provide login credentials for VPS control panel
+- Enable noVNC console access
+- Provide access to server management features
+
+OPTION 3: SSH/FTP Access
+- Enable SSH access (if available on Windows Server)
+- OR provide FTP/SFTP credentials
+- Provide connection details
+
+OPTION 4: Alternative Solution
+- If Windows Server doesn't support easy access, please rebuild with Ubuntu 22.04 LTS
+- Provide SSH root access
+- I can deploy my application on Linux instead
+
+I have already prepared my application code and deployment scripts. I just need access to my server to complete the deployment.
+
+Please help me resolve this as soon as possible. I'm ready to deploy once I have access.
+
+Thank you for your assistance!
+
+Best regards,
+[Your Name]
+[Your Account Email]
+[Your Phone Number (optional)]
+
+---
+
+ALTERNATIVE SHORT VERSION (if the above is too long):
+
+Subject: Need RDP Access - VPS 124.217.248.113
+
+Hello,
+
+I need Remote Desktop access to my Windows Server 2022 VPS (IP: 124.217.248.113).
+
+Please:
+1. Enable Remote Desktop
+2. Open port 3389
+3. Provide Administrator credentials
+
+I need to deploy a Node.js application using Docker.
+
+Thank you!
+
+

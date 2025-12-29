@@ -242,7 +242,13 @@ registerPendingPicHandler('announcements:create', async ({ payload, actorIc, adm
     { actorIc: adminIc, requestedBy: actorIc, authorIc: actorIc },
     connection
   );
-  return result.announcement;
+  // Return data in format expected by PIC snapshot creation
+  return {
+    entityId: result.announcement.id,
+    entityIdentifier: String(result.announcement.id),
+    snapshotData: result.announcement,
+    ...result.announcement
+  };
 });
 
 registerPendingPicHandler('announcements:update', async ({ payload, entityId, actorIc, adminIc, connection }) => {
@@ -252,15 +258,45 @@ registerPendingPicHandler('announcements:update', async ({ payload, entityId, ac
     { actorIc: adminIc, requestedBy: actorIc },
     connection
   );
-  return result.announcement;
+  // Return data in format expected by PIC snapshot creation
+  return {
+    entityId: result.announcement.id,
+    entityIdentifier: String(result.announcement.id),
+    snapshotData: result.announcement,
+    ...result.announcement
+  };
 });
 
-registerPendingPicHandler('announcements:delete', async ({ entityId, actorIc, adminIc, connection }) => {
+registerPendingPicHandler('announcements:delete', async ({ entityId, actorIc, adminIc, connection, metadata }) => {
+  // Get announcement data BEFORE deletion for PIC snapshot
+  const executor = connection || pool;
+  const [existingRows] = await executor.execute(
+    'SELECT * FROM announcements WHERE id = ?',
+    [entityId]
+  );
+  
+  if (existingRows.length === 0) {
+    const error = new Error('Announcement not found');
+    error.status = 404;
+    throw error;
+  }
+  
+  const announcementData = existingRows[0];
+  
+  // Now delete the announcement
   const result = await deleteAnnouncementRecord(
     entityId,
     { actorIc: adminIc, requestedBy: actorIc },
     connection
   );
-  return { deletedId: entityId, undoToken: result.undoToken };
+  
+  // Return data in format expected by PIC snapshot creation
+  return {
+    entityId: Number(entityId),
+    entityIdentifier: String(entityId),
+    snapshotData: announcementData,
+    deletedId: entityId,
+    undoToken: result.undoToken
+  };
 });
 

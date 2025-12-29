@@ -785,6 +785,17 @@ export const login = async (req, res) => {
     // SECURITY: Record successful login (clears failed attempts)
     await recordSuccessfulLogin(user.ic);
 
+    // Update last_login timestamp
+    try {
+      await pool.execute(
+        'UPDATE users SET last_login = NOW() WHERE ic = ?',
+        [user.ic]
+      );
+    } catch (error) {
+      // Log but don't fail login if last_login update fails
+      console.warn('[LOGIN] Could not update last_login:', error.message);
+    }
+
     // Check if user account is approved (status must be 'aktif')
     if (user.status === 'pending') {
       logFailedAuthAttempt(req, 'Account pending approval');
@@ -1334,6 +1345,10 @@ export const requestPasswordResetEmail = async (req, res) => {
       );
     } catch (dbError) {
       console.error('Error storing reset token:', dbError);
+      // If table doesn't exist, log but continue (token won't be usable, but we'll handle gracefully)
+      if (dbError.code === 'ER_NO_SUCH_TABLE') {
+        console.error('⚠️ password_reset_tokens table does not exist. Please run migrations.');
+      }
     }
 
     // Create reset link
@@ -1341,13 +1356,50 @@ export const requestPasswordResetEmail = async (req, res) => {
     const resetLink = `${frontendUrl}/reset-password?token=${resetToken}`;
 
     // Send password reset email
-    const emailResult = await sendPasswordResetEmail(user.email, resetLink, user.nama, user.ic);
+    let emailResult;
+    try {
+      emailResult = await sendPasswordResetEmail(user.email, resetLink, user.nama, user.ic);
+    } catch (emailError) {
+      // Catch any exceptions thrown by email service
+      console.error('Exception in sendPasswordResetEmail:', emailError);
+      emailResult = {
+        success: false,
+        error: emailError.message || 'Unknown error',
+        message: 'Email service error'
+      };
+    }
+
+    // Ensure emailResult is an object
+    if (!emailResult || typeof emailResult !== 'object') {
+      emailResult = {
+        success: false,
+        error: 'Invalid email service response',
+        message: 'Email service not configured'
+      };
+    }
 
     if (!emailResult.success) {
-      if (emailResult.error === 'Transporter not available' || emailResult.message === 'Email service not configured') {
-        // If email service is not configured, still generate token and log it for testing
-        // This allows the password reset flow to be tested even without email configured
-        console.log('\n📧 ===== EMAIL SERVICE NOT CONFIGURED =====');
+      // Check if email service is not configured or authentication failed
+      const isEmailNotConfigured = emailResult.error === 'Transporter not available' || 
+                                   emailResult.message === 'Email service not configured' ||
+                                   emailResult.error === 'Invalid email service response';
+      
+      const isAuthError = emailResult.code === 'EAUTH' || 
+                         (emailResult.error && emailResult.error.includes('Username and Password not accepted')) ||
+                         (emailResult.error && emailResult.error.includes('Invalid login'));
+      
+      // If email service is not configured or authentication failed, still generate token and log it
+      // This allows the password reset flow to be tested even without email configured
+      if (isEmailNotConfigured || isAuthError) {
+        console.log('\n📧 ===== EMAIL SERVICE ERROR =====');
+        if (isAuthError) {
+          console.log('⚠️ Gmail authentication failed. Please check:');
+          console.log('1. EMAIL_PASSWORD is a Gmail App Password (not regular password)');
+          console.log('2. 2-Step Verification is enabled on Gmail account');
+          console.log('3. App Password was generated correctly');
+        } else {
+          console.log('⚠️ Email service not configured');
+        }
         console.log('Reset link generated (not sent via email):');
         console.log('Reset Link:', resetLink);
         console.log('User:', user.nama);
@@ -1357,22 +1409,30 @@ export const requestPasswordResetEmail = async (req, res) => {
         console.log('=====================================\n');
         
         // Return success with info about the reset link being logged
+        // Always include resetLink in response when email fails (for development/testing)
         return res.json({
           success: true,
           message: 'Pautan reset kata laluan telah dijana. (Emel tidak dikonfigurasi - sila semak log pelayan untuk pautan reset)',
           emailNotConfigured: true,
+          resetLink: resetLink, // Always include reset link when email fails
           devInfo: process.env.NODE_ENV === 'development' ? {
             resetLink: resetLink,
             token: resetToken,
-            message: 'Email service not configured. Reset link generated and logged to console.'
+            message: isAuthError 
+              ? 'Gmail authentication failed. Reset link generated and logged to console.'
+              : 'Email service not configured. Reset link generated and logged to console.',
+            error: isAuthError ? emailResult.error : undefined
           } : undefined
         });
       }
       
+      // For other email errors (network, etc.), still return success to user
+      // but log the error for debugging
+      console.error('Email sending failed:', emailResult.error || emailResult.message);
       return res.status(500).json({
         success: false,
         message: 'Gagal menghantar emel reset kata laluan. Sila cuba lagi kemudian.',
-        error: process.env.NODE_ENV === 'development' ? emailResult.error : undefined
+        error: process.env.NODE_ENV === 'development' ? (emailResult.error || emailResult.message) : undefined
       });
     }
 
@@ -1883,26 +1943,31 @@ export const resetPassword = async (req, res) => {
     // Hash new password
     const hashedNewPassword = await bcrypt.hash(newPassword, 12);
 
-    // Update password and mark token as used
-    await pool.execute('START TRANSACTION');
-
+    // Get connection for transaction
+    const connection = await pool.getConnection();
+    
     try {
+      // Start transaction (must use query, not execute for transaction commands)
+      await connection.query('START TRANSACTION');
+
       // Update password
-      await pool.execute(
+      await connection.execute(
         'UPDATE users SET password = ?, updated_at = CURRENT_TIMESTAMP WHERE ic = ?',
         [hashedNewPassword, resetToken.user_ic]
       );
 
       // Mark token/code as used
-      await pool.execute(
+      await connection.execute(
         'UPDATE password_reset_tokens SET used = TRUE WHERE token = ?',
         [resetTokenValue]
       );
 
-      await pool.execute('COMMIT');
+      await connection.query('COMMIT');
     } catch (error) {
-      await pool.execute('ROLLBACK');
+      await connection.query('ROLLBACK');
       throw error;
+    } finally {
+      connection.release();
     }
 
     res.json({

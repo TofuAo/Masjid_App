@@ -16,6 +16,7 @@ const ChooseResetMethod = () => {
   const [resetMethod, setResetMethod] = useState(null);
   const [userInfo, setUserInfo] = useState(null);
   const [loadingUser, setLoadingUser] = useState(true);
+  const [resetLink, setResetLink] = useState(null);
 
   useEffect(() => {
     if (!icNumber) {
@@ -68,7 +69,19 @@ const ChooseResetMethod = () => {
 
       if (response?.success) {
         setSent(true);
-        toast.success('Pautan reset kata laluan telah dihantar ke emel pendaftaran anda!');
+        // If email is not configured, show the reset link
+        if (response?.emailNotConfigured) {
+          // Use resetLink from response (always included) or from devInfo
+          const link = response?.resetLink || response?.devInfo?.resetLink;
+          if (link) {
+            setResetLink(link);
+            toast.success('Pautan reset telah dijana. (Emel tidak dikonfigurasi)');
+          } else {
+            toast.success('Pautan reset telah dijana. Sila semak log pelayan untuk pautan reset.');
+          }
+        } else {
+          toast.success('Pautan reset kata laluan telah dihantar ke emel pendaftaran anda!');
+        }
       } else {
         toast.error(response?.message || 'Gagal menghantar permintaan reset.');
         setResetMethod(null);
@@ -87,24 +100,64 @@ const ChooseResetMethod = () => {
       ? `${userInfo.email.substring(0, 3)}***@${userInfo.email.split('@')[1]}`
       : 'emel pendaftaran anda';
 
+    // Show different UI based on whether email was actually sent or not
+    const emailWasSent = !resetLink; // If resetLink exists, email was not sent
+
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-emerald-50 to-teal-100 p-4">
         <Card className="max-w-md w-full">
           <Card.Content className="text-center py-8">
             <div className="mb-6">
               <CheckCircle className="w-16 h-16 text-green-600 mx-auto mb-4" />
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">
-                Emel Dihantar!
-              </h2>
-              <p className="text-gray-600">
-                Kami telah menghantar pautan reset kata laluan ke {maskedEmail} yang dikaitkan dengan nombor kad pengenalan {formatIC(icNumber, true)}.
-              </p>
+              {emailWasSent ? (
+                <>
+                  <h2 className="text-2xl font-bold text-gray-900 mb-2">
+                    Emel Dihantar!
+                  </h2>
+                  <p className="text-gray-600">
+                    Kami telah menghantar pautan reset kata laluan ke {maskedEmail} yang dikaitkan dengan nombor kad pengenalan {formatIC(icNumber, true)}.
+                  </p>
+                </>
+              ) : (
+                <>
+                  <h2 className="text-2xl font-bold text-gray-900 mb-2">
+                    Pautan Reset Dijana
+                  </h2>
+                  <p className="text-gray-600">
+                    Pautan reset kata laluan telah dijana untuk nombor kad pengenalan {formatIC(icNumber, true)}.
+                  </p>
+                </>
+              )}
             </div>
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-              <p className="text-sm text-blue-800">
-                <strong>Perhatian:</strong> Sila semak folder spam/junk jika anda tidak menerima emel dalam beberapa minit.
-              </p>
-            </div>
+            {resetLink ? (
+              <div className="bg-yellow-50 border-2 border-yellow-400 rounded-lg p-4 mb-6">
+                <p className="text-sm font-semibold text-yellow-900 mb-2">
+                  ⚠️ Emel Tidak Dikonfigurasi
+                </p>
+                <p className="text-sm text-yellow-800 mb-3">
+                  Pautan reset kata laluan anda:
+                </p>
+                <div className="bg-white border border-yellow-300 rounded p-3 mb-3">
+                  <a 
+                    href={resetLink} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="text-sm text-blue-600 hover:text-blue-800 break-all font-mono"
+                  >
+                    {resetLink}
+                  </a>
+                </div>
+                <p className="text-xs text-yellow-700">
+                  Klik pautan di atas untuk menetapkan semula kata laluan anda.
+                </p>
+              </div>
+            ) : (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                <p className="text-sm text-blue-800">
+                  <strong>Perhatian:</strong> Sila semak folder spam/junk jika anda tidak menerima emel dalam beberapa minit.
+                </p>
+              </div>
+            )}
             <Link to="/login">
               <Button variant="outline" className="w-full">
                 <ArrowLeft className="w-4 h-4 mr-2" />

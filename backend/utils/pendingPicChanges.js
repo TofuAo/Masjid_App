@@ -1,4 +1,5 @@
 import { pool } from '../config/database.js';
+import { createPicSnapshot, markPicSnapshotUndone } from './picActionSnapshots.js';
 
 const handlers = new Map();
 let tableReady = false;
@@ -75,6 +76,15 @@ export const createPendingPicChange = async ({
   const payloadJson = JSON.stringify(payload);
   const metadataJson = metadata ? JSON.stringify(metadata) : null;
 
+  console.log(`[PENDING PIC] Creating pending change:`, {
+    actionKey,
+    entityType,
+    entityId,
+    actorIc,
+    requestMethod,
+    requestPath
+  });
+
   const [result] = await pool.execute(
     `INSERT INTO pending_pic_changes
       (action_key, entity_type, entity_id, request_method, request_path, payload, metadata, created_by)
@@ -82,6 +92,7 @@ export const createPendingPicChange = async ({
     [actionKey, entityType, entityId, requestMethod, requestPath, payloadJson, metadataJson, actorIc]
   );
 
+  console.log(`[PENDING PIC] ✅ Created pending change with ID: ${result.insertId}`);
   return result.insertId;
 };
 
@@ -208,6 +219,62 @@ export const approvePendingPicChange = async ({ id, adminIc, notes = null }) => 
       connection
     });
 
+    // Update existing PIC snapshot (created when PIC made the request) with approval info
+    try {
+      const { pool: snapshotPool } = await import('../config/database.js');
+      
+      // Update the snapshot that was created when PIC made the request
+      // Find it by pending_pic_change_id
+      const [updateResult] = await snapshotPool.execute(
+        `UPDATE pic_action_snapshots 
+         SET approved_by = ?, 
+             data = COALESCE(?, data),
+             metadata = COALESCE(?, metadata)
+         WHERE pending_pic_change_id = ? AND approved_by IS NULL`,
+        [
+          adminIc,
+          handlerResult?.snapshotData ? JSON.stringify(handlerResult.snapshotData) : null,
+          metadata ? JSON.stringify(metadata) : null,
+          id
+        ]
+      );
+      
+      if (updateResult.affectedRows > 0) {
+        console.log('[PIC APPROVAL] ✅ Updated existing PIC Recycle Bin snapshot with approval info');
+      } else {
+        console.log('[PIC APPROVAL] No existing snapshot found to update (may have been created differently)');
+        
+        // Fallback: Create snapshot if it doesn't exist (shouldn't happen normally)
+        const snapshotData = handlerResult?.snapshotData || handlerResult?.data || handlerResult || payload;
+        let snapshotEntityId = handlerResult?.entityId;
+        if (snapshotEntityId === undefined || snapshotEntityId === null) {
+          snapshotEntityId = handlerResult?.id ? Number(handlerResult.id) : 0;
+        } else {
+          snapshotEntityId = Number(snapshotEntityId);
+        }
+        const snapshotEntityIdentifier = handlerResult?.entityIdentifier || 
+          (change.entity_id ? String(change.entity_id) : null);
+        const operationParts = change.action_key.split(':');
+        const operation = operationParts.length > 1 ? operationParts[1] : 'update';
+        
+        await createPicSnapshot({
+          entityType: change.entity_type,
+          entityId: snapshotEntityId,
+          entityIdentifier: snapshotEntityIdentifier,
+          operation: operation,
+          data: snapshotData,
+          metadata: metadata,
+          picIc: change.created_by,
+          approvedBy: adminIc,
+          pendingPicChangeId: id
+        });
+        console.log('[PIC APPROVAL] ✅ Created PIC snapshot for recycle bin (fallback)');
+      }
+    } catch (snapshotError) {
+      console.error('[PIC APPROVAL] ❌ Failed to update/create PIC snapshot:', snapshotError);
+      // Don't fail the approval if snapshot update fails, but log it
+    }
+
     await updatePendingPicChangeStatus({
       connection,
       id,
@@ -215,6 +282,17 @@ export const approvePendingPicChange = async ({ id, adminIc, notes = null }) => 
       adminIc,
       notes
     });
+
+    // If this is an undo request, mark the original snapshot as undone
+    if (metadata?.is_undo && metadata?.original_snapshot_id) {
+      try {
+        await markPicSnapshotUndone(metadata.original_snapshot_id, id);
+        console.log('[PIC APPROVAL] Marked original snapshot as undone:', metadata.original_snapshot_id);
+      } catch (undoError) {
+        console.error('[PIC APPROVAL] Failed to mark snapshot as undone:', undoError);
+        // Don't fail the approval if marking undone fails
+      }
+    }
 
     await connection.commit();
 
@@ -291,5 +369,57 @@ export const rejectPendingPicChange = async ({ id, adminIc, notes = null }) => {
 
 export const ensurePendingPicTable = async () => {
   await ensureTable();
+};
+
+/**
+ * Cancel a pending PIC change (before admin approval)
+ * Only the PIC who created it can cancel it
+ */
+export const cancelPendingPicChange = async ({ id, picIc }) => {
+  if (!id || !picIc) {
+    throw new Error('cancelPendingPicChange requires id and picIc.');
+  }
+
+  await ensureTable();
+
+  const connection = await pool.getConnection();
+  try {
+    await connection.beginTransaction();
+
+    const [rows] = await connection.execute(
+      'SELECT * FROM pending_pic_changes WHERE id = ? FOR UPDATE',
+      [id]
+    );
+
+    if (rows.length === 0) {
+      throw new Error('Pending change not found.');
+    }
+
+    const change = rows[0];
+    
+    // Only allow PIC who created it to cancel
+    if (change.created_by !== picIc) {
+      throw new Error('You can only cancel your own pending requests.');
+    }
+
+    if (change.status !== 'pending') {
+      throw new Error('Can only cancel pending requests.');
+    }
+
+    // Delete the pending change
+    await connection.execute(
+      'DELETE FROM pending_pic_changes WHERE id = ?',
+      [id]
+    );
+
+    await connection.commit();
+
+    return { success: true, message: 'Pending request cancelled successfully.' };
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
+  }
 };
 

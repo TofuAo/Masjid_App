@@ -130,6 +130,7 @@ const ResetPassword = () => {
                   placeholder="Sekurang-kurangnya 6 aksara"
                   required
                   minLength={6}
+                  autoComplete="new-password"
                   className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 pr-10"
                 />
                 <button
@@ -153,6 +154,7 @@ const ResetPassword = () => {
                 placeholder="Masukkan semula kata laluan baru"
                 required
                 minLength={6}
+                autoComplete="new-password"
                 className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
               />
             </div>

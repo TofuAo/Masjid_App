@@ -138,6 +138,7 @@ const LayoutContent = ({ children, user, onLogout, onRoleChange }) => {
       { icon: <CreditCard className="w-5 h-5" />, label: t('menuFees'), link: '/yuran' },
       { icon: <FileText className="w-5 h-5" />, label: t('menuResults'), link: '/keputusan' },
       { icon: <BarChart3 className="w-5 h-5" />, label: t('menuReports'), link: '/laporan' },
+      { icon: <Trash2 className="w-5 h-5" />, label: t('menuPicRecycleBin'), link: '/pic-recycle-bin' },
     ];
   } else if (effectiveRole === 'teacher') {
     menuItems = [

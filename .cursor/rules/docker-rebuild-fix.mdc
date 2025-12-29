@@ -1,0 +1,121 @@
+---
+alwaysApply: true
+---
+
+# Docker Container Rebuild Fix Pattern
+
+## Problem Pattern
+
+When you make code changes (especially to backend routes, controllers, middleware, or services) but errors persist that suggest old code is running:
+
+- Error messages in responses don't match the current codebase
+- Code changes don't seem to take effect
+- 403/404 errors that should be fixed by code changes persist
+- Logs show old error messages not found in current code
+- Functionality doesn't work as expected after code fixes
+
+## Root Cause
+
+The Docker container is running an old image that doesn't include the latest code changes. Simply restarting the container (`docker-compose restart`) doesn't reload code - the image must be rebuilt.
+
+## Fix Pattern
+
+### Step 1: Rebuild the Docker Image
+```bash
+docker-compose build backend    # For backend changes
+docker-compose build frontend   # For frontend changes
+docker-compose build            # For both
+```
+
+### Step 2: Restart the Container with New Image
+```bash
+docker-compose up -d backend    # Restart with new image
+docker-compose up -d frontend   # Restart with new image
+docker-compose up -d            # Restart all
+```
+
+### Step 3: Verify
+```bash
+docker-compose ps               # Check container status
+docker-compose logs backend --tail=50  # Check logs for errors
+```
+
+## When to Use This Pattern
+
+**ALWAYS rebuild when:**
+- New routes/endpoints are added
+- Middleware code is changed
+- Controller logic is modified
+- Error messages are updated
+- New utility functions are created
+- Service files are modified
+- Route files are changed
+- After fixing bugs in code
+
+**First attempt when:**
+- Code changes don't seem to take effect
+- Errors persist after code fixes
+- Old error messages appear that shouldn't exist in current code
+
+## Alternative Approaches If Rebuild Doesn't Work
+
+1. **Check if code is actually in the Docker context:**
+   - Verify files are in the correct directory
+   - Check .dockerignore isn't excluding them
+   - Ensure files are saved before build
+
+2. **Force rebuild without cache:**
+   ```bash
+   docker-compose build --no-cache backend
+   docker-compose up -d backend
+   ```
+
+3. **Check if frontend needs build:**
+   - For frontend changes, run `npm run build` first
+   - Then rebuild Docker image
+
+4. **Verify the running container:**
+   ```bash
+   docker-compose exec backend ls -la /app/middleware/auth.js
+   # Check if file exists and has recent timestamp
+   ```
+
+5. **Check logs for actual errors:**
+   ```bash
+   docker-compose logs backend --tail=100 | grep -i error
+   ```
+
+6. **Restart related services:**
+   - If database changes, may need to restart MySQL
+   - Check if nginx/proxy needs restart
+
+## Example Scenario (What Just Happened)
+
+**Problem:** PIC Recycle Bin returning 403 with error message "Only PIC users can access their recycle bin" - but this message doesn't exist in current codebase.
+
+**Diagnosis:** Docker container running old code version (code was fixed but image wasn't rebuilt).
+
+**Fix:**
+```bash
+docker-compose build backend
+docker-compose up -d backend
+```
+
+**Result:** Container now runs latest code, error resolved.
+
+## Best Practice
+
+When making backend/frontend code changes:
+1. Make the code change
+2. **Always rebuild the Docker image** (don't just restart)
+3. Restart the container
+4. Verify the fix works
+5. Check logs if issues persist
+
+## Integration with Auto-Deploy Rule
+
+This rule complements the auto-deploy rule. The auto-deploy rule ensures deployment happens, this rule ensures the Docker image is rebuilt so deployment actually includes the new code.
+
+## Remember
+
+**NEVER** just use `docker-compose restart` for code changes - always rebuild the image first with `docker-compose build`.

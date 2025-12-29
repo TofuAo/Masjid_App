@@ -527,24 +527,46 @@ export const deleteStudentRecord = async (ic, { actorIc, requestedBy = null } = 
 
     const studentRecord = studentRows[0] || null;
 
-    const undoSnapshotId = await createSnapshot({
-      entityType: 'student',
-      entityId: 0,
-      entityIdentifier: userRecord.ic,
-      operation: 'delete',
-      data: {
-        user: userRecord,
-        student: studentRecord
-      },
-      metadata: {
-        title: userRecord.nama,
-        operationLabel: requestedBy
-          ? `Permintaan padam oleh ${requestedBy}`
-          : 'Padam pelajar',
-        route: '/pelajar'
-      },
-      actorIc: actorIc || userRecord.ic
-    });
+    // Only create admin snapshot if this is NOT a PIC-initiated action
+    // PIC actions go to PIC recycle bin (created by PIC approval middleware/handler)
+    // Check if requestedBy is a PIC user
+    let isPicAction = false;
+    if (requestedBy) {
+      try {
+        const [picCheck] = await ownConnection.execute(
+          `SELECT role FROM users WHERE ic = ?`,
+          [requestedBy]
+        );
+        if (picCheck.length > 0 && picCheck[0].role === 'pic') {
+          isPicAction = true;
+        }
+      } catch (err) {
+        console.warn('Could not check if action is from PIC:', err);
+      }
+    }
+
+    let undoSnapshotId = null;
+    // Only create admin snapshot for admin/teacher actions, not PIC actions
+    if (!isPicAction) {
+      undoSnapshotId = await createSnapshot({
+        entityType: 'student',
+        entityId: 0,
+        entityIdentifier: userRecord.ic,
+        operation: 'delete',
+        data: {
+          user: userRecord,
+          student: studentRecord
+        },
+        metadata: {
+          title: userRecord.nama,
+          operationLabel: requestedBy
+            ? `Permintaan padam oleh ${requestedBy}`
+            : 'Padam pelajar',
+          route: '/pelajar'
+        },
+        actorIc: actorIc || userRecord.ic
+      });
+    }
 
     if (shouldManageTransaction) {
       await ownConnection.beginTransaction();
@@ -588,7 +610,13 @@ registerPendingPicHandler('students:create', async ({ payload, actorIc, adminIc,
     { actorIc: adminIc, requestedBy: actorIc },
     connection
   );
-  return result.student;
+  // Return data in format expected by PIC snapshot creation
+  return {
+    entityId: 0, // INT field - use 0 since student ID is a string (IC)
+    entityIdentifier: result.student.ic, // Store actual IC here
+    snapshotData: result.student,
+    ...result.student
+  };
 });
 
 registerPendingPicHandler('students:update', async ({ payload, entityId, actorIc, adminIc, connection }) => {
@@ -598,15 +626,78 @@ registerPendingPicHandler('students:update', async ({ payload, entityId, actorIc
     { actorIc: adminIc, requestedBy: actorIc },
     connection
   );
-  return result.student;
+  // Return data in format expected by PIC snapshot creation
+  return {
+    entityId: 0, // INT field - use 0 since student ID is a string (IC)
+    entityIdentifier: result.student.ic, // Store actual IC here
+    snapshotData: result.student,
+    ...result.student
+  };
 });
 
-registerPendingPicHandler('students:delete', async ({ entityId, actorIc, adminIc, connection }) => {
+registerPendingPicHandler('students:delete', async ({ entityId, actorIc, adminIc, connection, metadata }) => {
+  // Get student data BEFORE deletion for PIC snapshot
+  // Use multiple lookup strategies like deleteStudentRecord does
+  const cleanedIc = normalizeIcForQuery(entityId);
+  
+  let [userRows] = await connection.execute(
+    `SELECT u.*, s.kelas_id, s.tarikh_daftar 
+     FROM users u 
+     LEFT JOIN students s ON u.ic = s.user_ic 
+     WHERE u.ic = ? AND u.role = 'student'`,
+    [entityId]
+  );
+  
+  if (userRows.length === 0 && cleanedIc !== entityId) {
+    [userRows] = await connection.execute(
+      `SELECT u.*, s.kelas_id, s.tarikh_daftar 
+       FROM users u 
+       LEFT JOIN students s ON u.ic = s.user_ic 
+       WHERE REPLACE(u.ic, '-', '') = ? AND u.role = 'student'`,
+      [cleanedIc]
+    );
+  }
+  
+  if (userRows.length === 0) {
+    [userRows] = await connection.execute(
+      `SELECT u.*, s.kelas_id, s.tarikh_daftar 
+       FROM users u 
+       LEFT JOIN students s ON u.ic = s.user_ic 
+       WHERE UPPER(u.ic) = UPPER(?) AND u.role = 'student'`,
+      [entityId]
+    );
+  }
+  
+  const studentData = userRows[0] || null;
+  const actualIc = studentData?.ic || entityId;
+  
+  // Now delete the student
   const result = await deleteStudentRecord(
-    entityId,
+    actualIc,
     { actorIc: adminIc, requestedBy: actorIc },
     connection
   );
-  return { deletedIc: entityId, ...result };
+  
+  // Return data in format expected by PIC snapshot creation
+  // Note: entity_id must be INT, so use 0 and store IC in entityIdentifier
+  return {
+    entityId: 0, // INT field - use 0 since student ID is a string (IC)
+    entityIdentifier: actualIc, // Store actual IC here
+    snapshotData: studentData ? {
+      user: {
+        ic: studentData.ic,
+        nama: studentData.nama,
+        email: studentData.email,
+        telefon: studentData.telefon,
+        role: studentData.role
+      },
+      student: {
+        kelas_id: studentData.kelas_id,
+        tarikh_daftar: studentData.tarikh_daftar
+      }
+    } : null,
+    deletedIc: actualIc,
+    ...result
+  };
 });
 

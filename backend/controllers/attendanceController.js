@@ -345,8 +345,8 @@ export const markAttendance = async (req, res) => {
       const existingData = existingAttendance[0];
       const actorIc = req.user?.ic;
       
-      // Create snapshot before update (for admin/PIC/teacher)
-      if (actorIc && (req.user?.role === 'admin' || req.user?.role === 'pic' || req.user?.role === 'teacher')) {
+      // Create snapshot before update (only for admin/teacher - PIC actions go to approval, not snapshots)
+      if (actorIc && (req.user?.role === 'admin' || req.user?.role === 'teacher')) {
         // Get student and class names for better metadata
         const [studentInfo] = await pool.execute(
           'SELECT nama FROM users WHERE ic = ?',
@@ -447,9 +447,9 @@ export const markAttendance = async (req, res) => {
       );
       const existingData = existingDataFull[0] || existingAttendance[0];
       
-      // Log admin action for undo capability (exactly like teacher UPDATE)
+      // Log admin action for undo capability (only for admin/teacher - PIC actions go to approval, not snapshots)
       const actorIc = req.user?.ic;
-      if (actorIc && (req.user?.role === 'admin' || req.user?.role === 'pic' || req.user?.role === 'teacher')) {
+      if (actorIc && (req.user?.role === 'admin' || req.user?.role === 'teacher')) {
         const studentName = existingData.pelajar_nama || existingData.student_ic;
         const className = existingData.nama_kelas || 'Kelas';
         
@@ -506,9 +506,9 @@ export const markAttendance = async (req, res) => {
         [student_ic, class_id, attendanceDate, status]
       );
 
-      // Log admin action for undo capability (exactly like teacher CREATE)
+      // Log admin action for undo capability (only for admin/teacher - PIC actions go to approval, not snapshots)
       const actorIc = req.user?.ic;
-      if (actorIc && (req.user?.role === 'admin' || req.user?.role === 'pic' || req.user?.role === 'teacher')) {
+      if (actorIc && (req.user?.role === 'admin' || req.user?.role === 'teacher')) {
         const [newAttendance] = await pool.execute(
           `SELECT a.*, u.nama as pelajar_nama, c.nama_kelas
            FROM attendance a
@@ -615,7 +615,8 @@ export const bulkMarkAttendance = async (req, res) => {
     // Get a connection from the pool for transaction
     const connection = await pool.getConnection();
     const actorIc = req.user?.ic;
-    const shouldCreateSnapshots = actorIc && (req.user?.role === 'admin' || req.user?.role === 'pic' || req.user?.role === 'teacher');
+    // Only create snapshots for admin/teacher - PIC actions go to approval, not snapshots
+    const shouldCreateSnapshots = actorIc && (req.user?.role === 'admin' || req.user?.role === 'teacher');
 
     try {
       // Start transaction
@@ -838,7 +839,8 @@ export const bulkMarkAttendanceWithProof = async (req, res) => {
     // Get a connection from the pool for transaction
     const connection = await pool.getConnection();
     const actorIc = req.user?.ic;
-    const shouldCreateSnapshots = actorIc && (req.user?.role === 'admin' || req.user?.role === 'pic' || req.user?.role === 'teacher');
+    // Only create snapshots for admin/teacher - PIC actions go to approval, not snapshots
+    const shouldCreateSnapshots = actorIc && (req.user?.role === 'admin' || req.user?.role === 'teacher');
     
     try {
       // Start transaction
@@ -1088,8 +1090,9 @@ export const deleteAttendance = async (req, res) => {
       updated_at: attendanceData.updated_at
     };
     
-    // Create snapshot BEFORE deletion (MANDATORY - deletion will abort if this fails)
-    console.log('[DELETE ATTENDANCE] STEP 2: Creating snapshot for Recycle Bin');
+    // Create snapshot BEFORE deletion (only for admin/teacher - PIC actions are intercepted by approval middleware)
+    // NOTE: PIC users never reach this controller because requirePicApproval middleware intercepts them
+    console.log('[DELETE ATTENDANCE] STEP 2: Creating snapshot for Recycle Bin (admin/teacher only)');
     console.log('[DELETE ATTENDANCE] Snapshot parameters:', {
       entityType: 'attendance',
       entityId: attendanceId,
@@ -1281,10 +1284,10 @@ export const confirmAttendanceDocument = async (req, res) => {
 
     const isConfirmed = confirmed === true || confirmed === 1 || confirmed === '1';
 
-    // Create snapshot before update (for admin/PIC/teacher)
+    // Create snapshot before update (only for admin/teacher - PIC actions go to approval, not snapshots)
     const actorIc = req.user?.ic;
     const userRole = req.user?.role;
-    const shouldCreateSnapshot = actorIc && (userRole === 'admin' || userRole === 'pic' || userRole === 'teacher');
+    const shouldCreateSnapshot = actorIc && (userRole === 'admin' || userRole === 'teacher');
     
     if (shouldCreateSnapshot) {
       try {

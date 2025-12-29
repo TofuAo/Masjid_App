@@ -39,6 +39,9 @@ const StaffCheckIn = ({ user }) => {
     start: null,
     end: null
   });
+  // Ref to store stable distance and location for comparison
+  const stableDistanceRef = useRef(null);
+  const stableLocationRef = useRef(null);
   const [activeRange, setActiveRange] = useState(() => ({
     start: null,
     end: null
@@ -302,6 +305,7 @@ const StaffCheckIn = ({ user }) => {
   }, [fetchStaffList]);
 
   // Calculate distance when location or masjid location changes
+  // Use stabilization to prevent jumping due to GPS fluctuations
   useEffect(() => {
     if (location.latitude && location.longitude && masjidLocation.latitude && masjidLocation.longitude) {
       const calculatedDistance = calculateDistance(
@@ -310,7 +314,31 @@ const StaffCheckIn = ({ user }) => {
         masjidLocation.latitude,
         masjidLocation.longitude
       );
-      setDistance(calculatedDistance);
+      
+      // Stabilization: Only update if distance changed significantly (> 5 meters)
+      // or if we don't have a stable distance yet
+      const shouldUpdate = stableDistanceRef.current === null || 
+                          Math.abs(calculatedDistance - stableDistanceRef.current) > 5 ||
+                          // Also update if location changed significantly (> 10 meters from last stable location)
+                          (stableLocationRef.current && 
+                           calculateDistance(
+                             location.latitude,
+                             location.longitude,
+                             stableLocationRef.current.latitude,
+                             stableLocationRef.current.longitude
+                           ) > 10);
+      
+      if (shouldUpdate) {
+        stableDistanceRef.current = calculatedDistance;
+        stableLocationRef.current = {
+          latitude: location.latitude,
+          longitude: location.longitude
+        };
+        setDistance(calculatedDistance);
+      }
+      
+      // Always use the stable distance for radius calculations
+      const distanceToUse = stableDistanceRef.current ?? calculatedDistance;
       const baseRadius = Number(masjidLocation.radius) || 0;
       const buffer =
         location.accuracy && baseRadius > 0
@@ -319,12 +347,14 @@ const StaffCheckIn = ({ user }) => {
       const allowedRadius = baseRadius + buffer;
       setAccuracyBuffer(buffer);
       setEffectiveRadius(allowedRadius);
-      setIsWithinRadius(calculatedDistance <= allowedRadius);
+      setIsWithinRadius(distanceToUse <= allowedRadius);
     } else {
       setDistance(null);
       setIsWithinRadius(false);
       setAccuracyBuffer(null);
       setEffectiveRadius(null);
+      stableDistanceRef.current = null;
+      stableLocationRef.current = null;
     }
   }, [location, masjidLocation]);
 

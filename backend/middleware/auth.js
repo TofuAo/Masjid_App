@@ -295,95 +295,36 @@ export const requireRole = (roles) => {
       });
     }
 
-    // Normalize roles array for comparison
-    const requiredRoles = roles.map(r => (r || '').toLowerCase());
-    const effectiveRole = (req.user.activeRole || req.user.role || '').toLowerCase();
-    let availableRoles = (req.user.roles || []).map(r => (r || '').toLowerCase());
+    // Simple check: User's active role from token must match required role
+    const requiredRoles = roles.map(r => String(r || '').toLowerCase());
+    const userActiveRole = String(req.user.activeRole || req.user.role || '').toLowerCase();
     
-    // Ensure primary role (from database) is included in available roles
-    const primaryRole = (req.user.role || '').toLowerCase();
-    if (primaryRole && !availableRoles.includes(primaryRole)) {
-      availableRoles.push(primaryRole);
+    // Also check available roles as fallback
+    let availableRoles = [];
+    if (Array.isArray(req.user.roles)) {
+      availableRoles = req.user.roles.map(r => String(r || '').toLowerCase());
     }
     
-    // Also check the original database role if stored
-    if (req.user.dbPrimaryRole) {
-      const dbRole = (req.user.dbPrimaryRole || '').toLowerCase();
-      if (dbRole && !availableRoles.includes(dbRole)) {
-        availableRoles.push(dbRole);
-      }
-    }
-    
-    // Ensure active role is in available roles
-    if (effectiveRole && !availableRoles.includes(effectiveRole)) {
-      availableRoles.push(effectiveRole);
-    }
-    
-    // Special case: IB users with admin role should have admin access
-    // If user has 'ib' as primary role but 'admin' in availableRoles and activeRole is 'admin', grant admin access
-    if (primaryRole === 'ib' && availableRoles.includes('admin') && effectiveRole === 'admin') {
-      // Allow access if admin is required
-      if (requiredRoles.includes('admin')) {
-        return next();
-      }
-    }
+    // Allow if active role matches OR if any required role is in available roles
+    const hasAccess = requiredRoles.includes(userActiveRole) || 
+                     requiredRoles.some(role => availableRoles.includes(role));
 
-    // CRITICAL: Allow admin to bypass role check if they have admin role (even if not currently active)
-    // This allows admins with multiple roles to access admin endpoints regardless of their active role
-    // Check all possible role sources - be very permissive for admin access
-    const hasAdminRole = availableRoles.includes('admin') || 
-                        primaryRole === 'admin' || 
-                        effectiveRole === 'admin' ||
-                        (req.user.dbPrimaryRole && req.user.dbPrimaryRole.toLowerCase() === 'admin') ||
-                        (req.user.role && (req.user.role || '').toLowerCase() === 'admin');
-    
-    // Always log admin access attempts for debugging
-    if (requiredRoles.includes('admin')) {
-      console.log('[AUTH] Admin endpoint access check:', {
+    // Log for debugging PIC access
+    if (requiredRoles.includes('pic') || userActiveRole === 'pic') {
+      console.log('[REQUIRE_ROLE] PIC access check:', {
         path: req.path,
-        userIc: req.user.ic,
-        effectiveRole,
-        primaryRole,
-        dbPrimaryRole: req.user.dbPrimaryRole,
-        availableRoles: availableRoles.join(', '),
-        hasAdminRole,
-        willAllow: hasAdminRole
-      });
-    }
-    
-    if (hasAdminRole) {
-      // Admin has access - allow through
-      return next();
-    }
-    
-    // Debug logging for permission issues (always log for admin endpoints to help diagnose)
-    if (requiredRoles.includes('admin')) {
-      console.log('[AUTH DEBUG] Permission check failed for admin endpoint:', {
-        path: req.path,
-        effectiveRole,
-        primaryRole,
-        availableRoles: availableRoles.join(', '),
-        requiredRoles: requiredRoles.join(', '),
-        dbPrimaryRole: req.user.dbPrimaryRole,
-        userRole: req.user.role,
-        activeRole: req.user.activeRole,
-        userIc: req.user.ic,
-        hasAdminRole: false,
-        allUserRoles: JSON.stringify(req.user.roles || [])
+        requiredRoles,
+        userActiveRole,
+        availableRoles,
+        reqUserRolesType: typeof req.user.roles,
+        reqUserRoles: req.user.roles,
+        check1: requiredRoles.includes(userActiveRole),
+        check2: requiredRoles.some(role => availableRoles.includes(role)),
+        hasAccess
       });
     }
 
-    // Check if the effective role or any available role matches any required role
-    const hasRequiredRole = requiredRoles.includes(effectiveRole) || 
-                           requiredRoles.some(role => availableRoles.includes(role)) ||
-                           requiredRoles.includes(primaryRole);
-
-    if (!hasRequiredRole) {
-      // Only log if it's not a common permission check (reduce log noise)
-      // Most 403s are expected when non-admin users try to access admin endpoints
-      if (!requiredRoles.includes('admin') || availableRoles.length > 1) {
-        logUnauthorizedAccess(req, `Insufficient permissions. Active role: ${effectiveRole}, Available roles: ${availableRoles.join(', ')}, Required: ${requiredRoles.join(', ')}`);
-      }
+    if (!hasAccess) {
       return res.status(403).json({ 
         success: false, 
         message: 'Insufficient permissions' 

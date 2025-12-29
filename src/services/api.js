@@ -657,6 +657,56 @@ export const pendingPicChangesAPI = {
   },
 };
 
+export const picRecycleBinAPI = {
+  list: async () => {
+    try {
+      const response = await api.get('/pic-recycle-bin');
+      return response?.success ? response : { success: true, data: response?.data || response || [] };
+    } catch (error) {
+      if (error.isNetworkError || error.status === 0) {
+        throw { ...error, message: 'Tidak dapat menyambung ke pelayan. Sila semak sambungan internet anda.' };
+      }
+      if (error.status === 403) {
+        throw { ...error, message: 'Anda tidak mempunyai kebenaran untuk mengakses tong sampah PIC.' };
+      }
+      throw error;
+    }
+  },
+  getById: async (id) => {
+    try {
+      const response = await api.get(`/pic-recycle-bin/${id}`);
+      return response?.success ? response : { success: true, data: response?.data || response };
+    } catch (error) {
+      if (error.status === 404) {
+        throw { ...error, message: 'Item tidak ditemui.' };
+      }
+      throw error;
+    }
+  },
+  undo: async (id) => {
+    try {
+      return await api.post(`/pic-recycle-bin/${id}/undo`);
+    } catch (error) {
+      const backendMessage = error?.response?.data?.message || error?.message;
+      if (backendMessage) {
+        throw { ...error, message: backendMessage };
+      }
+      throw error;
+    }
+  },
+  cancelPending: async (id) => {
+    try {
+      return await api.delete(`/pic-recycle-bin/pending/${id}`);
+    } catch (error) {
+      const backendMessage = error?.response?.data?.message || error?.message;
+      if (backendMessage) {
+        throw { ...error, message: backendMessage };
+      }
+      throw error;
+    }
+  }
+};
+
 // Google Form API
 export const googleFormAPI = {
   getClassFormUrl: (classId) => api.get(`/google-form/class/${classId}`),

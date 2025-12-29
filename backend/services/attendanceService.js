@@ -1,6 +1,5 @@
 import { pool } from '../config/database.js';
 import { registerPendingPicHandler } from '../utils/pendingPicChanges.js';
-import { createSnapshot, SNAPSHOT_TTL_HOURS } from '../utils/adminActionSnapshots.js';
 
 /**
  * Create or update attendance record
@@ -134,7 +133,13 @@ registerPendingPicHandler('attendance:create', async ({ payload, actorIc, adminI
     payload,
     { connection }
   );
-  return result.attendance;
+  // Return snapshot data for PIC recycle bin in proper format
+  return {
+    entityId: result.attendance.id,
+    entityIdentifier: `${result.attendance.student_ic}-${result.attendance.class_id}-${result.attendance.tarikh}`,
+    snapshotData: result.attendance,
+    ...result.attendance
+  };
 });
 
 registerPendingPicHandler('attendance:update', async ({ payload, entityId, actorIc, adminIc, connection }) => {
@@ -143,25 +148,37 @@ registerPendingPicHandler('attendance:update', async ({ payload, entityId, actor
     payload,
     { connection }
   );
-  return result.attendance;
+  // Return snapshot data for PIC recycle bin in proper format
+  return {
+    entityId: result.attendance.id,
+    entityIdentifier: `${result.attendance.student_ic}-${result.attendance.class_id}-${result.attendance.tarikh}`,
+    snapshotData: result.attendance,
+    ...result.attendance
+  };
 });
 
-registerPendingPicHandler('attendance:delete', async ({ entityId, actorIc, adminIc, connection }) => {
+registerPendingPicHandler('attendance:delete', async ({ entityId, payload, actorIc, adminIc, connection }) => {
   console.log('[ATTENDANCE SERVICE] ===== PIC APPROVED DELETION HANDLER =====');
   console.log('[ATTENDANCE SERVICE] Entity ID:', entityId);
+  console.log('[ATTENDANCE SERVICE] Payload:', payload);
   console.log('[ATTENDANCE SERVICE] Actor IC (PIC):', actorIc);
   console.log('[ATTENDANCE SERVICE] Admin IC (approver):', adminIc);
   
-  // STEP 1: Get attendance data BEFORE deletion (CRITICAL for snapshot)
+  // Get entityId from params or payload (for undo requests, it might be in payload)
+  const deleteEntityId = entityId || payload?.id;
+  if (!deleteEntityId) {
+    throw new Error('Entity ID is required for deletion');
+  }
+  
+  // Get attendance data before deletion (for PIC recycle bin snapshot)
   const executor = connection || pool;
-  console.log('[ATTENDANCE SERVICE] STEP 1: Fetching attendance data for snapshot...');
   const [existingAttendance] = await executor.execute(
     `SELECT a.*, u.nama as pelajar_nama, c.nama_kelas
      FROM attendance a
      LEFT JOIN users u ON a.student_ic = u.ic
      LEFT JOIN classes c ON a.class_id = c.id
      WHERE a.id = ?`,
-    [entityId]
+    [deleteEntityId]
   );
 
   if (existingAttendance.length === 0) {
@@ -171,17 +188,19 @@ registerPendingPicHandler('attendance:delete', async ({ entityId, actorIc, admin
   }
 
   const attendanceData = existingAttendance[0];
-  console.log('[ATTENDANCE SERVICE] Attendance data retrieved:', {
-    id: attendanceData.id,
-    student_ic: attendanceData.student_ic,
-    student_name: attendanceData.pelajar_nama,
-    class_name: attendanceData.nama_kelas
-  });
-
-  // STEP 2: Create snapshot BEFORE deletion (MUST happen first!)
-  console.log('[ATTENDANCE SERVICE] STEP 2: Creating snapshot BEFORE deletion...');
-  try {
-    const snapshotData = {
+  
+  // Delete attendance record
+  const result = await deleteAttendanceRecord(
+    deleteEntityId,
+    { connection }
+  );
+  console.log('[ATTENDANCE SERVICE] ✅ Attendance record deleted from database');
+  
+  // Return snapshot data for PIC recycle bin in proper format
+  return {
+    entityId: attendanceData.id,
+    entityIdentifier: `${attendanceData.student_ic}-${attendanceData.class_id}-${attendanceData.tarikh}`,
+    snapshotData: {
       id: attendanceData.id,
       student_ic: attendanceData.student_ic,
       class_id: attendanceData.class_id,
@@ -193,55 +212,148 @@ registerPendingPicHandler('attendance:delete', async ({ entityId, actorIc, admin
       confirmed_by: attendanceData.confirmed_by || null,
       created_at: attendanceData.created_at,
       updated_at: attendanceData.updated_at
-    };
+    }
+  };
+});
 
-    const entityIdentifier = `${attendanceData.student_ic}-${attendanceData.class_id}-${attendanceData.tarikh}`;
+/**
+ * Bulk mark attendance records
+ * @param {Object} data - Bulk attendance data
+ * @param {number} data.class_id - Class ID
+ * @param {string} data.tarikh - Date (ISO format)
+ * @param {Array} data.attendance_data - Array of {student_ic, status}
+ * @param {Object} options - Options
+ * @param {Object} options.connection - Database connection (for transactions)
+ * @returns {Promise<Object>} Result with processed records
+ */
+export const bulkMarkAttendanceRecords = async (data, options = {}) => {
+  const { class_id, tarikh, attendance_data } = data;
+  const executor = options.connection || pool;
+  const attendanceDate = tarikh || new Date().toISOString().split('T')[0];
+  
+  const results = [];
+  
+  for (const record of attendance_data) {
+    const { student_ic, status } = record;
     
-    console.log('[ATTENDANCE SERVICE] Creating snapshot with:', {
-      entityType: 'attendance',
-      entityId: Number(entityId),
-      entityIdentifier,
-      operation: 'delete',
-      actorIc: adminIc || actorIc // Use admin IC if available, otherwise PIC IC
-    });
-
-    // CRITICAL: Create snapshot BEFORE deletion
-    const snapshotId = await createSnapshot({
-      entityType: 'attendance',
-      entityId: Number(entityId),
-      entityIdentifier,
-      operation: 'delete',
-      data: snapshotData,
-      metadata: {
-        title: attendanceData.pelajar_nama || attendanceData.student_ic,
-        nama: attendanceData.pelajar_nama || attendanceData.student_ic,
-        operationLabel: 'Padam kehadiran',
-        redirectPath: `/kehadiran?start_date=${attendanceData.tarikh}&end_date=${attendanceData.tarikh}&class_id=${attendanceData.class_id}`,
-        notes: `Kehadiran dipadam: ${attendanceData.pelajar_nama || attendanceData.student_ic} - ${attendanceData.nama_kelas || 'Kelas'} - ${attendanceData.status} pada ${attendanceData.tarikh} (Diluluskan oleh admin)`
-      },
-      actorIc: adminIc || actorIc // Use admin IC since they approved the deletion, fallback to PIC IC
-    });
-
-    console.log('[ATTENDANCE SERVICE] ✅✅✅ SNAPSHOT CREATED SUCCESSFULLY! ✅✅✅');
-    console.log('[ATTENDANCE SERVICE] Snapshot ID:', snapshotId);
-    console.log('[ATTENDANCE SERVICE] Snapshot created BEFORE deletion - this will appear in Recycle Bin!');
-  } catch (snapshotError) {
-    console.error('[ATTENDANCE SERVICE] ❌ CRITICAL: FAILED to create snapshot for approved PIC deletion:', snapshotError);
-    console.error('[ATTENDANCE SERVICE] Error details:', {
-      message: snapshotError.message,
-      stack: snapshotError.stack
-    });
-    // Don't fail the deletion if snapshot creation fails, but log it prominently
+    if (!['Hadir', 'Tidak Hadir', 'Cuti'].includes(status)) {
+      throw new Error(`Invalid attendance status: ${status}`);
+    }
+    
+    // Check if attendance already exists
+    const [existingAttendance] = await executor.execute(
+      'SELECT id FROM attendance WHERE student_ic = ? AND class_id = ? AND tarikh = ?',
+      [student_ic, class_id, attendanceDate]
+    );
+    
+    if (existingAttendance.length > 0) {
+      // Update existing attendance
+      await executor.execute(
+        `UPDATE attendance 
+         SET status = ?, updated_at = CURRENT_TIMESTAMP
+         WHERE student_ic = ? AND class_id = ? AND tarikh = ?`,
+        [status, student_ic, class_id, attendanceDate]
+      );
+      results.push({ student_ic, status, action: 'updated' });
+    } else {
+      // Insert new attendance record
+      await executor.execute(
+        `INSERT INTO attendance (student_ic, class_id, tarikh, status)
+         VALUES (?, ?, ?, ?)`,
+        [student_ic, class_id, attendanceDate, status]
+      );
+      results.push({ student_ic, status, action: 'created' });
+    }
   }
+  
+  return { results, class_id, tarikh: attendanceDate };
+};
 
-  // STEP 3: Delete attendance record (AFTER snapshot is created)
-  console.log('[ATTENDANCE SERVICE] STEP 3: Deleting attendance record from database...');
-  const result = await deleteAttendanceRecord(
-    entityId,
+/**
+ * Bulk mark attendance records with proof
+ * @param {Object} data - Bulk attendance data with proof
+ * @param {number} data.class_id - Class ID
+ * @param {string} data.tarikh - Date (ISO format)
+ * @param {Array} data.attendance_data - Array of {student_ic, status}
+ * @param {string} data.proof_image - Proof image path
+ * @param {string} data.marked_by - IC of user who marked attendance
+ * @param {Object} options - Options
+ * @param {Object} options.connection - Database connection (for transactions)
+ * @returns {Promise<Object>} Result with processed records
+ */
+export const bulkMarkAttendanceRecordsWithProof = async (data, options = {}) => {
+  const { class_id, tarikh, attendance_data, proof_image, marked_by } = data;
+  const executor = options.connection || pool;
+  const attendanceDate = tarikh || new Date().toISOString().split('T')[0];
+  
+  const results = [];
+  
+  for (const record of attendance_data) {
+    const { student_ic, status } = record;
+    
+    // Allow additional statuses: Lewat, Sakit
+    if (!['Hadir', 'Tidak Hadir', 'Cuti', 'Lewat', 'Sakit'].includes(status)) {
+      throw new Error(`Invalid attendance status: ${status}`);
+    }
+    
+    // Check if attendance already exists
+    const [existingAttendance] = await executor.execute(
+      'SELECT id FROM attendance WHERE student_ic = ? AND class_id = ? AND tarikh = ?',
+      [student_ic, class_id, attendanceDate]
+    );
+    
+    if (existingAttendance.length > 0) {
+      // Update existing attendance
+      await executor.execute(
+        `UPDATE attendance 
+         SET status = ?, 
+             proof_image = ?,
+             marked_by = ?,
+             updated_at = CURRENT_TIMESTAMP
+         WHERE student_ic = ? AND class_id = ? AND tarikh = ?`,
+        [status, proof_image || null, marked_by || null, student_ic, class_id, attendanceDate]
+      );
+      results.push({ student_ic, status, action: 'updated' });
+    } else {
+      // Insert new attendance record
+      await executor.execute(
+        `INSERT INTO attendance (student_ic, class_id, tarikh, status, proof_image, marked_by)
+         VALUES (?, ?, ?, ?, ?, ?)`,
+        [student_ic, class_id, attendanceDate, status, proof_image || null, marked_by || null]
+      );
+      results.push({ student_ic, status, action: 'created' });
+    }
+  }
+  
+  return { results, class_id, tarikh: attendanceDate, proof_image };
+};
+
+// Register bulk approval handlers
+registerPendingPicHandler('attendance:bulk-create', async ({ payload, actorIc, adminIc, connection }) => {
+  const result = await bulkMarkAttendanceRecords(
+    payload,
     { connection }
   );
-  console.log('[ATTENDANCE SERVICE] ✅ Attendance record deleted from database');
-  
-  return result;
+  // Return snapshot data for PIC recycle bin in proper format
+  return {
+    entityId: 0, // Bulk operations use 0 for entityId
+    entityIdentifier: `bulk-${payload.class_id}-${payload.tarikh || new Date().toISOString().split('T')[0]}`,
+    snapshotData: result,
+    ...result
+  };
+});
+
+registerPendingPicHandler('attendance:bulk-create-with-proof', async ({ payload, actorIc, adminIc, connection }) => {
+  const result = await bulkMarkAttendanceRecordsWithProof(
+    payload,
+    { connection }
+  );
+  // Return snapshot data for PIC recycle bin in proper format
+  return {
+    entityId: 0, // Bulk operations use 0 for entityId
+    entityIdentifier: `bulk-proof-${payload.class_id}-${payload.tarikh || new Date().toISOString().split('T')[0]}`,
+    snapshotData: result,
+    ...result
+  };
 });
 
