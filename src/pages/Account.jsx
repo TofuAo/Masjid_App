@@ -141,9 +141,9 @@ const Account = () => {
   const effectiveRole = getEffectiveRole(user);
   const isStudent = effectiveRole === 'student';
 
-  // Filter attendance and fees to show only those with documents
-  const attendanceWithDocs = attendance.filter(a => a.proof_image);
-  const feesWithDocs = fees.filter(f => f.resit_img);
+  // Show all attendance and fee records; highlight proof availability
+  const attendanceRecords = attendance;
+  const feeRecords = fees;
 
   return (
     <div className="space-y-6">
@@ -171,42 +171,42 @@ const Account = () => {
       <Card>
         <Card.Header>
           <div className="flex space-x-4 border-b border-gray-200 overflow-x-auto">
-            <button
-              onClick={() => setActiveTab('attendance')}
-              className={`pb-3 px-4 font-medium transition-colors whitespace-nowrap ${
-                activeTab === 'attendance'
-                  ? 'text-emerald-600 border-b-2 border-emerald-600'
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
-            >
-              <div className="flex items-center space-x-2">
-                <Calendar className="w-5 h-5" />
-                <span>Kehadiran ({attendanceWithDocs.length})</span>
-              </div>
-            </button>
-            <button
-              onClick={() => setActiveTab('payments')}
-              className={`pb-3 px-4 font-medium transition-colors whitespace-nowrap ${
-                activeTab === 'payments'
-                  ? 'text-emerald-600 border-b-2 border-emerald-600'
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
-            >
-              <div className="flex items-center space-x-2">
-                <CreditCard className="w-5 h-5" />
-                <span>Resit Pembayaran ({feesWithDocs.length})</span>
-              </div>
-            </button>
+                <button
+                  onClick={() => setActiveTab('attendance')}
+                  className={`pb-3 px-4 font-medium transition-colors whitespace-nowrap ${
+                    activeTab === 'attendance'
+                      ? 'text-emerald-600 border-b-2 border-emerald-600'
+                      : 'text-gray-600 hover:text-gray-900'
+                  }`}
+                >
+                  <div className="flex items-center space-x-2">
+                    <Calendar className="w-5 h-5" />
+                    <span>Kehadiran ({attendanceRecords.length})</span>
+                  </div>
+                </button>
+                <button
+                  onClick={() => setActiveTab('payments')}
+                  className={`pb-3 px-4 font-medium transition-colors whitespace-nowrap ${
+                    activeTab === 'payments'
+                      ? 'text-emerald-600 border-b-2 border-emerald-600'
+                      : 'text-gray-600 hover:text-gray-900'
+                  }`}
+                >
+                  <div className="flex items-center space-x-2">
+                    <CreditCard className="w-5 h-5" />
+                    <span>Resit Pembayaran ({feeRecords.length})</span>
+                  </div>
+                </button>
           </div>
         </Card.Header>
         <Card.Content>
           {/* Attendance Tab */}
           {activeTab === 'attendance' && (
             <div className="space-y-4">
-              {attendanceWithDocs.length === 0 ? (
+              {attendanceRecords.length === 0 ? (
                 <div className="text-center py-8">
                   <FileText className="w-12 h-12 text-gray-600 mx-auto mb-4" />
-                  <p className="text-gray-600">Tiada rekod kehadiran dengan bukti gambar.</p>
+                  <p className="text-gray-600">Tiada rekod kehadiran untuk dipaparkan.</p>
                 </div>
               ) : (
                 <div className="overflow-x-auto">
@@ -234,7 +234,7 @@ const Account = () => {
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
-                      {attendanceWithDocs.map((record) => (
+                      {attendanceRecords.map((record) => (
                         <tr key={record.id} className="hover:bg-gray-50">
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-black">
                             {new Date(record.tarikh).toLocaleDateString('ms-MY')}
@@ -252,7 +252,7 @@ const Account = () => {
                                 <span className="text-sm text-gray-600">Ada</span>
                               </div>
                             ) : (
-                              <span className="text-sm text-gray-600">Tiada</span>
+                              <span className="text-sm text-gray-600 opacity-70">Tiada bukti</span>
                             )}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
@@ -269,7 +269,7 @@ const Account = () => {
                             )}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm">
-                            {record.proof_image && (
+                            {record.proof_image ? (
                               <div className="flex space-x-2">
                                 <button
                                   onClick={() => handleImageClick(record.proof_image)}
@@ -286,6 +286,8 @@ const Account = () => {
                                   <span>Muat Turun</span>
                                 </button>
                               </div>
+                            ) : (
+                              <span className="text-sm text-gray-400">Tiada tindakan</span>
                             )}
                           </td>
                         </tr>
@@ -300,10 +302,10 @@ const Account = () => {
           {/* Payments Tab */}
           {activeTab === 'payments' && (
             <div className="space-y-4">
-              {feesWithDocs.length === 0 ? (
+              {feeRecords.length === 0 ? (
                 <div className="text-center py-8">
                   <CreditCard className="w-12 h-12 text-gray-600 mx-auto mb-4" />
-                  <p className="text-gray-600">Tiada resit pembayaran.</p>
+                  <p className="text-gray-600">Tiada rekod pembayaran untuk dipaparkan.</p>
                 </div>
               ) : (
                 <div className="overflow-x-auto">
@@ -331,7 +333,7 @@ const Account = () => {
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
-                      {feesWithDocs.map((fee) => (
+                      {feeRecords.map((fee) => (
                         <tr key={fee.id} className="hover:bg-gray-50">
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-black">
                             {fee.bulan} {fee.tahun}
@@ -359,7 +361,7 @@ const Account = () => {
                             )}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm">
-                            {fee.resit_img && (
+                            {fee.resit_img ? (
                               <div className="flex space-x-2">
                                 <button
                                   onClick={() => handleImageClick(fee.resit_img)}
@@ -376,6 +378,8 @@ const Account = () => {
                                   <span>Muat Turun</span>
                                 </button>
                               </div>
+                            ) : (
+                              <span className="text-sm text-gray-400">Tiada tindakan</span>
                             )}
                           </td>
                         </tr>
