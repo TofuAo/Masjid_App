@@ -1,0 +1,4262 @@
+MyMasjidApp User Manual
+
+Version 1.0
+Date: January 2025
+Application: MyMasjidApp - Masjid and Madrasah Management System
+
+This user manual provides comprehensive guidance for all users of the MyMasjidApp system, including students, teachers, administrators, and payment approvers. This manual will help you understand how to use the system effectively, from basic operations to advanced features.
+
+TABLE OF CONTENTS
+
+1. Introduction
+2. System Requirements
+3. Installation and Setup
+4. Application Overview
+5. Getting Started
+6. Core Features
+7. Advanced Features
+8. User Roles and Permissions
+9. Settings and Customization
+10. Data Management
+11. Security and Privacy
+12. Troubleshooting Guide
+13. Frequently Asked Questions
+14. Tips and Best Practices
+15. Updates and Version Changes
+16. Support and Contact Information
+17. Glossary
+18. Appendix
+
+1. INTRODUCTION
+
+Purpose of This Manual
+
+This user manual is your complete guide to using the MyMasjidApp system. Whether you are a student checking your attendance, a teacher managing your classes, an administrator overseeing operations, or a payment approver confirming transactions, this manual will help you accomplish your tasks efficiently and confidently.
+
+Who This Manual Is For
+
+This manual is designed for all users of the MyMasjidApp system:
+- Students who need to view their classes, attendance, fees, and exam results
+- Teachers who manage classes, record attendance, and input exam results
+- Administrators who oversee all system operations and manage users
+- Payment approvers who confirm fee payments and documentation
+- Staff members who check in for work and manage daily activities
+- New users who are just starting to use the system
+
+What You Will Learn
+
+After reading this manual, you will be able to:
+- Access and log into the system securely
+- Navigate the user interface confidently
+- Complete tasks specific to your role
+- Understand how different features work
+- Troubleshoot common issues independently
+- Use advanced features to enhance your experience
+- Protect your account and data
+- Get help when you need it
+
+About MyMasjidApp
+
+MyMasjidApp is a comprehensive web-based management system designed specifically for masjids and madrasahs. The system helps institutions manage students, teachers, classes, attendance, fees, exams, and results in one centralized platform. It streamlines operations, reduces paperwork, and provides real-time access to important information for all stakeholders.
+
+Key Benefits
+
+Using MyMasjidApp provides several important benefits:
+- Centralized information management for all institutional data
+- Real-time access to student records, attendance, and results
+- Efficient fee management and payment tracking
+- Streamlined communication between students, teachers, and administrators
+- Secure data storage and access control
+- Easy reporting and analytics
+- Reduced administrative workload
+- Better organization and record keeping
+
+How to Use This Manual
+
+This manual is organized into logical sections that build upon each other. If you are new to the system, start from the beginning and read through each section in order. If you are an experienced user, you can jump directly to specific sections using the table of contents.
+
+Each section includes:
+- Clear explanations of features and functions
+- Step-by-step instructions for completing tasks
+- Screenshots and visual guides where applicable
+- Tips and best practices
+- Common mistakes to avoid
+- Troubleshooting guidance
+
+Keep this manual accessible while using the system for quick reference. Bookmark frequently used sections for faster access. The manual is designed to answer your questions and help you use the system effectively.
+
+Getting Help
+
+If you encounter issues not covered in this manual:
+- Check the Troubleshooting Guide section
+- Review the Frequently Asked Questions section
+- Contact your system administrator
+- Refer to the Support and Contact Information section
+
+Remember, there is no such thing as a silly question. The manual is here to help you succeed with the system.
+
+2. SYSTEM REQUIREMENTS
+
+[Demo Image: System requirements checklist showing device, browser, and internet connection requirements]
+
+Overview
+
+Before using MyMasjidApp, it is important to ensure your device and software meet the minimum system requirements. Meeting these requirements ensures the system runs smoothly, displays correctly, and provides the best possible experience.
+
+Supported Devices
+
+MyMasjidApp is a web-based application that works on multiple device types:
+
+Desktop and Laptop Computers
+
+Desktop and laptop computers provide the best experience for using MyMasjidApp. The larger screen size makes it easier to view information, complete forms, and navigate between sections. Any modern desktop or laptop computer will work, including:
+- Windows computers running Windows 10 or later
+- Mac computers running macOS 10.14 or later
+- Linux computers with a modern web browser installed
+
+Tablet Devices
+
+Tablet devices work well for viewing information and completing basic tasks. The touch interface makes navigation intuitive. Supported tablets include:
+- iPad devices running iOS 12 or later
+- Android tablets running Android 8.0 or later
+- Windows tablets running Windows 10 or later
+
+Smartphone Devices
+
+Smartphones can be used to access the system for viewing information and completing simple tasks. However, some features may be easier to use on larger screens. Supported smartphones include:
+- iPhone devices running iOS 12 or later
+- Android phones running Android 8.0 or later
+
+Browser Requirements
+
+MyMasjidApp works best with modern, up-to-date web browsers. The following browsers are fully supported and recommended:
+
+Google Chrome
+
+Google Chrome is the recommended browser for the best experience. Chrome provides excellent compatibility, fast performance, and regular security updates. Use version 90 or later for optimal performance.
+
+Mozilla Firefox
+
+Mozilla Firefox is fully supported and provides excellent performance. Use version 88 or later for best results. Firefox is a good alternative if you prefer not to use Chrome.
+
+Microsoft Edge
+
+Microsoft Edge is fully supported, especially on Windows computers. The modern version of Edge provides excellent compatibility. Use version 90 or later.
+
+Safari
+
+Safari works well on Mac computers and iOS devices. Use Safari 14 or later on Mac, and Safari on iOS 12 or later on iPhone and iPad devices.
+
+Browser Settings
+
+To ensure the system works properly, configure your browser with these settings:
+- Enable JavaScript (required for all features)
+- Allow cookies (required for login and session management)
+- Enable pop-ups for the system website (required for some features like printing)
+- Allow location access if using location-based features
+
+How to Check Your Browser Version
+
+To check your browser version:
+1. Open your web browser
+2. Click on the menu button (usually three dots or lines in the top right corner)
+3. Look for About or Help in the menu
+4. Click on About to see your browser version
+5. Compare your version to the requirements listed above
+
+If your browser version is older than recommended, update it to the latest version for best performance and security.
+
+Internet Connection Requirements
+
+MyMasjidApp requires a stable internet connection to function. The connection is used to:
+- Load the application interface
+- Access your account and data
+- Save changes you make
+- Sync information across devices
+- Receive real-time updates
+
+Connection Speed
+
+For basic use, a minimum connection speed of 1 Mbps is recommended. This allows the system to load pages and display information without significant delays.
+
+For optimal performance, especially when uploading files or viewing reports, a connection speed of 5 Mbps or higher is recommended. Faster connections provide quicker page loads and smoother experience.
+
+Connection Type
+
+Any type of internet connection will work, including:
+- Broadband or DSL connections
+- Cable internet
+- Fiber optic internet
+- Mobile data connections (4G or 5G)
+- Wi-Fi connections
+
+Connection Stability
+
+A stable connection is more important than raw speed. Interruptions in your connection can cause:
+- Loss of unsaved work
+- Login failures
+- Slow page loading
+- Error messages
+
+If you experience frequent connection problems, consider using a more stable connection type or checking your network setup.
+
+Screen Resolution
+
+MyMasjidApp is designed to work on various screen sizes, but optimal viewing requires certain minimum resolutions:
+
+Desktop and Laptop
+
+For desktop and laptop computers, a minimum screen resolution of 1366 by 768 pixels is recommended. Higher resolutions provide better clarity and more screen space for information. The system works best on resolutions of 1920 by 1080 pixels or higher.
+
+Tablet
+
+Tablets typically have sufficient resolution for viewing the system. Most modern tablets meet the requirements automatically.
+
+Smartphone
+
+Smartphones will display the system, but some features may require scrolling or zooming on smaller screens. The system is optimized for mobile viewing, but a larger screen provides a better experience.
+
+Display Settings
+
+For best viewing experience:
+- Set your display brightness to a comfortable level
+- Adjust text size in your browser if needed (but note that the system has its own text sizing)
+- Use full screen mode when possible for more viewing space
+- Ensure proper contrast for readability
+
+JavaScript Requirements
+
+JavaScript must be enabled in your browser for MyMasjidApp to function. JavaScript is used for:
+- Interactive features and buttons
+- Form validation
+- Dynamic content loading
+- User interface interactions
+- Real-time updates
+
+JavaScript is enabled by default in all modern browsers. If you have disabled it, you must enable it to use the system.
+
+How to Enable JavaScript
+
+To enable JavaScript:
+1. Open your browser settings
+2. Look for Privacy and Security or Advanced settings
+3. Find Content Settings or Site Settings
+4. Ensure JavaScript is enabled
+5. Refresh the MyMasjidApp page
+
+If you are unsure how to enable JavaScript in your specific browser, search online for instructions for your browser type and version.
+
+Cookie Requirements
+
+Cookies must be enabled for MyMasjidApp to function properly. Cookies are used for:
+- Maintaining your login session
+- Remembering your preferences
+- Storing temporary information
+- Security features
+
+Cookies are enabled by default in all browsers. If you have disabled cookies, you must enable them to use the system.
+
+How to Enable Cookies
+
+To enable cookies:
+1. Open your browser settings
+2. Look for Privacy and Security settings
+3. Find Cookie settings
+4. Ensure cookies are enabled (usually set to Allow all cookies or similar)
+5. Refresh the MyMasjidApp page
+
+Location Services
+
+Some features in MyMasjidApp use location services, such as:
+- Staff check-in verification
+- Location-based attendance recording
+- GPS tracking for certain activities
+
+If you use these features, you must allow location access when prompted by your browser. Location access is optional and only required for specific features.
+
+How to Enable Location Services
+
+To enable location services:
+1. When the system requests location access, click Allow or Yes
+2. In your browser settings, ensure location permissions are granted for the MyMasjidApp website
+3. On mobile devices, ensure location services are enabled in your device settings
+
+Security Considerations
+
+For secure access to MyMasjidApp:
+- Use a secure, private internet connection when possible
+- Avoid using public Wi-Fi networks for sensitive operations
+- Keep your browser updated for security patches
+- Use strong passwords (see Security and Privacy section)
+- Log out when finished, especially on shared devices
+
+If you must use a public network, consider using a virtual private network (VPN) for additional security.
+
+System Compatibility Summary
+
+To use MyMasjidApp, you need:
+- A device with internet access (computer, tablet, or smartphone)
+- A modern web browser (Chrome, Firefox, Edge, or Safari)
+- An internet connection (minimum 1 Mbps recommended)
+- JavaScript enabled in your browser
+- Cookies enabled in your browser
+- Screen resolution appropriate for your device type
+
+If you meet these requirements, you are ready to use MyMasjidApp. If you have questions about your specific setup, contact your system administrator for assistance.
+
+Testing Your Setup
+
+Before using the system for important tasks, test your setup:
+1. Open your web browser
+2. Navigate to the MyMasjidApp website
+3. Verify the page loads correctly
+4. Check that all visual elements display properly
+5. Try logging in to verify connectivity
+6. Test a basic function to ensure everything works
+
+If you encounter any issues during testing, refer to the Troubleshooting Guide section or contact your system administrator.
+3. INSTALLATION AND SETUP
+
+[Demo Image: System installation screen showing setup options]
+
+Overview
+
+MyMasjidApp is a web-based application that does not require installation on your computer. You access the system through your web browser using the web address provided by your institution. However, you do need to set up your account and configure your browser for the best experience.
+
+No Software Installation Required
+
+Unlike traditional software, MyMasjidApp runs entirely in your web browser. This means:
+- You do not need to download or install any software
+- You do not need to update the application manually
+- Updates happen automatically on the server
+- You can access the system from any device with internet access
+- Your data is stored securely on the server, not on your device
+
+Accessing the System
+
+Step 1: Get the Web Address
+
+1. Contact your system administrator or institution
+2. Ask for the MyMasjidApp web address
+3. Write down the web address for future reference
+4. The web address typically looks like: https://yourmasjid.com or https://mymasjidapp.com
+
+Step 2: Open Your Web Browser
+
+1. Launch your preferred web browser (Chrome, Firefox, Edge, or Safari)
+2. Ensure your browser is updated to the latest version
+3. Close any unnecessary browser tabs for better performance
+
+Step 3: Navigate to the System
+
+1. Click in the address bar at the top of your browser
+2. Type or paste the MyMasjidApp web address
+3. Press Enter on your keyboard
+4. Wait for the login page to load
+5. You should see the MyMasjidApp login interface
+
+If the page does not load:
+- Verify you entered the web address correctly
+- Check your internet connection
+- Try refreshing the page
+- Contact your system administrator if problems persist
+
+Browser Configuration
+
+Before using MyMasjidApp, configure your browser for optimal experience:
+
+Enable JavaScript
+
+1. JavaScript must be enabled for the system to work
+2. Most browsers enable JavaScript by default
+3. If JavaScript is disabled, enable it in your browser settings
+4. See the System Requirements section for detailed instructions
+
+Enable Cookies
+
+1. Cookies must be enabled for login and session management
+2. Most browsers enable cookies by default
+3. If cookies are disabled, enable them in your browser settings
+4. See the System Requirements section for detailed instructions
+
+Allow Pop-ups
+
+1. Some features require pop-up windows
+2. Allow pop-ups for the MyMasjidApp website
+3. Configure this in your browser settings under Site Permissions
+4. Pop-ups are needed for printing reports and viewing detailed information
+
+Enable Location Services (Optional)
+
+1. Location services are optional but required for some features
+2. Features that use location include staff check-in and attendance tracking
+3. Allow location access when prompted by your browser
+4. You can deny location access if you do not use these features
+
+Account Registration
+
+Step 1: Access the Registration Page
+
+1. Navigate to the MyMasjidApp login page
+2. Look for a Register or Daftar link
+3. Click on the Register link
+4. You will be taken to the registration page
+
+Step 2: Fill Out Registration Form
+
+1. Enter your IC Number (12-digit Malaysian identity card number)
+2. You can enter it with or without hyphens (e.g., 051003060229 or 051003-06-0229)
+3. Enter your full name as it appears on your identity card
+4. Enter your email address (optional but recommended)
+5. Enter your phone number (optional but recommended)
+6. Enter your age (optional)
+7. Create a password (at least 6 characters)
+8. Confirm your password by entering it again
+
+Step 3: Submit Registration
+
+1. Review all information you entered
+2. Verify your IC number is correct
+3. Ensure your password is strong and secure
+4. Click the Register or Submit button
+5. Wait for the system to process your registration
+
+Step 4: Registration Confirmation
+
+1. If registration is successful, you will see a confirmation message
+2. You may be redirected to the login page automatically
+3. Your account may require administrator approval
+4. If approval is required, wait for notification from your administrator
+5. Once approved, you can log in to the system
+
+Registration Requirements
+
+IC Number Requirements:
+- Must be exactly 12 digits
+- Can include hyphens for formatting
+- Must be unique (not already registered)
+- Must be a valid Malaysian identity card number format
+
+Name Requirements:
+- Must match the name on your identity card
+- Use full name, not nickname
+- Capitalize first letters of each name component
+
+Email Requirements (Optional):
+- Must be a valid email format (e.g., name@example.com)
+- Must be unique if provided
+- Recommended for password recovery
+
+Password Requirements:
+- Minimum 6 characters
+- Can include letters, numbers, and special characters
+- Should be strong and secure
+- Must match the confirmation password
+
+Common Registration Errors
+
+If Registration Fails with IC Already Registered:
+- Your IC number may already be in the system
+- Try logging in instead of registering
+- Contact your administrator if you cannot log in
+- Your account may need to be activated
+
+If Registration Fails with Invalid IC Format:
+- Verify your IC number is exactly 12 digits
+- Check for typing errors
+- Remove any spaces or extra characters
+- Enter only numbers and hyphens
+
+If Registration Fails with Weak Password:
+- Ensure your password is at least 6 characters long
+- Try adding numbers or special characters
+- Make sure the password and confirmation match
+- Avoid using personal information in your password
+
+If Registration Fails with Email Already Registered:
+- The email address is already in use
+- Try logging in with your existing account
+- Use a different email address
+- Contact your administrator for assistance
+
+First-Time Login
+
+After successful registration:
+
+Step 1: Navigate to Login Page
+
+1. Go to the MyMasjidApp web address
+2. You should see the login page
+3. If you are already on the login page, proceed to Step 2
+
+Step 2: Enter Your Credentials
+
+1. Enter your IC number in the IC Number field
+2. Enter your password in the Password field
+3. If you have multiple roles, select your role from the dropdown
+4. Click the Login button
+
+Step 3: Complete Your Profile
+
+1. After logging in, you may be prompted to complete your profile
+2. Fill in any missing information
+3. Verify your contact details are correct
+4. Save your profile information
+5. You may be redirected to the dashboard after completing your profile
+
+Profile Completion
+
+Some information may be required to complete your profile:
+- Email address (if not provided during registration)
+- Phone number (if not provided during registration)
+- Address (optional but recommended)
+- Emergency contact information (optional)
+
+Complete all required fields before proceeding. Optional fields can be filled in later. Keep your profile information current for important notifications and account recovery.
+
+Account Approval
+
+If your account requires approval:
+1. Your registration will be marked as pending
+2. An administrator will review your registration
+3. You will receive a notification when your account is approved
+4. Once approved, you can log in normally
+5. Contact your administrator if approval takes longer than expected
+
+Bookmarking the System
+
+For easy access, bookmark the MyMasjidApp website:
+
+Step 1: While on the MyMasjidApp login page
+
+1. Click the star icon in your browser address bar
+2. Or press Ctrl+D (Windows/Linux) or Cmd+D (Mac)
+3. The bookmark dialog will appear
+
+Step 2: Save the Bookmark
+
+1. Choose a name for the bookmark (e.g., MyMasjidApp)
+2. Select a folder to save the bookmark (optional)
+3. Click Save or Done
+4. Your bookmark is now saved
+
+Step 3: Access the Bookmark
+
+1. Click the bookmarks menu in your browser
+2. Find your MyMasjidApp bookmark
+3. Click on it to open the system
+4. You can also add it to your bookmarks toolbar for one-click access
+
+Setting Up Multiple Devices
+
+You can access MyMasjidApp from multiple devices:
+
+Desktop or Laptop Computer:
+1. Follow the browser configuration steps above
+2. Bookmark the system for easy access
+3. Log in using your credentials
+4. Your preferences will sync across devices
+
+Tablet Device:
+1. Open your tablet web browser
+2. Navigate to the MyMasjidApp web address
+3. Bookmark the page for easy access
+4. Log in using your credentials
+5. The interface will adapt to your tablet screen size
+
+Smartphone Device:
+1. Open your smartphone web browser
+2. Navigate to the MyMasjidApp web address
+3. Add the page to your home screen for app-like access
+4. Log in using your credentials
+5. The interface will be optimized for mobile viewing
+
+Important Notes:
+- You can be logged in on multiple devices simultaneously
+- Your session remains active on each device independently
+- Log out from shared devices when finished
+- Keep your login credentials secure
+
+Troubleshooting Setup Issues
+
+If You Cannot Access the Website:
+- Verify your internet connection is working
+- Check that you entered the web address correctly
+- Try accessing the website from a different browser
+- Clear your browser cache and cookies
+- Contact your system administrator
+
+If Registration Does Not Work:
+- Verify all required fields are filled correctly
+- Check that your IC number format is correct
+- Ensure your password meets the requirements
+- Try using a different web browser
+- Contact your system administrator for assistance
+
+If Login Does Not Work After Registration:
+- Your account may require administrator approval
+- Wait for approval notification
+- Try logging in after 24 hours
+- Contact your administrator to check account status
+- Verify you are using the correct IC number and password
+
+4. APPLICATION OVERVIEW
+
+[Demo Image: Application dashboard showing main interface elements]
+
+Overview
+
+MyMasjidApp provides a comprehensive interface for managing masjid and madrasah operations. The system is organized into logical sections that make it easy to find and use the features you need. Understanding the overall structure helps you navigate efficiently and accomplish your tasks quickly.
+
+Main Interface Elements
+
+When you log into MyMasjidApp, you will see several key interface elements:
+
+Navigation Menu
+
+The navigation menu appears on the left side of the screen (or top on mobile devices). It contains links to all major sections of the system:
+- Dashboard: Your main overview page
+- Students: Student management (Pelajar)
+- Teachers: Teacher management (Guru)
+- Classes: Class management (Kelas)
+- Attendance: Attendance tracking (Kehadiran)
+- Fees: Fee management (Yuran)
+- Results: Exam results (Keputusan)
+- Reports: System reports (Laporan)
+- Settings: System and personal settings
+- Other role-specific sections based on your permissions
+
+Header Bar
+
+The header bar appears at the top of the screen and contains:
+- Your name and role indicator
+- Notification icon (if you have notifications)
+- User menu with account options
+- Language selector (if available)
+- Logout button
+
+Main Content Area
+
+The main content area displays the current page or section you are viewing. This area changes based on your navigation and shows:
+- Data tables and lists
+- Forms for entering information
+- Statistics and charts
+- Detailed information views
+- Search and filter options
+
+Footer Area
+
+The footer area appears at the bottom of the screen and may contain:
+- Copyright information
+- Version information
+- Quick links to help or support
+- System status indicators
+
+Dashboard Overview
+
+The dashboard is your starting point after logging in. It provides:
+
+For Students:
+- Monthly attendance statistics
+- Fee payment status
+- Recent exam results
+- Important announcements
+- Quick links to key features
+
+For Teachers:
+- Class statistics and information
+- Student attendance summaries
+- Upcoming exams
+- Important announcements
+- Quick actions for common tasks
+
+For Administrators:
+- Overall system statistics
+- Total students, teachers, and classes
+- Outstanding fees summary
+- Recent system activity
+- Quick access to all management functions
+
+Key Features Overview
+
+Student Management
+
+The student management section allows you to:
+- View student lists and information
+- Add new students (administrators)
+- Edit student information (administrators)
+- Assign students to classes (administrators)
+- View student attendance history
+- View student fee records
+- View student exam results
+
+Teacher Management
+
+The teacher management section allows you to:
+- View teacher lists and information
+- Add new teachers (administrators)
+- Edit teacher information (administrators)
+- Assign teachers to classes (administrators)
+- View teacher schedules
+- Manage teacher permissions
+
+Class Management
+
+The class management section allows you to:
+- View all classes
+- Create new classes (administrators)
+- Edit class information (administrators)
+- Set class schedules
+- Set class fees
+- Assign students and teachers to classes
+- View class statistics
+
+Attendance Tracking
+
+The attendance tracking section allows you to:
+- Mark student attendance (teachers and administrators)
+- View attendance records
+- Filter attendance by date, class, or student
+- Upload attendance proof (photos)
+- Generate attendance reports
+- View attendance statistics
+
+Fee Management
+
+The fee management section allows you to:
+- View fee records
+- Generate monthly fees (administrators)
+- Mark fees as paid
+- View payment history
+- Process online payments
+- Generate fee reports
+- View outstanding fees
+
+Exam and Results Management
+
+The exam and results section allows you to:
+- Create exams (teachers and administrators)
+- View exam lists
+- Enter exam results (teachers and administrators)
+- View student results
+- Upload result slips
+- Generate result reports
+- Calculate grades
+
+Reports and Analytics
+
+The reports section provides:
+- Attendance reports
+- Fee payment reports
+- Exam result reports
+- Student performance analytics
+- Class statistics
+- System-wide statistics
+- Exportable reports in various formats
+
+Settings and Configuration
+
+The settings section allows you to:
+- Configure system settings (administrators)
+- Update personal information
+- Change password
+- Configure preferences
+- Manage notifications
+- Set up payment methods
+- Configure location settings
+
+Navigation Patterns
+
+Understanding how navigation works helps you move efficiently through the system:
+
+Menu Navigation:
+- Click on menu items to navigate to different sections
+- Menu items may expand to show sub-sections
+- Current section is highlighted in the menu
+- Use the back button in your browser to return to previous pages
+
+Breadcrumb Navigation:
+- Breadcrumbs show your current location in the system
+- Click on breadcrumb items to navigate to parent sections
+- Breadcrumbs help you understand the system hierarchy
+
+Button Navigation:
+- Action buttons perform specific functions
+- Save buttons save your changes
+- Cancel buttons discard changes and return
+- Delete buttons remove items (with confirmation)
+- Edit buttons allow you to modify information
+
+Tab Navigation:
+- Some pages use tabs to organize content
+- Click tabs to switch between different views
+- Current tab is highlighted
+- Tabs help organize related information
+
+Search and Filter
+
+Most list pages include search and filter options:
+
+Search Functionality:
+- Enter keywords in the search box
+- Search typically filters by name or ID
+- Search results update as you type
+- Clear search to see all items again
+
+Filter Options:
+- Use dropdown menus to filter by category
+- Common filters include date ranges, status, and type
+- Multiple filters can be applied simultaneously
+- Clear filters to reset the view
+
+Sorting Options:
+- Click column headers to sort tables
+- Sort ascending or descending
+- Sorting helps organize large lists
+- Current sort is indicated by arrows
+
+Data Display
+
+Information is displayed in various formats:
+
+Tables:
+- Most lists are displayed in tables
+- Tables show multiple columns of information
+- Click rows to view details or edit
+- Tables can be sorted and filtered
+
+Cards:
+- Some information is displayed in card format
+- Cards show summary information
+- Click cards to view full details
+- Cards are visually appealing and easy to scan
+
+Forms:
+- Forms are used for entering and editing information
+- Required fields are typically marked with asterisks
+- Forms include validation to ensure data quality
+- Save or Cancel buttons complete form actions
+
+Charts and Graphs:
+- Statistics are often displayed in charts
+- Charts provide visual representation of data
+- Different chart types show different perspectives
+- Charts can often be exported or printed
+
+Notifications and Alerts
+
+The system provides various types of notifications:
+
+Success Messages:
+- Green notifications confirm successful actions
+- Appear after completing tasks like saving or deleting
+- Automatically disappear after a few seconds
+- Can be dismissed manually
+
+Error Messages:
+- Red notifications indicate errors or problems
+- Explain what went wrong
+- Provide guidance on how to fix issues
+- Require acknowledgment before continuing
+
+Warning Messages:
+- Yellow or orange notifications warn about potential issues
+- Highlight important information
+- May require confirmation before proceeding
+- Help prevent mistakes
+
+Information Messages:
+- Blue notifications provide general information
+- Share updates or tips
+- May not require action
+- Keep users informed
+
+Responsive Design
+
+MyMasjidApp adapts to different screen sizes:
+
+Desktop View:
+- Full menu on the left side
+- Large content area
+- All features visible
+- Optimized for mouse and keyboard
+
+Tablet View:
+- Collapsible menu
+- Medium-sized content area
+- Touch-optimized controls
+- Responsive layout
+
+Mobile View:
+- Hamburger menu icon
+- Full-width content
+- Touch-friendly buttons
+- Simplified navigation
+
+5. GETTING STARTED
+
+[Demo Image: First-time user dashboard with welcome message and quick start guide]
+
+Overview
+
+This section guides you through your first steps in MyMasjidApp. By following these instructions, you will learn how to log in, navigate the interface, complete basic tasks, and understand the essential features you need for daily use.
+
+First Login Experience
+
+Step 1: Access the Login Page
+
+1. Open your web browser
+2. Navigate to the MyMasjidApp web address
+3. The login page should appear
+4. If you see a different page, look for a Login link or button
+
+Step 2: Enter Your Credentials
+
+1. Enter your IC number in the IC Number field
+2. The field may show @masjid.com after it, indicating your unique identifier
+3. Enter your password in the Password field
+4. The password field hides your input for security (shows dots or asterisks)
+5. If you have multiple roles, select your role from the dropdown menu
+
+Step 3: Click Login
+
+1. Review your credentials to ensure they are correct
+2. Click the Login button
+3. Wait for the system to authenticate you
+4. A loading indicator may appear during authentication
+
+Step 4: Complete Your Profile (If Required)
+
+1. If prompted, complete your profile information
+2. Fill in any required fields marked with asterisks
+3. Verify your contact information is correct
+4. Click Save or Continue to proceed
+5. You will be taken to the dashboard after completing your profile
+
+Understanding the Dashboard
+
+After logging in, you will see the dashboard. The dashboard provides:
+
+Overview Information:
+- Key statistics relevant to your role
+- Recent activity and updates
+- Important announcements
+- Quick links to frequently used features
+
+Navigation Menu:
+- Access to all system sections
+- Organized by category
+- Role-specific menu items
+- Current location indicator
+
+For Students:
+- Monthly attendance summary
+- Fee payment status
+- Recent exam results
+- Upcoming important dates
+- Announcements from administrators
+
+For Teachers:
+- Classes you teach
+- Student attendance summaries
+- Upcoming exams
+- Tasks requiring attention
+- Important announcements
+
+For Administrators:
+- Total students, teachers, and classes
+- Outstanding fees
+- System activity summary
+- Quick access to all management functions
+- System health indicators
+
+Basic Navigation
+
+Moving Between Sections:
+
+1. Look at the navigation menu on the left side of the screen
+2. Click on any menu item to navigate to that section
+3. Menu items may have sub-items that expand when clicked
+4. The current section is highlighted in the menu
+5. Use your browser back button to return to previous pages
+
+Using Search:
+
+1. Most list pages have a search box at the top
+2. Type keywords to search for specific items
+3. Search results filter as you type
+4. Clear the search to see all items again
+5. Search typically looks in names, IDs, and other key fields
+
+Filtering Information:
+
+1. Look for filter dropdowns or options
+2. Select criteria to filter the list
+3. Multiple filters can be applied together
+4. Clear filters to reset the view
+5. Filters help you find specific information quickly
+
+Viewing Details:
+
+1. Click on any item in a list to view details
+2. Detail pages show comprehensive information
+3. Use the back button to return to the list
+4. Some detail pages have Edit or Delete buttons
+5. Details pages may have tabs for related information
+
+Essential Tasks by Role
+
+For Students:
+
+Viewing Your Attendance:
+1. Click on Attendance or Kehadiran in the menu
+2. View your attendance records
+3. Filter by date range if needed
+4. See your attendance statistics
+5. Check for any missing records
+
+Checking Your Fees:
+1. Click on Fees or Yuran in the menu
+2. View your fee records
+3. See which fees are paid and which are outstanding
+4. Click on a fee to view payment details
+5. Pay fees online if the option is available
+
+Viewing Your Results:
+1. Click on Results or Keputusan in the menu
+2. View your exam results
+3. See your grades and marks
+4. Download result slips if available
+5. Compare your performance over time
+
+For Teachers:
+
+Viewing Your Classes:
+1. Click on Classes or Kelas in the menu
+2. See all classes assigned to you
+3. Click on a class to view details
+4. See the class schedule and student list
+5. Access class-specific features
+
+Marking Attendance:
+1. Click on Attendance or Kehadiran in the menu
+2. Select the class and date
+3. Mark each student as present, absent, late, or excused
+4. Upload attendance proof if required
+5. Save the attendance record
+
+Entering Exam Results:
+1. Click on Results or Keputusan in the menu
+2. Select the exam
+3. Enter marks for each student
+4. Upload result slips if available
+5. Save the results
+
+For Administrators:
+
+Managing Students:
+1. Click on Students or Pelajar in the menu
+2. View the student list
+3. Add new students using the Add button
+4. Edit student information by clicking on a student
+5. Assign students to classes
+6. View student details and history
+
+Managing Teachers:
+1. Click on Teachers or Guru in the menu
+2. View the teacher list
+3. Add new teachers using the Add button
+4. Edit teacher information by clicking on a teacher
+5. Assign teachers to classes
+6. Manage teacher permissions
+
+Managing Classes:
+1. Click on Classes or Kelas in the menu
+2. View all classes
+3. Create new classes using the Create button
+4. Edit class information by clicking on a class
+5. Set class schedules and fees
+6. Assign students and teachers
+
+Common Actions
+
+Viewing Information:
+- Click on items in lists to view details
+- Use search to find specific items
+- Use filters to narrow down lists
+- Sort tables by clicking column headers
+- Navigate between related items
+
+Editing Information:
+- Click Edit button on detail pages
+- Make changes to the form fields
+- Review your changes before saving
+- Click Save to apply changes
+- Click Cancel to discard changes
+
+Adding New Items:
+- Click Add or Create button on list pages
+- Fill in the required form fields
+- Complete optional fields as needed
+- Review your information
+- Click Save to create the item
+
+Deleting Items:
+- Click Delete button (administrators only)
+- Confirm the deletion when prompted
+- Deletion may be permanent
+- Some items cannot be deleted if they have dependencies
+- Always verify before deleting
+
+Saving Your Work
+
+Always save your work:
+- Click Save or Submit buttons to save changes
+- Wait for confirmation messages
+- Do not close the browser until changes are saved
+- Use Cancel if you do not want to save changes
+- Some forms auto-save drafts (if available)
+
+Logging Out
+
+When you finish using the system:
+
+Step 1: Click on Your Name
+
+1. Look at the top right corner of the screen
+2. Click on your name or profile icon
+3. A dropdown menu will appear
+
+Step 2: Select Logout
+
+1. Click on Logout or Keluar in the dropdown menu
+2. Confirm logout if prompted
+3. You will be redirected to the login page
+4. Your session will be ended securely
+
+Important: Always log out when finished, especially on shared computers or devices. Logging out protects your account and prevents unauthorized access.
+
+Getting Help
+
+If you need help while using the system:
+
+1. Look for Help or Bantuan links in the interface
+2. Check the user manual for detailed instructions
+3. Contact your system administrator
+4. Look for tooltips or help icons on forms
+5. Review error messages for guidance
+
+Next Steps
+
+After completing these basic steps, you should:
+- Explore the features available to your role
+- Complete your profile information
+- Familiarize yourself with the navigation
+- Try common tasks relevant to your role
+- Read relevant sections of this manual for detailed instructions
+
+6. CORE FEATURES
+
+[Demo Image: Core features overview showing attendance, fees, results, and class management]
+
+Overview
+
+This section covers the core features of MyMasjidApp that you will use most frequently. These features are essential for daily operations and form the foundation of the system's functionality.
+
+Student Management
+
+Viewing Student List:
+
+1. Click on Students or Pelajar in the navigation menu
+2. The student list page will display all students
+3. Use the search box to find specific students by name or IC number
+4. Use filters to narrow down the list by class or status
+5. Click on a student's name to view detailed information
+
+Viewing Student Details:
+
+1. Click on any student in the list
+2. The student detail page shows:
+   - Personal information (name, IC, contact details)
+   - Class assignment
+   - Registration date
+   - Attendance history
+   - Fee records
+   - Exam results
+   - Profile photo if available
+
+Adding New Students (Administrators Only):
+
+1. Click on Students or Pelajar in the navigation menu
+2. Click the Add Student or Tambah Pelajar button
+3. Fill in the required information:
+   - IC number (12 digits)
+   - Full name
+   - Email address (optional)
+   - Phone number (optional)
+   - Age (optional)
+   - Address (optional)
+4. Click Save to create the student account
+5. The student will be added to the system
+
+Editing Student Information (Administrators Only):
+
+1. Navigate to the student detail page
+2. Click the Edit button
+3. Make changes to the student information
+4. Review your changes
+5. Click Save to apply changes
+6. Click Cancel to discard changes
+
+Assigning Students to Classes (Administrators Only):
+
+1. Navigate to the student detail page
+2. Click Edit or Assign to Class
+3. Select the class from the dropdown menu
+4. Click Save to assign the student
+5. The student will be moved to the selected class
+
+Teacher Management
+
+Viewing Teacher List:
+
+1. Click on Teachers or Guru in the navigation menu
+2. The teacher list page displays all teachers
+3. Use search to find specific teachers
+4. Use filters to view teachers by expertise or status
+5. Click on a teacher's name to view details
+
+Viewing Teacher Details:
+
+1. Click on any teacher in the list
+2. The teacher detail page shows:
+   - Personal information
+   - Expertise areas
+   - Classes assigned
+   - Schedule information
+   - Contact details
+
+Adding New Teachers (Administrators Only):
+
+1. Click on Teachers or Guru in the navigation menu
+2. Click the Add Teacher or Tambah Guru button
+3. Fill in the required information:
+   - IC number
+   - Full name
+   - Email address (optional)
+   - Phone number (optional)
+   - Expertise areas
+4. Click Save to create the teacher account
+
+Assigning Teachers to Classes (Administrators Only):
+
+1. Navigate to the teacher detail page
+2. Click Edit or Assign Classes
+3. Select classes from the list
+4. Click Save to assign the teacher
+5. The teacher will be assigned to the selected classes
+
+Class Management
+
+Viewing Class List:
+
+1. Click on Classes or Kelas in the navigation menu
+2. The class list displays all classes
+3. Use search to find specific classes
+4. Use filters to view classes by level or status
+5. Click on a class name to view details
+
+Viewing Class Details:
+
+1. Click on any class in the list
+2. The class detail page shows:
+   - Class name and level
+   - Schedule information
+   - Assigned teacher
+   - Student list
+   - Class capacity
+   - Fee information
+
+Creating New Classes (Administrators Only):
+
+1. Click on Classes or Kelas in the navigation menu
+2. Click the Create Class or Cipta Kelas button
+3. Fill in the required information:
+   - Class name
+   - Level (e.g., Beginner, Intermediate, Advanced)
+   - Schedule (days and times)
+   - Fee amount
+   - Capacity (maximum students)
+   - Assign a teacher (optional)
+4. Click Save to create the class
+
+Editing Class Information (Administrators Only):
+
+1. Navigate to the class detail page
+2. Click the Edit button
+3. Make changes to the class information
+4. Review your changes
+5. Click Save to apply changes
+
+Attendance Management
+
+Viewing Attendance Records:
+
+1. Click on Attendance or Kehadiran in the navigation menu
+2. The attendance page displays attendance records
+3. Use filters to view attendance by:
+   - Date range
+   - Class
+   - Student
+   - Status (Present, Absent, Late, Excused)
+4. Use search to find specific records
+
+For Students:
+
+1. Click on Attendance or Kehadiran in the navigation menu
+2. View your personal attendance records
+3. See your attendance statistics
+4. Filter by date range to see monthly or yearly records
+5. Check your attendance percentage
+
+For Teachers:
+
+Marking Attendance:
+
+1. Click on Attendance or Kehadiran in the navigation menu
+2. Select the class from the dropdown
+3. Select the date
+4. For each student, mark their status:
+   - Present (Hadir)
+   - Absent (Tidak Hadir)
+   - Late (Lewat)
+   - Excused (Cuti or Sakit)
+5. Upload attendance proof photo if required
+6. Add notes if needed
+7. Click Save to record attendance
+
+Bulk Attendance Entry:
+
+1. Select the class and date
+2. Use the Select All or Select None buttons
+3. Mark multiple students at once
+4. Upload proof photo for the entire class
+5. Click Save to record all attendance
+
+Viewing Attendance Statistics:
+
+1. Navigate to the attendance page
+2. View statistics for:
+   - Individual students
+   - Entire classes
+   - Date ranges
+3. See attendance percentages
+4. Identify students with low attendance
+5. Export attendance reports
+
+Fee Management
+
+Viewing Fee Records:
+
+1. Click on Fees or Yuran in the navigation menu
+2. The fees page displays all fee records
+3. Use filters to view fees by:
+   - Payment status (Paid, Outstanding, Pending)
+   - Date range
+   - Class
+   - Student
+4. Use search to find specific fee records
+
+For Students:
+
+Viewing Your Fees:
+
+1. Click on Fees or Yuran in the navigation menu
+2. View all your fee records
+3. See which fees are paid and which are outstanding
+4. Check payment dates and amounts
+5. View payment receipts if available
+
+Paying Fees Online:
+
+1. Navigate to the fees page
+2. Find the outstanding fee you want to pay
+3. Click on the fee record
+4. Click Pay Now or Bayar Sekarang
+5. Select payment method
+6. Enter payment details
+7. Confirm payment
+8. Wait for payment confirmation
+9. Your fee status will update automatically
+
+Viewing Payment History:
+
+1. Navigate to the fees page
+2. Click Payment History or Sejarah Pembayaran
+3. View all your past payments
+4. See payment dates, amounts, and methods
+5. Download payment receipts
+
+For Administrators:
+
+Generating Monthly Fees:
+
+1. Navigate to the fees page
+2. Click Generate Fees or Jana Yuran
+3. Select the month and year
+4. Select the classes to generate fees for
+5. Review the fee amounts
+6. Click Generate to create fee records
+7. Fees will be created for all students in selected classes
+
+Marking Fees as Paid:
+
+1. Navigate to the fee record
+2. Click Mark as Paid or Tandakan Terbayar
+3. Enter payment details:
+   - Payment date
+   - Payment method
+   - Receipt number (optional)
+   - Upload receipt image (optional)
+4. Click Save to update fee status
+
+Viewing Fee Reports:
+
+1. Navigate to the fees page
+2. Click Reports or Laporan
+3. View fee statistics:
+   - Total fees generated
+   - Total fees collected
+   - Outstanding fees
+   - Collection rate
+4. Filter by date range, class, or student
+5. Export reports to Excel or PDF
+
+Exam and Results Management
+
+Viewing Exam List:
+
+1. Click on Results or Keputusan in the navigation menu
+2. The exams page displays all exams
+3. Use filters to view exams by:
+   - Date range
+   - Class
+   - Subject
+4. Use search to find specific exams
+
+For Students:
+
+Viewing Your Results:
+
+1. Click on Results or Keputusan in the navigation menu
+2. View all your exam results
+3. See marks and grades for each exam
+4. View result slips if uploaded
+5. Compare your performance over time
+6. Download result slips for your records
+
+For Teachers:
+
+Creating Exams:
+
+1. Navigate to the Results or Keputusan page
+2. Click Create Exam or Cipta Peperiksaan
+3. Fill in the exam information:
+   - Exam name
+   - Subject
+   - Date
+   - Class
+   - Maximum marks
+4. Click Save to create the exam
+
+Entering Exam Results:
+
+1. Navigate to the exam detail page
+2. Click Enter Results or Masukkan Keputusan
+3. For each student, enter:
+   - Marks obtained
+   - Grade (may be calculated automatically)
+4. Upload result slips if available
+5. Add notes if needed
+6. Click Save to record results
+
+Bulk Result Entry:
+
+1. Select the exam
+2. Use the bulk entry form
+3. Enter marks for multiple students at once
+4. Upload class result slip
+5. Click Save to record all results
+
+Editing Results:
+
+1. Navigate to the result record
+2. Click Edit
+3. Update marks or grades
+4. Upload new result slips if needed
+5. Click Save to update results
+
+Viewing Result Statistics:
+
+1. Navigate to the results page
+2. View statistics for:
+   - Individual students
+   - Entire classes
+   - Specific exams
+3. See average marks and grades
+4. Identify top performers
+5. Export result reports
+
+7. ADVANCED FEATURES
+
+[Demo Image: Advanced features showing reports, analytics, exports, and system configuration]
+
+Overview
+
+This section covers advanced features that provide additional functionality for administrators and power users. These features help you analyze data, generate reports, and customize the system to meet your specific needs.
+
+Reports and Analytics
+
+Accessing Reports:
+
+1. Click on Reports or Laporan in the navigation menu
+2. The reports page displays available report types
+3. Select the type of report you want to generate
+4. Configure report parameters
+5. Generate and view the report
+
+Available Report Types:
+
+Overview Report:
+- System-wide statistics
+- Total students, teachers, and classes
+- Overall attendance rates
+- Fee collection summary
+- Performance metrics
+
+Student Report:
+- Detailed student information
+- Attendance records
+- Fee payment history
+- Exam results
+- Performance analysis
+
+Class Report:
+- Class statistics
+- Student enrollment
+- Attendance rates
+- Performance metrics
+- Fee collection
+
+Fee Report:
+- Fee generation summary
+- Payment collection analysis
+- Outstanding fees
+- Payment trends
+- Collection rates
+
+Attendance Report:
+- Attendance statistics
+- Attendance rates by class or student
+- Absenteeism analysis
+- Trends over time
+- Patterns and insights
+
+Results Report:
+- Exam performance analysis
+- Grade distributions
+- Student performance rankings
+- Subject-wise performance
+- Improvement trends
+
+Generating Reports:
+
+1. Select the report type
+2. Set date range if applicable
+3. Select filters (class, student, etc.)
+4. Click Generate Report
+5. Wait for the report to be generated
+6. View the report on screen
+7. Export if needed
+
+Exporting Reports:
+
+1. After generating a report, click Export
+2. Select export format:
+   - Excel (XLSX) for spreadsheets
+   - PDF for documents
+   - CSV for data analysis
+   - Word (DOCX) for formatted documents
+3. Click Download
+4. The file will be saved to your computer
+5. Open the file to view or share
+
+Data Export
+
+Exporting Student Data:
+
+1. Navigate to Students or Pelajar page
+2. Apply filters if needed
+3. Click Export button
+4. Select export format (Excel, CSV, PDF)
+5. Click Download
+6. The file contains all student information
+
+Exporting Attendance Data:
+
+1. Navigate to Attendance or Kehadiran page
+2. Set date range and filters
+3. Click Export button
+4. Select format
+5. Click Download
+6. The file contains attendance records
+
+Exporting Fee Data:
+
+1. Navigate to Fees or Yuran page
+2. Apply filters
+3. Click Export button
+4. Select format
+5. Click Download
+6. The file contains fee records
+
+Exporting Result Data:
+
+1. Navigate to Results or Keputusan page
+2. Select exams or classes
+3. Click Export button
+4. Select format
+5. Click Download
+6. The file contains exam results
+
+System Configuration (Administrators Only)
+
+Accessing System Settings:
+
+1. Click on Settings in the navigation menu
+2. The settings page displays configuration options
+3. Navigate between different setting categories
+4. Make changes as needed
+5. Save changes
+
+QR Code Configuration:
+
+1. Navigate to Settings
+2. Click QR Code Settings tab
+3. Upload QR code image (optional)
+4. Enter QR code link (optional)
+5. Enable or disable custom QR code
+6. Click Save
+7. QR code will appear on payment pages
+
+Check-in Location Configuration:
+
+1. Navigate to Settings
+2. Click Check-in Settings tab
+3. Set masjid location:
+   - Enter latitude
+   - Enter longitude
+   - Set check-in radius (in meters)
+4. Enter Google Maps API key (optional)
+5. Click Save
+6. Location-based check-in will use these settings
+
+Contact Information Configuration:
+
+1. Navigate to Settings
+2. Click Contact Settings tab
+3. Enter contact information:
+   - Institution name
+   - Address
+   - Phone number
+   - Email address
+   - Website (optional)
+4. Click Save
+5. Contact information will be displayed throughout the system
+
+Backup and Archive (Administrators Only)
+
+Exporting Database Backup:
+
+1. Navigate to Settings
+2. Click Backup tab
+3. Click Export Backup button
+4. Select what to include:
+   - All data
+   - Specific year
+   - Specific tables
+5. Click Generate Backup
+6. Wait for backup to be generated
+7. Download the backup file
+8. Save the backup file securely
+
+Viewing Backup History:
+
+1. Navigate to Settings
+2. Click Backup tab
+3. View list of previous backups
+4. See backup date, size, and type
+5. Download previous backups if needed
+6. Delete old backups if no longer needed
+
+Archiving Academic Year:
+
+1. Navigate to Settings
+2. Click Archive tab
+3. Select the year to archive
+4. Review what will be archived
+5. Click Archive Year
+6. Confirm the action
+7. Wait for archiving to complete
+8. Archived data will be preserved for future reference
+
+Yearly Database Management:
+
+1. Navigate to Settings
+2. Click Archive tab
+3. Create new academic year database
+4. Select data to migrate (students, teachers, classes)
+5. Reset transactional data (fees, attendance, results)
+6. Set new year as active
+7. Old year data will be archived
+
+Announcements Management
+
+Creating Announcements (Administrators Only):
+
+1. Click on Announcements or Pengumuman in the navigation menu
+2. Click Create Announcement or Cipta Pengumuman
+3. Fill in announcement details:
+   - Title
+   - Content
+   - Priority (Urgent, High, Normal, Low)
+   - Target audience (All, Students, Teachers, Admin)
+   - Start date
+   - End date
+4. Click Publish to make announcement visible
+5. Click Save Draft to save for later
+
+Viewing Announcements:
+
+1. Click on Announcements or Pengumuman
+2. View all active announcements
+3. Announcements are sorted by priority
+4. Click on an announcement to view full details
+5. Important announcements appear on the dashboard
+
+Editing Announcements:
+
+1. Navigate to the announcement detail page
+2. Click Edit
+3. Make changes to the announcement
+4. Click Save to update
+5. Click Delete to remove announcement
+
+Managing Announcements:
+
+1. View list of all announcements (active and draft)
+2. Filter by status, priority, or target audience
+3. Edit or delete announcements as needed
+4. Republish expired announcements if needed
+
+User Management (Administrators Only)
+
+Viewing All Users:
+
+1. Click on All Users in the navigation menu
+2. View list of all system users
+3. See user roles and status
+4. Use search to find specific users
+5. Filter by role or status
+
+Approving Registrations:
+
+1. Click on Pending Registrations in the navigation menu
+2. View list of users awaiting approval
+3. Review registration information
+4. Click Approve to activate the account
+5. Click Reject to deny registration
+6. Add notes if needed
+
+Managing User Roles:
+
+1. Navigate to user detail page
+2. Click Edit Roles
+3. Select or deselect roles
+4. Click Save to update roles
+5. User permissions will update automatically
+
+Resetting Passwords:
+
+1. Navigate to user detail page
+2. Click Reset Password
+3. Confirm the action
+4. User will need to set a new password on next login
+5. User will receive notification about password reset
+
+Deactivating Users:
+
+1. Navigate to user detail page
+2. Click Deactivate
+3. Confirm the action
+4. User account will be deactivated
+5. User will not be able to log in
+
+Admin Actions and Audit Trail
+
+Viewing Admin Actions:
+
+1. Click on Recycle Bin or Admin Actions in the navigation menu
+2. View list of all administrative actions
+3. See what was deleted, created, or modified
+4. See who performed the action and when
+5. Filter by action type, user, or date
+
+Undoing Actions:
+
+1. Navigate to Admin Actions page
+2. Find the action you want to undo
+3. Click Undo if available
+4. Confirm the undo action
+5. The action will be reversed
+6. Data will be restored if applicable
+
+Viewing Action Details:
+
+1. Click on any action in the list
+2. View detailed information:
+   - Action type
+   - User who performed action
+   - Date and time
+   - Before and after data
+   - Related records
+3. Export action log if needed
+
+Activity Timeline
+
+Viewing Activity Timeline:
+
+1. Click on Activity Timeline in the navigation menu
+2. View chronological list of all system activities
+3. See activities by:
+   - Date and time
+   - User
+   - Type
+   - Category
+4. Filter activities as needed
+5. Search for specific activities
+
+Activity Types:
+
+- User login and logout
+- Data creation, updates, and deletions
+- Attendance marking
+- Fee payments
+- Result entries
+- System configuration changes
+- User management actions
+
+Notification Center
+
+Accessing Notifications:
+
+1. Click on the notification icon in the header
+2. Or navigate to Notification Center
+3. View all your notifications
+4. Notifications are sorted by date (newest first)
+5. Unread notifications are highlighted
+
+Notification Types:
+
+- System announcements
+- Registration approvals
+- Payment confirmations
+- Important updates
+- Reminders
+- Action requests
+
+Managing Notifications:
+
+1. Mark notifications as read
+2. Delete notifications
+3. Filter by type or date
+4. Clear all notifications
+5. Configure notification preferences
+
+8. USER ROLES AND PERMISSIONS
+
+[Demo Image: User roles and permissions matrix showing different access levels]
+
+Overview
+
+MyMasjidApp uses a role-based access control system. Each user has one or more roles that determine what features they can access and what actions they can perform. Understanding roles and permissions helps you know what you can do in the system.
+
+Available Roles
+
+Student Role:
+
+The student role is for registered students. Students can:
+- View their own information
+- View their attendance records
+- View their fee records
+- Pay fees online
+- View their exam results
+- Download result slips
+- View announcements
+- Update their profile information
+- Change their password
+
+Students cannot:
+- View other students' information
+- Mark attendance
+- Enter exam results
+- Manage classes or users
+- Access administrative functions
+
+Teacher Role:
+
+The teacher role is for registered teachers. Teachers can:
+- View their assigned classes
+- View students in their classes
+- Mark attendance for their classes
+- Enter exam results for their classes
+- Upload attendance proof photos
+- Upload result slips
+- View class statistics
+- View announcements
+- Update their profile
+- Change their password
+
+Teachers cannot:
+- Create or delete classes
+- Manage users
+- View all system data
+- Access administrative functions
+- Modify system settings
+
+Administrator Role:
+
+The administrator role has full system access. Administrators can:
+- Manage all users (create, edit, delete)
+- Manage all students
+- Manage all teachers
+- Create and manage classes
+- View all attendance records
+- Generate and manage fees
+- Create exams
+- View all results
+- Create announcements
+- Configure system settings
+- Export data and generate reports
+- View audit logs and admin actions
+- Archive academic years
+- Manage backups
+
+Administrators have access to all features and can perform all actions in the system.
+
+Payment Approver (IB) Role:
+
+The IB (Imam Bilal) role is for payment approvers. IB users can:
+- View payment reports
+- Confirm fee payments
+- Verify payment documentation
+- Approve or reject payments
+- View payment history
+- View class reports
+- View announcements
+
+IB users cannot:
+- Create or modify fees
+- Manage users
+- Mark attendance
+- Enter exam results
+- Access administrative functions
+
+PIC (Person in Charge) Role:
+
+The PIC role has special administrative permissions. PIC users can:
+- Manage students in their area
+- View and manage attendance
+- View and manage fees
+- Approve registrations
+- Manage user roles (limited)
+- View reports
+- Access PIC-specific functions
+
+Multiple Roles
+
+Users can have multiple roles simultaneously. For example:
+- A user can be both a teacher and an administrator
+- A user can be a student and also have teacher permissions
+- Roles are assigned based on responsibilities
+
+When a user has multiple roles:
+- They can switch between roles using the role selector
+- Each role has its own permissions
+- The active role determines what features are available
+- Users select their role during login
+
+Role Selection
+
+During Login:
+
+1. Enter your IC number and password
+2. If you have multiple roles, a role dropdown appears
+3. Select the role you want to use for this session
+4. Click Login
+5. The system will open with the selected role's permissions
+
+Changing Roles During Session:
+
+1. Click on your name in the top right corner
+2. Select Switch Role or Tukar Peranan
+3. Choose the role you want to use
+4. The system will refresh with the new role's permissions
+5. Some pages may redirect based on role
+
+Permission Levels
+
+Read-Only Permissions:
+
+Some features allow read-only access:
+- Users can view information but cannot modify it
+- Examples: Students viewing their own data
+- Some reports are read-only
+
+Edit Permissions:
+
+Some features allow editing:
+- Users can view and modify information
+- Examples: Teachers editing their class information
+- Changes are tracked in the audit log
+
+Full Control Permissions:
+
+Full control allows all actions:
+- Create, read, update, and delete
+- Examples: Administrators managing all data
+- All actions are logged
+
+Role-Specific Features
+
+Dashboard Features:
+
+- Students see: Personal attendance, fees, results
+- Teachers see: Their classes, student lists, tasks
+- Administrators see: System-wide statistics, all data
+- IB see: Payment reports, pending approvals
+
+Menu Items:
+
+- Different roles see different menu items
+- Menu items are filtered based on permissions
+- Hidden items are not accessible
+- Some items are available but show limited data
+
+Data Access:
+
+- Students see only their own data
+- Teachers see data for their classes only
+- Administrators see all data
+- IB see payment-related data only
+
+Understanding Your Role
+
+To see what role you have:
+
+1. Look at the top right corner of the screen
+2. Your role is displayed next to your name
+3. Click on your name to see all available roles
+4. The current active role determines your permissions
+
+To understand what you can do:
+
+1. Review this manual's role-specific sections
+2. Check the features available in your menu
+3. Contact your administrator for clarification
+4. Try accessing features to see what is available
+
+Requesting Role Changes
+
+If you need different permissions:
+
+1. Contact your system administrator
+2. Explain why you need additional permissions
+3. Administrator will review your request
+4. If approved, your role will be updated
+5. Log out and log back in to see changes
+
+Role Security
+
+Roles are secure:
+- Only administrators can assign roles
+- Role changes are logged
+- Permissions are enforced by the system
+- Users cannot change their own roles
+- Role assignments require administrator approval
+
+9. SETTINGS AND CUSTOMIZATION
+
+[Demo Image: Settings page showing personal and system configuration options]
+
+Overview
+
+MyMasjidApp provides various settings and customization options to personalize your experience and configure system behavior. This section covers both personal settings available to all users and system settings available to administrators.
+
+Personal Settings
+
+Accessing Personal Settings:
+
+1. Click on your name in the top right corner
+2. Select Personal Settings or Tetapan Peribadi
+3. Or click Settings and then Personal Settings
+4. The personal settings page will open
+
+Profile Settings
+
+Updating Your Profile:
+
+1. Navigate to Personal Settings
+2. Click Profile tab
+3. View your current profile information
+4. Edit any fields you want to change:
+   - Email address
+   - Phone number
+   - Address (if applicable)
+5. Click Save to update your profile
+6. Changes will be reflected immediately
+
+Profile Information:
+
+- Name (cannot be changed by user, contact administrator)
+- IC number (cannot be changed by user)
+- Email address (optional but recommended)
+- Phone number (optional but recommended)
+- Address (optional)
+- Profile photo (if applicable)
+
+Password Settings
+
+Changing Your Password:
+
+1. Navigate to Personal Settings
+2. Click Password tab
+3. Enter your current password
+4. Enter your new password
+5. Confirm your new password
+6. Click Save to update password
+7. You may need to log in again with the new password
+
+Password Requirements:
+
+- Minimum 6 characters
+- Can include letters, numbers, and special characters
+- Should be unique and secure
+- Avoid using personal information
+- Change password regularly for security
+
+Showing Password:
+
+- Click the eye icon to show or hide password
+- Verify password before saving
+- Ensure password is correct before submitting
+
+Language Preferences
+
+Changing Language:
+
+1. Navigate to Personal Settings
+2. Click Language or Bahasa tab
+3. Select your preferred language:
+   - Bahasa Melayu (Malay)
+   - English
+   - Arabic (if available)
+4. Language preference will be saved
+5. Interface will update to selected language
+
+Language Settings:
+
+- Language preference is saved per user
+- Interface elements are translated
+- Some content may remain in original language
+- Language can be changed at any time
+
+Color Scheme Preferences
+
+Changing Color Scheme:
+
+1. Navigate to Personal Settings
+2. Click Appearance or Tema tab
+3. Select color scheme:
+   - Summer theme
+   - Winter theme
+   - Autumn theme
+   - Spring theme
+   - Dark theme (if available)
+4. Preview the color scheme
+5. Click Save to apply
+6. Interface colors will update
+
+Color Scheme Options:
+
+- Each theme has unique colors
+- Colors affect menus, buttons, and highlights
+- Theme preference is saved
+- Theme can be changed at any time
+- Preview before saving
+
+System Settings (Administrators Only)
+
+Accessing System Settings:
+
+1. Click on Settings in the navigation menu
+2. The system settings page will open
+3. Navigate between setting categories
+4. Make changes as needed
+5. Save changes
+
+QR Code Settings
+
+Configuring QR Code:
+
+1. Navigate to System Settings
+2. Click QR Code Settings tab
+3. Upload QR code image (optional):
+   - Supported formats: JPG, PNG
+   - Maximum size: 5MB
+   - Recommended size: 300x300 pixels
+4. Or enter QR code link/URL (optional)
+5. Enable or disable custom QR code
+6. Click Save
+7. QR code will appear on payment pages
+
+QR Code Options:
+
+- Custom QR code image
+- QR code link/URL
+- Enable/disable toggle
+- QR code appears on fee payment pages
+- Helps with payment processing
+
+Check-in Location Settings
+
+Configuring Masjid Location:
+
+1. Navigate to System Settings
+2. Click Check-in Settings tab
+3. Set masjid location:
+   - Enter latitude (e.g., 3.1390)
+   - Enter longitude (e.g., 101.6869)
+   - Set check-in radius in meters (e.g., 100)
+4. Enter Google Maps API key (optional, for map display)
+5. Click Save
+6. Location settings will be applied
+
+Location Settings:
+
+- Latitude and longitude coordinates
+- Check-in radius for staff check-in
+- Google Maps API key for map features
+- Location-based features will use these settings
+- Contact administrator for help with coordinates
+
+Contact Information Settings
+
+Configuring Contact Information:
+
+1. Navigate to System Settings
+2. Click Contact Settings tab
+3. Enter institution information:
+   - Institution name
+   - Address
+   - Phone number
+   - Email address
+   - Website URL (optional)
+4. Click Save
+5. Contact information will be displayed in the system
+
+Contact Information:
+
+- Institution name
+- Physical address
+- Phone number
+- Email address
+- Website (optional)
+- Used throughout the system for display
+
+Backup Settings
+
+Configuring Backups:
+
+1. Navigate to System Settings
+2. Click Backup tab
+3. View backup configuration options
+4. Set backup schedule (if available)
+5. Configure backup storage location
+6. Click Save
+
+Backup Options:
+
+- Manual backup export
+- Backup history
+- Backup storage location
+- Backup frequency (if automatic)
+- Backup file format
+
+Saving Settings
+
+Saving Changes:
+
+1. After making changes, click Save button
+2. Wait for confirmation message
+3. Settings will be saved
+4. Changes take effect immediately
+5. Some settings may require page refresh
+
+Discarding Changes:
+
+1. Click Cancel to discard changes
+2. Settings will revert to previous values
+3. No changes will be saved
+4. You can make changes again later
+
+Setting Defaults
+
+Resetting to Defaults:
+
+1. Some settings have Reset to Default button
+2. Click to restore default values
+3. Confirm the reset action
+4. Default values will be restored
+5. Save to apply defaults
+
+10. DATA MANAGEMENT
+
+[Demo Image: Data management interface showing create, edit, delete, and export options]
+
+Overview
+
+Data management is a crucial aspect of using MyMasjidApp effectively. This section covers how to create, view, edit, delete, import, export, and manage data in the system. Proper data management ensures accuracy and helps maintain system integrity.
+
+Creating Data
+
+General Process:
+
+1. Navigate to the relevant section (Students, Classes, etc.)
+2. Click Add or Create button
+3. Fill in the required form fields
+4. Complete optional fields as needed
+5. Review your information
+6. Click Save to create the record
+7. Confirmation message will appear
+
+Required Fields:
+
+- Required fields are marked with asterisks (*)
+- You must fill in all required fields
+- System will not allow saving without required fields
+- Error messages will indicate missing required fields
+
+Optional Fields:
+
+- Optional fields can be left empty
+- Fill in optional fields for better data quality
+- More complete data provides better functionality
+- Some features may require optional fields
+
+Validation:
+
+- System validates data before saving
+- Invalid data will show error messages
+- Correct errors before saving
+- Common validations include format checks and range checks
+
+Viewing Data
+
+Viewing Lists:
+
+1. Navigate to any section (Students, Classes, etc.)
+2. List view displays all records
+3. Use search to find specific records
+4. Use filters to narrow down lists
+5. Click on records to view details
+
+Viewing Details:
+
+1. Click on any record in the list
+2. Detail page shows complete information
+3. View all related data
+4. Navigate to related records if available
+5. Use back button to return to list
+
+Searching Data:
+
+1. Enter keywords in search box
+2. Search filters records as you type
+3. Search typically looks in names and IDs
+4. Clear search to see all records
+5. Use advanced search for complex queries
+
+Filtering Data:
+
+1. Use filter dropdowns
+2. Select filter criteria
+3. Multiple filters can be applied
+4. Filters narrow down results
+5. Clear filters to reset view
+
+Sorting Data:
+
+1. Click column headers to sort
+2. Click again to reverse sort order
+3. Sort by multiple columns (if available)
+4. Sorting helps organize large lists
+5. Sort order is indicated by arrows
+
+Editing Data
+
+General Process:
+
+1. Navigate to the record you want to edit
+2. Click Edit button
+3. Make changes to form fields
+4. Review your changes
+5. Click Save to apply changes
+6. Click Cancel to discard changes
+
+Editing Restrictions:
+
+- Some fields cannot be edited (e.g., IC number)
+- Some edits require administrator permissions
+- Edits may be logged in audit trail
+- Some records cannot be edited if they have dependencies
+
+Bulk Editing:
+
+1. Some sections support bulk editing
+2. Select multiple records
+3. Click Bulk Edit button
+4. Make changes to common fields
+5. Save to apply to all selected records
+
+Edit History:
+
+- Some edits are tracked in history
+- View edit history if available
+- See who made changes and when
+- Restore previous versions if supported
+
+Deleting Data
+
+General Process:
+
+1. Navigate to the record you want to delete
+2. Click Delete button
+3. Confirm the deletion
+4. Record will be removed from system
+5. Confirmation message will appear
+
+Delete Restrictions:
+
+- Only administrators can delete most records
+- Some records cannot be deleted if they have dependencies
+- Deleted records may be moved to recycle bin
+- Some deletions can be undone
+
+Permanent Deletion:
+
+- Some deletions are permanent
+- Confirm carefully before deleting
+- Backup data before major deletions
+- Contact administrator if unsure
+
+Soft Delete:
+
+- Some deletions are soft (can be restored)
+- Deleted records appear in recycle bin
+- Restore from recycle bin if needed
+- Permanently delete from recycle bin
+
+Importing Data
+
+CSV Import:
+
+1. Navigate to relevant section
+2. Click Import button
+3. Select CSV file
+4. Review import preview
+5. Map columns if needed
+6. Click Import to start
+7. Review import results
+
+Import Format:
+
+- CSV files must follow specific format
+- Download template if available
+- Follow column order and format
+- Include required fields
+- Validate data before importing
+
+Import Validation:
+
+- System validates imported data
+- Errors will be shown
+- Correct errors and reimport
+- Successful imports are confirmed
+- Failed imports show error details
+
+Exporting Data
+
+Exporting Records:
+
+1. Navigate to relevant section
+2. Apply filters if needed
+3. Click Export button
+4. Select export format:
+   - Excel (XLSX)
+   - CSV
+   - PDF
+   - Word (DOCX)
+5. Click Download
+6. File will be saved to your computer
+
+Export Formats:
+
+- Excel: Best for data analysis and editing
+- CSV: Best for data import and exchange
+- PDF: Best for viewing and printing
+- Word: Best for formatted documents
+
+Export Options:
+
+- Export all records or filtered subset
+- Select specific columns to export
+- Include or exclude certain fields
+- Format exports as needed
+
+Data Backup
+
+Creating Backups:
+
+1. Navigate to Settings
+2. Click Backup tab
+3. Click Export Backup
+4. Select what to include
+5. Click Generate Backup
+6. Download backup file
+7. Save backup securely
+
+Backup Contents:
+
+- All database records
+- User accounts
+- System settings
+- Uploaded files (if included)
+- Configuration data
+
+Backup Storage:
+
+- Store backups securely
+- Keep multiple backup copies
+- Test backups periodically
+- Store backups off-site if possible
+- Follow backup retention policy
+
+Data Restoration
+
+Restoring from Backup:
+
+1. Contact system administrator
+2. Administrator will restore from backup
+3. Restoration requires database access
+4. Data will be restored to backup state
+5. Changes after backup will be lost
+
+Restoration Process:
+
+- Administrator-only function
+- Requires careful planning
+- May cause data loss
+- Test restoration process
+- Have backup of current data before restoring
+
+Data Integrity
+
+Maintaining Data Quality:
+
+- Enter accurate information
+- Validate data before saving
+- Review data periodically
+- Correct errors promptly
+- Keep data up to date
+
+Data Validation:
+
+- System validates data automatically
+- Follow format requirements
+- Check for errors before saving
+- Review validation messages
+- Correct validation errors
+
+Data Consistency:
+
+- Keep related data consistent
+- Update related records together
+- Check dependencies before deleting
+- Maintain referential integrity
+- Follow data entry guidelines
+
+11. SECURITY AND PRIVACY
+
+[Demo Image: Security settings and privacy controls interface]
+
+Overview
+
+Security and privacy are fundamental aspects of MyMasjidApp. This section covers how your data is protected, what security features are available, and how to maintain security while using the system.
+
+Account Security
+
+Password Security:
+
+- Use strong passwords (minimum 6 characters, but longer is better)
+- Include uppercase and lowercase letters
+- Include numbers and special characters
+- Do not use personal information (names, birthdays, IC numbers)
+- Do not reuse passwords from other systems
+- Change password regularly (every 90 days recommended)
+- Never share your password with anyone
+
+Creating Strong Passwords:
+
+1. Use at least 8 characters (longer is better)
+2. Mix uppercase and lowercase letters
+3. Include numbers
+4. Include special characters (!@#$%^&*)
+5. Avoid dictionary words
+6. Avoid personal information
+7. Use unique passwords for each system
+
+Password Best Practices:
+
+- Never write down passwords where others can see
+- Never share passwords via email or text
+- Never use the same password for multiple accounts
+- Change password if you suspect it is compromised
+- Use password manager if needed
+- Log out when finished using the system
+
+Login Security
+
+Secure Login:
+
+- Always log in through the official website
+- Verify the web address is correct
+- Check for HTTPS (secure connection)
+- Do not log in on public computers
+- Log out when finished
+- Do not save passwords on shared devices
+
+Login Attempts:
+
+- System may lock account after failed attempts
+- Wait before trying again if locked
+- Contact administrator if account is locked
+- Use password recovery if you forgot password
+- Do not share login credentials
+
+Session Management
+
+Session Duration:
+
+- Sessions typically last 24 hours
+- Session expires after inactivity
+- Log out when finished
+- Re-login if session expires
+- Clear browser cache if needed
+
+Session Security:
+
+- Do not share your session
+- Log out on shared devices
+- Do not leave browser open when away
+- Clear browser data on shared computers
+- Use private browsing if needed
+
+Multi-Device Access:
+
+- You can log in on multiple devices
+- Each device has independent session
+- Log out from unused devices
+- Monitor active sessions if available
+- Contact administrator if suspicious activity
+
+Data Privacy
+
+Personal Information:
+
+- Your personal information is stored securely
+- Only authorized users can view your data
+- Data is encrypted in transit and at rest
+- Access is logged and monitored
+- Data is backed up regularly
+
+Data Access:
+
+- Students see only their own data
+- Teachers see data for their classes only
+- Administrators see all data (with logging)
+- Access is based on roles and permissions
+- Unauthorized access is prevented
+
+Data Sharing:
+
+- Your data is not shared with third parties
+- Data is used only for system functionality
+- Administrators can view data for management
+- Data may be used for reports and analytics
+- Contact administrator about data privacy concerns
+
+Data Protection
+
+Encryption:
+
+- Data is encrypted during transmission (HTTPS)
+- Passwords are hashed and cannot be recovered
+- Sensitive data is encrypted at rest
+- Database connections are secured
+- SSL/TLS certificates protect connections
+
+Access Control:
+
+- Role-based access control limits access
+- Users can only access authorized data
+- Permissions are enforced by the system
+- Unauthorized access attempts are logged
+- Administrators monitor access
+
+Audit Logging:
+
+- System actions are logged
+- Who did what and when is recorded
+- Admin actions are tracked
+- Deletions can be undone (recycle bin)
+- Logs help maintain security
+
+Privacy Controls
+
+Profile Privacy:
+
+- Control what information is visible
+- Update profile information as needed
+- Some information may be required
+- Contact administrator about privacy concerns
+- Review privacy settings regularly
+
+Communication Privacy:
+
+- Messages are private between users
+- Administrators may monitor for security
+- Announcements are role-based
+- Contact information is protected
+- Report privacy concerns to administrator
+
+Data Retention:
+
+- Data is retained as needed for functionality
+- Old data may be archived
+- Deleted data may be retained in backups
+- Contact administrator about data retention
+- Review data retention policy
+
+Security Best Practices
+
+General Security:
+
+- Keep your browser updated
+- Use antivirus software
+- Avoid suspicious websites
+- Do not click unknown links
+- Report security concerns immediately
+
+Network Security:
+
+- Use secure, private networks when possible
+- Avoid public Wi-Fi for sensitive operations
+- Use VPN if needed
+- Check network security settings
+- Report network security issues
+
+Device Security:
+
+- Keep your device updated
+- Use screen lock on mobile devices
+- Enable device encryption
+- Do not leave devices unattended
+- Report lost or stolen devices
+
+Reporting Security Issues
+
+If You Notice Security Issues:
+
+1. Do not ignore security concerns
+2. Report issues to administrator immediately
+3. Provide details about the issue
+4. Do not share security issues publicly
+5. Follow administrator's instructions
+
+Security Issues to Report:
+
+- Suspected unauthorized access
+- Account compromise
+- Data breaches
+- Suspicious activity
+- System vulnerabilities
+- Privacy concerns
+
+Contact Administrator:
+
+- Contact your system administrator
+- Provide detailed information
+- Include screenshots if applicable
+- Follow up if needed
+- Administrator will investigate
+
+Password Recovery
+
+If You Forget Your Password:
+
+1. Click Forgot Password on login page
+2. Enter your IC number
+3. Choose recovery method (Email or SMS)
+4. Follow instructions sent to you
+5. Create new password
+6. Log in with new password
+
+Password Recovery Methods:
+
+- Email: Reset link sent to registered email
+- SMS: Reset code sent to registered phone
+- Contact administrator if methods don't work
+- Administrator can reset password manually
+- Security questions may be used
+
+Recovery Security:
+
+- Recovery links expire after 24 hours
+- Recovery codes expire after 10 minutes
+- Use recovery methods immediately
+- Do not share recovery links or codes
+- Report suspicious recovery attempts
+
+Account Lockout
+
+If Your Account Is Locked:
+
+1. Account may be locked after failed login attempts
+2. Wait for lockout period to expire
+3. Try logging in again
+4. Contact administrator if still locked
+5. Administrator can unlock account
+
+Lockout Prevention:
+
+- Enter credentials carefully
+- Use password recovery if needed
+- Do not attempt multiple logins rapidly
+- Verify IC number and password
+- Contact administrator if problems persist
+
+Logout Security
+
+Always Log Out:
+
+1. Click on your name in top right corner
+2. Click Logout or Keluar
+3. Confirm logout if prompted
+4. Close browser if on shared device
+5. Clear browser data if on public computer
+
+Logout Importance:
+
+- Prevents unauthorized access
+- Ends your session securely
+- Protects your account
+- Required on shared devices
+- Best practice for security
+
+12. TROUBLESHOOTING GUIDE
+
+[Demo Image: Troubleshooting guide showing common error messages and solutions]
+
+Overview
+
+This section helps you resolve common issues you may encounter while using MyMasjidApp. If you experience problems, check this section first before contacting support.
+
+Login Issues
+
+Cannot Log In - Incorrect Credentials:
+
+Symptoms: Error message says "IC Number atau kata laluan salah" (IC Number or password is incorrect)
+
+Solutions:
+1. Verify your IC number is entered correctly
+2. Check that your password is correct (case-sensitive)
+3. Ensure caps lock is not enabled
+4. Try using the Show Password option to verify your entry
+5. Clear the password field and re-enter it carefully
+6. Try logging in from a different browser
+7. Contact your administrator to verify your account credentials
+
+Cannot Log In - Account Not Found:
+
+Symptoms: Error message says account not found
+
+Solutions:
+1. Verify you are using the correct IC number
+2. Check that your account exists in the system
+3. Contact your administrator to confirm account status
+4. Verify you have an active account (not pending or inactive)
+5. Try using the registration page if you haven't registered yet
+
+Cannot Log In - Account Pending:
+
+Symptoms: Error message says account is pending approval
+
+Solutions:
+1. Your account requires administrator approval
+2. Wait for approval notification
+3. Contact your administrator to check approval status
+4. Do not attempt to log in repeatedly
+5. Wait for administrator to approve your account
+
+Cannot Log In - Account Locked:
+
+Symptoms: Error message says account is locked
+
+Solutions:
+1. Account may be locked after multiple failed login attempts
+2. Wait 15-30 minutes before trying again
+3. Contact your administrator if lockout persists
+4. Administrator can unlock your account
+5. Use password recovery if you forgot your password
+
+Session Expired:
+
+Symptoms: You are logged out unexpectedly or see "Session expired" message
+
+Solutions:
+1. Sessions typically last 24 hours
+2. Simply log in again
+3. Save your work frequently to avoid data loss
+4. Sessions expire after inactivity
+5. Log in again to continue working
+
+Password Issues
+
+Forgot Password:
+
+Solutions:
+1. Click Forgot Password on login page
+2. Enter your IC number
+3. Choose recovery method (Email or SMS)
+4. Check your email or phone for reset instructions
+5. Follow the instructions to reset password
+6. Create a new strong password
+7. Log in with your new password
+
+Cannot Reset Password - Email Not Received:
+
+Solutions:
+1. Check your spam or junk folder
+2. Verify your email address is correct in the system
+3. Wait a few minutes for email to arrive
+4. Try requesting reset again
+5. Use SMS method if email doesn't work
+6. Contact administrator if problems persist
+
+Cannot Reset Password - SMS Not Received:
+
+Solutions:
+1. Verify your phone number is correct in the system
+2. Check your phone signal
+3. Wait a few minutes for SMS to arrive
+4. Request new code if code expired
+5. Use email method if SMS doesn't work
+6. Contact administrator if problems persist
+
+Password Reset Link Expired:
+
+Solutions:
+1. Reset links expire after 24 hours
+2. Request a new reset link
+3. Use the password recovery process again
+4. Complete the reset process immediately after receiving link
+5. Contact administrator if needed
+
+Navigation Issues
+
+Page Not Loading:
+
+Symptoms: Page takes too long to load or doesn't load at all
+
+Solutions:
+1. Check your internet connection
+2. Refresh the page (F5 or Ctrl+R)
+3. Clear browser cache and cookies
+4. Try a different browser
+5. Check if website is down (contact administrator)
+6. Disable browser extensions temporarily
+7. Try from a different network
+
+Menu Items Missing:
+
+Symptoms: Expected menu items are not visible
+
+Solutions:
+1. Menu items are based on your role
+2. Verify you are logged in with correct role
+3. Some items require specific permissions
+4. Contact administrator if you need access
+5. Try switching roles if you have multiple roles
+6. Refresh the page
+
+Cannot Access Feature:
+
+Symptoms: Error message when trying to access a feature
+
+Solutions:
+1. Feature may require specific permissions
+2. Verify your role has access to the feature
+3. Contact administrator to request access
+4. Some features are administrator-only
+5. Check if feature is available for your role
+
+Data Entry Issues
+
+Cannot Save Data:
+
+Symptoms: Error message when trying to save
+
+Solutions:
+1. Check that all required fields are filled
+2. Verify data format is correct
+3. Check for validation errors
+4. Ensure you have permission to edit
+5. Try refreshing the page and re-entering data
+6. Contact administrator if problems persist
+
+Form Validation Errors:
+
+Symptoms: Error messages on form fields
+
+Solutions:
+1. Read the error messages carefully
+2. Correct the indicated fields
+3. Follow format requirements (dates, numbers, etc.)
+4. Ensure required fields are completed
+5. Check field length limits
+6. Verify data types are correct
+
+Duplicate Entry Errors:
+
+Symptoms: Error says record already exists
+
+Solutions:
+1. Check if record already exists in the system
+2. Search for existing records before creating new ones
+3. Edit existing record instead of creating duplicate
+4. Contact administrator if you believe it's an error
+5. Verify you are not creating a duplicate
+
+File Upload Issues
+
+Cannot Upload File:
+
+Symptoms: File upload fails or shows error
+
+Solutions:
+1. Check file size (maximum limits apply)
+2. Verify file format is supported (JPG, PNG, PDF, etc.)
+3. Check your internet connection
+4. Try uploading a smaller file
+5. Try a different file format
+5. Clear browser cache and try again
+7. Contact administrator if problems persist
+
+File Size Too Large:
+
+Symptoms: Error says file is too large
+
+Solutions:
+1. Maximum file sizes:
+   - Images: 5MB
+   - Documents: 10MB
+2. Compress or resize files before uploading
+3. Use image compression tools
+4. Convert to smaller format if possible
+5. Split large files if needed
+
+Unsupported File Format:
+
+Symptoms: Error says file format not supported
+
+Solutions:
+1. Supported formats:
+   - Images: JPG, JPEG, PNG
+   - Documents: PDF, DOC, DOCX
+2. Convert file to supported format
+3. Use image converters if needed
+4. Check file extension is correct
+5. Try saving file in different format
+
+Display Issues
+
+Information Not Displaying:
+
+Symptoms: Data or information is missing from display
+
+Solutions:
+1. Refresh the page
+2. Check your internet connection
+3. Clear browser cache
+4. Try a different browser
+5. Check if data exists in the system
+6. Verify you have permission to view the data
+7. Contact administrator if problems persist
+
+Incorrect Data Displayed:
+
+Symptoms: Wrong information is shown
+
+Solutions:
+1. Refresh the page to get latest data
+2. Check if data was recently updated
+3. Verify you are viewing the correct record
+4. Clear browser cache
+5. Log out and log back in
+6. Contact administrator if data appears incorrect
+
+Formatting Issues:
+
+Symptoms: Page layout is broken or text is misaligned
+
+Solutions:
+1. Refresh the page
+2. Clear browser cache
+3. Try a different browser
+4. Check browser zoom level (should be 100%)
+5. Update your browser to latest version
+6. Disable browser extensions
+7. Contact administrator if problems persist
+
+Search and Filter Issues
+
+Search Not Working:
+
+Symptoms: Search doesn't return expected results
+
+Solutions:
+1. Check spelling of search terms
+2. Try different search keywords
+3. Clear search and try again
+4. Verify search is looking in correct fields
+5. Use filters in addition to search
+6. Refresh the page and try again
+
+Filters Not Working:
+
+Symptoms: Filters don't narrow down results as expected
+
+Solutions:
+1. Clear all filters and reapply
+2. Check filter criteria are correct
+3. Try applying filters one at a time
+4. Verify data meets filter criteria
+5. Refresh the page and try again
+6. Contact administrator if problems persist
+
+Performance Issues
+
+Slow Loading:
+
+Symptoms: Pages take long time to load
+
+Solutions:
+1. Check your internet connection speed
+2. Close other browser tabs
+3. Clear browser cache
+5. Disable browser extensions
+5. Try a different browser
+6. Check if website is experiencing high traffic
+7. Contact administrator if consistently slow
+
+System Freezing:
+
+Symptoms: System becomes unresponsive
+
+Solutions:
+1. Wait a few seconds for system to respond
+2. Do not click multiple times
+3. Refresh the page if unresponsive
+4. Close and reopen browser
+5. Check your internet connection
+6. Clear browser cache
+7. Contact administrator if problems persist
+
+Browser Compatibility Issues
+
+Feature Not Working:
+
+Symptoms: Feature doesn't work in your browser
+
+Solutions:
+1. Update your browser to latest version
+2. Try a different browser:
+   - Google Chrome (recommended)
+   - Mozilla Firefox
+   - Microsoft Edge
+   - Safari (Mac/iOS)
+3. Enable JavaScript in browser settings
+4. Enable cookies in browser settings
+5. Clear browser cache and cookies
+6. Contact administrator if problems persist
+
+Getting Help
+
+If Issues Persist:
+
+1. Review this troubleshooting guide
+2. Check the Frequently Asked Questions section
+3. Contact your system administrator
+4. Provide detailed information about the issue:
+   - What you were trying to do
+   - What error messages appeared
+   - When the issue occurred
+   - Steps to reproduce the issue
+5. Include screenshots if possible
+6. Be patient while issue is being resolved
+
+Contact Information:
+
+- Contact your system administrator
+- Provide your IC number for account issues
+- Describe the problem clearly
+- Include error messages if any
+- Follow up if needed
+
+13. FREQUENTLY ASKED QUESTIONS
+
+[Demo Image: FAQ page showing common questions and answers]
+
+General Questions
+
+Q: What is MyMasjidApp?
+
+A: MyMasjidApp is a comprehensive web-based management system for masjids and madrasahs. It helps institutions manage students, teachers, classes, attendance, fees, exams, and results in one centralized platform.
+
+Q: Who can use MyMasjidApp?
+
+A: MyMasjidApp is designed for:
+- Students enrolled in madrasah programs
+- Teachers teaching classes
+- Administrators managing the institution
+- Payment approvers (IB) confirming payments
+- Staff members checking in for work
+
+Q: Do I need to install software?
+
+A: No, MyMasjidApp is a web-based application. You only need a web browser and internet connection. No software installation is required.
+
+Q: What browsers are supported?
+
+A: MyMasjidApp works with:
+- Google Chrome (recommended)
+- Mozilla Firefox
+- Microsoft Edge
+- Safari (Mac and iOS)
+
+Q: Can I use MyMasjidApp on my phone?
+
+A: Yes, MyMasjidApp works on smartphones, tablets, and computers. The interface adapts to your device screen size.
+
+Account and Login Questions
+
+Q: How do I create an account?
+
+A: Click Register on the login page, fill in your information (IC number, name, email, password), and submit. Your account may require administrator approval before you can log in.
+
+Q: What if I forget my password?
+
+A: Click Forgot Password on the login page, enter your IC number, choose recovery method (Email or SMS), and follow the instructions sent to you.
+
+Q: Can I change my password?
+
+A: Yes, log in and go to Personal Settings, click Password tab, enter your current password and new password, then save.
+
+Q: What if I forget my IC number?
+
+A: Contact your system administrator. They can help you recover your account using your name or email address.
+
+Q: Can I have multiple accounts?
+
+A: No, each IC number can only have one account. However, you can have multiple roles (e.g., student and teacher) on the same account.
+
+Q: Why is my account pending?
+
+A: New accounts require administrator approval. Wait for approval notification, or contact your administrator to check approval status.
+
+Student Questions
+
+Q: How do I view my attendance?
+
+A: Click Attendance or Kehadiran in the menu. You will see your attendance records. Use filters to view by date range.
+
+Q: How do I check my fees?
+
+A: Click Fees or Yuran in the menu. You will see all your fee records, including paid and outstanding fees.
+
+Q: How do I pay fees online?
+
+A: Go to Fees page, find the outstanding fee, click on it, click Pay Now, select payment method, enter payment details, and confirm.
+
+Q: How do I view my exam results?
+
+A: Click Results or Keputusan in the menu. You will see all your exam results with marks and grades.
+
+Q: Can I download my result slips?
+
+A: Yes, if result slips are uploaded, you can view and download them from the Results page.
+
+Q: How do I update my profile?
+
+A: Go to Personal Settings, click Profile tab, make changes, and click Save.
+
+Teacher Questions
+
+Q: How do I mark attendance?
+
+A: Click Attendance in the menu, select your class and date, mark each student's status, and click Save.
+
+Q: Can I upload attendance proof photos?
+
+A: Yes, when marking attendance, you can upload photos as proof. Click the upload button and select your photo.
+
+Q: How do I enter exam results?
+
+A: Go to Results page, select the exam, click Enter Results, enter marks for each student, and click Save.
+
+Q: Can I upload result slips?
+
+A: Yes, when entering results, you can upload result slip images. Click upload button and select your file.
+
+Q: How do I view my class list?
+
+A: Click Classes or Kelas in the menu. You will see all classes assigned to you. Click on a class to see the student list.
+
+Q: Can I see attendance statistics for my class?
+
+A: Yes, go to Attendance page, select your class, and view statistics including attendance rates and patterns.
+
+Administrator Questions
+
+Q: How do I add a new student?
+
+A: Go to Students page, click Add Student, fill in the information, and click Save.
+
+Q: How do I create a new class?
+
+A: Go to Classes page, click Create Class, fill in class details (name, level, schedule, fee), and click Save.
+
+Q: How do I generate monthly fees?
+
+A: Go to Fees page, click Generate Fees, select month and classes, review amounts, and click Generate.
+
+Q: How do I approve registrations?
+
+A: Go to Pending Registrations page, review registration information, click Approve to activate account or Reject to deny.
+
+Q: How do I export data?
+
+A: Go to the relevant page (Students, Fees, etc.), apply filters if needed, click Export, select format, and download.
+
+Q: How do I create a backup?
+
+A: Go to Settings, click Backup tab, click Export Backup, select what to include, and download the backup file.
+
+Technical Questions
+
+Q: What are the system requirements?
+
+A: You need:
+- A device with internet access
+- A modern web browser
+- Internet connection (minimum 1 Mbps)
+- JavaScript enabled
+- Cookies enabled
+
+Q: Why is the page loading slowly?
+
+A: Slow loading can be due to:
+- Slow internet connection
+- High website traffic
+- Large amount of data
+- Browser issues
+
+Try refreshing the page, clearing cache, or using a different browser.
+
+Q: Why am I getting error messages?
+
+A: Error messages indicate problems that need to be fixed. Read the error message carefully, follow the instructions, and check this troubleshooting guide.
+
+Q: Can I use MyMasjidApp offline?
+
+A: No, MyMasjidApp requires an internet connection to function. All data is stored on the server and requires internet access.
+
+Q: Is my data secure?
+
+A: Yes, MyMasjidApp uses security measures including:
+- Encrypted connections (HTTPS)
+- Secure password storage
+- Role-based access control
+- Audit logging
+- Regular backups
+
+Data Privacy Questions
+
+Q: Who can see my information?
+
+A: Your information visibility depends on your role:
+- Students: Only your own data
+- Teachers: Data for your classes only
+- Administrators: All data (with logging)
+- Access is based on roles and permissions
+
+Q: Is my data shared with third parties?
+
+A: No, your data is not shared with third parties. Data is used only for system functionality and is protected by privacy policies.
+
+Q: How long is my data stored?
+
+A: Data is retained as needed for system functionality. Old data may be archived. Contact your administrator about data retention policies.
+
+Q: Can I delete my account?
+
+A: Contact your administrator to request account deletion. Some data may be retained for historical records.
+
+Q: How do I report privacy concerns?
+
+A: Contact your system administrator immediately. Provide details about your concern, and they will investigate.
+
+Payment Questions
+
+Q: What payment methods are accepted?
+
+A: Payment methods depend on your institution's configuration. Common methods include online payment gateways, bank transfer, and cash. Check with your administrator.
+
+Q: How do I know my payment was received?
+
+A: After payment, your fee status will update to "Paid". You can view payment history and receipts in the Fees section.
+
+Q: What if my payment fails?
+
+A: If payment fails, try again. Check your payment method details. Contact your administrator or payment provider if problems persist.
+
+Q: Can I get a payment receipt?
+
+A: Yes, payment receipts are available in the Fees section. You can view and download receipts for your records.
+
+Q: How do I view my payment history?
+
+A: Go to Fees page and click Payment History. You will see all your past payments with dates, amounts, and methods.
+
+14. TIPS AND BEST PRACTICES
+
+[Demo Image: Tips and best practices checklist]
+
+Overview
+
+This section provides tips and best practices to help you use MyMasjidApp more effectively and avoid common mistakes. Following these guidelines will improve your experience and help maintain data quality.
+
+General Tips
+
+Regular Use:
+
+- Log in regularly to check for updates and announcements
+- Check your dashboard daily for important information
+- Review your attendance and fees regularly
+- Keep your profile information up to date
+- Stay informed about system updates
+
+Data Entry:
+
+- Enter accurate information from the start
+- Double-check information before saving
+- Use proper formats (dates, phone numbers, etc.)
+- Fill in optional fields for better data quality
+- Review saved data to ensure accuracy
+
+Organization:
+
+- Use search and filters to find information quickly
+- Bookmark frequently used pages
+- Organize your workflow efficiently
+- Keep track of important dates and deadlines
+- Use reports to monitor progress
+
+For Students
+
+Attendance:
+
+- Check your attendance records regularly
+- Report missing records to your teacher or administrator
+- Keep track of your attendance percentage
+- View attendance statistics to monitor your progress
+- Download attendance reports if needed
+
+Fees:
+
+- Check fees monthly before due dates
+- Pay fees on time to avoid late fees
+- Keep payment receipts for your records
+- View payment history to track payments
+- Contact administrator if you have payment issues
+
+Results:
+
+- Check results regularly after exams
+- Download result slips for your records
+- Review your performance over time
+- Compare your results with class averages
+- Use results to identify areas for improvement
+
+Profile:
+
+- Keep your contact information up to date
+- Update email and phone number if they change
+- Ensure profile information is accurate
+- Upload profile photo if available
+- Review profile information periodically
+
+For Teachers
+
+Attendance Marking:
+
+- Mark attendance immediately after class
+- Upload attendance proof photos when available
+- Review attendance records regularly
+- Identify students with low attendance
+- Report attendance issues to administrators
+
+Result Entry:
+
+- Enter results promptly after exams
+- Double-check marks before saving
+- Upload result slips when available
+- Review results for accuracy
+- Provide feedback to students
+
+Class Management:
+
+- Review your class lists regularly
+- Monitor student progress
+- Keep class information up to date
+- Communicate with administrators about class issues
+- Use class statistics to improve teaching
+
+Communication:
+
+- Read announcements regularly
+- Respond to requests promptly
+- Communicate with administrators when needed
+- Report issues or concerns
+- Share feedback and suggestions
+
+For Administrators
+
+Daily Tasks:
+
+- Approve pending registrations daily
+- Review system activity regularly
+- Check for outstanding fees
+- Monitor attendance rates
+- Review system statistics
+
+Data Management:
+
+- Enter data accurately and completely
+- Review data regularly for accuracy
+- Correct errors promptly
+- Keep data up to date
+- Backup data regularly
+
+User Management:
+
+- Approve registrations promptly
+- Review user accounts periodically
+- Update user roles as needed
+- Deactivate inactive accounts
+- Respond to user requests
+
+Fee Management:
+
+- Generate fees on time each month
+- Review fee collection regularly
+- Follow up on outstanding fees
+- Process payments promptly
+- Generate fee reports for analysis
+
+System Maintenance:
+
+- Create backups regularly
+- Monitor system performance
+- Review system logs
+- Update system settings as needed
+- Plan for academic year transitions
+
+Common Mistakes to Avoid
+
+Data Entry Mistakes:
+
+- Do not enter incorrect information
+- Do not skip required fields
+- Do not use incorrect formats
+- Do not create duplicate records
+- Do not delete records without checking dependencies
+
+Security Mistakes:
+
+- Do not share your password
+- Do not log in on public computers without logging out
+- Do not leave your session open when away
+- Do not ignore security warnings
+- Do not use weak passwords
+
+Workflow Mistakes:
+
+- Do not forget to save your work
+- Do not close browser before saving
+- Do not ignore error messages
+- Do not skip validation steps
+- Do not make changes without reviewing
+
+Communication Mistakes:
+
+- Do not ignore announcements
+- Do not delay reporting issues
+- Do not assume problems will resolve themselves
+- Do not skip important notifications
+- Do not hesitate to ask for help
+
+Best Practices Summary
+
+Security:
+
+- Use strong passwords
+- Log out when finished
+- Keep account information secure
+- Report security concerns
+- Follow security guidelines
+
+Data Quality:
+
+- Enter accurate information
+- Review data regularly
+- Correct errors promptly
+- Keep data up to date
+- Follow data entry guidelines
+
+Efficiency:
+
+- Use search and filters
+- Bookmark frequently used pages
+- Organize your workflow
+- Use keyboard shortcuts when available
+- Learn system features
+
+Communication:
+
+- Read announcements
+- Respond to requests
+- Report issues promptly
+- Ask questions when needed
+- Provide feedback
+
+15. UPDATES AND VERSION CHANGES
+
+[Demo Image: System update notification screen]
+
+Overview
+
+MyMasjidApp receives regular updates to improve functionality, fix issues, and add new features. This section explains how updates work and what to expect when the system is updated.
+
+Understanding Updates
+
+Types of Updates:
+
+- Feature Updates: New features and functionality
+- Bug Fixes: Corrections to issues and errors
+- Security Updates: Security improvements and patches
+- Performance Updates: Speed and efficiency improvements
+- Interface Updates: User interface improvements
+
+Update Frequency:
+
+- Updates are released regularly
+- Important updates are applied promptly
+- Security updates are applied immediately
+- Feature updates are scheduled
+- Users are notified of major updates
+
+Automatic Updates:
+
+- Updates are applied automatically on the server
+- No action required from users
+- System may be briefly unavailable during updates
+- Updates typically take a few minutes
+- Normal operation resumes after update
+
+Update Notifications
+
+Notification Methods:
+
+- Dashboard announcements
+- Email notifications (if configured)
+- System messages
+- Update logs
+- Administrator communications
+
+What Updates Include:
+
+- New features and improvements
+- Bug fixes and corrections
+- Security enhancements
+- Performance optimizations
+- Interface changes
+
+What to Expect After Updates
+
+New Features:
+
+- New features are announced
+- Documentation is updated
+- Training may be provided
+- Features are available immediately
+- Contact administrator for questions
+
+Interface Changes:
+
+- Interface may look slightly different
+- Menu items may be reorganized
+- New buttons or options may appear
+- Layout may be improved
+- Changes are usually minor
+
+Behavior Changes:
+
+- Some features may work differently
+- New options may be available
+- Workflows may be updated
+- Improvements make tasks easier
+- Changes are documented
+
+Compatibility
+
+Browser Compatibility:
+
+- Updates maintain browser compatibility
+- Supported browsers remain the same
+- Update your browser for best experience
+- Contact administrator if issues arise
+- Browser updates may be recommended
+
+Data Compatibility:
+
+- Updates preserve your data
+- No data loss during updates
+- Data formats may be updated
+- Migration happens automatically
+- Contact administrator if concerns
+
+Feature Compatibility:
+
+- Existing features continue to work
+- New features are added
+- Some features may be improved
+- Deprecated features are announced
+- Migration paths are provided
+
+Handling Updates
+
+Before Updates:
+
+- Save your work before updates
+- Complete important tasks
+- Log out if update is announced
+- Backup data if administrator
+- Follow administrator instructions
+
+During Updates:
+
+- System may be temporarily unavailable
+- Wait for update to complete
+- Do not attempt to use system during update
+- Updates typically take a few minutes
+- Be patient during update process
+
+After Updates:
+
+- Log in again after update
+- Check for update announcements
+- Review new features if available
+- Test important features
+- Report issues if any
+
+Update Information
+
+Viewing Update Information:
+
+- Check dashboard announcements
+- Review system messages
+- Read update logs if available
+- Contact administrator for details
+- Check documentation updates
+
+Update History:
+
+- Updates are logged
+- Version information is available
+- Change logs may be provided
+- Contact administrator for history
+- Updates are documented
+
+Reporting Update Issues
+
+If You Experience Issues After Update:
+
+1. Try logging out and logging back in
+2. Clear browser cache
+3. Try a different browser
+4. Check for announcements about known issues
+5. Contact administrator if problems persist
+
+Issue Reporting:
+
+- Provide detailed information
+- Include error messages
+- Describe what you were doing
+- Note when issue occurred
+- Include screenshots if possible
+
+Version Information
+
+Checking Version:
+
+- Version information may be in Settings
+- Contact administrator for version
+- Version is updated with each release
+- Version number indicates update level
+- Check version if troubleshooting
+
+Version Compatibility:
+
+- All users use the same version
+- Updates are applied to all users
+- No version conflicts
+- Synchronized updates
+- Consistent experience
+
+16. SUPPORT AND CONTACT INFORMATION
+
+[Demo Image: Support and contact information page]
+
+Overview
+
+This section provides information on how to get help and support when using MyMasjidApp. Knowing how to contact support and what information to provide helps resolve issues quickly.
+
+Getting Help
+
+Help Resources:
+
+- This user manual (comprehensive guide)
+- Frequently Asked Questions section
+- Troubleshooting Guide section
+- System administrator
+- Help center in the application (if available)
+
+When to Contact Support:
+
+- Technical issues not resolved by troubleshooting
+- Account problems
+- Data errors or concerns
+- Feature questions
+- Security concerns
+- Payment issues
+- Access problems
+
+How to Contact Support
+
+Contacting System Administrator:
+
+1. Find administrator contact information:
+   - Check system announcements
+   - Look in Settings or About section
+   - Ask your teacher or institution staff
+   - Check institution website
+2. Contact administrator via:
+   - Email (if provided)
+   - Phone (if provided)
+   - In-person (if applicable)
+   - System messaging (if available)
+
+Information to Provide:
+
+When contacting support, provide:
+- Your IC number
+- Your name
+- Description of the issue
+- Steps to reproduce the issue
+- Error messages (if any)
+- Screenshots (if applicable)
+- When the issue occurred
+- What you were trying to do
+- What you expected to happen
+- What actually happened
+
+Providing Detailed Information:
+
+- Be specific about the problem
+- Include all relevant details
+- Provide step-by-step description
+- Include error messages verbatim
+- Attach screenshots if possible
+- Mention if issue occurs consistently
+- Note if issue is new or ongoing
+
+Response Times
+
+Expected Response Times:
+
+- Urgent issues: Within a few hours
+- General issues: Within 24-48 hours
+- Non-urgent questions: Within a few days
+- Response times may vary
+- Contact administrator for urgent matters
+
+Follow-Up:
+
+- Follow up if you don't receive response
+- Be patient with response times
+- Provide additional information if requested
+- Thank administrator for assistance
+- Report if issue is resolved
+
+Self-Help Resources
+
+User Manual:
+
+- Comprehensive guide to all features
+- Step-by-step instructions
+- Troubleshooting guidance
+- Frequently asked questions
+- Best practices and tips
+
+FAQ Section:
+
+- Common questions and answers
+- Quick solutions to common issues
+- Reference for typical problems
+- Updated regularly
+- Searchable format
+
+Troubleshooting Guide:
+
+- Solutions to common problems
+- Step-by-step troubleshooting
+- Error message explanations
+- Workarounds for issues
+- Links to additional help
+
+Help Center (If Available):
+
+- In-application help system
+- Context-sensitive help
+- Feature-specific guidance
+- Video tutorials (if available)
+- Interactive assistance
+
+Training and Documentation
+
+Training Resources:
+
+- User manual (this document)
+- Video tutorials (if available)
+- Training sessions (if offered)
+- Documentation updates
+- Administrator guidance
+
+Staying Updated:
+
+- Check for documentation updates
+- Review new feature documentation
+- Attend training sessions if available
+- Read system announcements
+- Follow administrator communications
+
+Feedback and Suggestions
+
+Providing Feedback:
+
+- Share your experience with the system
+- Suggest improvements
+- Report usability issues
+- Provide feature requests
+- Help improve the system
+
+Feedback Channels:
+
+- Contact system administrator
+- Use feedback forms (if available)
+- Participate in surveys (if offered)
+- Share suggestions during training
+- Contribute to system improvement
+
+17. GLOSSARY
+
+[Demo Image: Glossary terms page]
+
+Account: Your user account in the system, identified by your IC number and password.
+
+Administrator: A user role with full system access and management permissions.
+
+Announcement: System-wide or role-specific messages and notifications.
+
+Attendance: Records of student presence in classes, marked by teachers.
+
+Backup: A copy of system data saved for recovery purposes.
+
+Class: A group of students learning together with assigned teacher and schedule.
+
+Dashboard: The main page after login showing overview information and statistics.
+
+Export: Downloading data from the system in various formats (Excel, PDF, etc.).
+
+Fee: Monthly payment required from students for classes.
+
+IB: Imam Bilal, a user role for payment approvers who confirm fee payments.
+
+IC Number: Malaysian identity card number, 12 digits used as user identifier.
+
+Import: Uploading data into the system from external files (CSV, etc.).
+
+Login: The process of accessing the system using IC number and password.
+
+Menu: Navigation panel showing available sections and features.
+
+Password: Secret code used with IC number to log into the system.
+
+PIC: Person in Charge, a user role with special administrative permissions.
+
+Profile: Your personal information stored in the system.
+
+Registration: The process of creating a new user account.
+
+Report: Generated documents showing system data and statistics.
+
+Result: Exam marks and grades for students.
+
+Role: User type determining what features and data are accessible.
+
+Session: Your active login period, typically lasting 24 hours.
+
+Settings: Configuration options for personal preferences and system setup.
+
+Student: A user role for enrolled students viewing their own data.
+
+Teacher: A user role for teachers managing classes and entering data.
+
+User: Any person with an account in the system.
+
+18. APPENDIX
+
+[Demo Image: Appendix section with reference materials]
+
+A. Quick Reference Guide
+
+Common Tasks Quick Steps:
+
+Login:
+1. Enter IC number
+2. Enter password
+3. Select role (if multiple)
+4. Click Login
+
+View Attendance (Student):
+1. Click Attendance
+2. View records
+3. Use filters if needed
+
+Mark Attendance (Teacher):
+1. Click Attendance
+2. Select class and date
+3. Mark student status
+4. Click Save
+
+View Fees:
+1. Click Fees
+2. View fee records
+3. Filter by status if needed
+
+Pay Fees:
+1. Go to Fees page
+2. Click on fee
+3. Click Pay Now
+4. Complete payment
+
+View Results:
+1. Click Results
+2. View exam results
+3. Download slips if available
+
+B. Keyboard Shortcuts
+
+Common Shortcuts (if available):
+- Ctrl+S: Save
+- Ctrl+F: Search
+- Esc: Cancel or close
+- Enter: Submit form
+- Tab: Navigate between fields
+
+Browser Shortcuts:
+- F5 or Ctrl+R: Refresh page
+- Ctrl+W: Close tab
+- Ctrl+T: New tab
+- Ctrl+F: Find on page
+
+C. File Format Reference
+
+Supported Image Formats:
+- JPG, JPEG: Photos and images
+- PNG: Images with transparency
+- Maximum size: 5MB
+
+Supported Document Formats:
+- PDF: Documents and forms
+- DOC, DOCX: Word documents
+- Maximum size: 10MB
+
+Export Formats:
+- Excel (XLSX): Spreadsheets
+- CSV: Data exchange
+- PDF: Documents
+- Word (DOCX): Formatted documents
+
+D. System Limits
+
+Data Limits:
+- Student records: Unlimited
+- Teacher records: Unlimited
+- Class records: Unlimited
+- Attendance records: Unlimited
+- Fee records: Unlimited
+- Result records: Unlimited
+
+File Upload Limits:
+- Images: 5MB maximum
+- Documents: 10MB maximum
+- Multiple files: Supported
+
+Session Limits:
+- Session duration: 24 hours
+- Inactivity timeout: Varies
+- Multiple devices: Supported
+
+E. Error Code Reference
+
+Common Error Codes:
+- 400: Bad Request (invalid data)
+- 401: Unauthorized (login required)
+- 403: Forbidden (insufficient permissions)
+- 404: Not Found (resource doesn't exist)
+- 500: Server Error (system issue)
+
+If you encounter error codes:
+- Note the error code and message
+- Check this troubleshooting guide
+- Contact administrator if needed
+- Provide error code when reporting
+
+F. Contact Information Template
+
+When contacting support, use this template:
+
+Subject: [Brief description of issue]
+
+IC Number: [Your IC number]
+Name: [Your name]
+Role: [Your role]
+Date: [Date of issue]
+
+Description:
+[Detailed description of the issue]
+
+Steps to Reproduce:
+1. [Step 1]
+2. [Step 2]
+3. [Step 3]
+
+Expected Result:
+[What should happen]
+
+Actual Result:
+[What actually happened]
+
+Error Messages:
+[Any error messages received]
+
+Screenshots:
+[Attach if applicable]
+
+G. Version History
+
+Current Version: 1.0
+Release Date: January 2025
+
+Version Information:
+- Check Settings for current version
+- Contact administrator for version details
+- Version updates automatically
+- No manual updates required
+
+H. Additional Resources
+
+Related Documentation:
+- Administrator Manual (for administrators)
+- Deployment Guide (for system administrators)
+- API Documentation (for developers)
+- Security Guide (for security information)
+
+External Resources:
+- Browser help documentation
+- Email client help (for password recovery)
+- Internet connection troubleshooting
+- General computer help
+
+I. Revision History
+
+Document Version: 1.0
+Last Updated: January 2025
+Next Review: As needed
+
+Document Updates:
+- This manual is updated as the system evolves
+- Check for updated versions periodically
+- Contact administrator for latest version
+- Updates reflect system changes
+
+---
+
+END OF USER MANUAL
+
+Thank you for using MyMasjidApp. This manual provides comprehensive guidance for all users. For additional help, contact your system administrator or refer to the support section.
+
+Keep this manual for reference and share it with other users as needed.

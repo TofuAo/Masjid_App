@@ -102,6 +102,18 @@ api.interceptors.response.use(
     return response.data;
   },
   (error) => {
+    // Handle canceled/duplicate request errors - these are expected and shouldn't be logged
+    if (error.name === 'CanceledError' || error.code === 'ERR_CANCELED' || 
+        (error.message && error.message.includes('Duplicate request cancelled'))) {
+      // Silently reject canceled requests - they're expected when duplicate requests are cancelled
+      return Promise.reject({
+        message: 'Request was cancelled',
+        status: 0,
+        isCanceled: true,
+        isExpected: true
+      });
+    }
+
     // Log DELETE errors specifically
     if (error.config?.method === 'delete' || error.config?.method === 'DELETE') {
       console.error(`\n${'🔴'.repeat(40)}`);
@@ -254,8 +266,16 @@ export const authAPI = {
       throw error;
     }
   },
-  approveRegistration: (user_ic) => api.post('/auth/approve-registration', { user_ic }),
-  rejectRegistration: (user_ic) => api.post('/auth/reject-registration', { user_ic }),
+  approveRegistration: (data) => {
+    // Support both old format (just user_ic string) and new format (object with user_ic and approval_notes)
+    const payload = typeof data === 'string' ? { user_ic: data } : data;
+    return api.post('/auth/approve-registration', payload);
+  },
+  rejectRegistration: (data) => {
+    // Support both old format (just user_ic string) and new format (object with user_ic and rejection_notes)
+    const payload = typeof data === 'string' ? { user_ic: data } : data;
+    return api.post('/auth/reject-registration', payload);
+  },
   getPreferences: () => api.get('/auth/preferences'),
   updatePreferences: (data) => api.put('/auth/preferences', data),
 };
@@ -346,7 +366,10 @@ export const classesAPI = {
       // If it's an object but no data property, return empty array
       return [];
     } catch (error) {
-      console.error('Error fetching classes:', error);
+      // Don't log canceled/duplicate request errors - they're expected
+      if (!error.isCanceled && !error.isExpected) {
+        console.error('Error fetching classes:', error);
+      }
       // Ensure error is properly formatted
       const errorMessage = error?.response?.data?.message || error?.message || 'Gagal memuatkan data kelas.';
       throw { ...error, message: errorMessage };
@@ -361,7 +384,10 @@ export const classesAPI = {
       const response = await api.get('/classes/stats');
       return response?.success ? response : { success: true, data: response };
     } catch (error) {
-      console.error('Error fetching class stats:', error);
+      // Don't log canceled/duplicate request errors - they're expected
+      if (!error.isCanceled && !error.isExpected) {
+        console.error('Error fetching class stats:', error);
+      }
       throw error;
     }
   },
@@ -779,6 +805,18 @@ export const receiptAPI = {
   getFeeReceipt: (feeId) => api.get(`/receipts/fee/${feeId}`),
   getPaymentReceipt: (paymentId) => api.get(`/receipts/payment/${paymentId}`),
   getUserReceipts: (userId) => api.get(`/receipts/user/${userId}`),
+};
+
+// Weather API
+export const weatherAPI = {
+  getCurrent: () => api.get('/weather/current'),
+  clearCache: () => api.delete('/weather/cache'),
+};
+
+// Quran Quote API
+export const quranQuoteAPI = {
+  getDaily: () => api.get('/quran-quote/daily'),
+  clearCache: () => api.delete('/quran-quote/cache'),
 };
 
 export default api;

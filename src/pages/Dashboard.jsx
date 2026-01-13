@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import StatCard from '../components/dashboard/StatCard';
 import RecentActivity from '../components/dashboard/RecentActivity';
 import QuickStats from '../components/dashboard/QuickStats';
+import DailyQuranQuote from '../components/dashboard/DailyQuranQuote';
 import LoadingSkeleton from '../components/ui/LoadingSkeleton';
 import { Users, GraduationCap, BookOpen, CreditCard, AlertCircle, Megaphone, CheckCircle, XCircle, Clock, Calendar } from 'lucide-react';
 import { studentsAPI, teachersAPI, classesAPI, feesAPI, examsAPI, announcementsAPI, attendanceAPI } from '../services/api';
@@ -9,6 +10,7 @@ import { toast } from 'react-toastify';
 import { Link } from 'react-router-dom';
 import Badge from '../components/ui/Badge';
 import FeaturedClasses from '../components/kelas/FeaturedClasses';
+import QuickActions from '../components/dashboard/QuickActions';
 import { getEffectiveRole } from '../utils/userRoles';
 
 const Dashboard = () => {
@@ -434,6 +436,12 @@ const Dashboard = () => {
 
   return (
       <div className="space-y-6 animate-fade-in">
+      {/* Daily Quran Quote - Show for all users */}
+      <DailyQuranQuote />
+      
+      {/* Quick Actions - Show for all users (role-specific) */}
+      {user && <QuickActions user={user} />}
+      
       {/* Main Statistics - Only show for non-students */}
           {userRole !== 'student' && <QuickStats stats={mainStats} />}
           {userRole !== 'student' && (

@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
 import { authAPI } from '../services/api';
-import { CheckCircle, XCircle, Clock, RefreshCw, User } from 'lucide-react';
+import { CheckCircle, XCircle, Clock, RefreshCw, User, X } from 'lucide-react';
 
 const PendingRegistrations = () => {
   const [pendingUsers, setPendingUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState({});
+  const [approvalModal, setApprovalModal] = useState({ open: false, user: null, type: null });
+  const [notes, setNotes] = useState('');
 
   useEffect(() => {
     fetchPendingRegistrations();
@@ -45,46 +47,45 @@ const PendingRegistrations = () => {
   };
 
   const handleApprove = async (user_ic, nama) => {
-    if (!window.confirm(`Adakah anda pasti ingin meluluskan pendaftaran untuk ${nama}?`)) {
-      return;
-    }
-
-    setProcessing(prev => ({ ...prev, [user_ic]: 'approving' }));
-    try {
-      const response = await authAPI.approveRegistration(user_ic);
-      if (response.success) {
-        toast.success(`Pendaftaran untuk ${nama} telah diluluskan`);
-        // Remove from list
-        setPendingUsers(prev => prev.filter(user => user.ic !== user_ic));
-      } else {
-        toast.error(response.message || 'Gagal meluluskan pendaftaran');
-      }
-    } catch (error) {
-      console.error('Error approving registration:', error);
-      toast.error(error.response?.data?.message || 'Gagal meluluskan pendaftaran');
-    } finally {
-      setProcessing(prev => ({ ...prev, [user_ic]: null }));
-    }
+    setApprovalModal({ open: true, user: { ic: user_ic, nama }, type: 'approve' });
   };
 
   const handleReject = async (user_ic, nama) => {
-    if (!window.confirm(`Adakah anda pasti ingin menolak pendaftaran untuk ${nama}? Tindakan ini tidak boleh dibatalkan.`)) {
-      return;
-    }
+    setApprovalModal({ open: true, user: { ic: user_ic, nama }, type: 'reject' });
+  };
 
-    setProcessing(prev => ({ ...prev, [user_ic]: 'rejecting' }));
+  const confirmAction = async () => {
+    if (!approvalModal.user) return;
+
+    const { ic: user_ic, nama } = approvalModal.user;
+    const isApprove = approvalModal.type === 'approve';
+
+    setProcessing(prev => ({ ...prev, [user_ic]: isApprove ? 'approving' : 'rejecting' }));
     try {
-      const response = await authAPI.rejectRegistration(user_ic);
+      const payload = { user_ic };
+      if (notes.trim()) {
+        if (isApprove) {
+          payload.approval_notes = notes.trim();
+        } else {
+          payload.rejection_notes = notes.trim();
+        }
+      }
+
+      const response = isApprove 
+        ? await authAPI.approveRegistration(payload)
+        : await authAPI.rejectRegistration(payload);
+
       if (response.success) {
-        toast.success(`Pendaftaran untuk ${nama} telah ditolak`);
-        // Remove from list
+        toast.success(`Pendaftaran untuk ${nama} telah ${isApprove ? 'diluluskan' : 'ditolak'}`);
         setPendingUsers(prev => prev.filter(user => user.ic !== user_ic));
+        setApprovalModal({ open: false, user: null, type: null });
+        setNotes('');
       } else {
-        toast.error(response.message || 'Gagal menolak pendaftaran');
+        toast.error(response.message || `Gagal ${isApprove ? 'meluluskan' : 'menolak'} pendaftaran`);
       }
     } catch (error) {
-      console.error('Error rejecting registration:', error);
-      toast.error(error.response?.data?.message || 'Gagal menolak pendaftaran');
+      console.error(`Error ${isApprove ? 'approving' : 'rejecting'} registration:`, error);
+      toast.error(error.response?.data?.message || `Gagal ${isApprove ? 'meluluskan' : 'menolak'} pendaftaran`);
     } finally {
       setProcessing(prev => ({ ...prev, [user_ic]: null }));
     }
@@ -236,6 +237,73 @@ const PendingRegistrations = () => {
           </div>
         </div>
       </div>
+
+      {/* Approval/Rejection Modal */}
+      {approvalModal.open && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-gray-900">
+                  {approvalModal.type === 'approve' ? 'Luluskan Pendaftaran' : 'Tolak Pendaftaran'}
+                </h3>
+                <button
+                  onClick={() => {
+                    setApprovalModal({ open: false, user: null, type: null });
+                    setNotes('');
+                  }}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <p className="text-gray-700 mb-4">
+                Adakah anda pasti ingin {approvalModal.type === 'approve' ? 'meluluskan' : 'menolak'} pendaftaran untuk{' '}
+                <strong>{approvalModal.user?.nama}</strong>?
+              </p>
+
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  {approvalModal.type === 'approve' ? 'Nota Kelulusan (Pilihan)' : 'Sebab Penolakan (Pilihan)'}
+                </label>
+                <textarea
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  rows={4}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  placeholder={approvalModal.type === 'approve' 
+                    ? 'Masukkan nota atau komen untuk kelulusan ini (pilihan)...'
+                    : 'Masukkan sebab penolakan (pilihan)...'}
+                />
+              </div>
+
+              <div className="flex items-center space-x-3">
+                <button
+                  onClick={confirmAction}
+                  disabled={processing[approvalModal.user?.ic]}
+                  className={`flex-1 px-4 py-2 rounded-lg text-white font-medium transition-colors ${
+                    approvalModal.type === 'approve'
+                      ? 'bg-emerald-600 hover:bg-emerald-700'
+                      : 'bg-red-600 hover:bg-red-700'
+                  } disabled:opacity-50 disabled:cursor-not-allowed`}
+                >
+                  {processing[approvalModal.user?.ic] ? 'Memproses...' : approvalModal.type === 'approve' ? 'Luluskan' : 'Tolak'}
+                </button>
+                <button
+                  onClick={() => {
+                    setApprovalModal({ open: false, user: null, type: null });
+                    setNotes('');
+                  }}
+                  className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+                >
+                  Batal
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

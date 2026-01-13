@@ -1,0 +1,317 @@
+MyMasjidApp User Manual
+
+Version 1.0
+Date: January 2025
+Application: MyMasjidApp - Masjid and Madrasah Management System
+
+This user manual provides comprehensive guidance for all users of the MyMasjidApp system, including students, teachers, administrators, and payment approvers. This manual will help you understand how to use the system effectively, from basic operations to advanced features.
+
+TABLE OF CONTENTS
+
+1. Introduction
+2. System Requirements
+3. Installation and Setup
+4. Application Overview
+5. Getting Started
+6. Core Features
+7. Advanced Features
+8. User Roles and Permissions
+9. Settings and Customization
+10. Data Management
+11. Security and Privacy
+12. Troubleshooting Guide
+13. Frequently Asked Questions
+14. Tips and Best Practices
+15. Updates and Version Changes
+16. Support and Contact Information
+17. Glossary
+18. Appendix
+
+1. INTRODUCTION
+
+Purpose of This Manual
+
+This user manual is your complete guide to using the MyMasjidApp system. Whether you are a student checking your attendance, a teacher managing your classes, an administrator overseeing operations, or a payment approver confirming transactions, this manual will help you accomplish your tasks efficiently and confidently.
+
+Who This Manual Is For
+
+This manual is designed for all users of the MyMasjidApp system:
+- Students who need to view their classes, attendance, fees, and exam results
+- Teachers who manage classes, record attendance, and input exam results
+- Administrators who oversee all system operations and manage users
+- Payment approvers who confirm fee payments and documentation
+- Staff members who check in for work and manage daily activities
+- New users who are just starting to use the system
+
+What You Will Learn
+
+After reading this manual, you will be able to:
+- Access and log into the system securely
+- Navigate the user interface confidently
+- Complete tasks specific to your role
+- Understand how different features work
+- Troubleshoot common issues independently
+- Use advanced features to enhance your experience
+- Protect your account and data
+- Get help when you need it
+
+About MyMasjidApp
+
+MyMasjidApp is a comprehensive web-based management system designed specifically for masjids and madrasahs. The system helps institutions manage students, teachers, classes, attendance, fees, exams, and results in one centralized platform. It streamlines operations, reduces paperwork, and provides real-time access to important information for all stakeholders.
+
+Key Benefits
+
+Using MyMasjidApp provides several important benefits:
+- Centralized information management for all institutional data
+- Real-time access to student records, attendance, and results
+- Efficient fee management and payment tracking
+- Streamlined communication between students, teachers, and administrators
+- Secure data storage and access control
+- Easy reporting and analytics
+- Reduced administrative workload
+- Better organization and record keeping
+
+How to Use This Manual
+
+This manual is organized into logical sections that build upon each other. If you are new to the system, start from the beginning and read through each section in order. If you are an experienced user, you can jump directly to specific sections using the table of contents.
+
+Each section includes:
+- Clear explanations of features and functions
+- Step-by-step instructions for completing tasks
+- Screenshots and visual guides where applicable
+- Tips and best practices
+- Common mistakes to avoid
+- Troubleshooting guidance
+
+Keep this manual accessible while using the system for quick reference. Bookmark frequently used sections for faster access. The manual is designed to answer your questions and help you use the system effectively.
+
+Getting Help
+
+If you encounter issues not covered in this manual:
+- Check the Troubleshooting Guide section
+- Review the Frequently Asked Questions section
+- Contact your system administrator
+- Refer to the Support and Contact Information section
+
+Remember, there is no such thing as a silly question. The manual is here to help you succeed with the system.
+
+2. SYSTEM REQUIREMENTS
+
+[Demo Image: System requirements checklist showing device, browser, and internet connection requirements]
+
+Overview
+
+Before using MyMasjidApp, it is important to ensure your device and software meet the minimum system requirements. Meeting these requirements ensures the system runs smoothly, displays correctly, and provides the best possible experience.
+
+Supported Devices
+
+MyMasjidApp is a web-based application that works on multiple device types:
+
+Desktop and Laptop Computers
+
+Desktop and laptop computers provide the best experience for using MyMasjidApp. The larger screen size makes it easier to view information, complete forms, and navigate between sections. Any modern desktop or laptop computer will work, including:
+- Windows computers running Windows 10 or later
+- Mac computers running macOS 10.14 or later
+- Linux computers with a modern web browser installed
+
+Tablet Devices
+
+Tablet devices work well for viewing information and completing basic tasks. The touch interface makes navigation intuitive. Supported tablets include:
+- iPad devices running iOS 12 or later
+- Android tablets running Android 8.0 or later
+- Windows tablets running Windows 10 or later
+
+Smartphone Devices
+
+Smartphones can be used to access the system for viewing information and completing simple tasks. However, some features may be easier to use on larger screens. Supported smartphones include:
+- iPhone devices running iOS 12 or later
+- Android phones running Android 8.0 or later
+
+Browser Requirements
+
+MyMasjidApp works best with modern, up-to-date web browsers. The following browsers are fully supported and recommended:
+
+Google Chrome
+
+Google Chrome is the recommended browser for the best experience. Chrome provides excellent compatibility, fast performance, and regular security updates. Use version 90 or later for optimal performance.
+
+Mozilla Firefox
+
+Mozilla Firefox is fully supported and provides excellent performance. Use version 88 or later for best results. Firefox is a good alternative if you prefer not to use Chrome.
+
+Microsoft Edge
+
+Microsoft Edge is fully supported, especially on Windows computers. The modern version of Edge provides excellent compatibility. Use version 90 or later.
+
+Safari
+
+Safari works well on Mac computers and iOS devices. Use Safari 14 or later on Mac, and Safari on iOS 12 or later on iPhone and iPad devices.
+
+Browser Settings
+
+To ensure the system works properly, configure your browser with these settings:
+- Enable JavaScript (required for all features)
+- Allow cookies (required for login and session management)
+- Enable pop-ups for the system website (required for some features like printing)
+- Allow location access if using location-based features
+
+How to Check Your Browser Version
+
+To check your browser version:
+1. Open your web browser
+2. Click on the menu button (usually three dots or lines in the top right corner)
+3. Look for About or Help in the menu
+4. Click on About to see your browser version
+5. Compare your version to the requirements listed above
+
+If your browser version is older than recommended, update it to the latest version for best performance and security.
+
+Internet Connection Requirements
+
+MyMasjidApp requires a stable internet connection to function. The connection is used to:
+- Load the application interface
+- Access your account and data
+- Save changes you make
+- Sync information across devices
+- Receive real-time updates
+
+Connection Speed
+
+For basic use, a minimum connection speed of 1 Mbps is recommended. This allows the system to load pages and display information without significant delays.
+
+For optimal performance, especially when uploading files or viewing reports, a connection speed of 5 Mbps or higher is recommended. Faster connections provide quicker page loads and smoother experience.
+
+Connection Type
+
+Any type of internet connection will work, including:
+- Broadband or DSL connections
+- Cable internet
+- Fiber optic internet
+- Mobile data connections (4G or 5G)
+- Wi-Fi connections
+
+Connection Stability
+
+A stable connection is more important than raw speed. Interruptions in your connection can cause:
+- Loss of unsaved work
+- Login failures
+- Slow page loading
+- Error messages
+
+If you experience frequent connection problems, consider using a more stable connection type or checking your network setup.
+
+Screen Resolution
+
+MyMasjidApp is designed to work on various screen sizes, but optimal viewing requires certain minimum resolutions:
+
+Desktop and Laptop
+
+For desktop and laptop computers, a minimum screen resolution of 1366 by 768 pixels is recommended. Higher resolutions provide better clarity and more screen space for information. The system works best on resolutions of 1920 by 1080 pixels or higher.
+
+Tablet
+
+Tablets typically have sufficient resolution for viewing the system. Most modern tablets meet the requirements automatically.
+
+Smartphone
+
+Smartphones will display the system, but some features may require scrolling or zooming on smaller screens. The system is optimized for mobile viewing, but a larger screen provides a better experience.
+
+Display Settings
+
+For best viewing experience:
+- Set your display brightness to a comfortable level
+- Adjust text size in your browser if needed (but note that the system has its own text sizing)
+- Use full screen mode when possible for more viewing space
+- Ensure proper contrast for readability
+
+JavaScript Requirements
+
+JavaScript must be enabled in your browser for MyMasjidApp to function. JavaScript is used for:
+- Interactive features and buttons
+- Form validation
+- Dynamic content loading
+- User interface interactions
+- Real-time updates
+
+JavaScript is enabled by default in all modern browsers. If you have disabled it, you must enable it to use the system.
+
+How to Enable JavaScript
+
+To enable JavaScript:
+1. Open your browser settings
+2. Look for Privacy and Security or Advanced settings
+3. Find Content Settings or Site Settings
+4. Ensure JavaScript is enabled
+5. Refresh the MyMasjidApp page
+
+If you are unsure how to enable JavaScript in your specific browser, search online for instructions for your browser type and version.
+
+Cookie Requirements
+
+Cookies must be enabled for MyMasjidApp to function properly. Cookies are used for:
+- Maintaining your login session
+- Remembering your preferences
+- Storing temporary information
+- Security features
+
+Cookies are enabled by default in all browsers. If you have disabled cookies, you must enable them to use the system.
+
+How to Enable Cookies
+
+To enable cookies:
+1. Open your browser settings
+2. Look for Privacy and Security settings
+3. Find Cookie settings
+4. Ensure cookies are enabled (usually set to Allow all cookies or similar)
+5. Refresh the MyMasjidApp page
+
+Location Services
+
+Some features in MyMasjidApp use location services, such as:
+- Staff check-in verification
+- Location-based attendance recording
+- GPS tracking for certain activities
+
+If you use these features, you must allow location access when prompted by your browser. Location access is optional and only required for specific features.
+
+How to Enable Location Services
+
+To enable location services:
+1. When the system requests location access, click Allow or Yes
+2. In your browser settings, ensure location permissions are granted for the MyMasjidApp website
+3. On mobile devices, ensure location services are enabled in your device settings
+
+Security Considerations
+
+For secure access to MyMasjidApp:
+- Use a secure, private internet connection when possible
+- Avoid using public Wi-Fi networks for sensitive operations
+- Keep your browser updated for security patches
+- Use strong passwords (see Security and Privacy section)
+- Log out when finished, especially on shared devices
+
+If you must use a public network, consider using a virtual private network (VPN) for additional security.
+
+System Compatibility Summary
+
+To use MyMasjidApp, you need:
+- A device with internet access (computer, tablet, or smartphone)
+- A modern web browser (Chrome, Firefox, Edge, or Safari)
+- An internet connection (minimum 1 Mbps recommended)
+- JavaScript enabled in your browser
+- Cookies enabled in your browser
+- Screen resolution appropriate for your device type
+
+If you meet these requirements, you are ready to use MyMasjidApp. If you have questions about your specific setup, contact your system administrator for assistance.
+
+Testing Your Setup
+
+Before using the system for important tasks, test your setup:
+1. Open your web browser
+2. Navigate to the MyMasjidApp website
+3. Verify the page loads correctly
+4. Check that all visual elements display properly
+5. Try logging in to verify connectivity
+6. Test a basic function to ensure everything works
+
+If you encounter any issues during testing, refer to the Troubleshooting Guide section or contact your system administrator.

@@ -38,8 +38,11 @@ const FeaturedClasses = () => {
         const data = Array.isArray(response) ? response : [];
         setClasses(data.slice(0, 5));
       } catch (err) {
-        setError(err?.message || 'Gagal memuatkan kelas.');
-        console.error('FeaturedClasses error', err);
+        // Don't log canceled/duplicate request errors - they're expected
+        if (!err.isCanceled && !err.isExpected) {
+          setError(err?.message || 'Gagal memuatkan kelas.');
+          console.error('FeaturedClasses error', err);
+        }
       } finally {
         setLoading(false);
       }

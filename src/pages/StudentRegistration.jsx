@@ -5,6 +5,7 @@ import { User, AlertCircle, CreditCard, Mail, Phone, Calendar, CheckCircle } fro
 import { toast } from 'react-toastify';
 import { formatIC, isValidIC } from '../utils/icUtils';
 import { formatPhone } from '../utils/phoneUtils';
+import useErrorHandler from '../hooks/useErrorHandler';
 
 const StudentRegistration = () => {
   const navigate = useNavigate();
@@ -19,6 +20,9 @@ const StudentRegistration = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
+  const { handleError } = useErrorHandler({ 
+    pageName: 'StudentRegistration' 
+  });
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -129,7 +133,6 @@ const StudentRegistration = () => {
         toast.error(errorMsg);
       }
     } catch (error) {
-      console.error('Registration error:', error);
       let errorMsg = 'Pendaftaran gagal. Sila cuba lagi.';
       
       if (error.errors && Array.isArray(error.errors) && error.errors.length > 0) {
@@ -137,6 +140,15 @@ const StudentRegistration = () => {
       } else if (error.message && error.message !== 'Validation failed') {
         errorMsg = error.message;
       }
+      
+      // Log error with context
+      handleError(error, { 
+        action: 'handleSubmit',
+        defaultMessage: errorMsg,
+        additionalInfo: {
+          formData: { ...formData, ic_number: formData.ic_number ? '***' : '' } // Don't log full IC
+        }
+      });
       
       setError(errorMsg);
       toast.error(errorMsg);

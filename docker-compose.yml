@@ -63,6 +63,30 @@ services:
     networks:
       - masjid_network
 
+  # vLLM API Service
+  vllm-api:
+    build: ./vllm-api
+    container_name: masjid_vllm_api
+    restart: unless-stopped
+    environment:
+      - VLLM_MODEL=${VLLM_MODEL:-meta-llama/Meta-Llama-3-8B-Instruct}
+      - VLLM_TENSOR_PARALLEL_SIZE=${VLLM_TENSOR_PARALLEL_SIZE:-1}
+      - VLLM_GPU_MEMORY_UTILIZATION=${VLLM_GPU_MEMORY_UTILIZATION:-0.9}
+      - PORT=8000
+    ports:
+      - "8000:8000"
+    networks:
+      - masjid_network
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    # Nota: Para usar GPU, necesitas tener nvidia-docker instalado
+    # Si no tienes GPU, comenta la sección 'deploy' arriba
+
   # Nginx Reverse Proxy
   nginx:
     image: nginx:alpine
@@ -77,6 +101,7 @@ services:
     depends_on:
       - frontend
       - backend
+      - vllm-api
     networks:
       - masjid_network
     environment:

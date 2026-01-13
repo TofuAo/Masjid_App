@@ -6,14 +6,17 @@ import Button from '../components/ui/Button';
 import Badge from '../components/ui/Badge';
 import LoadingSkeleton from '../components/ui/LoadingSkeleton';
 import ReceiptViewer from '../components/receipt/ReceiptViewer';
-import { CreditCard, FileText, Download, Eye, Calendar, DollarSign, CheckCircle, XCircle, Clock } from 'lucide-react';
+import { CreditCard, FileText, Download, Eye, Calendar, DollarSign, CheckCircle, XCircle, Clock, AlertCircle } from 'lucide-react';
+import useErrorHandler from '../hooks/useErrorHandler';
 
 const PaymentHistory = () => {
   const [payments, setPayments] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
   const [selectedReceipt, setSelectedReceipt] = useState(null);
   const [showReceiptViewer, setShowReceiptViewer] = useState(false);
+  const { handleError, error: pageError, clearError } = useErrorHandler({ 
+    pageName: 'PaymentHistory' 
+  });
 
   useEffect(() => {
     fetchPayments();
@@ -22,23 +25,30 @@ const PaymentHistory = () => {
   const fetchPayments = async () => {
     try {
       setLoading(true);
-      const user = JSON.parse(localStorage.getItem('user'));
+      clearError();
+      
+      const userStr = localStorage.getItem('user');
+      if (!userStr) {
+        throw new Error('Sesi anda telah tamat tempoh. Sila log masuk semula.');
+      }
+      
+      const user = JSON.parse(userStr);
       if (!user || !user.ic) {
-        setError('User not found');
-        return;
+        throw new Error('Maklumat pengguna tidak dijumpai. Sila log masuk semula.');
       }
 
       const response = await paymentAPI.getByUser(user.ic, 100, 0);
       if (response?.success && response?.data) {
-        setPayments(response.data);
+        setPayments(Array.isArray(response.data) ? response.data : []);
       } else {
         setPayments([]);
       }
-      setError(null);
     } catch (err) {
-      console.error('Failed to fetch payments:', err);
-      setError(err?.message || 'Failed to load payment history');
-      toast.error('Failed to load payment history');
+      handleError(err, { 
+        action: 'fetchPayments',
+        defaultMessage: 'Gagal memuatkan sejarah pembayaran. Sila cuba lagi.'
+      });
+      setPayments([]);
     } finally {
       setLoading(false);
     }
@@ -62,19 +72,27 @@ const PaymentHistory = () => {
   };
 
   const viewReceipt = (payment) => {
-    const metadata = payment.metadata || {};
-    const receiptNumber = metadata.receiptNumber;
-    const feeId = metadata.fee_id;
-    
-    if (receiptNumber || feeId || payment.id) {
-      setSelectedReceipt({
-        receiptNumber,
-        feeId,
-        paymentId: payment.id
+    try {
+      const metadata = payment.metadata || {};
+      const receiptNumber = metadata.receiptNumber;
+      const feeId = metadata.fee_id;
+      
+      if (receiptNumber || feeId || payment.id) {
+        setSelectedReceipt({
+          receiptNumber,
+          feeId,
+          paymentId: payment.id
+        });
+        setShowReceiptViewer(true);
+      } else {
+        toast.error('Resit tidak tersedia untuk pembayaran ini');
+      }
+    } catch (error) {
+      handleError(error, { 
+        action: 'viewReceipt',
+        defaultMessage: 'Gagal membuka resit. Sila cuba lagi.',
+        silent: true
       });
-      setShowReceiptViewer(true);
-    } else {
-      toast.error('Receipt not available for this payment');
     }
   };
 
@@ -117,19 +135,41 @@ const PaymentHistory = () => {
     );
   }
 
-  if (error) {
+  if (pageError && !payments.length) {
     return (
       <div className="text-center py-12">
-        <div className="flex justify-center mb-4">
-          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center">
-            <XCircle className="w-8 h-8 text-red-600" />
+        <Card className="p-8">
+          <div className="flex justify-center mb-4">
+            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center">
+              <AlertCircle className="w-8 h-8 text-red-600" />
+            </div>
           </div>
-        </div>
-        <h3 className="text-lg font-semibold text-gray-900 mb-2">Error Loading Payment History</h3>
-        <p className="text-red-600 mb-4">{error}</p>
-        <Button onClick={fetchPayments}>
-          Retry
-        </Button>
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">Ralat Memuatkan Sejarah Pembayaran</h3>
+          <p className="text-red-600 mb-4">{pageError.message}</p>
+          {pageError.adminDetails && (
+            <details className="mb-4 text-left max-w-2xl mx-auto">
+              <summary className="text-sm text-gray-500 cursor-pointer mb-2">
+                Butiran Ralat (Pentadbir)
+              </summary>
+              <div className="text-xs bg-gray-100 p-3 rounded overflow-auto max-h-48">
+                <pre className="whitespace-pre-wrap">
+                  {JSON.stringify(pageError.adminDetails, null, 2)}
+                </pre>
+              </div>
+            </details>
+          )}
+          <div className="flex gap-3 justify-center">
+            <Button onClick={() => {
+              clearError();
+              fetchPayments();
+            }}>
+              Cuba Lagi
+            </Button>
+            <Button variant="outline" onClick={() => window.location.reload()}>
+              Muat Semula Halaman
+            </Button>
+          </div>
+        </Card>
       </div>
     );
   }

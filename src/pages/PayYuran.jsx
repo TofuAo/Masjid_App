@@ -5,38 +5,49 @@ import { toast } from 'react-toastify';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import Badge from '../components/ui/Badge';
+import ErrorDisplay from '../components/ui/ErrorDisplay';
 import { QrCode, ArrowLeft, CheckCircle, XCircle, Clock, CreditCard, Smartphone, Wallet, ChevronRight } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import PaymentCheckout from './PaymentCheckout';
+import useErrorHandler from '../hooks/useErrorHandler';
 
 const PayYuran = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const [fee, setFee] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
   const [qrSettings, setQrSettings] = useState(null);
   const [showPaymentCheckout, setShowPaymentCheckout] = useState(false);
   const [showDirectQR, setShowDirectQR] = useState(false);
+  const { handleError, error: pageError, clearError } = useErrorHandler({ 
+    pageName: 'PayYuran' 
+  });
 
   useEffect(() => {
     const fetchFee = async () => {
       try {
         setLoading(true);
+        clearError();
+        
+        if (!id) {
+          throw new Error('ID yuran tidak diberikan.');
+        }
+        
         // Get fee by ID
         const response = await feesAPI.getById(id);
         // Handle response structure: could be { success: true, data: {...} } or direct object
         const feeData = response?.data || response;
         if (feeData && feeData.id) {
           setFee(feeData);
-          setError(null);
         } else {
-          setError('Rekod yuran tidak ditemui.');
+          throw new Error('Rekod yuran tidak ditemui.');
         }
       } catch (err) {
-        console.error('Failed to fetch fee:', err);
-        setError(err?.message || 'Gagal memuatkan maklumat yuran.');
-        toast.error(err?.message || 'Gagal memuatkan maklumat yuran.');
+        handleError(err, { 
+          action: 'fetchFee',
+          defaultMessage: 'Gagal memuatkan maklumat yuran. Sila cuba lagi.'
+        });
+        setFee(null);
       } finally {
         setLoading(false);
       }
@@ -49,16 +60,26 @@ const PayYuran = () => {
           setQrSettings(response.data);
         }
       } catch (err) {
-        console.error('Failed to fetch QR settings:', err);
-        // Don't show error toast, just use default QR generation
+        // Don't show error toast for QR settings, just use default QR generation
+        handleError(err, { 
+          action: 'fetchQRSettings',
+          defaultMessage: 'Gagal memuatkan tetapan QR. Menggunakan tetapan lalai.',
+          silent: true
+        });
       }
     };
 
     if (id) {
       fetchFee();
       fetchQRSettings();
+    } else {
+      handleError(new Error('ID yuran tidak diberikan.'), {
+        action: 'initialize',
+        defaultMessage: 'ID yuran tidak sah.'
+      });
+      setLoading(false);
     }
-  }, [id]);
+  }, [id, handleError, clearError]);
 
   // Generate QR code data - typically this would be payment reference, account number, amount, etc.
   const generateQRData = () => {
@@ -92,15 +113,28 @@ const PayYuran = () => {
     );
   }
 
-  if (error || !fee) {
+  if (pageError || !fee) {
     return (
-      <div className="text-center py-8">
-        <XCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
-        <p className="text-red-600 mb-4">{error || 'Rekod yuran tidak ditemui'}</p>
-        <Button onClick={() => navigate(-1)}>
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          Kembali
-        </Button>
+      <div className="max-w-2xl mx-auto">
+        <ErrorDisplay
+          error={pageError || { message: 'Rekod yuran tidak ditemui.' }}
+          title="Ralat Memuatkan Yuran"
+          onRetry={() => {
+            clearError();
+            if (id) {
+              window.location.reload();
+            } else {
+              navigate('/yuran');
+            }
+          }}
+          showHomeButton={true}
+        />
+        <div className="text-center mt-4">
+          <Button onClick={() => navigate(-1)} variant="outline">
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Kembali
+          </Button>
+        </div>
       </div>
     );
   }

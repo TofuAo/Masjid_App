@@ -43,9 +43,19 @@ import Hierarchy from './pages/Hierarchy';
 import HelpCenter from './pages/HelpCenter';
 import Account from './pages/Account';
 import IbAccount from './pages/IbAccount';
+import Weather from './pages/Weather';
+import AzanTimer from './pages/AzanTimer';
+import ActivityTimeline from './pages/ActivityTimeline';
+import PermissionMatrix from './pages/PermissionMatrix';
+import PendingTeacherDashboard from './pages/PendingTeacherDashboard';
+import PendingTeacherDocuments from './pages/PendingTeacherDocuments';
+import NotificationCenter from './pages/NotificationCenter';
+import AuditLogs from './pages/AuditLogs';
+import SystemHealth from './pages/SystemHealth';
 import { PreferencesProvider, usePreferences } from './contexts/PreferencesContext';
 import { LanguageProvider } from './contexts/LanguageContext';
 import WelcomeModal from './components/ui/WelcomeModal';
+import { getEffectiveRole } from './utils/userRoles';
 
 function App() {
   return (
@@ -273,6 +283,32 @@ function AppContent() {
                   onClose={() => setShowWelcomeModal(false)} 
                 />
               )}
+            {/* Check if user is pending teacher and redirect to pending dashboard */}
+            {(() => {
+              const effectiveRole = getEffectiveRole(user);
+              const userStatus = user?.status;
+              if (userStatus === 'pending' && (effectiveRole === 'teacher' || user.role === 'teacher')) {
+                return (
+                  <Layout user={user} onLogout={handleLogout} onRoleChange={handleRoleChange}>
+                    <Routes>
+                      <Route path="/pending-teacher" element={<PendingTeacherDashboard />} />
+                      <Route path="/pending-teacher/documents" element={<PendingTeacherDocuments />} />
+                      <Route path="/complete-profile" element={<CompleteProfile user={user} onComplete={handleProfileComplete} />} />
+                      <Route path="/help" element={<HelpCenter />} />
+                      <Route path="/contact" element={<Contact user={user} />} />
+                      <Route path="/personal-settings" element={<PersonalSettings />} />
+                      <Route path="*" element={<Navigate to="/pending-teacher" replace />} />
+                    </Routes>
+                  </Layout>
+                );
+              }
+              return null;
+            })()}
+            {(() => {
+              const effectiveRole = getEffectiveRole(user);
+              const userStatus = user?.status;
+              if (!(userStatus === 'pending' && (effectiveRole === 'teacher' || user.role === 'teacher'))) {
+                return (
             <Layout user={user} onLogout={handleLogout} onRoleChange={handleRoleChange}>
               <div className="fade-in">
               <Routes>
@@ -309,10 +345,23 @@ function AppContent() {
                 <Route path="/ib-dashboard" element={<IbDashboard />} />
                 <Route path="/hierarchy" element={<Hierarchy user={user} />} />
                 <Route path="/help" element={<HelpCenter />} />
+                <Route path="/weather" element={<Weather />} />
+                <Route path="/azan-timer" element={<AzanTimer />} />
+                <Route path="/activity-timeline" element={<ActivityTimeline />} />
+                <Route path="/permission-matrix" element={<PermissionMatrix />} />
+                <Route path="/pending-teacher" element={<PendingTeacherDashboard />} />
+                <Route path="/pending-teacher/documents" element={<PendingTeacherDocuments />} />
+                <Route path="/notifications" element={<NotificationCenter />} />
+                <Route path="/audit-logs" element={<AuditLogs />} />
+                <Route path="/system-health" element={<SystemHealth />} />
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
               </div>
             </Layout>
+                );
+              }
+              return null;
+            })()}
             </>
           )}
           <ToastContainer position="top-right" />

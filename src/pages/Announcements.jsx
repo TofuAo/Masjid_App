@@ -4,8 +4,10 @@ import { announcementsAPI, adminActionsAPI } from '../services/api';
 import AnnouncementList from '../components/announcements/AnnouncementList';
 import AnnouncementForm from '../components/announcements/AnnouncementForm';
 import Card from '../components/ui/Card';
+import ErrorDisplay from '../components/ui/ErrorDisplay';
 import { toast } from 'react-toastify';
 import { Megaphone, AlertCircle, RotateCcw, Clock } from 'lucide-react';
+import useErrorHandler from '../hooks/useErrorHandler';
 
 const Announcements = ({ user }) => {
   const {
@@ -13,7 +15,7 @@ const Announcements = ({ user }) => {
     currentItem: selectedAnnouncement,
     view: currentView,
     loading,
-    error,
+    error: crudError,
     handlers,
     fetchItems,
     DeleteModal,
@@ -31,6 +33,9 @@ const Announcements = ({ user }) => {
   const [undoableActions, setUndoableActions] = useState([]);
   const [undoLoading, setUndoLoading] = useState(false);
   const [undoError, setUndoError] = useState(null);
+  const { handleError } = useErrorHandler({ 
+    pageName: 'Announcements' 
+  });
 
   const loadUndoableActions = React.useCallback(async () => {
     if (user?.role !== 'admin') {
@@ -42,12 +47,16 @@ const Announcements = ({ user }) => {
       const response = await adminActionsAPI.list({ entityType: 'announcement' });
       setUndoableActions(response?.data || []);
     } catch (err) {
-      console.error('Failed to load undoable actions:', err);
+      handleError(err, { 
+        action: 'loadUndoableActions',
+        defaultMessage: 'Gagal memuatkan tindakan boleh diundur.',
+        silent: true // Don't show toast for this
+      });
       setUndoError(err);
     } finally {
       setUndoLoading(false);
     }
-  }, [user?.role]);
+  }, [user?.role, handleError]);
 
   useEffect(() => {
     fetchItems({ limit: 100 });
@@ -64,8 +73,10 @@ const Announcements = ({ user }) => {
       fetchItems({ limit: 100 });
       loadUndoableActions();
     } catch (err) {
-      console.error('Failed to undo action:', err);
-      toast.error('Gagal mengundur tindakan. Sila cuba lagi.');
+      handleError(err, { 
+        action: 'handleUndoAction',
+        defaultMessage: 'Gagal mengundur tindakan. Sila cuba lagi.'
+      });
     }
   };
 
@@ -74,11 +85,16 @@ const Announcements = ({ user }) => {
       return <div className="text-center py-8">Memuatkan pengumuman...</div>;
     }
 
-    if (error) {
+    if (crudError) {
       return (
-        <div className="text-center py-8 text-red-600">
-          Ralat: {error.message || 'Gagal memuatkan data.'}
-        </div>
+        <ErrorDisplay
+          error={{
+            message: crudError.message || 'Gagal memuatkan data pengumuman.',
+            originalError: crudError
+          }}
+          title="Ralat Memuatkan Pengumuman"
+          onRetry={() => fetchItems({ limit: 100 })}
+        />
       );
     }
 

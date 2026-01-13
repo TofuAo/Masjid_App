@@ -138,7 +138,10 @@ const Kelas = () => {
           });
         }
       } catch (error) {
-        console.error('Failed to fetch stats:', error);
+        // Don't log canceled/duplicate request errors - they're expected
+        if (!error.isCanceled && !error.isExpected) {
+          console.error('Failed to fetch stats:', error);
+        }
         // Fallback to calculated stats
         const kelassArray = Array.isArray(kelass) ? kelass : [];
         setStats({

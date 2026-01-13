@@ -797,7 +797,8 @@ export const login = async (req, res) => {
     }
 
     // Check if user account is approved (status must be 'aktif')
-    if (user.status === 'pending') {
+    // Allow pending teachers to login with limited access
+    if (user.status === 'pending' && user.role !== 'teacher') {
       logFailedAuthAttempt(req, 'Account pending approval');
       return res.status(403).json({
         success: false,
@@ -805,6 +806,7 @@ export const login = async (req, res) => {
         accountStatus: 'pending'
       });
     }
+    // Note: Pending teachers are allowed to login but will have limited access in the frontend
 
     if (user.status === 'tidak_aktif') {
       logFailedAuthAttempt(req, 'Account inactive');
@@ -1623,7 +1625,7 @@ export const approveRegistration = async (req, res) => {
       });
     }
 
-    const { user_ic } = req.body;
+    const { user_ic, approval_notes } = req.body;
 
     if (!user_ic) {
       return res.status(400).json({
@@ -1666,7 +1668,8 @@ export const approveRegistration = async (req, res) => {
           title: user.nama,
           nama: user.nama,
           operationLabel: 'Kelulusan pendaftaran',
-          redirectPath: '/pending-registrations'
+          redirectPath: '/pending-registrations',
+          approval_notes: approval_notes || null
         },
         actorIc: req.user.ic
       });
@@ -1845,7 +1848,7 @@ export const rejectRegistration = async (req, res) => {
       });
     }
 
-    const { user_ic } = req.body;
+    const { user_ic, rejection_notes } = req.body;
 
     if (!user_ic) {
       return res.status(400).json({
@@ -1873,6 +1876,25 @@ export const rejectRegistration = async (req, res) => {
       return res.status(400).json({
         success: false,
         message: `User status is ${user.status}, not pending. Cannot reject.`
+      });
+    }
+
+    // Log admin action before update
+    if (req.user && req.user.role === 'admin') {
+      await createSnapshot({
+        entityType: 'student',
+        entityId: 0,
+        entityIdentifier: user_ic,
+        operation: 'update',
+        data: { ...user, previous_status: 'pending' },
+        metadata: {
+          title: user.nama,
+          nama: user.nama,
+          operationLabel: 'Penolakan pendaftaran',
+          redirectPath: '/pending-registrations',
+          rejection_notes: rejection_notes || null
+        },
+        actorIc: req.user.ic
       });
     }
 

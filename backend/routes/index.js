@@ -27,6 +27,9 @@ import ibRoutes from './ib.js';
 import userRoutes from './users.js';
 import receiptRoutes from './receipts.js';
 import maintenanceRoutes from './maintenance.js';
+import weatherRoutes from './weather.js';
+import quranQuoteRoutes from './quranQuote.js';
+import vllmRoutes from './vllm.js';
 const router = Router();
 
 router.use('/auth', authRoutes);
@@ -58,5 +61,8 @@ router.use('/ib', ibRoutes);
 router.use('/users', userRoutes);
 router.use('/receipts', receiptRoutes);
 router.use('/maintenance', maintenanceRoutes);
+router.use('/weather', weatherRoutes);
+router.use('/quran-quote', quranQuoteRoutes);
+router.use('/vllm', vllmRoutes);
 
 export default router;

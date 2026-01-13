@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
-import { CheckCircle, XCircle, Clock, FileText, Calendar, DollarSign, AlertCircle, Search, Filter, Zap, CheckSquare } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { CheckCircle, XCircle, Clock, FileText, Calendar, DollarSign, AlertCircle, Search, Filter, Zap, CheckSquare, TrendingUp, TrendingDown, FileDown, Download, BarChart3 } from 'lucide-react';
 import { ibAPI } from '../services/api';
 import { toast } from 'react-toastify';
+import { calculateExecutiveSummary, getReportAlerts, getTrendData, handleExportExcel, handleExportPDF } from '../utils/financeIntelligence';
 
 const IbDashboard = () => {
   const [reports, setReports] = useState([]);
@@ -15,6 +16,13 @@ const IbDashboard = () => {
   const [selectedStartDate, setSelectedStartDate] = useState('');
   const [selectedEndDate, setSelectedEndDate] = useState('');
   const [excludedPaymentIds, setExcludedPaymentIds] = useState([]);
+  const [advancedFilters, setAdvancedFilters] = useState({
+    amountMin: '',
+    amountMax: '',
+    referenceId: '',
+    problematicOnly: false
+  });
+  const [showExecutiveSummary, setShowExecutiveSummary] = useState(true);
 
   useEffect(() => {
     loadReports();
@@ -191,6 +199,46 @@ const IbDashboard = () => {
     return date.toLocaleDateString('ms-MY', { day: 'numeric', month: 'long', year: 'numeric' });
   };
 
+  // Calculate executive summary
+  const executiveSummary = useMemo(() => calculateExecutiveSummary(reports), [reports]);
+  
+  // Get trend data
+  const trendData = useMemo(() => getTrendData(reports, 5), [reports]);
+
+  // Enhanced filtering with advanced filters
+  const enhancedFilteredReports = useMemo(() => {
+    let filtered = reports.filter(report => {
+      if (filterStatus === 'all') return true;
+      if (filterStatus === 'can_confirm') return report.canConfirm;
+      if (filterStatus === 'confirmed') return report.confirmation_status === 'confirmed';
+      if (filterStatus === 'pending') return report.confirmation_status === 'pending' || !report.confirmation_status;
+      return true;
+    });
+
+    // Apply advanced filters
+    if (advancedFilters.amountMin) {
+      filtered = filtered.filter(r => r.total_amount >= parseFloat(advancedFilters.amountMin));
+    }
+    if (advancedFilters.amountMax) {
+      filtered = filtered.filter(r => r.total_amount <= parseFloat(advancedFilters.amountMax));
+    }
+    if (advancedFilters.referenceId) {
+      filtered = filtered.filter(r => 
+        `${r.bulan}${r.tahun}`.toLowerCase().includes(advancedFilters.referenceId.toLowerCase())
+      );
+    }
+    if (advancedFilters.problematicOnly) {
+      filtered = filtered.filter(r => {
+        const collectionRate = r.total_amount > 0 
+          ? ((r.paid_amount || (r.total_amount * (r.paid_count || 0) / Math.max(1, r.total_payments || 1))) / r.total_amount) * 100
+          : 0;
+        return collectionRate < 70 || !r.document_confirmed;
+      });
+    }
+
+    return filtered;
+  }, [reports, filterStatus, advancedFilters]);
+
   return (
     <div className="min-h-screen bg-gray-50 p-4 md:p-8">
       <div className="max-w-7xl mx-auto">
@@ -207,20 +255,96 @@ const IbDashboard = () => {
           </div>
         </div>
 
-        {/* Filter */}
+        {/* Executive Summary Dashboard */}
+        {showExecutiveSummary && (
+          <div className="bg-gradient-to-r from-blue-600 to-blue-800 rounded-lg shadow-lg p-6 mb-6 text-white">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-bold">Executive Summary</h2>
+              <button
+                onClick={() => setShowExecutiveSummary(false)}
+                className="text-white hover:text-gray-200"
+              >
+                <XCircle className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="bg-white bg-opacity-20 rounded-lg p-4">
+                <div className="text-sm opacity-90">Jumlah Tertunggak</div>
+                <div className="text-2xl font-bold">{formatCurrency(executiveSummary.totalOutstanding)}</div>
+                <div className="text-xs mt-1 opacity-75">{executiveSummary.approvalPending} bulan menunggu pengesahan</div>
+              </div>
+              <div className="bg-white bg-opacity-20 rounded-lg p-4">
+                <div className="text-sm opacity-90">Kutipan Tahun Ini</div>
+                <div className="text-2xl font-bold">{formatCurrency(executiveSummary.totalCollectedThisYear)}</div>
+                <div className="text-xs mt-1 opacity-75">Tahun {new Date().getFullYear()}</div>
+              </div>
+              <div className="bg-white bg-opacity-20 rounded-lg p-4">
+                <div className="text-sm opacity-90">Kadar Kutipan</div>
+                <div className="text-2xl font-bold">{executiveSummary.collectionRate}%</div>
+                <div className={`text-xs mt-1 font-medium ${
+                  executiveSummary.status === 'critical' ? 'text-red-300' :
+                  executiveSummary.status === 'warning' ? 'text-yellow-300' : 'text-green-300'
+                }`}>
+                  {executiveSummary.status === 'critical' ? 'Kritikal' :
+                   executiveSummary.status === 'warning' ? 'Perhatian' : 'Baik'}
+                </div>
+              </div>
+              <div className="bg-white bg-opacity-20 rounded-lg p-4">
+                <div className="text-sm opacity-90">Menunggu Pengesahan</div>
+                <div className="text-2xl font-bold">{executiveSummary.approvalPending}</div>
+                <div className="text-xs mt-1 opacity-75">bulan</div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Enhanced Filter */}
         <div className="bg-white rounded-lg shadow-md p-4 mb-6">
-          <div className="flex items-center gap-4">
-            <Filter className="w-5 h-5 text-gray-500" />
-            <select
-              value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value)}
-              className="border border-gray-300 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="all">Semua Laporan</option>
-              <option value="can_confirm">Boleh Disahkan (Dalam Tempoh)</option>
-              <option value="pending">Belum Disahkan</option>
-              <option value="confirmed">Telah Disahkan</option>
-            </select>
+          <div className="flex flex-col md:flex-row items-start md:items-center gap-4">
+            <div className="flex items-center gap-2">
+              <Filter className="w-5 h-5 text-gray-500" />
+              <select
+                value={filterStatus}
+                onChange={(e) => setFilterStatus(e.target.value)}
+                className="border border-gray-300 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="all">Semua Laporan</option>
+                <option value="can_confirm">Boleh Disahkan (Dalam Tempoh)</option>
+                <option value="pending">Belum Disahkan</option>
+                <option value="confirmed">Telah Disahkan</option>
+              </select>
+            </div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <input
+                type="number"
+                placeholder="Jumlah Min"
+                value={advancedFilters.amountMin}
+                onChange={(e) => setAdvancedFilters({...advancedFilters, amountMin: e.target.value})}
+                className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <input
+                type="number"
+                placeholder="Jumlah Max"
+                value={advancedFilters.amountMax}
+                onChange={(e) => setAdvancedFilters({...advancedFilters, amountMax: e.target.value})}
+                className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <input
+                type="text"
+                placeholder="Cari Rujukan"
+                value={advancedFilters.referenceId}
+                onChange={(e) => setAdvancedFilters({...advancedFilters, referenceId: e.target.value})}
+                className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={advancedFilters.problematicOnly}
+                  onChange={(e) => setAdvancedFilters({...advancedFilters, problematicOnly: e.target.checked})}
+                />
+                <span className="text-sm text-gray-700">Masalah Sahaja</span>
+              </label>
+            </div>
           </div>
         </div>
 
@@ -231,68 +355,100 @@ const IbDashboard = () => {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
-            {filteredReports.map((report) => (
-              <div
-                key={`${report.bulan}-${report.tahun}`}
-                className={`bg-white rounded-lg shadow-md p-6 cursor-pointer transition-all hover:shadow-lg ${
-                  report.canConfirm ? 'border-2 border-blue-500' : ''
-                }`}
-                onClick={() => loadMonthlyReport(report.bulan, report.tahun)}
-              >
-                <div className="flex items-start justify-between mb-4">
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900">{report.bulan} {report.tahun}</h3>
-                    {report.isInConfirmationPeriod && (
-                      <span className="text-xs text-blue-600 font-medium mt-1 flex items-center gap-1">
-                        <Calendar className="w-3 h-3" />
-                        Tempoh pengesahan: {formatDate(report.confirmation_period_start)} - {formatDate(report.confirmation_period_end)}
+            {enhancedFilteredReports.map((report, index) => {
+              const previousReport = index < enhancedFilteredReports.length - 1 ? enhancedFilteredReports[index + 1] : null;
+              const alerts = getReportAlerts(report, previousReport);
+              const collectionRate = report.total_amount > 0 
+                ? ((report.paid_amount || (report.total_amount * (report.paid_count || 0) / Math.max(1, report.total_payments || 1))) / report.total_amount) * 100
+                : 0;
+              
+              return (
+                <div
+                  key={`${report.bulan}-${report.tahun}`}
+                  className={`bg-white rounded-lg shadow-md p-6 cursor-pointer transition-all hover:shadow-lg ${
+                    report.canConfirm ? 'border-2 border-blue-500' : ''
+                  } ${alerts.length > 0 ? 'border-l-4 border-l-red-500' : ''}`}
+                  onClick={() => loadMonthlyReport(report.bulan, report.tahun)}
+                >
+                  <div className="flex items-start justify-between mb-4">
+                    <div>
+                      <h3 className="text-lg font-semibold text-gray-900">{report.bulan} {report.tahun}</h3>
+                      {report.isInConfirmationPeriod && (
+                        <span className="text-xs text-blue-600 font-medium mt-1 flex items-center gap-1">
+                          <Calendar className="w-3 h-3" />
+                          Tempoh pengesahan: {formatDate(report.confirmation_period_start)} - {formatDate(report.confirmation_period_end)}
+                        </span>
+                      )}
+                    </div>
+                    {getStatusBadge(report.confirmation_status)}
+                  </div>
+
+                  {/* Alerts */}
+                  {alerts.length > 0 && (
+                    <div className="mb-3 space-y-1">
+                      {alerts.slice(0, 2).map((alert, idx) => (
+                        <div key={idx} className={`text-xs px-2 py-1 rounded ${
+                          alert.type === 'error' ? 'bg-red-100 text-red-800' :
+                          alert.type === 'warning' ? 'bg-yellow-100 text-yellow-800' :
+                          'bg-blue-100 text-blue-800'
+                        }`}>
+                          {alert.message}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-gray-600">Jumlah Pembayaran:</span>
+                      <span className="font-semibold text-gray-900">{report.total_payments}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-gray-600">Jumlah Terkumpul:</span>
+                      <span className="font-semibold text-green-600">{formatCurrency(report.total_amount)}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-gray-600">Telah Dibayar:</span>
+                      <span className="font-semibold">{report.paid_count}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-gray-600">Kadar Kutipan:</span>
+                      <span className={`font-semibold ${
+                        collectionRate >= 85 ? 'text-green-600' :
+                        collectionRate >= 70 ? 'text-yellow-600' : 'text-red-600'
+                      }`}>
+                        {collectionRate.toFixed(1)}%
                       </span>
+                    </div>
+                    {report.confirmed_by_name && (
+                      <div className="text-xs text-gray-500 mt-2 pt-2 border-t">
+                        Disahkan oleh: {report.confirmed_by_name}
+                        {report.confirmed_at && (
+                          <div className="mt-1">Pada: {formatDate(report.confirmed_at)}</div>
+                        )}
+                      </div>
                     )}
                   </div>
-                  {getStatusBadge(report.confirmation_status)}
-                </div>
 
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-gray-600">Jumlah Pembayaran:</span>
-                    <span className="font-semibold text-gray-900">{report.total_payments}</span>
-                  </div>
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-gray-600">Jumlah Terkumpul:</span>
-                    <span className="font-semibold text-green-600">{formatCurrency(report.total_amount)}</span>
-                  </div>
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-gray-600">Telah Dibayar:</span>
-                    <span className="font-semibold">{report.paid_count}</span>
-                  </div>
-                  {report.confirmed_by_name && (
-                    <div className="text-xs text-gray-500 mt-2 pt-2 border-t">
-                      Disahkan oleh: {report.confirmed_by_name}
-                      {report.confirmed_at && (
-                        <div className="mt-1">Pada: {formatDate(report.confirmed_at)}</div>
-                      )}
+                  {report.canConfirm && (
+                    <div className="mt-4 pt-4 border-t space-y-2">
+                      <div className="flex items-center gap-2 text-blue-600 text-sm font-medium mb-2">
+                        <AlertCircle className="w-4 h-4" />
+                        Klik untuk melihat butiran
+                      </div>
+                      <button
+                        onClick={(e) => handleQuickApproveMonth(report.bulan, report.tahun, e)}
+                        disabled={approvingPayments}
+                        className="w-full bg-green-600 text-white px-4 py-2 rounded-md font-medium hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm"
+                      >
+                        <Zap className="w-4 h-4" />
+                        {approvingPayments ? 'Mengesahkan...' : 'Sahkan Semua Pembayaran'}
+                      </button>
                     </div>
                   )}
                 </div>
-
-                {report.canConfirm && (
-                  <div className="mt-4 pt-4 border-t space-y-2">
-                    <div className="flex items-center gap-2 text-blue-600 text-sm font-medium mb-2">
-                      <AlertCircle className="w-4 h-4" />
-                      Klik untuk melihat butiran
-                    </div>
-                    <button
-                      onClick={(e) => handleQuickApproveMonth(report.bulan, report.tahun, e)}
-                      disabled={approvingPayments}
-                      className="w-full bg-green-600 text-white px-4 py-2 rounded-md font-medium hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm"
-                    >
-                      <Zap className="w-4 h-4" />
-                      {approvingPayments ? 'Mengesahkan...' : 'Sahkan Semua Pembayaran'}
-                    </button>
-                  </div>
-                )}
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
 
@@ -309,15 +465,41 @@ const IbDashboard = () => {
                     Tempoh Pengesahan: {formatDate(selectedReport.confirmation?.confirmation_period_start)} - {formatDate(selectedReport.confirmation?.confirmation_period_end)}
                   </p>
                 </div>
-                <button
-                  onClick={() => {
-                    setSelectedReport(null);
-                    setNotes('');
-                  }}
-                  className="text-gray-500 hover:text-gray-700"
-                >
-                  <XCircle className="w-6 h-6" />
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => {
+                      if (selectedReport && selectedReport.payments) {
+                        handleExportExcel(selectedReport, selectedReport.payments);
+                        toast.success('Mengeksport ke Excel...');
+                      }
+                    }}
+                    className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors text-sm"
+                  >
+                    <FileDown className="w-4 h-4" />
+                    Excel
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (selectedReport && selectedReport.payments) {
+                        handleExportPDF(selectedReport, selectedReport.payments);
+                        toast.info('Fungsi PDF akan datang');
+                      }
+                    }}
+                    className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors text-sm"
+                  >
+                    <FileDown className="w-4 h-4" />
+                    PDF
+                  </button>
+                  <button
+                    onClick={() => {
+                      setSelectedReport(null);
+                      setNotes('');
+                    }}
+                    className="text-gray-500 hover:text-gray-700"
+                  >
+                    <XCircle className="w-6 h-6" />
+                  </button>
+                </div>
               </div>
 
               <div className="p-6">

@@ -10,9 +10,22 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "start": "vite preview --port 3000 --host 0.0.0.0",
-    "generate:ppt": "node scripts/generate-ppt.js"
+    "generate:ppt": "node scripts/generate-ppt.js",
+      "generate:manual": "node scripts/generate-technical-manual-word.js",
+      "generate:manual:combined": "node scripts/generate-technical-manual-word-combined.js",
+      "generate:manual:split": "node scripts/generate-technical-manual-word-combined.js --split",
+      "generate:word:manual": "node scripts/generate-word-manual.js",
+      "generate:interactive:manual": "node scripts/generate-interactive-manual.js",
+      "generate:interactive:manual:enhanced": "node scripts/generate-interactive-manual-enhanced.js",
+    "generate:user:manual:word": "node scripts/generate-user-manual-word.js",
+    "generate:dev:standards:word": "node scripts/generate-dev-standards-word.js",
+    "generate:combined:docs:word": "node scripts/generate-combined-docs-word.js",
+    "generate:complete:manual": "node scripts/generate-complete-manual-word.js"
   },
   "dependencies": {
+    "@dnd-kit/core": "^6.3.1",
+    "@dnd-kit/sortable": "^10.0.0",
+    "@dnd-kit/utilities": "^3.2.2",
     "@tailwindcss/forms": "^0.5.10",
     "axios": "^1.12.2",
     "docx": "^9.5.1",

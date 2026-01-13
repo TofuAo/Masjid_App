@@ -5,7 +5,6 @@ import {
   GraduationCap, 
   BookOpen, 
   Calendar,
-  Clock as ClockIcon, 
   CreditCard, 
   FileText, 
   BarChart3,
@@ -18,16 +17,28 @@ import {
   Megaphone,
   Clock,
   UserCheck,
-  History,
   ShieldCheck,
   UserCog,
-  Wallet,
   MessageSquare,
   CheckCircle,
   Network,
   FileCheck,
   HelpCircle,
   Trash2,
+  CloudSun,
+  History,
+  Shield,
+  ChevronDown,
+  ChevronRight,
+  Building2,
+  UserCircle,
+  Activity,
+  Wallet,
+  TrendingUp,
+  Wrench,
+  Radio,
+  Zap,
+  Bell,
 } from 'lucide-react';
 import { SidebarProvider, useSidebar } from './components/ui/SidebarProvider';
 import { usePreferences } from './hooks/usePreferences';
@@ -43,6 +54,17 @@ const LayoutContent = ({ children, user, onLogout, onRoleChange }) => {
   const location = useLocation();
   const { isOpen, toggleSidebar } = useSidebar();
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [expandedGroups, setExpandedGroups] = useState({
+    dashboard: true,
+    administration: true,
+    'users-academics': true,
+    'attendance-activities': true,
+    finance: true,
+    'reports-results': true,
+    'system-config': true,
+    communication: true,
+    account: true,
+  });
   const userMenuRef = useRef(null);
   const { preferences } = usePreferences();
   const { t } = useLanguage();
@@ -93,85 +115,338 @@ const LayoutContent = ({ children, user, onLogout, onRoleChange }) => {
     return roleLabels[role] || role;
   };
 
-  let menuItems = [
-    { icon: <Home className="w-5 h-5" />, label: t('menuDashboard'), link: '/' },
-    { icon: <HelpCircle className="w-5 h-5" />, label: t('menuHelp'), link: '/help' },
-    { icon: <MessageSquare className="w-5 h-5" />, label: t('menuContact'), link: '/contact' },
-  ];
+  // Toggle group expansion
+  const toggleGroup = (groupKey) => {
+    setExpandedGroups(prev => ({
+      ...prev,
+      [groupKey]: !prev[groupKey]
+    }));
+  };
 
-  // Admin menu - show for admin role OR IB users who have admin role and selected it
-  const isAdminMode = effectiveRole === 'admin' || 
-    (effectiveRole === 'ib' && availableRoles.includes('admin') && user?.activeRole === 'admin');
-  
-  if (isAdminMode) {
-    menuItems = [
-      ...menuItems,
-      { icon: <Megaphone className="w-5 h-5" />, label: t('menuAnnouncements'), link: '/announcements' },
-      { icon: <Clock className="w-5 h-5" />, label: t('menuCheckIn'), link: '/staff-checkin' },
-      { icon: <UserCheck className="w-5 h-5" />, label: t('menuRegistrationApproval'), link: '/pending-registrations' },
-      { icon: <ShieldCheck className="w-5 h-5" />, label: t('menuPicApproval'), link: '/pic-approvals' },
-      { icon: <UserCog className="w-5 h-5" />, label: t('menuPicUsers'), link: '/pic-users' },
-      { icon: <ShieldCheck className="w-5 h-5" />, label: t('menuAdminManagement'), link: '/admins' },
-      { icon: <Users className="w-5 h-5" />, label: t('menuAllUsers'), link: '/all-users' },
-      { icon: <Trash2 className="w-5 h-5" />, label: t('menuRecycleBin'), link: '/admin-actions' },
-      { icon: <Network className="w-5 h-5" />, label: t('menuSystemHierarchy'), link: '/hierarchy' },
-      { icon: <Users className="w-5 h-5" />, label: t('menuStudents'), link: '/pelajar' },
-      { icon: <GraduationCap className="w-5 h-5" />, label: t('menuTeachers'), link: '/guru' },
-      { icon: <BookOpen className="w-5 h-5" />, label: t('menuClasses'), link: '/kelas' },
-      { icon: <Calendar className="w-5 h-5" />, label: t('menuAttendance'), link: '/kehadiran' },
-      { icon: <CreditCard className="w-5 h-5" />, label: t('menuFees'), link: '/yuran' },
-      { icon: <FileText className="w-5 h-5" />, label: t('menuResults'), link: '/keputusan' },
-      { icon: <BarChart3 className="w-5 h-5" />, label: t('menuReports'), link: '/laporan' },
-      { icon: <Settings className="w-5 h-5" />, label: t('menuSettings'), link: '/settings' },
-      { icon: <CreditCard className="w-5 h-5" />, label: t('menuToyyibPaySettings'), link: '/toyyibpay-settings' },
-    ];
-  } else if (effectiveRole === 'pic') {
-    menuItems = [
-      ...menuItems,
-      { icon: <Megaphone className="w-5 h-5" />, label: t('menuAnnouncements'), link: '/announcements' },
-      { icon: <Clock className="w-5 h-5" />, label: t('menuCheckIn'), link: '/staff-checkin' },
-      { icon: <Network className="w-5 h-5" />, label: t('menuSystemHierarchy'), link: '/hierarchy' },
-      { icon: <Users className="w-5 h-5" />, label: t('menuStudents'), link: '/pelajar' },
-      { icon: <GraduationCap className="w-5 h-5" />, label: t('menuTeachers'), link: '/guru' },
-      { icon: <BookOpen className="w-5 h-5" />, label: t('menuClasses'), link: '/kelas' },
-      { icon: <Calendar className="w-5 h-5" />, label: t('menuAttendance'), link: '/kehadiran' },
-      { icon: <CreditCard className="w-5 h-5" />, label: t('menuFees'), link: '/yuran' },
-      { icon: <FileText className="w-5 h-5" />, label: t('menuResults'), link: '/keputusan' },
-      { icon: <BarChart3 className="w-5 h-5" />, label: t('menuReports'), link: '/laporan' },
-      { icon: <Trash2 className="w-5 h-5" />, label: t('menuPicRecycleBin'), link: '/pic-recycle-bin' },
-    ];
-  } else if (effectiveRole === 'teacher') {
-    menuItems = [
-      ...menuItems,
-      { icon: <Megaphone className="w-5 h-5" />, label: t('menuAnnouncements'), link: '/announcements' },
-      { icon: <Clock className="w-5 h-5" />, label: t('menuCheckIn'), link: '/staff-checkin' },
-      { icon: <Network className="w-5 h-5" />, label: t('menuSystemHierarchy'), link: '/hierarchy' },
-      { icon: <Users className="w-5 h-5" />, label: t('menuStudents'), link: '/pelajar' },
-      { icon: <BookOpen className="w-5 h-5" />, label: t('menuClasses'), link: '/kelas' },
-      { icon: <Calendar className="w-5 h-5" />, label: t('menuAttendance'), link: '/kehadiran' },
-      { icon: <FileText className="w-5 h-5" />, label: t('menuResults'), link: '/keputusan' },
-      { icon: <Settings className="w-5 h-5" />, label: t('menuSettings'), link: '/personal-settings' },
-    ];
-  } else if (effectiveRole === 'student') {
-    menuItems = [
-      ...menuItems,
-      { icon: <User className="w-5 h-5" />, label: t('menuMyAccount'), link: '/account' },
-      { icon: <Megaphone className="w-5 h-5" />, label: t('menuAnnouncements'), link: '/announcements' },
-      { icon: <Calendar className="w-5 h-5" />, label: t('menuAttendance'), link: '/kehadiran' },
-      { icon: <FileText className="w-5 h-5" />, label: t('menuResults'), link: '/keputusan' },
-      { icon: <CreditCard className="w-5 h-5" />, label: t('menuFees'), link: '/yuran' },
-      { icon: <Settings className="w-5 h-5" />, label: t('menuSettings'), link: '/personal-settings' },
-    ];
-  } else if (effectiveRole === 'ib') {
-    menuItems = [
-      ...menuItems,
-      { icon: <User className="w-5 h-5" />, label: t('menuIbAccount'), link: '/ib-account' },
-      { icon: <FileCheck className="w-5 h-5" />, label: t('menuIbDashboard'), link: '/ib-dashboard' },
-      { icon: <Megaphone className="w-5 h-5" />, label: t('menuAnnouncements'), link: '/announcements' },
-      { icon: <BarChart3 className="w-5 h-5" />, label: t('menuReports'), link: '/laporan' },
-      { icon: <Settings className="w-5 h-5" />, label: t('menuSettings'), link: '/personal-settings' },
-    ];
-  }
+  // Build grouped menu structure
+  const buildGroupedMenu = () => {
+    const isAdminMode = effectiveRole === 'admin' || 
+      (effectiveRole === 'ib' && availableRoles.includes('admin') && user?.activeRole === 'admin');
+
+    const menuGroups = [];
+
+    // Dashboard Group (always shown)
+    menuGroups.push({
+      key: 'dashboard',
+      label: 'Dashboard',
+      icon: <BarChart3 className="w-5 h-5" />,
+      children: [
+        { icon: <Home className="w-5 h-5" />, label: t('menuDashboard'), link: '/' },
+        { icon: <CloudSun className="w-5 h-5" />, label: 'Cuaca', link: '/weather' },
+        { icon: <Clock className="w-5 h-5" />, label: 'Waktu Solat', link: '/azan-timer' },
+      ]
+    });
+
+    if (isAdminMode) {
+      // Administration Group
+      menuGroups.push({
+        key: 'administration',
+        label: 'Administration',
+        icon: <Building2 className="w-5 h-5" />,
+        children: [
+          { icon: <ShieldCheck className="w-5 h-5" />, label: t('menuAdminManagement'), link: '/admins' },
+          { icon: <Users className="w-5 h-5" />, label: t('menuAllUsers'), link: '/all-users' },
+          { icon: <UserCog className="w-5 h-5" />, label: t('menuPicUsers'), link: '/pic-users' },
+          { icon: <UserCheck className="w-5 h-5" />, label: t('menuRegistrationApproval'), link: '/pending-registrations' },
+          { icon: <ShieldCheck className="w-5 h-5" />, label: t('menuPicApproval'), link: '/pic-approvals' },
+          { icon: <Trash2 className="w-5 h-5" />, label: t('menuRecycleBin'), link: '/admin-actions' },
+          { icon: <Bell className="w-5 h-5" />, label: 'Pusat Notifikasi', link: '/notifications' },
+        ]
+      });
+
+      // Users & Academics Group
+      menuGroups.push({
+        key: 'users-academics',
+        label: 'Users & Academics',
+        icon: <UserCircle className="w-5 h-5" />,
+        children: [
+          { icon: <Users className="w-5 h-5" />, label: t('menuStudents'), link: '/pelajar' },
+          { icon: <GraduationCap className="w-5 h-5" />, label: t('menuTeachers'), link: '/guru' },
+          { icon: <BookOpen className="w-5 h-5" />, label: t('menuClasses'), link: '/kelas' },
+        ]
+      });
+
+      // Attendance & Activities Group
+      menuGroups.push({
+        key: 'attendance-activities',
+        label: 'Attendance & Activities',
+        icon: <Activity className="w-5 h-5" />,
+        children: [
+          { icon: <Clock className="w-5 h-5" />, label: t('menuCheckIn'), link: '/staff-checkin' },
+          { icon: <Calendar className="w-5 h-5" />, label: t('menuAttendance'), link: '/kehadiran' },
+          { icon: <History className="w-5 h-5" />, label: 'Timeline Aktiviti', link: '/activity-timeline' },
+        ]
+      });
+
+      // Finance Group
+      menuGroups.push({
+        key: 'finance',
+        label: 'Finance',
+        icon: <Wallet className="w-5 h-5" />,
+        children: [
+          { icon: <CreditCard className="w-5 h-5" />, label: t('menuFees'), link: '/yuran' },
+          { icon: <CreditCard className="w-5 h-5" />, label: t('menuToyyibPaySettings'), link: '/toyyibpay-settings' },
+        ]
+      });
+
+      // Reports & Results Group
+      menuGroups.push({
+        key: 'reports-results',
+        label: 'Reports & Results',
+        icon: <TrendingUp className="w-5 h-5" />,
+        children: [
+          { icon: <FileText className="w-5 h-5" />, label: t('menuResults'), link: '/keputusan' },
+          { icon: <BarChart3 className="w-5 h-5" />, label: t('menuReports'), link: '/laporan' },
+        ]
+      });
+
+      // System & Configuration Group
+      menuGroups.push({
+        key: 'system-config',
+        label: 'System & Configuration',
+        icon: <Wrench className="w-5 h-5" />,
+        children: [
+          { icon: <Network className="w-5 h-5" />, label: t('menuSystemHierarchy'), link: '/hierarchy' },
+          { icon: <Shield className="w-5 h-5" />, label: 'Matriks Kebenaran', link: '/permission-matrix' },
+          { icon: <Activity className="w-5 h-5" />, label: 'Status Sistem', link: '/system-health' },
+          { icon: <History className="w-5 h-5" />, label: 'Log Audit', link: '/audit-logs' },
+          { icon: <Settings className="w-5 h-5" />, label: t('menuSettings'), link: '/settings' },
+        ]
+      });
+    } else if (effectiveRole === 'pic') {
+      // PIC specific groups
+      menuGroups.push({
+        key: 'users-academics',
+        label: 'Users & Academics',
+        icon: <UserCircle className="w-5 h-5" />,
+        children: [
+          { icon: <Users className="w-5 h-5" />, label: t('menuStudents'), link: '/pelajar' },
+          { icon: <GraduationCap className="w-5 h-5" />, label: t('menuTeachers'), link: '/guru' },
+          { icon: <BookOpen className="w-5 h-5" />, label: t('menuClasses'), link: '/kelas' },
+        ]
+      });
+
+      menuGroups.push({
+        key: 'attendance-activities',
+        label: 'Attendance & Activities',
+        icon: <Activity className="w-5 h-5" />,
+        children: [
+          { icon: <Clock className="w-5 h-5" />, label: t('menuCheckIn'), link: '/staff-checkin' },
+          { icon: <Calendar className="w-5 h-5" />, label: t('menuAttendance'), link: '/kehadiran' },
+        ]
+      });
+
+      menuGroups.push({
+        key: 'finance',
+        label: 'Finance',
+        icon: <Wallet className="w-5 h-5" />,
+        children: [
+          { icon: <CreditCard className="w-5 h-5" />, label: t('menuFees'), link: '/yuran' },
+        ]
+      });
+
+      menuGroups.push({
+        key: 'reports-results',
+        label: 'Reports & Results',
+        icon: <TrendingUp className="w-5 h-5" />,
+        children: [
+          { icon: <FileText className="w-5 h-5" />, label: t('menuResults'), link: '/keputusan' },
+          { icon: <BarChart3 className="w-5 h-5" />, label: t('menuReports'), link: '/laporan' },
+        ]
+      });
+
+      menuGroups.push({
+        key: 'system-config',
+        label: 'System & Configuration',
+        icon: <Wrench className="w-5 h-5" />,
+        children: [
+          { icon: <Network className="w-5 h-5" />, label: t('menuSystemHierarchy'), link: '/hierarchy' },
+          { icon: <Trash2 className="w-5 h-5" />, label: t('menuPicRecycleBin'), link: '/pic-recycle-bin' },
+        ]
+      });
+    } else if (effectiveRole === 'teacher') {
+      menuGroups.push({
+        key: 'users-academics',
+        label: 'Users & Academics',
+        icon: <UserCircle className="w-5 h-5" />,
+        children: [
+          { icon: <Users className="w-5 h-5" />, label: t('menuStudents'), link: '/pelajar' },
+          { icon: <BookOpen className="w-5 h-5" />, label: t('menuClasses'), link: '/kelas' },
+        ]
+      });
+
+      menuGroups.push({
+        key: 'attendance-activities',
+        label: 'Attendance & Activities',
+        icon: <Activity className="w-5 h-5" />,
+        children: [
+          { icon: <Clock className="w-5 h-5" />, label: t('menuCheckIn'), link: '/staff-checkin' },
+          { icon: <Calendar className="w-5 h-5" />, label: t('menuAttendance'), link: '/kehadiran' },
+        ]
+      });
+
+      menuGroups.push({
+        key: 'reports-results',
+        label: 'Reports & Results',
+        icon: <TrendingUp className="w-5 h-5" />,
+        children: [
+          { icon: <FileText className="w-5 h-5" />, label: t('menuResults'), link: '/keputusan' },
+        ]
+      });
+
+      menuGroups.push({
+        key: 'system-config',
+        label: 'System & Configuration',
+        icon: <Wrench className="w-5 h-5" />,
+        children: [
+          { icon: <Network className="w-5 h-5" />, label: t('menuSystemHierarchy'), link: '/hierarchy' },
+          { icon: <Settings className="w-5 h-5" />, label: t('menuSettings'), link: '/personal-settings' },
+        ]
+      });
+    } else if (effectiveRole === 'student') {
+      menuGroups.push({
+        key: 'account',
+        label: 'Account',
+        icon: <User className="w-5 h-5" />,
+        children: [
+          { icon: <User className="w-5 h-5" />, label: t('menuMyAccount'), link: '/account' },
+        ]
+      });
+
+      menuGroups.push({
+        key: 'attendance-activities',
+        label: 'Attendance & Activities',
+        icon: <Activity className="w-5 h-5" />,
+        children: [
+          { icon: <Calendar className="w-5 h-5" />, label: t('menuAttendance'), link: '/kehadiran' },
+        ]
+      });
+
+      menuGroups.push({
+        key: 'finance',
+        label: 'Finance',
+        icon: <Wallet className="w-5 h-5" />,
+        children: [
+          { icon: <CreditCard className="w-5 h-5" />, label: t('menuFees'), link: '/yuran' },
+        ]
+      });
+
+      menuGroups.push({
+        key: 'reports-results',
+        label: 'Reports & Results',
+        icon: <TrendingUp className="w-5 h-5" />,
+        children: [
+          { icon: <FileText className="w-5 h-5" />, label: t('menuResults'), link: '/keputusan' },
+        ]
+      });
+
+      menuGroups.push({
+        key: 'system-config',
+        label: 'System & Configuration',
+        icon: <Wrench className="w-5 h-5" />,
+        children: [
+          { icon: <Settings className="w-5 h-5" />, label: t('menuSettings'), link: '/personal-settings' },
+        ]
+      });
+    } else if (effectiveRole === 'ib') {
+      menuGroups.push({
+        key: 'account',
+        label: 'Account',
+        icon: <User className="w-5 h-5" />,
+        children: [
+          { icon: <User className="w-5 h-5" />, label: t('menuIbAccount'), link: '/ib-account' },
+          { icon: <FileCheck className="w-5 h-5" />, label: t('menuIbDashboard'), link: '/ib-dashboard' },
+        ]
+      });
+
+      menuGroups.push({
+        key: 'reports-results',
+        label: 'Reports & Results',
+        icon: <TrendingUp className="w-5 h-5" />,
+        children: [
+          { icon: <BarChart3 className="w-5 h-5" />, label: t('menuReports'), link: '/laporan' },
+        ]
+      });
+
+      menuGroups.push({
+        key: 'system-config',
+        label: 'System & Configuration',
+        icon: <Wrench className="w-5 h-5" />,
+        children: [
+          { icon: <Settings className="w-5 h-5" />, label: t('menuSettings'), link: '/personal-settings' },
+        ]
+      });
+    }
+
+    // Communication & Support Group (always shown)
+    menuGroups.push({
+      key: 'communication',
+      label: 'Communication & Support',
+      icon: <Radio className="w-5 h-5" />,
+      children: [
+        { icon: <Megaphone className="w-5 h-5" />, label: t('menuAnnouncements'), link: '/announcements' },
+        { icon: <HelpCircle className="w-5 h-5" />, label: t('menuHelp'), link: '/help' },
+        { icon: <MessageSquare className="w-5 h-5" />, label: t('menuContact'), link: '/contact' },
+      ]
+    });
+
+    return menuGroups;
+  };
+
+  const menuGroups = buildGroupedMenu();
+
+  // Get all links from grouped menus to avoid duplicates
+  const getAllGroupedMenuLinks = () => {
+    const links = new Set();
+    menuGroups.forEach(group => {
+      group.children.forEach(child => {
+        links.add(child.link);
+      });
+    });
+    return links;
+  };
+
+  // Build Quick Access items based on role (excluding duplicates from grouped menus)
+  const buildQuickAccess = () => {
+    const groupedLinks = getAllGroupedMenuLinks();
+    const isAdminMode = effectiveRole === 'admin' || 
+      (effectiveRole === 'ib' && availableRoles.includes('admin') && user?.activeRole === 'admin');
+
+    if (isAdminMode) {
+      const items = [
+        { icon: <UserCheck className="w-5 h-5" />, label: t('menuRegistrationApproval'), link: '/pending-registrations' },
+        { icon: <ShieldCheck className="w-5 h-5" />, label: t('menuPicApproval'), link: '/pic-approvals' },
+      ];
+      return items.filter(item => !groupedLinks.has(item.link));
+    } else if (effectiveRole === 'pic') {
+      const items = [
+        { icon: <History className="w-5 h-5" />, label: 'Timeline Aktiviti', link: '/activity-timeline' },
+        { icon: <UserCheck className="w-5 h-5" />, label: t('menuRegistrationApproval'), link: '/pending-registrations' },
+      ];
+      return items.filter(item => !groupedLinks.has(item.link));
+    } else if (effectiveRole === 'teacher') {
+      // All teacher quick access items are already in grouped menus, so return empty
+      return [];
+    } else if (effectiveRole === 'student') {
+      const items = [
+        { icon: <Clock className="w-5 h-5" />, label: t('menuCheckIn'), link: '/staff-checkin' },
+      ];
+      return items.filter(item => !groupedLinks.has(item.link));
+    } else if (effectiveRole === 'ib') {
+      // IB Dashboard is already in Account group, so return empty
+      return [];
+    }
+    
+    // Default fallback - all items are in grouped menus, so return empty
+    return [];
+  };
+
+  const quickAccessItems = buildQuickAccess();
 
   return (
     <div 
@@ -306,54 +581,169 @@ const LayoutContent = ({ children, user, onLogout, onRoleChange }) => {
 
         {/* Navigation */}
         <nav className="flex-1 overflow-y-auto relative z-10 scroll-smooth">
-          <ul className={`space-y-2 ${isOpen ? 'p-4' : 'p-2'} transition-all duration-300`}>
-            {menuItems.map((item) => (
-              <li key={item.label}>
-                <Link
-                  to={item.link}
-                  className={`flex items-center rounded-xl transition-all duration-200 ease-out font-medium ${
-                    isOpen 
-                      ? 'gap-3 px-4 py-3' 
-                      : 'justify-center px-2 py-3'
-                  }`}
-                  style={location.pathname === item.link ? {
-                    backgroundColor: colorScheme.colors.primaryLight,
-                    color: colorScheme.colors.primaryDark,
-                    borderColor: colorScheme.colors.primary,
-                    borderWidth: '1px',
-                    borderStyle: 'solid',
-                    boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)'
-                  } : {
-                    color: 'white',
-                    backgroundColor: 'transparent',
-                    borderColor: 'transparent',
-                    borderWidth: '1px',
-                    borderStyle: 'solid'
-                  }}
-                  onMouseEnter={(e) => {
-                    if (location.pathname !== item.link) {
-                      e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.15)';
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    if (location.pathname !== item.link) {
-                      e.currentTarget.style.backgroundColor = 'transparent';
-                    } else {
-                      e.currentTarget.style.backgroundColor = colorScheme.colors.primaryLight;
-                      e.currentTarget.style.color = colorScheme.colors.primaryDark;
-                    }
-                  }}
-                  title={!isOpen ? item.label : ''}
-                >
-                  <span className={`flex-shrink-0 flex items-center justify-center ${
-                    isOpen ? 'w-5 h-5' : 'w-6 h-6'
-                  }`}>
-                    {item.icon}
+          {/* Quick Access Section */}
+          {quickAccessItems.length > 0 && (
+            <div className={`${isOpen ? 'px-4 pt-4 pb-3' : 'px-2 pt-4 pb-3'}`}>
+              {isOpen && (
+                <div className="flex items-center gap-2 mb-3 px-2">
+                  <Zap className="w-4 h-4 text-yellow-300" />
+                  <span className="text-xs font-semibold text-white opacity-90 uppercase tracking-wider">
+                    Quick Access
                   </span>
-                  {isOpen && <span className="truncate ml-2">{item.label}</span>}
-                </Link>
-              </li>
-            ))}
+                </div>
+              )}
+              <ul className={`space-y-1 ${isOpen ? '' : ''}`}>
+                {quickAccessItems.map((item) => (
+                  <li key={item.label}>
+                    <Link
+                      to={item.link}
+                      className={`flex items-center rounded-xl transition-all duration-200 ease-out font-medium ${
+                        isOpen 
+                          ? 'gap-3 px-4 py-2.5' 
+                          : 'justify-center px-2 py-2.5'
+                      }`}
+                      style={location.pathname === item.link ? {
+                        backgroundColor: colorScheme.colors.primaryLight,
+                        color: colorScheme.colors.primaryDark,
+                        borderColor: colorScheme.colors.primary,
+                        borderWidth: '1px',
+                        borderStyle: 'solid',
+                        boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)'
+                      } : {
+                        color: 'white',
+                        backgroundColor: 'transparent',
+                        borderColor: 'transparent',
+                        borderWidth: '1px',
+                        borderStyle: 'solid'
+                      }}
+                      onMouseEnter={(e) => {
+                        if (location.pathname !== item.link) {
+                          e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.15)';
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (location.pathname !== item.link) {
+                          e.currentTarget.style.backgroundColor = 'transparent';
+                        } else {
+                          e.currentTarget.style.backgroundColor = colorScheme.colors.primaryLight;
+                          e.currentTarget.style.color = colorScheme.colors.primaryDark;
+                        }
+                      }}
+                      title={!isOpen ? item.label : ''}
+                    >
+                      <span className={`flex-shrink-0 flex items-center justify-center ${
+                        isOpen ? 'w-4 h-4' : 'w-5 h-5'
+                      }`}>
+                        {item.icon}
+                      </span>
+                      {isOpen && <span className="truncate ml-2 text-sm">{item.label}</span>}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+              {isOpen && (
+                <div className="h-px bg-white opacity-20 mx-2 my-3"></div>
+              )}
+            </div>
+          )}
+          
+          <ul className={`space-y-1 ${isOpen ? 'px-4 pb-4' : 'px-2 pb-4'} transition-all duration-300`}>
+            {menuGroups.map((group) => {
+              const isExpanded = expandedGroups[group.key] !== false; // Default to true (expanded)
+              const hasActiveChild = group.children.some(child => location.pathname === child.link);
+              
+              return (
+                <li key={group.key} className="space-y-1">
+                  {/* Group Header */}
+                  {isOpen ? (
+                    <button
+                      onClick={() => toggleGroup(group.key)}
+                      className={`w-full flex items-center justify-between rounded-xl transition-all duration-200 ease-out font-medium gap-3 px-4 py-2.5 ${
+                        hasActiveChild ? 'text-white' : 'text-white opacity-90'
+                      }`}
+                      style={{
+                        backgroundColor: hasActiveChild ? 'rgba(255, 255, 255, 0.15)' : 'transparent',
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.15)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = hasActiveChild ? 'rgba(255, 255, 255, 0.15)' : 'transparent';
+                      }}
+                    >
+                      <div className="flex items-center gap-3 flex-1 min-w-0">
+                        <span className="flex-shrink-0 w-5 h-5 flex items-center justify-center">
+                          {group.icon}
+                        </span>
+                        <span className="truncate text-sm font-semibold">{group.label}</span>
+                      </div>
+                      <span className="flex-shrink-0 w-4 h-4 flex items-center justify-center">
+                        {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                      </span>
+                    </button>
+                  ) : (
+                    <div className="flex justify-center py-2">
+                      <div className="w-8 h-8 flex items-center justify-center text-white opacity-80">
+                        {group.icon}
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Group Children */}
+                  {isExpanded && (
+                    <ul className={`space-y-1 ${isOpen ? 'ml-4 pl-4 border-l-2' : ''}`} style={{ borderColor: 'rgba(255, 255, 255, 0.2)' }}>
+                      {group.children.map((child) => (
+                        <li key={child.label}>
+                          <Link
+                            to={child.link}
+                            className={`flex items-center rounded-xl transition-all duration-200 ease-out font-medium ${
+                              isOpen 
+                                ? 'gap-3 px-4 py-2.5' 
+                                : 'justify-center px-2 py-2.5'
+                            }`}
+                            style={location.pathname === child.link ? {
+                              backgroundColor: colorScheme.colors.primaryLight,
+                              color: colorScheme.colors.primaryDark,
+                              borderColor: colorScheme.colors.primary,
+                              borderWidth: '1px',
+                              borderStyle: 'solid',
+                              boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)'
+                            } : {
+                              color: 'white',
+                              backgroundColor: 'transparent',
+                              borderColor: 'transparent',
+                              borderWidth: '1px',
+                              borderStyle: 'solid'
+                            }}
+                            onMouseEnter={(e) => {
+                              if (location.pathname !== child.link) {
+                                e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.15)';
+                              }
+                            }}
+                            onMouseLeave={(e) => {
+                              if (location.pathname !== child.link) {
+                                e.currentTarget.style.backgroundColor = 'transparent';
+                              } else {
+                                e.currentTarget.style.backgroundColor = colorScheme.colors.primaryLight;
+                                e.currentTarget.style.color = colorScheme.colors.primaryDark;
+                              }
+                            }}
+                            title={!isOpen ? child.label : ''}
+                          >
+                            <span className={`flex-shrink-0 flex items-center justify-center ${
+                              isOpen ? 'w-4 h-4' : 'w-5 h-5'
+                            }`}>
+                              {child.icon}
+                            </span>
+                            {isOpen && <span className="truncate ml-2 text-sm">{child.label}</span>}
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </li>
+              );
+            })}
           </ul>
         </nav>
 

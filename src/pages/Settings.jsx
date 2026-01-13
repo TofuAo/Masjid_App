@@ -6,7 +6,7 @@ import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import Badge from '../components/ui/Badge';
 import GoogleMapPicker from '../components/ui/GoogleMapPicker';
-import { Settings as SettingsIcon, QrCode, Key, Upload, Link, Save, Users, Eye, EyeOff, MapPin, Database, CloudUpload, History, DownloadCloud, Loader2, Search, X, CreditCard, Mail, Phone, Archive, Contact, Clock, Globe } from 'lucide-react';
+import { Settings as SettingsIcon, QrCode, Key, Upload, Link, Save, Users, Eye, EyeOff, MapPin, Database, CloudUpload, History, DownloadCloud, Loader2, Search, X, CreditCard, Mail, Phone, Archive, Contact, Clock, Globe, CheckCircle, AlertCircle, ExternalLink, ChevronDown, ChevronUp, Sparkles, Shield } from 'lucide-react';
 import { formatIC } from '../utils/icUtils';
 import { getEffectiveRole } from '../utils/userRoles';
 import { formatPhoneForDisplay } from '../utils/phoneUtils';
@@ -183,6 +183,10 @@ const Settings = () => {
   });
   const [qrImageFile, setQrImageFile] = useState(null);
   const [qrImagePreview, setQrImagePreview] = useState(null);
+  const [showAdvancedQR, setShowAdvancedQR] = useState(false);
+  const [qrValidationErrors, setQrValidationErrors] = useState({});
+  const [qrSaveStatus, setQrSaveStatus] = useState(null); // 'success', 'error', null
+  const [lastQRUpdate, setLastQRUpdate] = useState(null);
   
   // Password Management
   const [allUsers, setAllUsers] = useState([]);
@@ -372,8 +376,14 @@ const Settings = () => {
       const response = await settingsAPI.getQRCode();
       if (response?.success && response?.data) {
         setQrSettings(response.data);
+        // Only show preview if it's a valid image (not base64 string in input)
         if (response.data.qr_code_image) {
-          setQrImagePreview(response.data.qr_code_image);
+          // Check if it's a data URL (base64) or regular URL
+          if (response.data.qr_code_image.startsWith('data:image') || 
+              response.data.qr_code_image.startsWith('http://') || 
+              response.data.qr_code_image.startsWith('https://')) {
+            setQrImagePreview(response.data.qr_code_image);
+          }
         }
       }
     } catch (error) {
@@ -409,26 +419,111 @@ const Settings = () => {
   const handleImageChange = (e) => {
     const file = e.target.files?.[0];
     if (file) {
+      // Validate file
+      const errors = {};
+      
+      // Check file type
+      const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png'];
+      if (!allowedTypes.includes(file.type)) {
+        errors.image = 'Format fail tidak disokong. Sila gunakan JPG atau PNG sahaja.';
+        toast.error(errors.image);
+        e.target.value = ''; // Clear input
+        setQrValidationErrors(errors);
+        return;
+      }
+      
+      // Check file size (max 2MB)
+      const maxSize = 2 * 1024 * 1024; // 2MB
+      if (file.size > maxSize) {
+        errors.image = 'Saiz fail terlalu besar. Maksimum 2MB.';
+        toast.error(errors.image);
+        e.target.value = ''; // Clear input
+        setQrValidationErrors(errors);
+        return;
+      }
+      
+      // Validate image dimensions (should be square-ish for QR codes)
+      const img = new Image();
+      img.onload = () => {
+        const aspectRatio = img.width / img.height;
+        if (aspectRatio < 0.8 || aspectRatio > 1.2) {
+          errors.image = 'Nisbah aspek gambar tidak sesuai. QR code sepatutnya hampir segi empat sama.';
+          toast.warning(errors.image);
+        }
+        setQrValidationErrors(errors);
+      };
+      img.src = URL.createObjectURL(file);
+      
       setQrImageFile(file);
-      // Create preview
+      setQrValidationErrors({});
+      
+      // Create preview (but don't show base64 in UI)
       const reader = new FileReader();
       reader.onloadend = () => {
         setQrImagePreview(reader.result);
+        // Clear the URL input when file is uploaded
+        setQrSettings({ ...qrSettings, qr_code_image: '' });
       };
       reader.readAsDataURL(file);
     }
   };
 
+  const validateQRUrl = async (url) => {
+    if (!url) return true;
+    
+    // Check if it's HTTPS
+    if (!url.startsWith('https://')) {
+      return 'URL mesti menggunakan HTTPS untuk keselamatan.';
+    }
+    
+    // Check if URL is reachable (optional - can be async)
+    try {
+      // Just validate format, don't actually fetch (to avoid CORS issues)
+      new URL(url);
+      return true;
+    } catch {
+      return 'Format URL tidak sah.';
+    }
+  };
+
+  const handleTestQRPayment = () => {
+    // Open test payment page in new tab
+    window.open('/pay-yuran/test', '_blank');
+    toast.info('Membuka halaman ujian pembayaran QR...');
+  };
+
   const handleSaveQRSettings = async () => {
     try {
       setLoading(true);
+      setQrSaveStatus(null);
+      setQrValidationErrors({});
       
-      // If image file is selected, convert to base64 or save file path
-      // For now, we'll use URL input for simplicity
-      let imageValue = qrSettings.qr_code_image;
+      // Validate if custom QR is enabled
+      if (qrSettings.qr_code_enabled === '1') {
+        // If custom QR is enabled, validate that we have either image or URL
+        if (!qrImageFile && !qrSettings.qr_code_image && !qrImagePreview) {
+          setQrValidationErrors({ general: 'Sila muat naik gambar QR code atau masukkan URL gambar.' });
+          setQrSaveStatus('error');
+          toast.error('Sila muat naik gambar QR code atau masukkan URL gambar.');
+          setLoading(false);
+          return;
+        }
+        
+        // Validate URL if provided
+        if (qrSettings.qr_code_image && !qrImageFile) {
+          const urlError = await validateQRUrl(qrSettings.qr_code_image);
+          if (urlError !== true) {
+            setQrValidationErrors({ imageUrl: urlError });
+            setQrSaveStatus('error');
+            toast.error(urlError);
+            setLoading(false);
+            return;
+          }
+        }
+      }
       
+      // If image file is selected, convert to base64 (backend will handle storage)
       if (qrImageFile) {
-        // Convert to base64 for storage (in production, upload to server and store path)
         const reader = new FileReader();
         reader.onloadend = async () => {
           const base64Image = reader.result;
@@ -437,40 +532,67 @@ const Settings = () => {
             type: 'image',
             description: 'QR Code image for payment page'
           });
+          await saveRemainingSettings();
         };
         reader.readAsDataURL(qrImageFile);
-      } else if (qrSettings.qr_code_image) {
-        await settingsAPI.update('qr_code_image', { 
-          value: qrSettings.qr_code_image, 
-          type: 'image',
-          description: 'QR Code image URL for payment page'
-        });
+      } else {
+        await saveRemainingSettings();
       }
-
-      // Update link if provided
-      if (qrSettings.qr_code_link) {
-        await settingsAPI.update('qr_code_link', { 
-          value: qrSettings.qr_code_link, 
-          type: 'link',
-          description: 'QR Code link/URL for payment page'
-        });
-      }
-
-      // Update enabled status
-      await settingsAPI.update('qr_code_enabled', { 
-        value: qrSettings.qr_code_enabled, 
-        type: 'text',
-        description: 'Enable custom QR code'
-      });
-
-      toast.success(t('settingsSaved'));
-      fetchQRSettings();
     } catch (error) {
       console.error('Failed to save QR settings:', error);
-      toast.error(t('error'));
-    } finally {
+      setQrSaveStatus('error');
+      toast.error(error?.message || 'Gagal menyimpan tetapan QR code.');
       setLoading(false);
     }
+  };
+
+  const saveRemainingSettings = async () => {
+    // Update image URL if provided (and no file uploaded)
+    if (qrSettings.qr_code_image && !qrImageFile) {
+      await settingsAPI.update('qr_code_image', { 
+        value: qrSettings.qr_code_image, 
+        type: 'image',
+        description: 'QR Code image URL for payment page'
+      });
+    }
+
+    // Update fallback link if provided
+    if (qrSettings.qr_code_link) {
+      const linkError = await validateQRUrl(qrSettings.qr_code_link);
+      if (linkError !== true) {
+        setQrValidationErrors({ link: linkError });
+        setQrSaveStatus('error');
+        toast.error(linkError);
+        setLoading(false);
+        return;
+      }
+      
+      await settingsAPI.update('qr_code_link', { 
+        value: qrSettings.qr_code_link, 
+        type: 'link',
+        description: 'Fallback payment link for QR code'
+      });
+    } else {
+      // Clear link if empty
+      await settingsAPI.update('qr_code_link', { 
+        value: '', 
+        type: 'link',
+        description: 'Fallback payment link for QR code'
+      });
+    }
+
+    // Update enabled status
+    await settingsAPI.update('qr_code_enabled', { 
+      value: qrSettings.qr_code_enabled, 
+      type: 'text',
+      description: 'Enable custom QR code'
+    });
+
+    setQrSaveStatus('success');
+    setLastQRUpdate(new Date());
+    toast.success('Tetapan QR code berjaya disimpan!');
+    await fetchQRSettings();
+    setLoading(false);
   };
 
   const handleUserClick = (user) => {
@@ -615,181 +737,525 @@ const Settings = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <Card>
+      {/* Settings Navigation Tabs - Grid Layout for Better Visibility */}
+      <Card className="bg-gradient-to-br from-gray-50 to-gray-100 border-gray-200">
         <Card.Header>
-          <Card.Title className="flex items-center space-x-2">
-            <SettingsIcon className="w-5 h-5" />
-            <span>{t('systemSettings')}</span>
+          <Card.Title className="flex items-center space-x-3">
+            <div className="p-2 bg-emerald-100 rounded-lg">
+              <SettingsIcon className="w-6 h-6 text-emerald-600" />
+            </div>
+            <span className="text-xl font-bold text-gray-900">System Settings</span>
           </Card.Title>
         </Card.Header>
         <Card.Content>
-          <div className="flex space-x-2 border-b">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
             <button
               onClick={() => setActiveTab('qr')}
-              className={`px-4 py-2 font-medium transition-colors ${
+              className={`relative p-4 rounded-xl font-medium transition-all duration-300 transform hover:scale-105 hover:shadow-lg ${
                 activeTab === 'qr'
-                  ? 'border-b-2 border-emerald-600 text-emerald-600'
-                  : 'text-black hover:text-black'
+                  ? 'bg-gradient-to-br from-emerald-500 to-green-600 text-white shadow-xl ring-4 ring-emerald-200'
+                  : 'bg-white text-gray-700 hover:bg-emerald-50 border-2 border-gray-200 hover:border-emerald-300'
               }`}
             >
-              <QrCode className="w-4 h-4 inline mr-2" />
-              {t('qrCodePayment')}
+              <div className="flex flex-col items-center text-center space-y-2">
+                <div className={`p-3 rounded-lg ${activeTab === 'qr' ? 'bg-white/20' : 'bg-emerald-100'}`}>
+                  <QrCode className={`w-6 h-6 ${activeTab === 'qr' ? 'text-white' : 'text-emerald-600'}`} />
+                </div>
+                <div>
+                  <div className="font-semibold text-sm leading-tight">QR Code</div>
+                  <div className="font-semibold text-sm leading-tight">Payment</div>
+                </div>
+              </div>
+              {activeTab === 'qr' && (
+                <div className="absolute -top-2 -right-2 w-4 h-4 bg-yellow-400 rounded-full border-2 border-white animate-pulse"></div>
+              )}
             </button>
+
             <button
               onClick={() => setActiveTab('password')}
-              className={`px-4 py-2 font-medium transition-colors ${
+              className={`relative p-4 rounded-xl font-medium transition-all duration-300 transform hover:scale-105 hover:shadow-lg ${
                 activeTab === 'password'
-                  ? 'border-b-2 border-emerald-600 text-emerald-600'
-                  : 'text-black hover:text-black'
+                  ? 'bg-gradient-to-br from-emerald-500 to-green-600 text-white shadow-xl ring-4 ring-emerald-200'
+                  : 'bg-white text-gray-700 hover:bg-emerald-50 border-2 border-gray-200 hover:border-emerald-300'
               }`}
             >
-              <Key className="w-4 h-4 inline mr-2" />
-              {t('passwordManagement')}
+              <div className="flex flex-col items-center text-center space-y-2">
+                <div className={`p-3 rounded-lg ${activeTab === 'password' ? 'bg-white/20' : 'bg-emerald-100'}`}>
+                  <Key className={`w-6 h-6 ${activeTab === 'password' ? 'text-white' : 'text-emerald-600'}`} />
+                </div>
+                <div>
+                  <div className="font-semibold text-sm leading-tight">Password</div>
+                  <div className="font-semibold text-sm leading-tight">Management</div>
+                </div>
+              </div>
+              {activeTab === 'password' && (
+                <div className="absolute -top-2 -right-2 w-4 h-4 bg-yellow-400 rounded-full border-2 border-white animate-pulse"></div>
+              )}
             </button>
+
             <button
               onClick={() => setActiveTab('checkin')}
-              className={`px-4 py-2 font-medium transition-colors ${
+              className={`relative p-4 rounded-xl font-medium transition-all duration-300 transform hover:scale-105 hover:shadow-lg ${
                 activeTab === 'checkin'
-                  ? 'border-b-2 border-emerald-600 text-emerald-600'
-                  : 'text-black hover:text-black'
+                  ? 'bg-gradient-to-br from-emerald-500 to-green-600 text-white shadow-xl ring-4 ring-emerald-200'
+                  : 'bg-white text-gray-700 hover:bg-emerald-50 border-2 border-gray-200 hover:border-emerald-300'
               }`}
             >
-              <MapPin className="w-4 h-4 inline mr-2" />
-              {t('checkInSettings')}
+              <div className="flex flex-col items-center text-center space-y-2">
+                <div className={`p-3 rounded-lg ${activeTab === 'checkin' ? 'bg-white/20' : 'bg-emerald-100'}`}>
+                  <MapPin className={`w-6 h-6 ${activeTab === 'checkin' ? 'text-white' : 'text-emerald-600'}`} />
+                </div>
+                <div>
+                  <div className="font-semibold text-sm leading-tight">Check-In /</div>
+                  <div className="font-semibold text-sm leading-tight">Check-Out</div>
+                </div>
+              </div>
+              {activeTab === 'checkin' && (
+                <div className="absolute -top-2 -right-2 w-4 h-4 bg-yellow-400 rounded-full border-2 border-white animate-pulse"></div>
+              )}
             </button>
+
             <button
               onClick={() => setActiveTab('backup')}
-              className={`px-4 py-2 font-medium transition-colors ${
+              className={`relative p-4 rounded-xl font-medium transition-all duration-300 transform hover:scale-105 hover:shadow-lg ${
                 activeTab === 'backup'
-                  ? 'border-b-2 border-emerald-600 text-emerald-600'
-                  : 'text-black hover:text-black'
+                  ? 'bg-gradient-to-br from-emerald-500 to-green-600 text-white shadow-xl ring-4 ring-emerald-200'
+                  : 'bg-white text-gray-700 hover:bg-emerald-50 border-2 border-gray-200 hover:border-emerald-300'
               }`}
             >
-              <Database className="w-4 h-4 inline mr-2" />
-              {t('databaseExport')}
+              <div className="flex flex-col items-center text-center space-y-2">
+                <div className={`p-3 rounded-lg ${activeTab === 'backup' ? 'bg-white/20' : 'bg-emerald-100'}`}>
+                  <Database className={`w-6 h-6 ${activeTab === 'backup' ? 'text-white' : 'text-emerald-600'}`} />
+                </div>
+                <div>
+                  <div className="font-semibold text-sm leading-tight">Database</div>
+                  <div className="font-semibold text-sm leading-tight">Export</div>
+                </div>
+              </div>
+              {activeTab === 'backup' && (
+                <div className="absolute -top-2 -right-2 w-4 h-4 bg-yellow-400 rounded-full border-2 border-white animate-pulse"></div>
+              )}
             </button>
+
             <button
               onClick={() => setActiveTab('contact')}
-              className={`px-4 py-2 font-medium transition-colors ${
+              className={`relative p-4 rounded-xl font-medium transition-all duration-300 transform hover:scale-105 hover:shadow-lg ${
                 activeTab === 'contact'
-                  ? 'border-b-2 border-emerald-600 text-emerald-600'
-                  : 'text-black hover:text-black'
+                  ? 'bg-gradient-to-br from-emerald-500 to-green-600 text-white shadow-xl ring-4 ring-emerald-200'
+                  : 'bg-white text-gray-700 hover:bg-emerald-50 border-2 border-gray-200 hover:border-emerald-300'
               }`}
             >
-              <Contact className="w-4 h-4 inline mr-2" />
-              {t('contactInformation')}
+              <div className="flex flex-col items-center text-center space-y-2">
+                <div className={`p-3 rounded-lg ${activeTab === 'contact' ? 'bg-white/20' : 'bg-emerald-100'}`}>
+                  <Contact className={`w-6 h-6 ${activeTab === 'contact' ? 'text-white' : 'text-emerald-600'}`} />
+                </div>
+                <div>
+                  <div className="font-semibold text-sm leading-tight">Contact</div>
+                  <div className="font-semibold text-sm leading-tight">Information</div>
+                </div>
+              </div>
+              {activeTab === 'contact' && (
+                <div className="absolute -top-2 -right-2 w-4 h-4 bg-yellow-400 rounded-full border-2 border-white animate-pulse"></div>
+              )}
             </button>
+
             <button
               onClick={() => setActiveTab('language')}
-              className={`px-4 py-2 font-medium transition-colors ${
+              className={`relative p-4 rounded-xl font-medium transition-all duration-300 transform hover:scale-105 hover:shadow-lg ${
                 activeTab === 'language'
-                  ? 'border-b-2 border-emerald-600 text-emerald-600'
-                  : 'text-black hover:text-black'
+                  ? 'bg-gradient-to-br from-emerald-500 to-green-600 text-white shadow-xl ring-4 ring-emerald-200'
+                  : 'bg-white text-gray-700 hover:bg-emerald-50 border-2 border-gray-200 hover:border-emerald-300'
               }`}
             >
-              <Globe className="w-4 h-4 inline mr-2" />
-              {t('language')}
+              <div className="flex flex-col items-center text-center space-y-2">
+                <div className={`p-3 rounded-lg ${activeTab === 'language' ? 'bg-white/20' : 'bg-emerald-100'}`}>
+                  <Globe className={`w-6 h-6 ${activeTab === 'language' ? 'text-white' : 'text-emerald-600'}`} />
+                </div>
+                <div>
+                  <div className="font-semibold text-sm leading-tight">Language</div>
+                </div>
+              </div>
+              {activeTab === 'language' && (
+                <div className="absolute -top-2 -right-2 w-4 h-4 bg-yellow-400 rounded-full border-2 border-white animate-pulse"></div>
+              )}
             </button>
           </div>
-          
         </Card.Content>
       </Card>
 
-      {/* QR Code Settings */}
+      {/* QR Code Settings - Redesigned */}
       {activeTab === 'qr' && (
-        <Card>
-          <Card.Header>
-            <Card.Title>{t('qrCodeSettings')}</Card.Title>
-          </Card.Header>
-          <Card.Content>
-            <div className="space-y-6">
-              {/* Enable/Disable Custom QR */}
-              <div>
-                <label className="block text-sm font-medium text-black mb-2">
-                  {t('useCustomQR')}
-                </label>
-                <select
-                  value={qrSettings.qr_code_enabled}
-                  onChange={(e) => setQrSettings({ ...qrSettings, qr_code_enabled: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                >
-                  <option value="1">{t('useCustomQRYes')}</option>
-                  <option value="0">{t('useCustomQRNo')}</option>
-                </select>
-                <p className="text-xs text-gray-500 mt-1">
-                  {t('qrCodeAutoGenerated')}
-                </p>
+        <div className="space-y-6">
+          {/* Section 1: Page Header */}
+          <Card className="bg-gradient-to-r from-emerald-50 to-teal-50 border-emerald-200">
+            <Card.Header>
+              <div className="flex items-center space-x-3">
+                <div className="p-2 bg-emerald-100 rounded-lg">
+                  <QrCode className="w-6 h-6 text-emerald-600" />
+                </div>
+                <div>
+                  <Card.Title className="text-2xl font-bold text-gray-900">
+                    QR Code Payment Settings
+                  </Card.Title>
+                  <p className="text-sm text-gray-600 mt-1">
+                    Configure how students make payments using QR codes.
+                  </p>
+                </div>
               </div>
+            </Card.Header>
+          </Card>
 
-              {/* QR Code Image Upload/URL */}
-              <div>
-                <label className="block text-sm font-medium text-black mb-2">
-                  {t('qrCodeImageUrl')}
-                </label>
-                <div className="flex items-center space-x-2">
-                  <input
-                    type="text"
-                    value={qrSettings.qr_code_image}
-                    onChange={(e) => setQrSettings({ ...qrSettings, qr_code_image: e.target.value })}
-                    placeholder={t('qrCodeImageUrlPlaceholder')}
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                  />
-                  <label className="px-4 py-2 bg-emerald-100 text-emerald-700 rounded-md hover:bg-emerald-200 cursor-pointer">
-                    <Upload className="w-4 h-4 inline mr-2" />
-                    {t('uploadImage')}
+          {/* Section 2: Payment Mode Selector */}
+          <Card>
+            <Card.Header>
+              <Card.Title className="text-lg font-semibold">Payment Mode</Card.Title>
+              <p className="text-sm text-gray-600 mt-1">Choose how QR payments are handled</p>
+            </Card.Header>
+            <Card.Content>
+              <div className="space-y-4">
+                <div className="space-y-3">
+                  <label className="flex items-start space-x-3 p-4 border-2 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors"
+                    style={{
+                      borderColor: qrSettings.qr_code_enabled === '0' ? '#10b981' : '#e5e7eb',
+                      backgroundColor: qrSettings.qr_code_enabled === '0' ? '#f0fdf4' : 'transparent'
+                    }}
+                  >
                     <input
-                      type="file"
-                      accept="image/*"
-                      onChange={handleImageChange}
-                      className="hidden"
+                      type="radio"
+                      name="qr_mode"
+                      value="0"
+                      checked={qrSettings.qr_code_enabled === '0'}
+                      onChange={(e) => setQrSettings({ ...qrSettings, qr_code_enabled: e.target.value })}
+                      className="mt-1 w-4 h-4 text-emerald-600 focus:ring-emerald-500"
                     />
+                    <div className="flex-1">
+                      <div className="flex items-center space-x-2">
+                        <span className="font-semibold text-gray-900">Automatically Generated QR (Recommended)</span>
+                        <Badge variant="success" className="text-xs">Recommended</Badge>
+                      </div>
+                      <p className="text-sm text-gray-600 mt-1">
+                        Automatic QR codes are generated based on payment details. Best for dynamic payment amounts.
+                      </p>
+                    </div>
+                  </label>
+
+                  <label className="flex items-start space-x-3 p-4 border-2 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors"
+                    style={{
+                      borderColor: qrSettings.qr_code_enabled === '1' ? '#10b981' : '#e5e7eb',
+                      backgroundColor: qrSettings.qr_code_enabled === '1' ? '#f0fdf4' : 'transparent'
+                    }}
+                  >
+                    <input
+                      type="radio"
+                      name="qr_mode"
+                      value="1"
+                      checked={qrSettings.qr_code_enabled === '1'}
+                      onChange={(e) => setQrSettings({ ...qrSettings, qr_code_enabled: e.target.value })}
+                      className="mt-1 w-4 h-4 text-emerald-600 focus:ring-emerald-500"
+                    />
+                    <div className="flex-1">
+                      <div className="flex items-center space-x-2">
+                        <span className="font-semibold text-gray-900">Custom QR Code</span>
+                      </div>
+                      <p className="text-sm text-gray-600 mt-1">
+                        Custom QR codes are suitable for fixed bank or e-wallet accounts. Upload your own QR code image.
+                      </p>
+                    </div>
                   </label>
                 </div>
-                {qrImagePreview && (
-                  <div className="mt-3">
-                    <img 
-                      src={qrImagePreview} 
-                      alt="QR Code Preview" 
-                      className="w-48 h-48 border border-gray-300 rounded-lg object-contain bg-white p-2"
-                    />
+              </div>
+            </Card.Content>
+          </Card>
+
+          {/* Section 3: Active QR Preview Card (CENTERPIECE) */}
+          {(qrImagePreview || qrSettings.qr_code_image) && (
+            <Card className="bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-200">
+              <Card.Header>
+                <Card.Title className="text-lg font-semibold flex items-center">
+                  <Sparkles className="w-5 h-5 mr-2 text-blue-600" />
+                  Active QR Code
+                </Card.Title>
+              </Card.Header>
+              <Card.Content>
+                <div className="flex flex-col md:flex-row items-center md:items-start space-y-4 md:space-y-0 md:space-x-6">
+                  <div className="flex-shrink-0">
+                    <div className="w-64 h-64 bg-white rounded-xl border-4 border-blue-200 p-4 shadow-lg flex items-center justify-center">
+                      {qrImagePreview ? (
+                        <img 
+                          src={qrImagePreview} 
+                          alt="Active QR Code" 
+                          className="w-full h-full object-contain"
+                        />
+                      ) : qrSettings.qr_code_image ? (
+                        <img 
+                          src={qrSettings.qr_code_image} 
+                          alt="Active QR Code" 
+                          className="w-full h-full object-contain"
+                          onError={(e) => {
+                            e.target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="200" height="200"%3E%3Ctext x="50%25" y="50%25" text-anchor="middle" dy=".3em" fill="%23ccc"%3EQR Code%3C/text%3E%3C/svg%3E';
+                          }}
+                        />
+                      ) : null}
+                    </div>
+                  </div>
+                  <div className="flex-1 space-y-3">
+                    <div>
+                      <div className="text-sm font-medium text-gray-700">Type:</div>
+                      <Badge variant={qrSettings.qr_code_enabled === '1' ? 'warning' : 'success'} className="mt-1">
+                        {qrSettings.qr_code_enabled === '1' ? 'Custom QR' : 'Auto-Generated'}
+                      </Badge>
+                    </div>
+                    {lastQRUpdate && (
+                      <div>
+                        <div className="text-sm font-medium text-gray-700">Last Updated:</div>
+                        <div className="text-sm text-gray-600 mt-1">
+                          {lastQRUpdate.toLocaleString('ms-MY', {
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          })}
+                        </div>
+                      </div>
+                    )}
+                    <div className="pt-2">
+                      <p className="text-xs text-gray-600">
+                        This is the QR code that students will see when making payments. 
+                        Make sure it's clear and scannable.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </Card.Content>
+            </Card>
+          )}
+
+          {/* Section 4: QR Source Settings (Conditional - Only show if Custom QR is selected) */}
+          {qrSettings.qr_code_enabled === '1' && (
+            <Card>
+              <Card.Header>
+                <Card.Title className="text-lg font-semibold">Custom QR Settings</Card.Title>
+                <p className="text-sm text-gray-600 mt-1">Configure your custom QR code source</p>
+              </Card.Header>
+              <Card.Content>
+                <div className="space-y-6">
+                  {/* Option A: Upload QR Image (Primary) */}
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-900 mb-3">
+                      <Upload className="w-4 h-4 inline mr-2" />
+                      Upload QR Image (Recommended)
+                    </label>
+                    <div className="space-y-3">
+                      <label className="block">
+                        <div className="border-2 border-dashed border-emerald-300 rounded-lg p-6 text-center hover:border-emerald-500 hover:bg-emerald-50 transition-colors cursor-pointer">
+                          <Upload className="w-8 h-8 text-emerald-600 mx-auto mb-2" />
+                          <p className="text-sm font-medium text-gray-700 mb-1">
+                            Klik untuk memilih fail QR code
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            JPG atau PNG sahaja, maksimum 2MB
+                          </p>
+                        </div>
+                        <input
+                          type="file"
+                          accept="image/jpeg,image/jpg,image/png"
+                          onChange={handleImageChange}
+                          className="hidden"
+                        />
+                      </label>
+                      
+                      {qrImagePreview && (
+                        <div className="mt-3">
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-sm font-medium text-gray-700">Preview:</span>
+                            <button
+                              onClick={() => {
+                                setQrImagePreview(null);
+                                setQrImageFile(null);
+                              }}
+                              className="text-xs text-red-600 hover:text-red-700"
+                            >
+                              <X className="w-4 h-4 inline mr-1" />
+                              Padam
+                            </button>
+                          </div>
+                          <div className="w-48 h-48 bg-white border-2 border-emerald-200 rounded-lg p-3 flex items-center justify-center">
+                            <img 
+                              src={qrImagePreview} 
+                              alt="QR Code Preview" 
+                              className="max-w-full max-h-full object-contain"
+                            />
+                          </div>
+                        </div>
+                      )}
+                      
+                      {qrValidationErrors.image && (
+                        <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded text-sm text-red-700">
+                          <AlertCircle className="w-4 h-4 inline mr-1" />
+                          {qrValidationErrors.image}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Option B: QR Image URL (Advanced - Collapsed) */}
+                  <div className="border-t pt-6">
+                    <button
+                      onClick={() => setShowAdvancedQR(!showAdvancedQR)}
+                      className="flex items-center justify-between w-full text-left mb-3"
+                    >
+                      <div>
+                        <span className="text-sm font-semibold text-gray-900">Advanced Settings</span>
+                        <p className="text-xs text-gray-500 mt-1">For technical users only</p>
+                      </div>
+                      {showAdvancedQR ? (
+                        <ChevronUp className="w-5 h-5 text-gray-500" />
+                      ) : (
+                        <ChevronDown className="w-5 h-5 text-gray-500" />
+                      )}
+                    </button>
+                    
+                    {showAdvancedQR && (
+                      <div className="space-y-4 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+                        <div className="flex items-start space-x-2 mb-3">
+                          <AlertCircle className="w-5 h-5 text-amber-600 mt-0.5 flex-shrink-0" />
+                          <p className="text-xs text-amber-800">
+                            <strong>Warning:</strong> For technical users only. Incorrect URLs may break payments. 
+                            Use HTTPS URLs only.
+                          </p>
+                        </div>
+                        
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            QR Image URL
+                          </label>
+                          <input
+                            type="text"
+                            value={qrSettings.qr_code_image && !qrImageFile ? qrSettings.qr_code_image : ''}
+                            onChange={(e) => {
+                              setQrSettings({ ...qrSettings, qr_code_image: e.target.value });
+                              setQrImageFile(null);
+                              setQrImagePreview(null);
+                            }}
+                            placeholder="https://example.com/qr-code.png"
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                            disabled={!!qrImageFile}
+                          />
+                          {qrImageFile && (
+                            <p className="text-xs text-gray-500 mt-1">
+                              URL input disabled when image file is uploaded. Remove uploaded image to use URL.
+                            </p>
+                          )}
+                          {qrValidationErrors.imageUrl && (
+                            <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded text-sm text-red-700">
+                              <AlertCircle className="w-4 h-4 inline mr-1" />
+                              {qrValidationErrors.imageUrl}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Option C: Fallback Payment Link */}
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-900 mb-2">
+                      <Link className="w-4 h-4 inline mr-2" />
+                      Fallback Payment Link (Optional)
+                    </label>
+                    <div className="flex items-center space-x-2">
+                      <Link className="w-5 h-5 text-gray-600" />
+                      <input
+                        type="text"
+                        value={qrSettings.qr_code_link || ''}
+                        onChange={(e) => setQrSettings({ ...qrSettings, qr_code_link: e.target.value })}
+                        placeholder="https://payment-link.example.com"
+                        className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      />
+                    </div>
+                    <p className="text-xs text-gray-500 mt-2">
+                      Used if QR image fails to load. Students will be redirected to this link. Must be HTTPS.
+                    </p>
+                    {qrValidationErrors.link && (
+                      <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded text-sm text-red-700">
+                        <AlertCircle className="w-4 h-4 inline mr-1" />
+                        {qrValidationErrors.link}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </Card.Content>
+            </Card>
+          )}
+
+          {/* Section 5: Save & Validation Area */}
+          <Card className="bg-gray-50 border-gray-200">
+            <Card.Content>
+              <div className="space-y-4">
+                {/* Status Messages */}
+                {qrSaveStatus === 'success' && (
+                  <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-lg flex items-center space-x-2">
+                    <CheckCircle className="w-5 h-5 text-emerald-600" />
+                    <span className="text-sm text-emerald-800 font-medium">
+                      Settings saved successfully
+                    </span>
                   </div>
                 )}
-                <p className="text-xs text-gray-500 mt-1">
-                  {t('qrCodeImageHelp')}
-                </p>
-              </div>
+                
+                {qrSaveStatus === 'error' && (
+                  <div className="p-3 bg-red-50 border border-red-200 rounded-lg flex items-center space-x-2">
+                    <AlertCircle className="w-5 h-5 text-red-600" />
+                    <span className="text-sm text-red-800 font-medium">
+                      {qrValidationErrors.general || 'Failed to save settings. Please check your inputs.'}
+                    </span>
+                  </div>
+                )}
 
-              {/* QR Code Link */}
-              <div>
-                <label className="block text-sm font-medium text-black mb-2">
-                  {t('qrCodeLink')}
-                </label>
-                <div className="flex items-center space-x-2">
-                  <Link className="w-5 h-5 text-gray-600" />
-                  <input
-                    type="text"
-                    value={qrSettings.qr_code_link}
-                    onChange={(e) => setQrSettings({ ...qrSettings, qr_code_link: e.target.value })}
-                    placeholder={t('qrCodeLinkPlaceholder')}
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                  />
+                {qrValidationErrors.image && (
+                  <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg flex items-center space-x-2">
+                    <AlertCircle className="w-5 h-5 text-amber-600" />
+                    <span className="text-sm text-amber-800">
+                      Invalid image format or size
+                    </span>
+                  </div>
+                )}
+
+                {/* Action Buttons */}
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <Button
+                    onClick={handleSaveQRSettings}
+                    disabled={loading}
+                    className="flex-1 bg-emerald-600 hover:bg-emerald-700"
+                  >
+                    {loading ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Menyimpan...
+                      </>
+                    ) : (
+                      <>
+                        <Save className="w-4 h-4 mr-2" />
+                        Simpan Perubahan
+                      </>
+                    )}
+                  </Button>
+                  
+                  {(qrImagePreview || qrSettings.qr_code_image || qrSettings.qr_code_enabled === '0') && (
+                    <Button
+                      onClick={handleTestQRPayment}
+                      variant="secondary"
+                      className="flex-1 border-2 border-emerald-600 text-emerald-700 hover:bg-emerald-50"
+                    >
+                      <ExternalLink className="w-4 h-4 mr-2" />
+                      Uji QR Payment
+                    </Button>
+                  )}
                 </div>
-                <p className="text-xs text-gray-500 mt-1">
-                  {t('qrCodeLinkHelp')}
-                </p>
               </div>
-
-              <Button
-                onClick={handleSaveQRSettings}
-                disabled={loading}
-                className="w-full"
-              >
-                <Save className="w-4 h-4 mr-2" />
-                {t('saveQRSettings')}
-              </Button>
-            </div>
-          </Card.Content>
-        </Card>
+            </Card.Content>
+          </Card>
+        </div>
       )}
 
       {/* Password Management */}

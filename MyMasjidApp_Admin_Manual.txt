@@ -1,0 +1,397 @@
+MyMasjidApp Administrator Manual
+
+Version 1.0
+Date: January 2025
+Application: MyMasjidApp - Masjid and Madrasah Management System
+
+This manual is specifically designed for administrators who manage the MyMasjidApp system. Administrators have the highest level of access and responsibility for maintaining the system, managing users, configuring classes, and overseeing all institutional operations.
+
+TABLE OF CONTENTS
+
+1. Introduction
+2. Admin Access and Login
+3. Admin Dashboard Overview
+4. User Management
+5. Student Management
+6. Teacher Management
+7. Class Management
+8. Attendance Management
+9. Fee Management
+10. Exam Management
+11. Results Management
+12. Payment Approval Management
+13. System Configuration
+14. Academic Year Management
+15. Reports and Analytics
+16. Announcements Management
+17. Admin Actions and Audit Trail
+18. Security and Permissions
+19. Troubleshooting for Administrators
+20. Advanced Admin Features
+
+1. INTRODUCTION
+
+Purpose of This Manual
+
+This administrator manual provides comprehensive guidance for individuals who manage the MyMasjidApp system. As an administrator, you have full access to all system features and are responsible for maintaining the system's accuracy, security, and functionality.
+
+Who This Manual Is For
+
+This manual is designed specifically for:
+- System administrators who manage the institution
+- Primary administrators who oversee daily operations
+- Administrative staff who handle user management
+- Technical administrators who configure system settings
+
+What Administrators Do
+
+Administrators perform critical functions that keep the system running smoothly:
+- Manage user accounts and permissions
+- Create and configure classes
+- Assign students and teachers to classes
+- Approve student registrations
+- Generate and manage fees
+- View and export reports
+- Configure system settings
+- Manage academic years
+- Handle payment approvals
+- Monitor system activity
+- Maintain data integrity
+- Resolve user issues
+
+Why Administrator Training Matters
+
+Proper administrator training ensures:
+- Accurate data entry and management
+- Efficient system operations
+- Data security and privacy protection
+- Consistent application of policies
+- Quick problem resolution
+- System reliability and performance
+
+What You Will Learn
+
+After completing this manual, you will be able to:
+- Access and secure the administrator interface
+- Manage all user accounts effectively
+- Create and configure classes properly
+- Assign students and teachers correctly
+- Approve registrations and manage permissions
+- Generate fees and manage payments
+- Create exams and manage results
+- Generate comprehensive reports
+- Configure system settings
+- Manage academic year transitions
+- Troubleshoot common issues
+- Use advanced administrative features
+
+Manual Organization
+
+This manual is organized into logical sections that follow typical administrative workflows. Each section includes detailed step-by-step instructions, common mistakes to avoid, and troubleshooting guidance. The manual builds from basic concepts to advanced features, ensuring you understand each topic before moving to the next.
+
+How to Use This Manual
+
+Read this manual sequentially if you are new to the administrator role. Experienced administrators can jump directly to specific sections using the table of contents. Keep this manual accessible while working in the system for quick reference. Bookmark frequently used sections for faster access.
+
+2. ADMIN ACCESS AND LOGIN
+
+[Demo Image: Admin login page showing IC number and password fields with role selection]
+
+Understanding Admin Access
+
+Administrator access provides full system control and the ability to manage all aspects of the institution. This access must be protected and used responsibly. Only authorized individuals should have administrator accounts.
+
+How Admin Accounts Are Created
+
+Administrator accounts are typically created during initial system setup by a technical administrator or system installer. Additional administrator accounts can be created by existing administrators through the user management interface.
+
+Admin Account Requirements
+
+To become an administrator, you must:
+- Have authorization from the institution leadership
+- Complete administrator training
+- Understand system responsibilities
+- Agree to security and privacy policies
+- Receive account credentials from a system administrator
+
+Accessing the Login Page
+
+Step 1: Open Your Web Browser
+
+1. Launch your preferred web browser on your computer
+2. Supported browsers include Google Chrome, Mozilla Firefox, Microsoft Edge, or Safari
+3. Ensure your browser is up to date for best performance
+
+Step 2: Navigate to the System
+
+1. Enter the system web address in your browser's address bar
+2. The address is provided by your technical administrator or system installer
+3. Press Enter to load the login page
+4. Wait for the page to fully load
+
+Step 3: Verify You Are on the Login Page
+
+You should see:
+- The MyMasjidApp logo or system name
+- A login form with IC Number and Password fields
+- Option to select login type (Regular Login, Student Login, or Staff Check-in)
+- Links for registration and password recovery
+- Current date and time display
+
+If you do not see these elements, verify you have the correct web address. Contact your technical administrator if you cannot access the login page.
+
+Logging In as Administrator
+
+Step 1: Select Login Type
+
+1. On the login page, locate the login type tabs or buttons
+2. Click on the Regular Login tab or button
+3. This is the default login type for administrators
+4. The login form will display fields for IC Number and Password
+
+Step 2: Enter Your IC Number
+
+1. Locate the IC Number field in the login form
+2. This field shows "at masjid.com" after it, indicating it is your unique identifier
+3. Enter your twelve-digit Malaysian identity card number
+4. You can enter it with or without hyphens (e.g., 051003060229 or 051003-06-0229)
+5. The system will automatically format the number as you type
+6. Verify the number is correct before proceeding
+
+Important: Your IC number must match exactly the IC number registered in your administrator account. Contact your system administrator if you are unsure of your registered IC number.
+
+Step 3: Enter Your Password
+
+1. Locate the Password field below the IC Number field
+2. Click in the password field to activate it
+3. Type your administrator password
+4. Passwords are case-sensitive, so ensure caps lock is not enabled
+5. The password is hidden by default (shown as dots or asterisks)
+6. Click the eye icon if you need to see what you typed for verification
+
+Important: Administrator passwords should be strong and secure. Use a combination of letters, numbers, and special characters. Never share your password with anyone.
+
+Step 4: Select Your Role
+
+1. If you have multiple roles in the system, a role selection dropdown will appear
+2. Click on the role dropdown to see available roles
+3. Select Administrator or Admin from the list
+4. Other roles might include Teacher, PIC, or IB if you have those permissions
+5. For administrative work, always select the Administrator role
+
+If you do not see a role dropdown, the system will automatically use your primary role. Contact your system administrator if you cannot select the administrator role.
+
+Step 5: Click the Login Button
+
+1. Review your IC number and password one final time
+2. Verify the correct role is selected
+3. Click the Login button
+4. Wait for the system to process your login
+5. Do not click the button multiple times
+
+Step 6: Wait for Authentication
+
+1. The system will verify your credentials
+2. This process may take a few seconds
+3. A loading indicator may appear
+4. Do not navigate away during this process
+5. The system checks your IC number, password, and role permissions
+
+Step 7: Successful Login
+
+If login is successful:
+1. You will be redirected to the administrator dashboard
+2. Your name and role will appear at the top right of the screen
+3. The navigation menu will show all administrator options
+4. The dashboard will display administrative statistics and information
+5. You can now access all administrative features
+
+Login Troubleshooting
+
+If Login Fails with Incorrect Credentials Message:
+
+1. Verify your IC number is entered correctly
+2. Check that your password is correct and case-sensitive
+3. Ensure caps lock is not enabled
+4. Try using the Show Password option to verify your entry
+5. Clear the password field and re-enter it carefully
+6. Contact your system administrator to verify your account credentials
+
+If Login Fails with Account Not Found Message:
+
+1. Verify you are using the correct IC number
+2. Check that your account exists in the system
+3. Contact your system administrator to confirm your account status
+4. Verify you have an administrator account (not just a teacher or student account)
+5. Ask your system administrator to check if your account was created correctly
+
+If Login Fails with Account Pending Message:
+
+1. Administrator accounts should not be in pending status
+2. Contact your system administrator immediately
+3. Your account may need to be activated
+4. Do not attempt to log in repeatedly with a pending account
+5. Wait for administrator approval before trying again
+
+If Login Fails with Account Inactive Message:
+
+1. Your administrator account may have been deactivated
+2. Contact your system administrator immediately
+3. Do not attempt to log in repeatedly
+4. Your account may need to be reactivated by another administrator
+5. Verify why your account was deactivated
+
+If Login Fails with Unauthorized Access Message:
+
+1. Verify you selected the Administrator role
+2. Check that your account has administrator permissions
+3. Contact your system administrator to verify your role assignment
+4. Your account may have the wrong role assigned
+5. Ask your system administrator to check your permissions
+
+If Your Session Expires:
+
+1. Administrator sessions typically last 24 hours
+2. If your session expires, you will be logged out automatically
+3. Simply log in again using your credentials
+4. Your work will be saved if you saved it before the session expired
+5. Unsaved work may be lost, so save frequently
+
+Password Security for Administrators
+
+Creating Strong Passwords:
+
+1. Use at least eight characters (longer is better)
+2. Include uppercase letters (A-Z)
+3. Include lowercase letters (a-z)
+4. Include numbers (0-9)
+5. Include special characters (!@#$%^&*)
+6. Avoid using personal information (names, birthdays, IC numbers)
+7. Avoid common words or patterns
+8. Use a unique password for this system
+
+Changing Your Password:
+
+1. Log into the system
+2. Click on your name in the top right corner
+3. Select Account Settings or Personal Settings
+4. Find the Change Password section
+5. Enter your current password
+6. Enter your new password
+7. Confirm your new password
+8. Click Save or Update Password
+9. Log out and log back in to verify the new password works
+
+Password Best Practices:
+
+1. Never share your administrator password with anyone
+2. Never write your password down where others can see it
+3. Change your password regularly (every 90 days recommended)
+4. Use different passwords for different systems
+5. Do not use the same password for personal and work accounts
+6. If you suspect your password is compromised, change it immediately
+7. Log out when finished using the system
+8. Never leave your computer unattended while logged in
+
+Password Recovery for Administrators
+
+If You Forget Your Password:
+
+1. On the login page, click the Forgot Password link
+2. Enter your IC number
+3. Select password recovery method (Email or SMS)
+4. Follow the recovery instructions sent to your email or phone
+5. Create a new password following security guidelines
+6. Log in with your new password
+7. Contact your system administrator if recovery methods do not work
+
+Important: If you cannot recover your password and you are the only administrator, you may need technical support to reset your account. Contact your system installer or technical support team.
+
+Account Security Recommendations
+
+Protecting Your Administrator Account:
+
+1. Always log out when finished, especially on shared computers
+2. Never share your login credentials with anyone
+3. Use a secure, private computer for administrative work when possible
+4. Avoid logging in on public or unsecured networks
+5. Keep your browser and operating system updated
+6. Use antivirus software on your computer
+7. Be cautious of phishing attempts (fake login pages)
+8. Verify you are on the correct system URL before logging in
+9. Report any suspicious activity immediately
+10. Review your account activity regularly if this feature is available
+
+Multiple Administrator Accounts
+
+If your institution has multiple administrators:
+
+1. Each administrator should have their own account
+2. Never share administrator accounts
+3. Each administrator should use their own IC number and password
+4. Account activity is tracked per administrator
+5. Sharing accounts makes it impossible to track who made changes
+6. If you need additional administrator accounts, create them through user management
+
+First-Time Admin Login
+
+If this is your first time logging in as administrator:
+
+1. Log in using the credentials provided by your system installer
+2. You will be taken to the administrator dashboard
+3. Review the dashboard to familiarize yourself with the interface
+4. Check your profile information to ensure it is correct
+5. Change your password from the default password if one was provided
+6. Review system settings and configuration
+7. Read any welcome messages or announcements
+8. Explore the navigation menu to understand available features
+
+Completing Your Admin Profile
+
+After first login, you should:
+
+1. Click on your name in the top right corner
+2. Select Profile or Account Settings
+3. Review all your personal information
+4. Update contact information if needed
+5. Verify your email address is correct
+6. Verify your phone number is correct
+7. Ensure your address is current
+8. Save any changes you make
+
+Important: Keep your profile information current. This information is used for system notifications and account recovery. If your contact information changes, update it immediately.
+
+Understanding Admin Permissions
+
+As an administrator, you have access to:
+
+1. All user accounts (view, create, edit, delete)
+2. All student records (view, create, edit, assign to classes)
+3. All teacher records (view, create, edit, assign to classes)
+4. All classes (create, edit, configure, manage)
+5. All attendance records (view, edit, correct)
+6. All fee records (view, generate, manage, override)
+7. All exam records (create, edit, manage)
+8. All result records (view, edit, correct)
+9. All payment approvals (view, approve, reject, override)
+10. System settings and configuration
+11. Academic year management
+12. Reports and analytics
+13. Announcements and communications
+14. Audit logs and activity tracking
+
+With these permissions comes responsibility. Always consider the impact of your actions on the system and users. Use your permissions wisely and maintain data accuracy.
+
+What Happens After Login
+
+After successfully logging in as administrator:
+
+1. You are redirected to the administrator dashboard
+2. Your administrator role is active for this session
+3. All administrator menu items are visible in the navigation
+4. Dashboard displays administrative statistics and information
+5. You can access all system features
+6. Your session remains active for 24 hours or until you log out
+7. Your activity is logged for audit purposes
+
+The administrator dashboard is your starting point for all administrative tasks. Familiarize yourself with the dashboard layout and navigation before proceeding to manage the system.
