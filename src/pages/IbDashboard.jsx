@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { CheckCircle, XCircle, Clock, FileText, Calendar, DollarSign, AlertCircle, Search, Filter, Zap, CheckSquare, TrendingUp, TrendingDown, FileDown, Download, BarChart3 } from 'lucide-react';
+import { CheckCircle, XCircle, Clock, FileText, Calendar, DollarSign, AlertCircle, Search, Filter, Zap, CheckSquare, TrendingUp, TrendingDown, FileDown, Download, BarChart3, Flag } from 'lucide-react';
 import { ibAPI } from '../services/api';
 import { toast } from 'react-toastify';
 import { calculateExecutiveSummary, getReportAlerts, getTrendData, handleExportExcel, handleExportPDF } from '../utils/financeIntelligence';
@@ -23,6 +23,17 @@ const IbDashboard = () => {
     problematicOnly: false
   });
   const [showExecutiveSummary, setShowExecutiveSummary] = useState(true);
+  const [selectedPaymentIds, setSelectedPaymentIds] = useState([]);
+  const [bulkNotes, setBulkNotes] = useState('');
+  const [bulkApproving, setBulkApproving] = useState(false);
+  const [showBulkRejectModal, setShowBulkRejectModal] = useState(false);
+  const [bulkRejectReason, setBulkRejectReason] = useState('');
+  const [bulkRejectSendBack, setBulkRejectSendBack] = useState(true);
+  const [bulkRejecting, setBulkRejecting] = useState(false);
+  const [approvalHistory, setApprovalHistory] = useState([]);
+  const [flaggedPayments, setFlaggedPayments] = useState([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
+  const [loadingFlagged, setLoadingFlagged] = useState(false);
 
   useEffect(() => {
     loadReports();
@@ -43,12 +54,57 @@ const IbDashboard = () => {
     }
   };
 
+  const loadFlaggedPayments = async () => {
+    try {
+      setLoadingFlagged(true);
+      const response = await ibAPI.getFlaggedPayments({ includeResolved: false });
+      if (response.success) {
+        setFlaggedPayments(response.data || []);
+      }
+    } catch (error) {
+      console.error('Error loading flagged payments:', error);
+    } finally {
+      setLoadingFlagged(false);
+    }
+  };
+
+  const loadApprovalHistory = async (bulan, tahun) => {
+    if (!bulan || !tahun) {
+      setApprovalHistory([]);
+      return;
+    }
+
+    try {
+      setLoadingHistory(true);
+      const response = await ibAPI.getApprovalHistory({ bulan, tahun, limit: 30 });
+      if (response.success) {
+        setApprovalHistory(response.data || []);
+      }
+    } catch (error) {
+      console.error('Error loading approval history:', error);
+    } finally {
+      setLoadingHistory(false);
+    }
+  };
+
+  useEffect(() => {
+    loadFlaggedPayments();
+  }, []);
+
+  useEffect(() => {
+    setSelectedPaymentIds([]);
+    setBulkNotes('');
+  }, [selectedReport]);
+
   const loadMonthlyReport = async (bulan, tahun) => {
     try {
       setLoading(true);
       const response = await ibAPI.getMonthlyReport({ bulan, tahun });
       if (response.success) {
         setSelectedReport(response.data);
+        await loadApprovalHistory(bulan, tahun);
+        setSelectedPaymentIds([]);
+        setBulkNotes('');
       }
     } catch (error) {
       console.error('Error loading monthly report:', error);
@@ -107,6 +163,9 @@ const IbDashboard = () => {
         if (selectedReport && selectedReport.bulan === bulan && selectedReport.tahun === tahun) {
           await loadMonthlyReport(bulan, tahun);
         }
+        setSelectedPaymentIds([]);
+        setBulkNotes('');
+        await loadFlaggedPayments();
       }
     } catch (error) {
       console.error('Error approving payments:', error);
@@ -149,8 +208,11 @@ const IbDashboard = () => {
         setSelectedStartDate('');
         setSelectedEndDate('');
         setApprovalMode('whole_month');
+        setSelectedPaymentIds([]);
+        setBulkNotes('');
         await loadMonthlyReport(selectedReport.bulan, selectedReport.tahun);
         await loadReports();
+        await loadFlaggedPayments();
       }
     } catch (error) {
       console.error('Error approving payments by date:', error);
@@ -166,6 +228,154 @@ const IbDashboard = () => {
         ? prev.filter(id => id !== paymentId)
         : [...prev, paymentId]
     );
+  };
+
+  const toggleSelectPayment = (paymentId) => {
+    setSelectedPaymentIds(prev =>
+      prev.includes(paymentId)
+        ? prev.filter(id => id !== paymentId)
+        : [...prev, paymentId]
+    );
+  };
+
+  const handleSelectAllPayments = () => {
+    if (!selectedReport?.payments?.length) return;
+    const allIds = selectedReport.payments.map(p => p.id);
+    const allSelected = allIds.every(id => selectedPaymentIds.includes(id));
+    setSelectedPaymentIds(allSelected ? [] : allIds);
+  };
+
+  const handleApproveSelectedPayments = async () => {
+    if (!selectedReport) return;
+    if (selectedPaymentIds.length === 0) {
+      toast.info('Pilih sekurang-kurangnya satu pembayaran');
+      return;
+    }
+    setBulkApproving(true);
+    try {
+      const excluded = selectedReport.payments
+        .map(p => p.id)
+        .filter(id => !selectedPaymentIds.includes(id));
+      const response = await ibAPI.approvePaymentsByDate({
+        bulan: selectedReport.bulan,
+        tahun: selectedReport.tahun,
+        exclude_payment_ids: excluded,
+        notes: bulkNotes.trim() || `Kelulusan terpilih (${selectedPaymentIds.length} dokumen)`
+      });
+
+      if (response.success) {
+        toast.success(response.message);
+        setSelectedPaymentIds([]);
+        setBulkNotes('');
+        await loadMonthlyReport(selectedReport.bulan, selectedReport.tahun);
+        await loadReports();
+        await loadFlaggedPayments();
+      }
+    } catch (error) {
+      console.error('Error approving selected payments:', error);
+      toast.error(error.response?.data?.message || 'Gagal mengesahkan pilihan');
+    } finally {
+      setBulkApproving(false);
+    }
+  };
+
+  const handleBulkRejectConfirm = async () => {
+    if (!selectedReport) return;
+    if (selectedPaymentIds.length === 0) {
+      toast.info('Pilih sekurang-kurangnya satu pembayaran');
+      return;
+    }
+    if (!bulkRejectReason.trim()) {
+      toast.error('Sila nyatakan sebab penolakan');
+      return;
+    }
+    setBulkRejecting(true);
+    try {
+      await Promise.all(selectedPaymentIds.map(paymentId =>
+        ibAPI.flagPayment({
+          payment_id: paymentId,
+          reason: bulkRejectReason.trim(),
+          send_back_to_pic: bulkRejectSendBack
+        })
+      ));
+      toast.success('Permintaan penolakan dihantar kepada PIC');
+      setShowBulkRejectModal(false);
+      setBulkRejectReason('');
+      setSelectedPaymentIds([]);
+      await loadFlaggedPayments();
+      await loadMonthlyReport(selectedReport.bulan, selectedReport.tahun);
+    } catch (error) {
+      console.error('Error flagging payments in bulk:', error);
+      toast.error(error.response?.data?.message || 'Tidak dapat hantar penolakan');
+    } finally {
+      setBulkRejecting(false);
+    }
+  };
+
+  const handleFlagPayment = async (payment) => {
+    const reason = window.prompt('Masukkan sebab anda menandakan dokumen ini:');
+    if (!reason) return;
+    const sendBack = window.confirm('Hantar kembali kepada PIC setelah menandakan?');
+
+    try {
+      const response = await ibAPI.flagPayment({
+        payment_id: payment.id,
+        reason,
+        send_back_to_pic: sendBack
+      });
+
+      if (response.success) {
+        toast.success('Dokumen ditandakan untuk penjelasan');
+        await loadFlaggedPayments();
+      }
+    } catch (error) {
+      console.error('Error flagging single payment:', error);
+      toast.error(error.response?.data?.message || 'Gagal menandakan dokumen');
+    }
+  };
+
+  const handleDownloadSummary = async () => {
+    if (!selectedReport) {
+      toast.info('Pilih laporan dahulu');
+      return;
+    }
+
+    try {
+      const response = await ibAPI.exportMonthlySummary({
+        bulan: selectedReport.bulan,
+        tahun: selectedReport.tahun
+      });
+
+      if (response.success) {
+        downloadExportFile(response.data, `ringkasan_${selectedReport.bulan}_${selectedReport.tahun}.json`);
+        toast.success('Ringkasan dimuat turun');
+      }
+    } catch (error) {
+      console.error('Error exporting summary:', error);
+      toast.error(error.response?.data?.message || 'Tidak dapat mengeksport ringkasan');
+    }
+  };
+
+  const handleDownloadHistory = async () => {
+    if (!selectedReport) {
+      toast.info('Pilih laporan dahulu');
+      return;
+    }
+
+    try {
+      const response = await ibAPI.exportApprovalHistory({
+        bulan: selectedReport.bulan,
+        tahun: selectedReport.tahun
+      });
+
+      if (response.success) {
+        downloadExportFile(response.data, `riwayat_lulus_${selectedReport.bulan}_${selectedReport.tahun}.json`);
+        toast.success('Riwayat audit dimuat turun');
+      }
+    } catch (error) {
+      console.error('Error exporting approval history:', error);
+      toast.error(error.response?.data?.message || 'Tidak dapat mengeksport riwayat');
+    }
   };
 
   const getStatusBadge = (status) => {
@@ -199,11 +409,45 @@ const IbDashboard = () => {
     return date.toLocaleDateString('ms-MY', { day: 'numeric', month: 'long', year: 'numeric' });
   };
 
+  const formatDateTime = (dateString) => {
+    if (!dateString) return '-';
+    const date = new Date(dateString);
+    return date.toLocaleString('ms-MY', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  const downloadExportFile = (content, fileName, type = 'application/json') => {
+    const blob = new Blob([JSON.stringify(content, null, 2)], { type });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', fileName);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
   // Calculate executive summary
   const executiveSummary = useMemo(() => calculateExecutiveSummary(reports), [reports]);
   
   // Get trend data
   const trendData = useMemo(() => getTrendData(reports, 5), [reports]);
+
+  const flaggedReasonMap = useMemo(() => {
+    const map = {};
+    flaggedPayments.forEach(flag => {
+      if (flag.payment_id) {
+        map[flag.payment_id] = flag;
+      }
+    });
+    return map;
+  }, [flaggedPayments]);
 
   // Enhanced filtering with advanced filters
   const enhancedFilteredReports = useMemo(() => {
@@ -238,6 +482,13 @@ const IbDashboard = () => {
 
     return filtered;
   }, [reports, filterStatus, advancedFilters]);
+
+  const flaggedForCurrentMonth = useMemo(() => {
+    if (!selectedReport) return [];
+    return flaggedPayments.filter(
+      (flag) => flag.bulan === selectedReport.bulan && flag.tahun === selectedReport.tahun
+    );
+  }, [flaggedPayments, selectedReport]);
 
   return (
     <div className="min-h-screen bg-gray-50 p-4 md:p-8">
@@ -525,24 +776,130 @@ const IbDashboard = () => {
 
                 {/* Payments Table */}
                 <div className="mb-6">
+                  <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                    <div>
+                      <h3 className="text-lg font-semibold text-gray-900">Audit Trail &amp; Tindakan Pantas</h3>
+                      <p className="text-sm text-gray-500">Pilih satu atau lebih pembayaran untuk kelulusan atau penolakan dengan arahan yang jelas.</p>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={handleSelectAllPayments}
+                        className="flex items-center gap-1 border border-gray-300 rounded-md px-3 py-2 text-sm font-medium text-gray-700 hover:border-gray-400"
+                      >
+                        <CheckSquare className="w-4 h-4" />
+                        {selectedPaymentIds.length === (selectedReport?.payments?.length || 0) ? 'Nyahpilih Semua' : 'Pilih Semua'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleApproveSelectedPayments}
+                        disabled={selectedPaymentIds.length === 0 || bulkApproving}
+                        className="flex items-center gap-1 bg-green-600 text-white px-4 py-2 text-sm font-medium rounded-md hover:bg-green-700 disabled:opacity-60 disabled:cursor-not-allowed"
+                      >
+                        <CheckCircle className="w-4 h-4" />
+                        {bulkApproving ? 'Sedang Sahkan...' : 'Sahkan Terpilih'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setShowBulkRejectModal(true)}
+                        disabled={selectedPaymentIds.length === 0 || bulkRejecting}
+                        className="flex items-center gap-1 border border-red-500 text-red-600 px-4 py-2 text-sm font-medium rounded-md hover:border-red-600 disabled:opacity-60 disabled:cursor-not-allowed"
+                      >
+                        <XCircle className="w-4 h-4" />
+                        Tolak Terpilih
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleDownloadSummary}
+                        className="flex items-center gap-1 border border-blue-600 text-blue-600 px-3 py-2 text-sm font-medium rounded-md hover:bg-blue-50"
+                      >
+                        <Download className="w-4 h-4" />
+                        Ringkasan
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="mt-3 grid gap-3 md:grid-cols-2">
+                    <textarea
+                      value={bulkNotes}
+                      onChange={(e) => setBulkNotes(e.target.value)}
+                      placeholder="Nota untuk kelulusan terpilih..."
+                      className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                    <div className="text-sm text-gray-600">
+                      {'Terpilih: '}
+                      <span className="font-semibold text-gray-900">{selectedPaymentIds.length}</span>
+                      {' / '}
+                      <span className="font-medium text-blue-600">{selectedReport?.payments?.length || 0}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mb-6 border border-gray-200 rounded-lg bg-white p-4 shadow-sm">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-lg font-semibold">Audit Trail / Rekod Tindakan</h3>
+                    <div className="flex items-center gap-2">
+                      {loadingHistory && <span className="text-xs text-gray-500">Memuatkan...</span>}
+                      <button
+                        type="button"
+                        onClick={handleDownloadHistory}
+                        className="text-xs text-blue-600 hover:underline"
+                      >
+                        Eksport Riwayat
+                      </button>
+                    </div>
+                  </div>
+                  {approvalHistory.length > 0 ? (
+                    <ul className="mt-3 max-h-48 overflow-y-auto space-y-3">
+                      {approvalHistory.map((entry) => (
+                        <li key={entry.id} className="text-sm text-gray-700 border-b last:border-b-0 pb-2">
+                          <div className="flex items-center justify-between">
+                            <span className="font-medium text-gray-900">
+                              {entry.action_type.replace(/_/g, ' ')}
+                            </span>
+                            <span className="text-xs text-gray-500">{formatDateTime(entry.created_at)}</span>
+                          </div>
+                          <p className="text-xs text-gray-600">
+                            {entry.user_name || entry.user_ic}
+                            {entry.notes ? ` — ${entry.notes}` : ' '}
+                          </p>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="text-sm text-gray-500 mt-3">Tiada tindakan direkod.</p>
+                  )}
+                </div>
+                <div className="mb-6">
                   <h3 className="text-lg font-semibold mb-4">Senarai Pembayaran</h3>
                   <div className="overflow-x-auto">
                     <table className="min-w-full divide-y divide-gray-200">
                       <thead className="bg-gray-50">
                         <tr>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Pilih</th>
                           <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Pelajar</th>
                           <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Kelas</th>
                           <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Jumlah</th>
                           <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
                           <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tarikh Bayar</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tarikh Sahkan</th>
                           <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Cara Bayar</th>
                           <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">No. Resit</th>
                           <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status Dokumen</th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tindakan</th>
                         </tr>
                       </thead>
                       <tbody className="bg-white divide-y divide-gray-200">
                         {selectedReport.payments.map((payment) => (
                           <tr key={payment.id} className={payment.document_confirmed ? 'bg-green-50' : ''}>
+                            <td className="px-4 py-3 whitespace-nowrap">
+                              <input
+                                type="checkbox"
+                                checked={selectedPaymentIds.includes(payment.id)}
+                                onChange={() => toggleSelectPayment(payment.id)}
+                                className="h-4 w-4 text-blue-600 border-gray-300 rounded"
+                              />
+                            </td>
                             <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">{payment.pelajar_nama}</td>
                             <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">{payment.nama_kelas || '-'}</td>
                             <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">{formatCurrency(payment.jumlah || 0)}</td>
@@ -555,6 +912,9 @@ const IbDashboard = () => {
                             </td>
                             <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
                               {payment.tarikh_bayar ? formatDate(payment.tarikh_bayar) : '-'}
+                            </td>
+                            <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
+                              {formatDateTime(payment.confirmed_at)}
                             </td>
                             <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">{payment.cara_bayar || '-'}</td>
                             <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">{payment.no_resit || '-'}</td>
@@ -570,6 +930,21 @@ const IbDashboard = () => {
                                   Menunggu
                                 </span>
                               )}
+                              {flaggedReasonMap[payment.id] && (
+                                <div className="text-xs text-yellow-800 font-semibold mt-1">
+                                  {flaggedReasonMap[payment.id].reason}
+                                </div>
+                              )}
+                            </td>
+                            <td className="px-4 py-3 whitespace-nowrap">
+                              <button
+                                type="button"
+                                onClick={() => handleFlagPayment(payment)}
+                                className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800"
+                              >
+                                <Flag className="w-4 h-4" />
+                                Flag
+                              </button>
                             </td>
                           </tr>
                         ))}
@@ -577,6 +952,23 @@ const IbDashboard = () => {
                     </table>
                   </div>
                 </div>
+
+                {flaggedForCurrentMonth.length > 0 && (
+                  <div className="mb-6 rounded-lg border border-yellow-200 bg-yellow-50 p-4 text-sm text-yellow-900">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-base font-semibold">Dokumen Memerlukan Penjelasan ({flaggedForCurrentMonth.length})</h3>
+                      {loadingFlagged && <span className="text-xs text-yellow-800">Memuatkan...</span>}
+                    </div>
+                    <ul className="mt-2 space-y-2">
+                      {flaggedForCurrentMonth.map((flag) => (
+                        <li key={flag.id} className="flex items-center justify-between text-xs">
+                          <span>{flag.pelajar_nama || `ID ${flag.payment_id}`}</span>
+                          <span className="font-semibold">{flag.reason}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
 
                 {/* Payment Document Confirmation Section */}
                 <div className="border-t pt-6">
@@ -747,6 +1139,49 @@ const IbDashboard = () => {
                     </div>
                   </div>
                 )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {showBulkRejectModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
+            <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-lg">
+              <h3 className="text-lg font-semibold text-gray-900 mb-3">Penolakan Berkumpulan</h3>
+              <p className="text-sm text-gray-600 mb-4">
+                Penolakan ini akan dihantar kepada PIC untuk pembetulan. Pastikan nota mencukupi.
+              </p>
+              <textarea
+                rows={4}
+                value={bulkRejectReason}
+                onChange={(e) => setBulkRejectReason(e.target.value)}
+                placeholder="Sebab penolakan"
+                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-red-500"
+              />
+              <label className="mt-3 flex items-center gap-2 text-sm text-gray-700">
+                <input
+                  type="checkbox"
+                  checked={bulkRejectSendBack}
+                  onChange={(e) => setBulkRejectSendBack(e.target.checked)}
+                />
+                Hantar balik ke PIC selepas menandakan
+              </label>
+              <div className="mt-4 flex justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={handleBulkRejectConfirm}
+                  disabled={bulkRejecting}
+                  className="rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-60 disabled:cursor-not-allowed"
+                >
+                  {bulkRejecting ? 'Menghantar...' : 'Hantar Penolakan'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowBulkRejectModal(false)}
+                  className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-600 hover:border-gray-400"
+                >
+                  Batal
+                </button>
               </div>
             </div>
           </div>

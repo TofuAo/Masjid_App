@@ -37,6 +37,7 @@ import PicUsers from './pages/PicUsers';
 import PicRecycleBin from './pages/PicRecycleBin';
 import Admins from './pages/Admins';
 import AllUsers from './pages/AllUsers';
+import AllUserDetail from './pages/AllUserDetail';
 import Contact from './pages/Contact';
 import IbDashboard from './pages/IbDashboard';
 import Hierarchy from './pages/Hierarchy';
@@ -340,6 +341,7 @@ function AppContent() {
                 <Route path="/pic-users" element={<PicUsers />} />
                 <Route path="/pic-recycle-bin" element={<PicRecycleBin user={user} />} />
                 <Route path="/admins" element={<Admins />} />
+                <Route path="/all-users/:ic" element={<AllUserDetail user={user} />} />
                 <Route path="/all-users" element={<AllUsers user={user} />} />
                 <Route path="/contact" element={<Contact user={user} />} />
                 <Route path="/ib-dashboard" element={<IbDashboard />} />

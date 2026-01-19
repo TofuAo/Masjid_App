@@ -333,6 +333,22 @@ const Kehadiran = () => {
     }
   };
 
+  const handleConfirmDocument = async (id, confirmed, notes = '') => {
+    try {
+      await attendanceAPI.confirmDocument(id, { confirmed, notes });
+      toast.success('Status pengesahan dokumen kehadiran disimpan.');
+      fetchAttendanceData({
+        start_date: startDate,
+        end_date: endDate,
+        class_id: selectedKelas === 'semua' ? undefined : selectedKelas,
+        limit: 1000
+      });
+    } catch (err) {
+      console.error('Failed to confirm attendance document:', err);
+      toast.error('Gagal menyimpan pengesahan dokumen kehadiran.');
+    }
+  };
+
   const handleDeleteCancel = () => {
     setDeleteModal({ isOpen: false, attendanceId: null, attendanceData: null });
   };
@@ -725,6 +741,7 @@ const Kehadiran = () => {
         userRole={userRole}
         onUpdate={updateKehadiran}
         onDelete={handleDeleteClick}
+        onConfirmDocument={handleConfirmDocument}
       />
 
       {/* Google Form Modal (kept for backward compatibility) */}

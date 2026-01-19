@@ -1,0 +1,1269 @@
+Page: Account
+File: src\pages\Account.jsx
+Route(s): /account
+Modules Used:
+- React, { useState, useEffect } (from react)
+- { attendanceAPI, feesAPI } (from ../services/api)
+- { toast } (from react-toastify)
+- Card (from ../components/ui/Card)
+- Badge (from ../components/ui/Badge)
+- LoadingSkeleton (from ../components/ui/LoadingSkeleton)
+- { User, Calendar, CreditCard, CheckCircle, XCircle, Clock, FileText, Image as ImageIcon, AlertCircle, Eye, Download, } (from lucide-react)
+- { getEffectiveRole } (from ../utils/userRoles)
+Functions:
+- format() — defined in page
+- isWithinRange() — defined in page
+- Account() — defined in page
+- getStatusBadge() — defined in page
+- getImageUrl() — defined in page
+- handleImageClick() — defined in page
+- downloadImage() — defined in page
+Event Handlers:
+- handleImageClick()
+Calls To Imported Modules:
+- attendanceAPI.getAll
+- feesAPI.getAll
+- toast.error
+- Card.Header, Title, Content
+
+---
+
+Page: ActivityTimeline
+File: src\pages\ActivityTimeline.jsx
+Route(s): /activity-timeline
+Modules Used:
+- React, { useState, useEffect } (from react)
+- { Clock, User, FileText, CheckCircle, XCircle, AlertCircle, Calendar, Filter, Search } (from lucide-react)
+- { toast } (from react-toastify)
+Functions:
+- ActivityTimeline() — defined in page
+- getActivityIcon() — defined in page
+- formatTimestamp() — defined in page
+Event Handlers: (none)
+Calls To Imported Modules:
+- toast.error
+
+---
+
+Page: AdminActions
+File: src\pages\AdminActions.jsx
+Route(s): /admin-actions
+Modules Used:
+- React, { useCallback, useEffect, useMemo, useState } (from react)
+- { Link } (from react-router-dom)
+- { adminActionsAPI } (from ../services/api)
+- Card (from ../components/ui/Card)
+- ActionDetailsModal (from ../components/admin/ActionDetailsModal)
+- { RotateCcw, RefreshCw, Filter, Search, Clock, ShieldAlert, User as UserIcon } (from lucide-react)
+- { toast } (from react-toastify)
+- { useLanguage } (from ../contexts/LanguageContext)
+Functions:
+- formatDate() — defined in page
+- formatRemainingTime() — defined in page
+- getOperationLabel() — defined in page
+- extractTitle() — defined in page
+- resolveActionLink() — defined in page
+- handleOpenModal() — defined in page
+- handleCloseModal() — defined in page
+Event Handlers:
+- handleOpenModal()
+- handleCloseModal()
+Calls To Imported Modules:
+- adminActionsAPI.list, undo
+- Card.Header, Title, Content
+- toast.success, error
+
+---
+
+Page: Admins
+File: src\pages\Admins.jsx
+Route(s): /admins
+Modules Used:
+- React, { useState, useEffect } (from react)
+- { Navigate } (from react-router-dom)
+- useCrud (from ../hooks/useCrud)
+- { adminsAPI } (from ../services/api)
+- AdminList (from ../components/admin/AdminList)
+- AdminForm (from ../components/admin/AdminForm)
+- AdminDetail (from ../components/admin/AdminDetail)
+- Card (from ../components/ui/Card)
+- LoadingSkeleton (from ../components/ui/LoadingSkeleton)
+- { ShieldCheck, AlertCircle, Lock } (from lucide-react)
+- { toast } (from react-toastify)
+- { getEffectiveRole } (from ../utils/userRoles)
+Functions:
+- Admins() — defined in page
+Event Handlers: (none)
+Calls To Imported Modules:
+- adminsAPI.getWithLimit
+- Card.Content
+
+---
+
+Page: AllUserDetail
+File: src\pages\AllUserDetail.jsx
+Route(s): /all-users/:ic
+Modules Used:
+- React, { useCallback, useEffect, useMemo, useState } (from react)
+- { Navigate, useParams } (from react-router-dom)
+- Card (from ../components/ui/Card)
+- Badge (from ../components/ui/Badge)
+- BackButton (from ../components/ui/BackButton)
+- LoadingSkeleton (from ../components/ui/LoadingSkeleton)
+- { usersAPI } (from ../services/api)
+- { getEffectiveRole } (from ../utils/userRoles)
+- { formatIC } (from ../utils/icUtils)
+- { formatPhoneForDisplay } (from ../utils/phoneUtils)
+Functions:
+- formatDate() — defined in page
+Event Handlers: (none)
+Calls To Imported Modules:
+- Card.Content, Header, Title
+- usersAPI.getByIc
+
+---
+
+Page: AllUsers
+File: src\pages\AllUsers.jsx
+Route(s): /all-users
+Modules Used:
+- React, { useState, useEffect, useMemo, useCallback } (from react)
+- { Link, Navigate } (from react-router-dom)
+- { usersAPI } (from ../services/api)
+- Card (from ../components/ui/Card)
+- Badge (from ../components/ui/Badge)
+- LoadingSkeleton (from ../components/ui/LoadingSkeleton)
+- { Users, Search, Filter, AlertCircle } (from lucide-react)
+- { formatIC } (from ../utils/icUtils)
+- { getEffectiveRole } (from ../utils/userRoles)
+- { formatPhoneForDisplay } (from ../utils/phoneUtils)
+Functions: (none)
+Event Handlers: (none)
+Calls To Imported Modules:
+- usersAPI.getAll
+- Card.Content
+- Users.reduce, length, map
+
+---
+
+Page: Announcements
+File: src\pages\Announcements.jsx
+Route(s): /announcements
+Modules Used:
+- React, { useState, useEffect } (from react)
+- useCrud (from ../hooks/useCrud)
+- { announcementsAPI, adminActionsAPI } (from ../services/api)
+- AnnouncementList (from ../components/announcements/AnnouncementList)
+- AnnouncementForm (from ../components/announcements/AnnouncementForm)
+- Card (from ../components/ui/Card)
+- ErrorDisplay (from ../components/ui/ErrorDisplay)
+- { toast } (from react-toastify)
+- { Megaphone, AlertCircle, RotateCcw, Clock } (from lucide-react)
+- useErrorHandler (from ../hooks/useErrorHandler)
+Functions:
+- renderContent() — defined in page
+Event Handlers: (none)
+Calls To Imported Modules:
+- React.useCallback
+- adminActionsAPI.list, undo
+- Card.Header, Title, Content
+- toast.success
+
+---
+
+Page: AuditLogs
+File: src\pages\AuditLogs.jsx
+Route(s): /audit-logs
+Modules Used:
+- React, { useState, useEffect } (from react)
+- { toast } (from react-toastify)
+- { History, Filter, Search, Download, Calendar } (from lucide-react)
+- Card (from ../components/ui/Card)
+- Badge (from ../components/ui/Badge)
+- LoadingSkeleton (from ../components/ui/LoadingSkeleton)
+- { authAPI } (from ../services/api)
+Functions:
+- AuditLogs() — defined in page
+- getOperationBadge() — defined in page
+- formatDateTime() — defined in page
+Event Handlers: (none)
+Calls To Imported Modules:
+- toast.error, success
+- authAPI.getAuditLogs
+
+---
+
+Page: AzanTimer
+File: src\pages\AzanTimer.jsx
+Route(s): /azan-timer
+Modules Used:
+- React, { useState, useEffect } (from react)
+- { Clock, MapPin, RefreshCw, AlertCircle, Calendar, Sunrise, Sunset } (from lucide-react)
+- { toast } (from react-toastify)
+- Card (from ../components/ui/Card)
+- LoadingSkeleton (from ../components/ui/LoadingSkeleton)
+- axios (from axios)
+Functions:
+- AzanTimer() — defined in page
+- updateCountdown() — defined in page
+- formatTime() — defined in page
+- getHijriDate() — defined in page
+- getGregorianDate() — defined in page
+Event Handlers: (none)
+Calls To Imported Modules:
+- toast.error
+- Card.Content, Header, Title
+- axios.get
+
+---
+
+Page: ChooseResetMethod
+File: src\pages\ChooseResetMethod.jsx
+Route(s): /choose-reset-method
+Modules Used:
+- React, { useState, useEffect } (from react)
+- { useSearchParams, useNavigate, Link } (from react-router-dom)
+- { authAPI } (from ../services/api)
+- { toast } (from react-toastify)
+- Card (from ../components/ui/Card)
+- Button (from ../components/ui/Button)
+- { Mail, ArrowLeft, CheckCircle, CreditCard } (from lucide-react)
+- { formatIC } (from ../utils/icUtils)
+Functions:
+- ChooseResetMethod() — defined in page
+Event Handlers: (none)
+Calls To Imported Modules:
+- authAPI.checkResetOptions, requestPasswordResetEmail
+- toast.error, success
+- Card.Content, Header, Title
+
+---
+
+Page: CompleteProfile
+File: src\pages\CompleteProfile.jsx
+Route(s): /complete-profile
+Modules Used:
+- React, { useState, useEffect } (from react)
+- { useNavigate } (from react-router-dom)
+- { toast } (from react-toastify)
+- { authAPI, clearAuth } (from ../services/api)
+- { User, Mail, Phone, BookOpen, GraduationCap } (from lucide-react)
+- { formatPhone } (from ../utils/phoneUtils)
+Functions:
+- handleChange() — defined in page
+- handleKepakaranChange() — defined in page
+- validate() — defined in page
+Event Handlers:
+- handleChange()
+- handleKepakaranChange()
+Calls To Imported Modules:
+- toast.error, success
+- authAPI.updateProfile, checkProfileComplete
+
+---
+
+Page: Contact
+File: src\pages\Contact.jsx
+Route(s): /contact
+Modules Used:
+- React, { useState, useEffect } (from react)
+- { Mail, Phone, MessageSquare, MapPin, Clock } (from lucide-react)
+- Card (from ../components/ui/Card)
+- ActivitiesBanner (from ../components/contact/ActivitiesBanner)
+- { settingsAPI } (from ../services/api)
+Functions: (none)
+Event Handlers: (none)
+Calls To Imported Modules:
+- Card.Header, Content
+- settingsAPI.getByKey
+
+---
+
+Page: Dashboard
+File: src\pages\Dashboard.jsx
+Route(s): /
+Modules Used:
+- React, { useState, useEffect, useCallback } (from react)
+- StatCard (from ../components/dashboard/StatCard)
+- RecentActivity (from ../components/dashboard/RecentActivity)
+- QuickStats (from ../components/dashboard/QuickStats)
+- DailyQuranQuote (from ../components/dashboard/DailyQuranQuote)
+- LoadingSkeleton (from ../components/ui/LoadingSkeleton)
+- { Users, GraduationCap, BookOpen, CreditCard, AlertCircle, Megaphone, CheckCircle, XCircle, Clock, Calendar } (from lucide-react)
+- { studentsAPI, teachersAPI, classesAPI, feesAPI, examsAPI, announcementsAPI, attendanceAPI } (from ../services/api)
+- { toast } (from react-toastify)
+- { Link } (from react-router-dom)
+- Badge (from ../components/ui/Badge)
+- FeaturedClasses (from ../components/kelas/FeaturedClasses)
+- QuickActions (from ../components/dashboard/QuickActions)
+- { getEffectiveRole } (from ../utils/userRoles)
+Functions:
+- Dashboard() — defined in page
+- renderMonthlyAttendance() — defined in page
+- getStatusBadge() — defined in page
+Event Handlers: (none)
+Calls To Imported Modules:
+- studentsAPI.getAll
+- teachersAPI.getAll
+- classesAPI.getAll
+- feesAPI.getAll
+- examsAPI.getAll
+- announcementsAPI.getAll
+- attendanceAPI.getAll
+- toast.error
+
+---
+
+Page: ForgotPassword
+File: src\pages\ForgotPassword.jsx
+Route(s): /forgot-password
+Modules Used:
+- React, { useState } (from react)
+- { Link, useNavigate } (from react-router-dom)
+- { toast } (from react-toastify)
+- Card (from ../components/ui/Card)
+- Button (from ../components/ui/Button)
+- { CreditCard, ArrowLeft } (from lucide-react)
+- { formatIC, isValidIC } (from ../utils/icUtils)
+Functions:
+- ForgotPassword() — defined in page
+- handleICChange() — defined in page
+Event Handlers:
+- handleICChange()
+Calls To Imported Modules:
+- toast.error
+- Card.Header, Title, Content
+
+---
+
+Page: Guru
+File: src\pages\Guru.jsx
+Route(s): /guru/*
+Modules Used:
+- React, { useState, useEffect } (from react)
+- { useNavigate, useSearchParams } (from react-router-dom)
+- useCrud (from ../hooks/useCrud)
+- { teachersAPI } (from ../services/api)
+- GuruList (from ../components/guru/GuruList)
+- GuruForm (from ../components/guru/GuruForm)
+- Card (from ../components/ui/Card)
+- Badge (from ../components/ui/Badge)
+- BackButton (from ../components/ui/BackButton)
+- Button (from ../components/ui/Button)
+- { GraduationCap, ExternalLink, Edit, BookOpen, UserPlus, X, Users } (from lucide-react)
+- { toast } (from react-toastify)
+- { formatIC } (from ../utils/icUtils)
+- { formatPhoneForDisplay } (from ../utils/phoneUtils)
+Functions:
+- Guru() — defined in page
+- renderContent() — defined in page
+Event Handlers: (none)
+Calls To Imported Modules:
+- React.useState, useEffect
+- teachersAPI.getById, getUnassigned, convertToTeacher
+- Card.Header, Title, Content
+- Users.length, map
+- toast.error, success
+
+---
+
+Page: HelpCenter
+File: src\pages\HelpCenter.jsx
+Route(s): /help
+Modules Used:
+- React, { useState } (from react)
+- { HelpCircle, BookOpen, Video, MessageCircle, FileText, Search, ChevronRight, User, GraduationCap, Shield, CheckCircle, ArrowLeft, Mail, Phone, ExternalLink } (from lucide-react)
+- { Link } (from react-router-dom)
+- { getEffectiveRole } (from ../utils/userRoles)
+Functions:
+- HelpCenter() — defined in page
+- getRoleSpecificCategories() — defined in page
+Event Handlers: (none)
+Calls To Imported Modules: (none)
+
+---
+
+Page: Hierarchy
+File: src\pages\Hierarchy.jsx
+Route(s): /hierarchy
+Modules Used:
+- React (from react)
+- Card (from ../components/ui/Card)
+- { Crown, Shield, UserCog, Users, GraduationCap, ArrowDown, CheckCircle, XCircle, Info } (from lucide-react)
+Functions: (none)
+Event Handlers: (none)
+Calls To Imported Modules:
+- Card.Content, Header, Title
+
+---
+
+Page: IbAccount
+File: src\pages\IbAccount.jsx
+Route(s): /ib-account
+Modules Used:
+- React, { useState, useEffect } (from react)
+- { attendanceAPI, feesAPI, studentsAPI, classesAPI, ibAPI } (from ../services/api)
+- { toast } (from react-toastify)
+- Card (from ../components/ui/Card)
+- Badge (from ../components/ui/Badge)
+- LoadingSkeleton (from ../components/ui/LoadingSkeleton)
+- Button (from ../components/ui/Button)
+- { User, Calendar, CreditCard, CheckCircle, XCircle, Clock, FileText, Image as ImageIcon, AlertCircle, Eye, Download, Search, Users, FileCheck, ShieldCheck, GraduationCap, Check, X } (from lucide-react)
+- { getEffectiveRole } (from ../utils/userRoles)
+Functions:
+- IbAccount() — defined in page
+- toggleExcludeStudent() — defined in page
+- toggleSelectStudent() — defined in page
+- selectAllStudents() — defined in page
+- deselectAllStudents() — defined in page
+- getStatusBadge() — defined in page
+- getImageUrl() — defined in page
+- handleImageClick() — defined in page
+- downloadImage() — defined in page
+Event Handlers:
+- handleImageClick()
+Calls To Imported Modules:
+- attendanceAPI.getAll, confirmDocument
+- feesAPI.getAll, confirmDocument
+- classesAPI.getAll, getById
+- ibAPI.getClassDocuments, confirmClassAttendance, confirmClassFees
+- toast.error, success
+- Card.Header, Title, Content
+
+---
+
+Page: IbDashboard
+File: src\pages\IbDashboard.jsx
+Route(s): /ib-dashboard
+Modules Used:
+- React, { useState, useEffect, useMemo } (from react)
+- { CheckCircle, XCircle, Clock, FileText, Calendar, DollarSign, AlertCircle, Search, Filter, Zap, CheckSquare, TrendingUp, TrendingDown, FileDown, Download, BarChart3 } (from lucide-react)
+- { ibAPI } (from ../services/api)
+- { toast } (from react-toastify)
+- { calculateExecutiveSummary, getReportAlerts, getTrendData, handleExportExcel, handleExportPDF } (from ../utils/financeIntelligence)
+Functions:
+- IbDashboard() — defined in page
+- toggleExcludePayment() — defined in page
+- getStatusBadge() — defined in page
+- formatCurrency() — defined in page
+- formatDate() — defined in page
+Event Handlers: (none)
+Calls To Imported Modules:
+- ibAPI.getAvailableReports, getMonthlyReport, confirmMonthlyPayment, approvePaymentsByDate
+- toast.error, success, info
+
+---
+
+Page: Kehadiran
+File: src\pages\Kehadiran.jsx
+Route(s): /kehadiran
+Modules Used:
+- React, { useState, useEffect, useCallback, useMemo } (from react)
+- useCrud (from ../hooks/useCrud)
+- { attendanceAPI, classesAPI, googleFormAPI } (from ../services/api)
+- { toast } (from react-toastify)
+- Card (from ../components/ui/Card)
+- Button (from ../components/ui/Button)
+- Badge (from ../components/ui/Badge)
+- LoadingSkeleton (from ../components/ui/LoadingSkeleton)
+- DeleteConfirmationModal (from ../components/ui/DeleteConfirmationModal)
+- GoogleFormModal (from ../components/kehadiran/GoogleFormModal)
+- AttendanceFormModal (from ../components/kehadiran/AttendanceFormModal)
+- ClassAttendanceModal (from ../components/kehadiran/ClassAttendanceModal)
+- { Calendar, Users, CheckCircle, XCircle, Clock, AlertCircle, Plus, ChevronRight, Edit, Trash2 } (from lucide-react)
+Functions:
+- for() — defined in page
+- executedFunction() — defined in page
+- const() — defined in page
+- Kehadiran() — defined in page
+- later() — defined in page
+- normalizeStatus() — defined in page
+- handleClassClick() — defined in page
+- getStatusBadge() — defined in page
+- handleDeleteClick() — defined in page
+- handleDeleteCancel() — defined in page
+- handleAmbilKehadiran() — defined in page
+Event Handlers:
+- handleClassClick()
+- handleDeleteClick()
+- handleDeleteCancel()
+- handleAmbilKehadiran()
+Calls To Imported Modules:
+- attendanceAPI.mark, delete, confirmDocument, bulkMark
+- classesAPI.getAll
+- toast.error, success
+- Card.Header, Title, Content
+
+---
+
+Page: Kelas
+File: src\pages\Kelas.jsx
+Route(s): /kelas/*
+Modules Used:
+- React, { useState, useEffect, useCallback } (from react)
+- { useSearchParams, useNavigate } (from react-router-dom)
+- useCrud (from ../hooks/useCrud)
+- KelasList (from ../components/kelas/KelasList)
+- KelasForm (from ../components/kelas/KelasForm)
+- Card (from ../components/ui/Card)
+- Badge (from ../components/ui/Badge)
+- BackButton (from ../components/ui/BackButton)
+- LoadingSkeleton (from ../components/ui/LoadingSkeleton)
+- { BookOpen, Users, Clock, DollarSign, AlertCircle, ExternalLink, GraduationCap } (from lucide-react)
+- { classesAPI, teachersAPI } (from ../services/api)
+- { toast } (from react-toastify)
+- { formatPhoneForDisplay } (from ../utils/phoneUtils)
+Functions:
+- Kelas() — defined in page
+- renderContent() — defined in page
+Event Handlers: (none)
+Calls To Imported Modules:
+- React.useState, useEffect
+- Card.Header, Title, Content
+- classesAPI.getById, getStats
+- teachersAPI.getAll
+- toast.error
+
+---
+
+Page: Keputusan
+File: src\pages\Keputusan.jsx
+Route(s): /keputusan
+Modules Used:
+- React, { useState, useEffect, useCallback, useMemo, useRef } (from react)
+- useCrud (from ../hooks/useCrud)
+- { resultsAPI, examsAPI, settingsAPI, classesAPI } (from ../services/api)
+- { toast } (from react-toastify)
+- { useNavigate } (from react-router-dom)
+- html2pdf (from html2pdf.js)
+- ResultFormModal (from ../components/keputusan/ResultFormModal)
+- GradeSettingsModal (from ../components/keputusan/GradeSettingsModal)
+- StudentResultDetailModal (from ../components/keputusan/StudentResultDetailModal)
+- Card (from ../components/ui/Card)
+- Button (from ../components/ui/Button)
+- Badge (from ../components/ui/Badge)
+- { FileText, TrendingUp, TrendingDown, Award, Plus, Search, Filter, Settings, ChevronRight } (from lucide-react)
+- { DEFAULT_GRADE_RANGES, cloneDefaultGradeRanges, normalizeGradeRanges, extractGradeOptions, getStatusFromGrade } (from ../utils/grades)
+- { getEffectiveRole } (from ../utils/userRoles)
+Functions:
+- typeLabel() — defined in page
+- guessExamType() — defined in page
+- getStrengthMessage() — defined in page
+- getImprovementMessage() — defined in page
+- getRecordDate() — defined in page
+- createYearSemesterMatcher() — defined in page
+- sanitizeResult() — defined in page
+- filterRecords() — defined in page
+- formatTimelineDate() — defined in page
+- formatSessionLabel() — defined in page
+- Keputusan() — defined in page
+- handleAddResult() — defined in page
+- handleEditResult() — defined in page
+- handleViewStudentResults() — defined in page
+- getGradeBadge() — defined in page
+- getStatusBadge() — defined in page
+- handleAskTeacher() — defined in page
+- handleDownloadSlip() — defined in page
+Event Handlers:
+- handleAddResult()
+- handleEditResult()
+- handleViewStudentResults()
+- handleAskTeacher()
+- handleDownloadSlip()
+Calls To Imported Modules:
+- resultsAPI.update, create, delete
+- examsAPI.getAll, getById
+- settingsAPI.getGradeRanges, updateGradeRanges
+- classesAPI.getById
+- toast.error, success, warn
+- html2pdf.js
+- Card.Header, Title, Content
+
+---
+
+Page: Laporan
+File: src\pages\Laporan.jsx
+Route(s): /laporan
+Modules Used:
+- React, { useState, useEffect, useCallback } (from react)
+- useCrud (from ../hooks/useCrud)
+- { studentsAPI, teachersAPI, classesAPI, feesAPI, attendanceAPI, resultsAPI } (from ../services/api)
+- { toast } (from react-toastify)
+- Card (from ../components/ui/Card)
+- Button (from ../components/ui/Button)
+- Badge (from ../components/ui/Badge)
+- { BarChart3, Download, FileText, Users, GraduationCap, BookOpen, CreditCard, Calendar, TrendingUp, TrendingDown, AlertCircle, Award } (from lucide-react)
+- { Document, Packer, Paragraph, TextRun, HeadingLevel, Table, TableRow, TableCell, WidthType, AlignmentType } (from docx)
+- { saveAs } (from file-saver)
+Functions:
+- Laporan() — defined in page
+- getReportData() — defined in page
+- buildRows() — defined in page
+- renderOverviewReport() — defined in page
+- renderPelajarsReport() — defined in page
+- renderYuranReport() — defined in page
+- renderKehadiranReport() — defined in page
+- renderKelasPengajianReport() — defined in page
+- renderLevelSection() — defined in page
+- renderTalaqqiSection() — defined in page
+- renderKeputusanReport() — defined in page
+- renderReportContent() — defined in page
+Event Handlers: (none)
+Calls To Imported Modules:
+- studentsAPI.getStats
+- teachersAPI.getStats
+- classesAPI.getStats
+- feesAPI.getStats
+- toast.info, error, success
+- Card.Header, Title, Content
+- Packer.toBlob
+- HeadingLevel.HEADING_1, HEADING_2
+- WidthType.PERCENTAGE
+- AlignmentType.CENTER
+
+---
+
+Page: MaintenanceControl
+File: src\pages\MaintenanceControl.jsx
+Route(s): Not routed via App
+Modules Used:
+- React, { useState, useEffect } (from react)
+- axios (from axios)
+- { AlertCircle, AlertTriangle, Info, Power, Calendar, History, RefreshCw } (from lucide-react)
+Functions:
+- MaintenanceControl() — defined in page
+- getStatusBadge() — defined in page
+Event Handlers: (none)
+Calls To Imported Modules:
+- axios.get, post
+
+---
+
+Page: NotificationCenter
+File: src\pages\NotificationCenter.jsx
+Route(s): /notifications
+Modules Used:
+- React, { useState, useEffect } (from react)
+- { toast } (from react-toastify)
+- { Bell, CheckCircle, XCircle, AlertCircle, Clock, Filter, Check } (from lucide-react)
+- Card (from ../components/ui/Card)
+- Badge (from ../components/ui/Badge)
+- LoadingSkeleton (from ../components/ui/LoadingSkeleton)
+- { authAPI } (from ../services/api)
+- useErrorHandler (from ../hooks/useErrorHandler)
+Functions:
+- NotificationCenter() — defined in page
+- getNotificationIcon() — defined in page
+- getPriorityBadge() — defined in page
+- formatTime() — defined in page
+Event Handlers: (none)
+Calls To Imported Modules:
+- toast.success
+- authAPI.getNotifications, markNotificationRead, markAllNotificationsRead
+
+---
+
+Page: PayYuran
+File: src\pages\PayYuran.jsx
+Route(s): /pay-yuran/:id
+Modules Used:
+- React, { useState, useEffect } (from react)
+- { useParams, useNavigate } (from react-router-dom)
+- { feesAPI, settingsAPI } (from ../services/api)
+- { toast } (from react-toastify)
+- Card (from ../components/ui/Card)
+- Button (from ../components/ui/Button)
+- Badge (from ../components/ui/Badge)
+- ErrorDisplay (from ../components/ui/ErrorDisplay)
+- { QrCode, ArrowLeft, CheckCircle, XCircle, Clock, CreditCard, Smartphone, Wallet, ChevronRight } (from lucide-react)
+- { QRCodeSVG } (from qrcode.react)
+- PaymentCheckout (from ./PaymentCheckout)
+- useErrorHandler (from ../hooks/useErrorHandler)
+Functions:
+- PayYuran() — defined in page
+- generateQRData() — defined in page
+Event Handlers: (none)
+Calls To Imported Modules:
+- feesAPI.getById
+- settingsAPI.getQRCode
+- toast.success
+- Card.Header, Title, Content
+
+---
+
+Page: PaymentCheckout
+File: src\pages\PaymentCheckout.jsx
+Route(s): Not routed via App
+Modules Used:
+- React, { useEffect, useState } (from react)
+- { useNavigate } (from react-router-dom)
+- api (from ../services/api)
+- { toast } (from react-toastify)
+- { CreditCard, Lock, Shield } (from lucide-react)
+- Card (from ../components/ui/Card)
+- Button (from ../components/ui/Button)
+Functions: (none)
+Event Handlers: (none)
+Calls To Imported Modules:
+- api.post
+- toast.error
+
+---
+
+Page: PaymentHistory
+File: src\pages\PaymentHistory.jsx
+Route(s): /payment-history
+Modules Used:
+- React, { useState, useEffect } (from react)
+- { paymentAPI } (from ../services/paymentAPI)
+- { toast } (from react-toastify)
+- Card (from ../components/ui/Card)
+- Button (from ../components/ui/Button)
+- Badge (from ../components/ui/Badge)
+- LoadingSkeleton (from ../components/ui/LoadingSkeleton)
+- ReceiptViewer (from ../components/receipt/ReceiptViewer)
+- { CreditCard, FileText, Download, Eye, Calendar, DollarSign, CheckCircle, XCircle, Clock, AlertCircle } (from lucide-react)
+- useErrorHandler (from ../hooks/useErrorHandler)
+Functions:
+- PaymentHistory() — defined in page
+- getStatusBadge() — defined in page
+- viewReceipt() — defined in page
+- formatDate() — defined in page
+- formatDateTime() — defined in page
+Event Handlers: (none)
+Calls To Imported Modules:
+- paymentAPI.getByUser
+- toast.error
+- Card.Header, Title, Content
+
+---
+
+Page: PaymentReturn
+File: src\pages\PaymentReturn.jsx
+Route(s): /payment/return
+Modules Used:
+- React, { useEffect, useState } (from react)
+- { useNavigate, useSearchParams } (from react-router-dom)
+- { toast } (from react-toastify)
+- { CheckCircle, XCircle, Clock, ArrowLeft } (from lucide-react)
+- Card (from ../components/ui/Card)
+- Button (from ../components/ui/Button)
+- Receipt (from ../components/Receipt)
+- { paymentAPI } (from ../services/paymentAPI)
+- { feesAPI } (from ../services/api)
+Functions:
+- PaymentReturn() — defined in page
+- handleBackToFees() — defined in page
+- handleRetryPayment() — defined in page
+Event Handlers:
+- handleBackToFees()
+- handleRetryPayment()
+Calls To Imported Modules:
+- toast.success, error, info
+- Card.Content
+- paymentAPI.getById
+- feesAPI.getById
+
+---
+
+Page: Pelajar
+File: src\pages\Pelajar.jsx
+Route(s): /pelajar/*
+Modules Used:
+- React, { useState, useEffect } (from react)
+- { Navigate } (from react-router-dom)
+- useCrud (from ../hooks/useCrud)
+- { studentsAPI } (from ../services/api)
+- PelajarList (from ../components/pelajar/PelajarList)
+- PelajarForm (from ../components/pelajar/PelajarForm)
+- PelajarDetail (from ../components/pelajar/PelajarDetail)
+- PelajarImport (from ../components/pelajar/PelajarImport)
+- Card (from ../components/ui/Card)
+- Badge (from ../components/ui/Badge)
+- LoadingSkeleton (from ../components/ui/LoadingSkeleton)
+- { Users, UserCheck, AlertCircle } (from lucide-react)
+- { Link, Route, Routes, useLocation } (from react-router-dom)
+Functions:
+- renderContent() — defined in page
+Event Handlers: (none)
+Calls To Imported Modules:
+- studentsAPI.getStats
+
+---
+
+Page: PendingRegistrations
+File: src\pages\PendingRegistrations.jsx
+Route(s): /pending-registrations
+Modules Used:
+- React, { useState, useEffect } (from react)
+- { toast } (from react-toastify)
+- { authAPI } (from ../services/api)
+- { CheckCircle, XCircle, Clock, RefreshCw, User, X } (from lucide-react)
+Functions:
+- PendingRegistrations() — defined in page
+- formatDate() — defined in page
+Event Handlers: (none)
+Calls To Imported Modules:
+- toast.error, success
+- authAPI.getPendingRegistrations, approveRegistration, rejectRegistration
+
+---
+
+Page: PendingTeacherDashboard
+File: src\pages\PendingTeacherDashboard.jsx
+Route(s): /pending-teacher
+Modules Used:
+- React, { useState, useEffect } (from react)
+- { Link } (from react-router-dom)
+- { Clock, CheckCircle, XCircle, User, FileText, Mail, Phone, AlertCircle, BookOpen, Upload, Settings, HelpCircle, MessageSquare } (from lucide-react)
+- Card (from ../components/ui/Card)
+- Badge (from ../components/ui/Badge)
+- { authAPI } (from ../services/api)
+- { toast } (from react-toastify)
+- LoadingSkeleton (from ../components/ui/LoadingSkeleton)
+Functions:
+- PendingTeacherDashboard() — defined in page
+Event Handlers: (none)
+Calls To Imported Modules:
+- authAPI.checkProfileComplete
+
+---
+
+Page: PendingTeacherDocuments
+File: src\pages\PendingTeacherDocuments.jsx
+Route(s): /pending-teacher/documents
+Modules Used:
+- React, { useState, useEffect } (from react)
+- { toast } (from react-toastify)
+- { Upload, FileText, X, CheckCircle, AlertCircle, Download } (from lucide-react)
+- Card (from ../components/ui/Card)
+- Badge (from ../components/ui/Badge)
+- { authAPI } (from ../services/api)
+- LoadingSkeleton (from ../components/ui/LoadingSkeleton)
+Functions:
+- PendingTeacherDocuments() — defined in page
+- getDocumentStatus() — defined in page
+Event Handlers: (none)
+Calls To Imported Modules:
+- toast.error, success
+- authAPI.getTeacherDocuments, uploadTeacherDocument, deleteTeacherDocument
+
+---
+
+Page: PermissionMatrix
+File: src\pages\PermissionMatrix.jsx
+Route(s): /permission-matrix
+Modules Used:
+- React, { useState, useEffect } (from react)
+- { Shield, CheckCircle, XCircle, Lock, Unlock, Download } (from lucide-react)
+- { toast } (from react-toastify)
+Functions:
+- PermissionMatrix() — defined in page
+- handleExport() — defined in page
+- getRoleLabel() — defined in page
+Event Handlers:
+- handleExport()
+Calls To Imported Modules:
+- toast.error, success
+
+---
+
+Page: PersonalSettings
+File: src\pages\PersonalSettings.jsx
+Route(s): /personal-settings
+Modules Used:
+- React, { useState, useEffect } (from react)
+- { useLocation } (from react-router-dom)
+- { toast } (from react-toastify)
+- Card (from ../components/ui/Card)
+- Button (from ../components/ui/Button)
+- { Settings as SettingsIcon, Palette, Globe, Type, Save, Sparkles, Key, Mail, Phone, User, Eye, EyeOff, Trophy } (from lucide-react)
+- { usePreferences } (from ../hooks/usePreferences)
+- { useLanguage } (from ../contexts/LanguageContext)
+- { seasonalSchemes, getScheme } (from ../config/seasonalSchemes)
+- SeasonalElements (from ../components/seasonal/SeasonalElements)
+- { authAPI } (from ../services/api)
+- { formatPhone, isValidPhone } (from ../utils/phoneUtils)
+Functions:
+- PersonalSettings() — defined in page
+- handlePreferenceChange() — defined in page
+Event Handlers:
+- handlePreferenceChange()
+Calls To Imported Modules:
+- React.useRef, useEffect
+- toast.error, success
+- Card.Header, Title, Content
+- User.role
+- authAPI.getProfile, updateProfile, changePassword
+
+---
+
+Page: PicApprovals
+File: src\pages\PicApprovals.jsx
+Route(s): /pic-approvals
+Modules Used:
+- React, { useState, useEffect, useMemo } (from react)
+- { pendingPicChangesAPI } (from ../services/api)
+- Card (from ../components/ui/Card)
+- Button (from ../components/ui/Button)
+- Badge (from ../components/ui/Badge)
+- { toast } (from react-toastify)
+- { ShieldCheck, RefreshCcw, Clock, CheckCircle, XCircle, FileJson, AlertCircle } (from lucide-react)
+Functions: (none)
+Event Handlers: (none)
+Calls To Imported Modules:
+- pendingPicChangesAPI.list, approve, reject
+- Card.Header, Title, Content
+- toast.error, success, info
+
+---
+
+Page: PicRecycleBin
+File: src\pages\PicRecycleBin.jsx
+Route(s): /pic-recycle-bin
+Modules Used:
+- React, { useState, useEffect } (from react)
+- { Navigate } (from react-router-dom)
+- { picRecycleBinAPI, pendingPicChangesAPI } (from ../services/api)
+- Card (from ../components/ui/Card)
+- Button (from ../components/ui/Button)
+- Badge (from ../components/ui/Badge)
+- LoadingSkeleton (from ../components/ui/LoadingSkeleton)
+- { toast } (from react-toastify)
+- { Trash2, RefreshCcw, XCircle, Clock, CheckCircle, AlertCircle, Eye, RotateCcw, FileText, Calendar, User, Timer } (from lucide-react)
+Functions:
+- getOperationLabel() — defined in page
+- getOperationColor() — defined in page
+- isUndoOperation() — defined in page
+- formatDate() — defined in page
+- calculateTimeRemaining() — defined in page
+Event Handlers: (none)
+Calls To Imported Modules:
+- picRecycleBinAPI.list, undo, cancelPending
+- toast.error, success
+
+---
+
+Page: PicUsers
+File: src\pages\PicUsers.jsx
+Route(s): /pic-users
+Modules Used:
+- React, { useEffect, useMemo, useState } (from react)
+- { Search } (from lucide-react)
+- useCrud (from ../hooks/useCrud)
+- { picUsersAPI } (from ../services/api)
+- PicUserForm (from ../components/pic/PicUserForm)
+- PicUserList (from ../components/pic/PicUserList)
+- Card (from ../components/ui/Card)
+Functions:
+- PicUsers() — defined in page
+Event Handlers: (none)
+Calls To Imported Modules:
+- Card.Content
+
+---
+
+Page: QuickStaffCheckIn
+File: src\pages\QuickStaffCheckIn.jsx
+Route(s): /quick-checkin
+Modules Used:
+- React, { useState } (from react)
+- { MapPin, LogIn, LogOut, Eye, EyeOff, User, Lock, AlertCircle, CheckCircle, History } (from lucide-react)
+- api (from ../services/api)
+- { formatIC } (from ../utils/icUtils)
+- { useAccurateGPS } (from ../hooks/useAccurateGPS)
+Functions:
+- QuickStaffCheckIn() — defined in page
+- handleChange() — defined in page
+- showMessage() — defined in page
+- formatDateTime() — defined in page
+Event Handlers:
+- handleChange()
+Calls To Imported Modules:
+- api.post
+
+---
+
+Page: ResetPassword
+File: src\pages\ResetPassword.jsx
+Route(s): /reset-password
+Modules Used:
+- React, { useState, useEffect } (from react)
+- { useSearchParams, Link, useNavigate } (from react-router-dom)
+- { authAPI } (from ../services/api)
+- { toast } (from react-toastify)
+- Card (from ../components/ui/Card)
+- Button (from ../components/ui/Button)
+- { Key, CheckCircle, XCircle, Eye, EyeOff } (from lucide-react)
+Functions:
+- ResetPassword() — defined in page
+Event Handlers: (none)
+Calls To Imported Modules:
+- authAPI.resetPassword
+- toast.error, success
+- Card.Content, Header, Title
+
+---
+
+Page: ResetPasswordCode
+File: src\pages\ResetPasswordCode.jsx
+Route(s): /reset-password-code
+Modules Used:
+- React, { useState, useEffect } (from react)
+- { useSearchParams, Link, useNavigate } (from react-router-dom)
+- { authAPI } (from ../services/api)
+- { toast } (from react-toastify)
+- Card (from ../components/ui/Card)
+- Button (from ../components/ui/Button)
+- { Key, CheckCircle, XCircle, Eye, EyeOff, Phone } (from lucide-react)
+Functions:
+- ResetPasswordCode() — defined in page
+- handleCodeChange() — defined in page
+Event Handlers:
+- handleCodeChange()
+Calls To Imported Modules:
+- authAPI.resetPassword
+- toast.error, success
+- Card.Content, Header, Title
+
+---
+
+Page: ResetPasswordFlow
+File: src\pages\ResetPasswordFlow.jsx
+Route(s): Not routed via App
+Modules Used:
+- React, { useState } (from react)
+- { Link, useNavigate } (from react-router-dom)
+- { authAPI } (from ../services/api)
+- { toast } (from react-toastify)
+- Card (from ../components/ui/Card)
+- Button (from ../components/ui/Button)
+- { Mail, Phone, ArrowLeft, CheckCircle, Key, Eye, EyeOff, ArrowRight } (from lucide-react)
+Functions:
+- ResetPasswordFlow() — defined in page
+- handleStep1Submit() — defined in page
+Event Handlers:
+- handleStep1Submit()
+Calls To Imported Modules:
+- authAPI.requestReset, verifyReset, setPassword
+- toast.error, success
+- Card.Content, Header, Title
+
+---
+
+Page: Settings
+File: src\pages\Settings.jsx
+Route(s): /settings
+Modules Used:
+- React, { useState, useEffect, useRef } (from react)
+- { Navigate, Link as RouterLink } (from react-router-dom)
+- { settingsAPI, authAPI, studentsAPI, teachersAPI, exportAPI } (from ../services/api)
+- { toast } (from react-toastify)
+- Card (from ../components/ui/Card)
+- Button (from ../components/ui/Button)
+- Badge (from ../components/ui/Badge)
+- GoogleMapPicker (from ../components/ui/GoogleMapPicker)
+- { Settings as SettingsIcon, QrCode, Key, Upload, Link, Save, Users, Eye, EyeOff, MapPin, Database, CloudUpload, History, DownloadCloud, Loader2, Search, X, CreditCard, Mail, Phone, Archive, Contact, Clock, Globe, CheckCircle, AlertCircle, ExternalLink, ChevronDown, ChevronUp, Sparkles, Shield } (from lucide-react)
+- { formatIC } (from ../utils/icUtils)
+- { getEffectiveRole } (from ../utils/userRoles)
+- { formatPhoneForDisplay } (from ../utils/phoneUtils)
+- { useLanguage } (from ../contexts/LanguageContext)
+- { usePreferences } (from ../hooks/usePreferences)
+Functions:
+- Settings() — defined in page
+- formatFileSize() — defined in page
+- formatDateTime() — defined in page
+- normalizeEntries() — defined in page
+- handleOpenLink() — defined in page
+- formatCoordinate() — defined in page
+- formatRadius() — defined in page
+- handleImageChange() — defined in page
+- handleTestQRPayment() — defined in page
+- handleUserClick() — defined in page
+- handleCloseModal() — defined in page
+Event Handlers:
+- handleOpenLink()
+- handleImageChange()
+- handleTestQRPayment()
+- handleUserClick()
+- handleCloseModal()
+Calls To Imported Modules:
+- Link.split
+- settingsAPI.getMasjidLocation, getByKey, update, getQRCode
+- authAPI.adminChangePassword
+- studentsAPI.getAll
+- teachersAPI.getAll
+- exportAPI.getHistory, triggerDatabaseBackup, archiveYearData, download
+- toast.error, success, warning, info
+- Card.Header, Title, Content
+- Settings.masjid_latitude, masjid_longitude, masjid_checkin_radius, google_maps_api_key, qr_code_enabled, qr_code_image, qr_code_link
+- Users.filter, length, map
+- History.length, map
+
+---
+
+Page: StaffCheckIn
+File: src\pages\StaffCheckIn.jsx
+Route(s): /staff-checkin
+Modules Used:
+- React, { useState, useEffect, useMemo, useCallback, useRef } (from react)
+- { MapPin, Clock, CheckCircle, XCircle, RefreshCw, AlertCircle, LogIn, LogOut, Download } (from lucide-react)
+- { staffCheckInAPI } (from ../services/api)
+- { calculateDistance } (from ../utils/distanceUtils)
+- { useMasjidLocation } (from ../hooks/useMasjidLocation)
+- { useAccurateGPS } (from ../hooks/useAccurateGPS)
+Functions:
+- formatDateParam() — defined in page
+- formatDateTime() — defined in page
+- formatDate() — defined in page
+Event Handlers: (none)
+Calls To Imported Modules:
+- staffCheckInAPI.getTodayStatus, getHistory, getStaffList, checkIn, checkOut
+
+---
+
+Page: StudentRegistration
+File: src\pages\StudentRegistration.jsx
+Route(s): /student-register
+Modules Used:
+- React, { useState } (from react)
+- { useNavigate, Link } (from react-router-dom)
+- { authAPI } (from ../services/api)
+- { User, AlertCircle, CreditCard, Mail, Phone, Calendar, CheckCircle } (from lucide-react)
+- { toast } (from react-toastify)
+- { formatIC, isValidIC } (from ../utils/icUtils)
+- { formatPhone } (from ../utils/phoneUtils)
+- useErrorHandler (from ../hooks/useErrorHandler)
+Functions:
+- StudentRegistration() — defined in page
+- handleChange() — defined in page
+- validate() — defined in page
+Event Handlers:
+- handleChange()
+Calls To Imported Modules:
+- authAPI.register
+- toast.success, error
+
+---
+
+Page: SystemHealth
+File: src\pages\SystemHealth.jsx
+Route(s): /system-health
+Modules Used:
+- React, { useState, useEffect } (from react)
+- { toast } (from react-toastify)
+- { Activity, CheckCircle, XCircle, AlertCircle, Server, Database, Globe, RefreshCw } (from lucide-react)
+- Card (from ../components/ui/Card)
+- Badge (from ../components/ui/Badge)
+- LoadingSkeleton (from ../components/ui/LoadingSkeleton)
+- ErrorDisplay (from ../components/ui/ErrorDisplay)
+- useErrorHandler (from ../hooks/useErrorHandler)
+Functions:
+- SystemHealth() — defined in page
+- getStatusBadge() — defined in page
+- getStatusIcon() — defined in page
+Event Handlers: (none)
+Calls To Imported Modules: (none)
+
+---
+
+Page: TeacherRegistration
+File: src\pages\TeacherRegistration.jsx
+Route(s): /teacher-register
+Modules Used:
+- React, { useState } (from react)
+- { useNavigate, Link } (from react-router-dom)
+- { authAPI, teachersAPI } (from ../services/api)
+- { User, AlertCircle, CreditCard, Mail, Phone, Calendar, CheckCircle, GraduationCap, Lock, Eye, EyeOff } (from lucide-react)
+- { toast } (from react-toastify)
+- { formatIC, isValidIC } (from ../utils/icUtils)
+- { formatPhone } (from ../utils/phoneUtils)
+Functions:
+- TeacherRegistration() — defined in page
+- handleChange() — defined in page
+- handleKepakaranChange() — defined in page
+- validate() — defined in page
+Event Handlers:
+- handleChange()
+- handleKepakaranChange()
+Calls To Imported Modules:
+- teachersAPI.register
+- toast.success, error
+
+---
+
+Page: ToyyibPaySettings
+File: src\pages\ToyyibPaySettings.jsx
+Route(s): /toyyibpay-settings
+Modules Used:
+- React, { useState, useEffect } (from react)
+- { Navigate } (from react-router-dom)
+- { toast } (from react-toastify)
+- api, { paymentGatewaySettingsAPI } (from ../services/api)
+- Card (from ../components/ui/Card)
+- Button (from ../components/ui/Button)
+- { CreditCard, Save, Eye, EyeOff, Settings, CheckCircle, XCircle, AlertCircle, Lock, Globe, TestTube, Activity } (from lucide-react)
+- { getEffectiveRole } (from ../utils/userRoles)
+Functions:
+- ToyyibPaySettings() — defined in page
+- handleChange() — defined in page
+Event Handlers:
+- handleChange()
+Calls To Imported Modules:
+- toast.error, success
+- api.get
+- paymentGatewaySettingsAPI.getAll, update
+- Card.Content, Header, Title
+
+---
+
+Page: Weather
+File: src\pages\Weather.jsx
+Route(s): /weather
+Modules Used:
+- React, { useState, useEffect } (from react)
+- { Cloud, CloudRain, Sun, CloudSun, Wind, Droplet, Eye, Gauge, Thermometer, AlertCircle, RefreshCw, Sunrise, Sunset } (from lucide-react)
+- { weatherAPI } (from ../services/api)
+- { toast } (from react-toastify)
+- LoadingSkeleton (from ../components/ui/LoadingSkeleton)
+- Card (from ../components/ui/Card)
+Functions:
+- Weather() — defined in page
+- getWeatherIcon() — defined in page
+- formatTime() — defined in page
+Event Handlers: (none)
+Calls To Imported Modules:
+- weatherAPI.getCurrent
+- toast.error
+- Card.Content, Header, Title
+
+---
+
+Page: Yuran
+File: src\pages\Yuran.jsx
+Route(s): /yuran
+Modules Used:
+- React, { useState, useEffect, useCallback } (from react)
+- { useNavigate } (from react-router-dom)
+- useCrud (from ../hooks/useCrud)
+- { feesAPI, settingsAPI } (from ../services/api)
+- { toast } (from react-toastify)
+- Card (from ../components/ui/Card)
+- Button (from ../components/ui/Button)
+- Badge (from ../components/ui/Badge)
+- LoadingSkeleton (from ../components/ui/LoadingSkeleton)
+- ReceiptViewer (from ../components/receipt/ReceiptViewer)
+- { CreditCard, DollarSign, CheckCircle, XCircle, Clock, Plus, Search, Filter, QrCode, Settings, Upload, Link as LinkIcon, Save, ChevronDown, ChevronUp, AlertCircle, FileCheck, Eye } (from lucide-react)
+- { getEffectiveRole } (from ../utils/userRoles)
+Functions:
+- Yuran() — defined in page
+- handleImageChange() — defined in page
+- getStatusBadge() — defined in page
+Event Handlers:
+- handleImageChange()
+Calls To Imported Modules:
+- feesAPI.confirmDocument, create, markAsPaid
+- settingsAPI.getQRCode, update
+- toast.success, error, info
+- Card.Header, Title, Content
+- Settings.qr_code_image, qr_code_link, qr_code_enabled

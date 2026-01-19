@@ -7,7 +7,12 @@ import {
   confirmClassAttendance,
   confirmClassFees,
   getClassDocuments,
-  approvePaymentsByDateRange
+  approvePaymentsByDateRange,
+  getApprovalHistory,
+  flagPayment,
+  getFlaggedPayments,
+  exportMonthlySummary,
+  exportApprovalHistory
 } from '../controllers/ibController.js';
 import { authenticateToken, requireRole } from '../middleware/auth.js';
 
@@ -76,6 +81,37 @@ router.post('/approve-payments-by-date',
   body('exclude_payment_ids').optional().isArray().withMessage('Exclude payment IDs must be an array'),
   body('notes').optional().isString().withMessage('Notes must be a string'),
   approvePaymentsByDateRange
+);
+
+// Audit trail history
+router.get('/history',
+  requireRole(['ib', 'admin']),
+  getApprovalHistory
+);
+
+// List flagged payments (clarifications)
+router.get('/flagged-payments',
+  requireRole(['ib', 'admin']),
+  getFlaggedPayments
+);
+
+// Flag a payment for clarification / send back to PIC
+router.post('/flag-payment',
+  requireRole(['ib']),
+  body('payment_id').isInt().withMessage('Payment ID must be an integer'),
+  body('reason').notEmpty().withMessage('Reason is required'),
+  body('send_back_to_pic').optional().isBoolean().withMessage('send_back_to_pic must be boolean'),
+  flagPayment
+);
+
+router.get('/export/summary',
+  requireRole(['ib', 'admin']),
+  exportMonthlySummary
+);
+
+router.get('/export/history',
+  requireRole(['ib', 'admin']),
+  exportApprovalHistory
 );
 
 export default router;

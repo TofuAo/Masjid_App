@@ -280,6 +280,12 @@ export const authAPI = {
   updatePreferences: (data) => api.put('/auth/preferences', data),
 };
 
+export const notificationAPI = {
+  getNotifications: (params) => api.get('/notifications', { params }),
+  markNotificationRead: (id) => api.post(`/notifications/${id}/read`),
+  markAllNotificationsRead: () => api.post('/notifications/mark-all-read'),
+};
+
 // Students API
 export const studentsAPI = {
   getAll: async (params) => {
@@ -787,6 +793,7 @@ export const usersAPI = {
       throw error;
     }
   },
+  getByIc: (ic) => api.get(`/users/${encodeURIComponent(ic)}`),
 };
 
 export const ibAPI = {
@@ -797,6 +804,11 @@ export const ibAPI = {
   confirmClassAttendance: (data) => api.post('/ib/confirm-class-attendance', data),
   confirmClassFees: (data) => api.post('/ib/confirm-class-fees', data),
   approvePaymentsByDate: (data) => api.post('/ib/approve-payments-by-date', data),
+  getApprovalHistory: (params) => api.get('/ib/history', { params }),
+  getFlaggedPayments: (params) => api.get('/ib/flagged-payments', { params }),
+  flagPayment: (data) => api.post('/ib/flag-payment', data),
+  exportMonthlySummary: (params) => api.get('/ib/export/summary', { params }),
+  exportApprovalHistory: (params) => api.get('/ib/export/history', { params })
 };
 
 // Receipt API

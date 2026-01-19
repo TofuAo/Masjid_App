@@ -30,6 +30,7 @@ import maintenanceRoutes from './maintenance.js';
 import weatherRoutes from './weather.js';
 import quranQuoteRoutes from './quranQuote.js';
 import vllmRoutes from './vllm.js';
+import notificationRoutes from './notifications.js';
 const router = Router();
 
 router.use('/auth', authRoutes);
@@ -64,5 +65,6 @@ router.use('/maintenance', maintenanceRoutes);
 router.use('/weather', weatherRoutes);
 router.use('/quran-quote', quranQuoteRoutes);
 router.use('/vllm', vllmRoutes);
+router.use('/notifications', notificationRoutes);
 
 export default router;

@@ -3,7 +3,7 @@ import { X, CheckCircle, XCircle, Clock, AlertCircle, Calendar, Edit, Trash2 } f
 import Badge from '../ui/Badge';
 import Button from '../ui/Button';
 
-const ClassAttendanceModal = ({ isOpen, onClose, className, attendanceDate, students, userRole, onUpdate, onDelete }) => {
+const ClassAttendanceModal = ({ isOpen, onClose, className, attendanceDate, students, userRole, onUpdate, onDelete, onConfirmDocument }) => {
   if (!isOpen) return null;
 
   const getStatusBadge = (status) => {
@@ -114,8 +114,11 @@ const ClassAttendanceModal = ({ isOpen, onClose, className, attendanceDate, stud
                   </div>
                   <div className="flex items-center gap-3">
                     {getStatusBadge(student.status)}
-                    {(userRole === 'admin' || userRole === 'pic') && (
+                    {(userRole === 'admin' || userRole === 'pic' || userRole === 'ib') && (
                       <div className="flex items-center gap-2">
+                        <Badge variant={student.document_confirmed ? 'success' : 'warning'}>
+                          {student.document_confirmed ? 'Dokumen Disahkan' : 'Menunggu Pengesahan'}
+                        </Badge>
                         <select
                           value={student.status || ''}
                           onChange={(e) => onUpdate && onUpdate(student.id, e.target.value)}
@@ -134,6 +137,22 @@ const ClassAttendanceModal = ({ isOpen, onClose, className, attendanceDate, stud
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
+                        {onConfirmDocument && (
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => onConfirmDocument(student.id, true)}
+                              className="px-2 py-1 text-xs bg-emerald-500 text-white rounded hover:bg-emerald-600"
+                            >
+                              Sahkan
+                            </button>
+                            <button
+                              onClick={() => onConfirmDocument(student.id, false)}
+                              className="px-2 py-1 text-xs bg-red-100 text-red-700 rounded hover:bg-red-200"
+                            >
+                              Tolak
+                            </button>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>

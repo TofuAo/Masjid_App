@@ -72,6 +72,15 @@ const LayoutContent = ({ children, user, onLogout, onRoleChange }) => {
   const colorScheme = getScheme(preferences?.colorScheme || 'summer');
   const effectiveRole = getEffectiveRole(user) || 'admin';
   const availableRoles = getAvailableRoles(user);
+  const dashboardRoutes = {
+    admin: '/',
+    teacher: '/',
+    pic: '/',
+    staff: '/',
+    ib: '/ib-dashboard',
+    student: '/account'
+  };
+  const logoDestination = dashboardRoutes[effectiveRole] || '/';
   
   // Force re-render when preferences change - use the actual color scheme value
   const colorSchemeKey = preferences?.colorScheme || 'summer';
@@ -433,10 +442,7 @@ const LayoutContent = ({ children, user, onLogout, onRoleChange }) => {
       // All teacher quick access items are already in grouped menus, so return empty
       return [];
     } else if (effectiveRole === 'student') {
-      const items = [
-        { icon: <Clock className="w-5 h-5" />, label: t('menuCheckIn'), link: '/staff-checkin' },
-      ];
-      return items.filter(item => !groupedLinks.has(item.link));
+      return [];
     } else if (effectiveRole === 'ib') {
       // IB Dashboard is already in Account group, so return empty
       return [];
@@ -539,8 +545,12 @@ const LayoutContent = ({ children, user, onLogout, onRoleChange }) => {
           }}
         >
           <div className={`flex items-center ${isOpen ? 'justify-between gap-2' : 'justify-center flex-col gap-2'}`}>
-            {isOpen && (
-              <div className="flex items-center space-x-3 flex-1 min-w-0">
+            {isOpen ? (
+              <Link
+                to={logoDestination}
+                className="flex items-center space-x-3 flex-1 min-w-0"
+                aria-label="Pergi ke papan pemuka"
+              >
                 <img 
                   src="/logomnsa1.jpeg" 
                   alt="Masjid Negeri Sultan Ahmad 1" 
@@ -550,14 +560,15 @@ const LayoutContent = ({ children, user, onLogout, onRoleChange }) => {
                   <h1 className="text-sm font-bold truncate">e-Quran</h1>
                   <p className="text-xs truncate opacity-80">Masjid Negeri Sultan Ahmad 1</p>
                 </div>
-              </div>
-            )}
-            {!isOpen && (
-              <img 
-                src="/logomnsa1.jpeg" 
-                alt="MNSA1" 
-                className="h-10 w-10 object-contain flex-shrink-0 rounded"
-              />
+              </Link>
+            ) : (
+              <Link to={logoDestination} aria-label="Pergi ke papan pemuka">
+                <img 
+                  src="/logomnsa1.jpeg" 
+                  alt="MNSA1" 
+                  className="h-10 w-10 object-contain flex-shrink-0 rounded"
+                />
+              </Link>
             )}
             <button
               onClick={toggleSidebar}
@@ -580,7 +591,14 @@ const LayoutContent = ({ children, user, onLogout, onRoleChange }) => {
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 overflow-y-auto relative z-10 scroll-smooth">
+        <nav
+          className="flex-1 overflow-y-auto relative z-10 scroll-smooth"
+          style={{
+            transform: isOpen ? 'scale(1)' : 'scale(0.92)',
+            transformOrigin: 'top',
+            transition: 'transform 0.3s ease'
+          }}
+        >
           {/* Quick Access Section */}
           {quickAccessItems.length > 0 && (
             <div className={`${isOpen ? 'px-4 pt-4 pb-3' : 'px-2 pt-4 pb-3'}`}>

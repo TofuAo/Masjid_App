@@ -378,16 +378,18 @@ const PayYuran = () => {
                 </p>
               </div>
 
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 w-full">
-                <p className="text-sm text-blue-800 font-medium mb-2">Arahan Bayaran:</p>
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 w-full space-y-3">
+                <p className="text-sm text-blue-800 font-medium mb-2">Arahan Bayaran (sesuai dengan Touch 'n Go)</p>
                 <ol className="text-xs text-blue-700 space-y-1 list-decimal list-inside">
-                  <li>Buka aplikasi e-wallet atau perbankan mobile anda</li>
-                  <li>Pilih fungsi "Imbas QR" atau "Scan QR"</li>
-                  <li>Imbas QR code yang dipaparkan di atas</li>
-                  <li>Semak maklumat bayaran dan jumlah</li>
-                  <li>Lengkapkan bayaran</li>
-                  <li>Simpan resit pembayaran untuk rujukan</li>
+                  <li>Buka aplikasi Touch 'n Go eWallet atau mana-mana e-wallet/perbankan mobile pilihan anda</li>
+                  <li>Pilih fungsi "Imbas QR" atau "Scan QR" dan pastikan kamera berada pada jarak yang sesuai</li>
+                  <li>Imbas QR code yang dipaparkan di atas (ia menggunakan format DuitNow: akaun|jumlah|rujukan|keterangan)</li>
+                  <li>Semak jumlah bayaran dan rujukan sebelum mengesahkan</li>
+                  <li>Lengkapkan bayaran dan simpan pengesahan/resit untuk rekod anda</li>
                 </ol>
+                <p className="text-xs text-blue-700">
+                  Untuk pengalaman terbaik, kekalkan QR code ini sentiasa boleh diakses dan pastikan nombor akaun/rujukan tidak berubah ketika pelanggan membuat bayaran.
+                </p>
               </div>
 
               <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 w-full">

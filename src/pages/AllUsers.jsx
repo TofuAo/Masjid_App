@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { Navigate } from 'react-router-dom';
+import { Link, Navigate } from 'react-router-dom';
 import { usersAPI } from '../services/api';
 import Card from '../components/ui/Card';
 import Badge from '../components/ui/Badge';
@@ -327,61 +327,77 @@ const AllUsers = ({ user }) => {
                         </tr>
                       </thead>
                       <tbody className="bg-white divide-y divide-gray-200">
-                        {roleUsers.map((userItem) => (
-                          <tr key={userItem.ic || userItem.IC} className="hover:bg-gray-50 transition-colors">
-                            <td className="px-4 py-3 whitespace-nowrap">
-                              <div className="text-sm font-medium text-gray-900">{userItem.nama || 'N/A'}</div>
-                            </td>
-                            <td className="px-4 py-3 whitespace-nowrap">
-                              <div className="text-sm text-gray-600">{formatIC(userItem.ic || userItem.IC)}</div>
-                            </td>
-                            <td className="px-4 py-3 whitespace-nowrap hidden md:table-cell">
-                              <div className="text-sm text-gray-600">{userItem.email || '-'}</div>
-                            </td>
-                            <td className="px-4 py-3 whitespace-nowrap hidden lg:table-cell">
-                              <div className="text-sm text-gray-600">{userItem.telefon ? formatPhoneForDisplay(userItem.telefon) : '-'}</div>
-                            </td>
-                            <td className="px-4 py-3">
-                              <div className="flex flex-wrap gap-1">
-                                {(() => {
-                                  const allRoles = extractUserRoles(userItem);
-                                  
-                                  return allRoles.length > 0 ? (
-                                    allRoles.map((r, idx) => (
-                                      <Badge key={idx} variant={
-                                        roleColors[r] === 'blue' ? 'info' : 
-                                        roleColors[r] === 'emerald' ? 'success' : 
-                                        roleColors[r] === 'orange' ? 'warning' : 
-                                        roleColors[r] === 'red' ? 'danger' : 
-                                        roleColors[r] === 'cyan' ? 'secondary' : 
-                                        'default'
-                                      }>
-                                        {roleLabels[r] || r}
-                                      </Badge>
-                                    ))
-                                  ) : (
-                                    <Badge variant="default">N/A</Badge>
-                                  );
-                                })()}
-                              </div>
-                            </td>
-                            {role === 'student' && (
+                        {roleUsers.map((userItem, index) => {
+                          const userIc = userItem.ic || userItem.IC;
+                          const detailLink = userIc ? `/all-users/${encodeURIComponent(userIc)}` : null;
+                          return (
+                            <tr key={userIc || userItem.nama || `user-${index}`} className="hover:bg-gray-50 transition-colors">
                               <td className="px-4 py-3 whitespace-nowrap">
-                                <div className="text-sm text-gray-600">{userItem.nama_kelas || 'Tiada Kelas'}</div>
+                                <div className="text-sm font-medium text-gray-900">
+                                  {detailLink ? (
+                                    <Link
+                                      to={detailLink}
+                                      className="text-emerald-600 hover:underline"
+                                      title={`Lihat maklumat ${userItem.nama || 'pengguna'}`}
+                                    >
+                                      {userItem.nama || 'N/A'}
+                                    </Link>
+                                  ) : (
+                                    userItem.nama || 'N/A'
+                                  )}
+                                </div>
                               </td>
-                            )}
-                            {(role === 'teacher' || role === 'staff') && (
+                              <td className="px-4 py-3 whitespace-nowrap">
+                                <div className="text-sm text-gray-600">{formatIC(userItem.ic || userItem.IC)}</div>
+                              </td>
+                              <td className="px-4 py-3 whitespace-nowrap hidden md:table-cell">
+                                <div className="text-sm text-gray-600">{userItem.email || '-'}</div>
+                              </td>
                               <td className="px-4 py-3 whitespace-nowrap hidden lg:table-cell">
-                                <div className="text-sm text-gray-600">{userItem.total_classes || 0} kelas</div>
+                                <div className="text-sm text-gray-600">{userItem.telefon ? formatPhoneForDisplay(userItem.telefon) : '-'}</div>
                               </td>
-                            )}
-                            <td className="px-4 py-3 whitespace-nowrap">
-                              <Badge variant={statusColors[userItem.status] === 'green' ? 'success' : statusColors[userItem.status] === 'red' ? 'danger' : statusColors[userItem.status] === 'yellow' ? 'warning' : statusColors[userItem.status] === 'orange' ? 'warning' : 'default'}>
-                                {userItem.status || 'N/A'}
-                              </Badge>
-                            </td>
-                          </tr>
-                        ))}
+                              <td className="px-4 py-3">
+                                <div className="flex flex-wrap gap-1">
+                                  {(() => {
+                                    const allRoles = extractUserRoles(userItem);
+                                    
+                                    return allRoles.length > 0 ? (
+                                      allRoles.map((r, idx) => (
+                                        <Badge key={idx} variant={
+                                          roleColors[r] === 'blue' ? 'info' : 
+                                          roleColors[r] === 'emerald' ? 'success' : 
+                                          roleColors[r] === 'orange' ? 'warning' : 
+                                          roleColors[r] === 'red' ? 'danger' : 
+                                          roleColors[r] === 'cyan' ? 'secondary' : 
+                                          'default'
+                                        }>
+                                          {roleLabels[r] || r}
+                                        </Badge>
+                                      ))
+                                    ) : (
+                                      <Badge variant="default">N/A</Badge>
+                                    );
+                                  })()}
+                                </div>
+                              </td>
+                              {role === 'student' && (
+                                <td className="px-4 py-3 whitespace-nowrap">
+                                  <div className="text-sm text-gray-600">{userItem.nama_kelas || 'Tiada Kelas'}</div>
+                                </td>
+                              )}
+                              {(role === 'teacher' || role === 'staff') && (
+                                <td className="px-4 py-3 whitespace-nowrap hidden lg:table-cell">
+                                  <div className="text-sm text-gray-600">{userItem.total_classes || 0} kelas</div>
+                                </td>
+                              )}
+                              <td className="px-4 py-3 whitespace-nowrap">
+                                <Badge variant={statusColors[userItem.status] === 'green' ? 'success' : statusColors[userItem.status] === 'red' ? 'danger' : statusColors[userItem.status] === 'yellow' ? 'warning' : statusColors[userItem.status] === 'orange' ? 'warning' : 'default'}>
+                                  {userItem.status || 'N/A'}
+                                </Badge>
+                              </td>
+                            </tr>
+                          );
+                        })}
                       </tbody>
                     </table>
                   </div>

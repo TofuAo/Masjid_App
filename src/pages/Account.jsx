@@ -19,6 +19,29 @@ import {
 } from 'lucide-react';
 import { getEffectiveRole } from '../utils/userRoles';
 
+const createRange = (days = 30) => {
+  const endDate = new Date();
+  const startDate = new Date();
+  startDate.setDate(endDate.getDate() - (days - 1));
+
+  const format = (value) => value.toISOString().split('T')[0];
+
+  return {
+    start: format(startDate),
+    end: format(endDate),
+    label: `Paparan ${days} hari terakhir (${format(startDate)} — ${format(endDate)})`,
+    startDate,
+    endDate
+  };
+};
+
+const isWithinRange = (value, rangeStart, rangeEnd) => {
+  if (!value) return false;
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return false;
+  return parsed >= rangeStart && parsed <= rangeEnd;
+};
+
 const Account = () => {
   const [user, setUser] = useState(null);
   const [attendance, setAttendance] = useState([]);
@@ -27,6 +50,7 @@ const Account = () => {
   const [activeTab, setActiveTab] = useState('attendance');
   const [selectedImage, setSelectedImage] = useState(null);
   const [imageModalOpen, setImageModalOpen] = useState(false);
+  const [rangeLabel, setRangeLabel] = useState('');
   
 
   useEffect(() => {
@@ -41,10 +65,15 @@ const Account = () => {
   const fetchData = async (studentIC) => {
     setLoading(true);
     try {
+      const range = createRange(30);
+      setRangeLabel(range.label);
+
       // Fetch attendance records
       const attendanceData = await attendanceAPI.getAll({
         student_ic: studentIC,
-        limit: 1000
+        limit: 1000,
+        start_date: range.start,
+        end_date: range.end
       });
       setAttendance(Array.isArray(attendanceData) ? attendanceData : []);
 
@@ -53,7 +82,11 @@ const Account = () => {
         student_ic: studentIC,
         limit: 1000
       });
-      setFees(Array.isArray(feesData) ? feesData : []);
+      const normalizedFees = Array.isArray(feesData) ? feesData : [];
+      const filteredFees = normalizedFees.filter(fee =>
+        isWithinRange(fee.tarikh || fee.created_at || fee.updated_at, range.startDate, range.endDate)
+      );
+      setFees(filteredFees);
     } catch (error) {
       console.error('Error fetching account data:', error);
       toast.error('Gagal memuatkan data akaun.');
@@ -170,7 +203,9 @@ const Account = () => {
       {/* Tabs */}
       <Card>
         <Card.Header>
-          <div className="flex space-x-4 border-b border-gray-200 overflow-x-auto">
+          <div className="border-b border-gray-200 pb-3">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex space-x-4 overflow-x-auto">
                 <button
                   onClick={() => setActiveTab('attendance')}
                   className={`pb-3 px-4 font-medium transition-colors whitespace-nowrap ${
@@ -197,6 +232,11 @@ const Account = () => {
                     <span>Resit Pembayaran ({feeRecords.length})</span>
                   </div>
                 </button>
+              </div>
+              {rangeLabel && (
+                <div className="text-xs text-gray-500">{rangeLabel}</div>
+              )}
+            </div>
           </div>
         </Card.Header>
         <Card.Content>

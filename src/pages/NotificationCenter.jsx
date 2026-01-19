@@ -1,11 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { toast } from 'react-toastify';
 import { Bell, CheckCircle, XCircle, AlertCircle, Clock, Filter, Check } from 'lucide-react';
 import Card from '../components/ui/Card';
 import Badge from '../components/ui/Badge';
 import LoadingSkeleton from '../components/ui/LoadingSkeleton';
-import { authAPI } from '../services/api';
+import { notificationAPI } from '../services/api';
 import useErrorHandler from '../hooks/useErrorHandler';
+import { useNavigate } from 'react-router-dom';
 
 const NotificationCenter = () => {
   const [notifications, setNotifications] = useState([]);
@@ -14,58 +15,17 @@ const NotificationCenter = () => {
   const { handleError, error: pageError, clearError } = useErrorHandler({ 
     pageName: 'NotificationCenter' 
   });
+  const navigate = useNavigate();
 
-  useEffect(() => {
-    fetchNotifications();
-    // Poll for new notifications every 30 seconds
-    const interval = setInterval(fetchNotifications, 30000);
-    return () => clearInterval(interval);
-  }, []);
-
-  const fetchNotifications = async () => {
+  const fetchNotifications = useCallback(async () => {
     try {
       setLoading(true);
       clearError();
-      // TODO: Implement API endpoint to fetch notifications
-      // const response = await authAPI.getNotifications({ filter });
-      // if (response.success) {
-      //   setNotifications(response.data || []);
-      // }
-      
-      // Mock data for now
-      const mockNotifications = [
-        {
-          id: 1,
-          type: 'pending_approval',
-          title: 'Pendaftaran Menunggu Kelulusan',
-          message: '3 pendaftaran baru menunggu kelulusan',
-          timestamp: new Date().toISOString(),
-          read: false,
-          priority: 'high',
-          action_url: '/pending-registrations'
-        },
-        {
-          id: 2,
-          type: 'pending_pic',
-          title: 'PIC Approval Pending',
-          message: '2 permohonan PIC menunggu kelulusan',
-          timestamp: new Date(Date.now() - 3600000).toISOString(),
-          read: false,
-          priority: 'high',
-          action_url: '/pic-approvals'
-        },
-        {
-          id: 3,
-          type: 'error',
-          title: 'Payment Gateway Error',
-          message: 'ToyyibPay gateway mengalami masalah sambungan',
-          timestamp: new Date(Date.now() - 7200000).toISOString(),
-          read: true,
-          priority: 'urgent',
-          action_url: '/toyyibpay-settings'
-        }
-      ];
-      setNotifications(mockNotifications);
+      const response = await notificationAPI.getNotifications({ filter });
+      const payload = Array.isArray(response)
+        ? response
+        : response?.data || [];
+      setNotifications(payload);
     } catch (error) {
       handleError(error, { 
         action: 'fetchNotifications',
@@ -74,12 +34,26 @@ const NotificationCenter = () => {
     } finally {
       setLoading(false);
     }
+  }, [filter, clearError, handleError]);
+
+  useEffect(() => {
+    fetchNotifications();
+    const interval = setInterval(fetchNotifications, 30000);
+    return () => clearInterval(interval);
+  }, [fetchNotifications]);
+
+  const navigateToActionUrl = (url) => {
+    if (!url) return;
+    if (url.startsWith('http://') || url.startsWith('https://')) {
+      window.location.href = url;
+    } else {
+      navigate(url);
+    }
   };
 
   const markAsRead = async (id) => {
     try {
-      // TODO: Implement API endpoint to mark notification as read
-      // await authAPI.markNotificationRead(id);
+      await notificationAPI.markNotificationRead(id);
       setNotifications(prev => 
         prev.map(n => n.id === id ? { ...n, read: true } : n)
       );
@@ -94,8 +68,7 @@ const NotificationCenter = () => {
 
   const markAllAsRead = async () => {
     try {
-      // TODO: Implement API endpoint to mark all as read
-      // await authAPI.markAllNotificationsRead();
+      await notificationAPI.markAllNotificationsRead();
       setNotifications(prev => prev.map(n => ({ ...n, read: true })));
       toast.success('Semua notifikasi ditandakan sebagai dibaca');
     } catch (error) {
@@ -294,9 +267,7 @@ const NotificationCenter = () => {
               }`}
               onClick={() => {
                 if (!notification.read) markAsRead(notification.id);
-                if (notification.action_url) {
-                  window.location.href = notification.action_url;
-                }
+                navigateToActionUrl(notification.action_url);
               }}
             >
               <div className="flex items-start space-x-4">

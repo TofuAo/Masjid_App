@@ -1,6 +1,78 @@
 import { pool } from '../config/database.js';
 import { validationResult } from 'express-validator';
 
+const logIbAction = async ({
+  actionType,
+  userIc,
+  bulan = null,
+  tahun = null,
+  paymentId = null,
+  attendanceId = null,
+  documentType = 'general',
+  amount = null,
+  notes = null,
+  metadata = null
+}) => {
+  await pool.execute(
+    `INSERT INTO ib_action_logs 
+      (action_type, user_ic, bulan, tahun, payment_id, attendance_id, document_type, amount, notes, metadata)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [actionType, userIc, bulan, tahun, paymentId, attendanceId, documentType, amount, notes, metadata]
+  );
+};
+
+const getDocumentVerificationStats = async (bulan, tahun) => {
+  const [feesStats] = await pool.execute(
+    `SELECT 
+        COUNT(*) as total_payments,
+        SUM(CASE WHEN document_confirmed = 1 THEN 1 ELSE 0 END) as confirmed_payments,
+        SUM(CASE WHEN document_confirmed = 1 THEN jumlah ELSE 0 END) as confirmed_amount,
+        SUM(jumlah) as total_amount,
+        SUM(CASE WHEN resit_img IS NULL OR resit_img = '' OR document_confirmed = 0 THEN 1 ELSE 0 END) as missing_documents
+     FROM fees
+     WHERE bulan = ? AND tahun = ?`,
+    [bulan, tahun]
+  );
+
+  const monthNumber = getMonthNumber(bulan);
+  const [attendanceStats] = await pool.execute(
+    `SELECT 
+        COUNT(*) as total,
+        SUM(CASE WHEN document_confirmed = 0 THEN 1 ELSE 0 END) as missing_documents
+     FROM attendance
+     WHERE MONTH(tarikh) = ? AND YEAR(tarikh) = ? 
+       AND proof_image IS NOT NULL 
+       AND proof_image != ''`,
+    [monthNumber, tahun]
+  );
+
+  return {
+    missingFeeDocuments: feesStats[0]?.missing_documents || 0,
+    missingAttendanceDocuments: attendanceStats[0]?.missing_documents || 0,
+    totalFeeAmount: parseFloat(feesStats[0]?.total_amount || 0),
+    confirmedFeeAmount: parseFloat(feesStats[0]?.confirmed_amount || 0),
+    confirmedFeeCount: parseInt(feesStats[0]?.confirmed_payments || 0, 10),
+    totalFeeCount: parseInt(feesStats[0]?.total_payments || 0, 10)
+  };
+};
+
+const getApprovalRateWarnings = ({ totalFeeAmount, confirmedFeeAmount }) => {
+  const warnings = [];
+  if (totalFeeAmount <= 0) {
+    warnings.push('Jumlah kutipan belum dikira');
+    return warnings;
+  }
+
+  const rate = (confirmedFeeAmount / totalFeeAmount) * 100;
+  if (rate < 50) {
+    warnings.push(`Kadar kutipan hanya ${rate.toFixed(1)}% — semak semula dokumen`);
+  } else if (rate > 95) {
+    warnings.push(`Kadar kutipan ${rate.toFixed(1)}% sangat tinggi; pastikan tiada dokumen berulang`);
+  }
+
+  return warnings;
+};
+
 // Get monthly payment report for confirmation
 export const getMonthlyPaymentReport = async (req, res) => {
   try {
@@ -105,6 +177,25 @@ export const confirmMonthlyPayment = async (req, res) => {
       });
     }
 
+  const documentStats = await getDocumentVerificationStats(bulan, tahun);
+  if (
+    documentStats.missingFeeDocuments > 0 ||
+    documentStats.missingAttendanceDocuments > 0
+  ) {
+    return res.status(400).json({
+      success: false,
+      message: 'Terdapat dokumen bayaran atau kehadiran yang masih belum disahkan.',
+      data: documentStats
+    });
+  }
+
+  if (status === 'rejected' && (!notes || !notes.trim())) {
+    return res.status(400).json({
+      success: false,
+      message: 'Nota diperlukan untuk menolak laporan.'
+    });
+  }
+
     // Check if confirmation already exists
     const [existing] = await pool.execute(
       `SELECT * FROM payment_confirmations 
@@ -186,10 +277,23 @@ export const confirmMonthlyPayment = async (req, res) => {
       [bulan, tahun]
     );
 
+    await logIbAction({
+      actionType: status === 'rejected' ? 'reject_month' : 'confirm_month',
+      userIc: ibIc,
+      bulan,
+      tahun,
+      amount: totalAmount,
+      notes,
+      metadata: JSON.stringify(documentStats)
+    });
+
+    const warningMessages = getApprovalRateWarnings(documentStats);
+
     res.json({
       success: true,
       message: `Laporan pembayaran ${bulan} ${tahun} telah ${status === 'confirmed' ? 'disahkan' : status === 'rejected' ? 'ditolak' : 'ditandakan sebagai pending'}`,
-      data: updated[0]
+      data: updated[0],
+      warnings: warningMessages
     });
   } catch (error) {
     console.error('Error confirming monthly payment:', error);
@@ -388,7 +492,7 @@ export const confirmClassFees = async (req, res) => {
 
     // Get all fee records for students in the class that have receipt images and are not yet confirmed
     let query = `
-      SELECT f.id, f.student_ic, f.resit_img, f.document_confirmed
+      SELECT f.id, f.student_ic, f.resit_img, f.document_confirmed, f.jumlah
       FROM fees f
       INNER JOIN students s ON f.student_ic = s.user_ic
       WHERE s.kelas_id = ? 
@@ -552,6 +656,18 @@ export const approvePaymentsByDateRange = async (req, res) => {
       });
     }
 
+    const documentStats = await getDocumentVerificationStats(bulan, tahun);
+    if (
+      documentStats.missingFeeDocuments > 0 ||
+      documentStats.missingAttendanceDocuments > 0
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: 'Terdapat dokumen bayaran atau kehadiran yang belum disahkan.',
+        data: documentStats
+      });
+    }
+
     // Build query to get payments in the date range
     let query = `
       SELECT f.id, f.student_ic, f.resit_img, f.document_confirmed
@@ -560,6 +676,7 @@ export const approvePaymentsByDateRange = async (req, res) => {
         AND f.resit_img IS NOT NULL 
         AND f.resit_img != ''
         AND f.status IN ('terbayar', 'Bayar')
+        AND f.document_confirmed = 1
     `;
     const queryParams = [bulan, tahun];
 
@@ -604,6 +721,26 @@ export const approvePaymentsByDateRange = async (req, res) => {
       [confirmedBy, notes || null, ...paymentIds]
     );
 
+    const totalApprovedAmount = payments.reduce((sum, payment) => {
+      return sum + parseFloat(payment.jumlah || 0);
+    }, 0);
+    const warningMessages = getApprovalRateWarnings(documentStats);
+
+    await logIbAction({
+      actionType: 'approve_payments',
+      userIc: confirmedBy,
+      bulan,
+      tahun,
+      amount: totalApprovedAmount,
+      notes,
+      metadata: JSON.stringify({
+        confirmedCount: payments.length,
+        excludedCount: exclude_payment_ids.length,
+        start_date: start_date || null,
+        end_date: end_date || null
+      })
+    });
+
     res.json({
       success: true,
       message: `Successfully confirmed ${payments.length} payment document(s)`,
@@ -611,13 +748,273 @@ export const approvePaymentsByDateRange = async (req, res) => {
         confirmed: payments.length,
         total: payments.length,
         excluded: exclude_payment_ids.length
-      }
+      },
+      warnings: warningMessages
     });
   } catch (error) {
     console.error('Error approving payments by date range:', error);
     res.status(500).json({
       success: false,
       message: 'Internal server error',
+      error: error.message
+    });
+  }
+};
+
+export const getApprovalHistory = async (req, res) => {
+  try {
+    const { bulan, tahun, limit = 50 } = req.query;
+    const filters = [];
+    const params = [];
+
+    if (bulan) {
+      filters.push('l.bulan = ?');
+      params.push(bulan);
+    }
+
+    if (tahun) {
+      filters.push('l.tahun = ?');
+      params.push(tahun);
+    }
+
+    const whereClause = filters.length ? `WHERE ${filters.join(' AND ')}` : '';
+    const sanitizedLimit = Math.min(Math.max(parseInt(limit, 10) || 50, 10), 200);
+
+    const [logs] = await pool.execute(
+      `SELECT l.*, u.nama as user_name
+       FROM ib_action_logs l
+       LEFT JOIN users u ON l.user_ic = u.ic
+       ${whereClause}
+       ORDER BY l.created_at DESC
+       LIMIT ?`,
+      [...params, sanitizedLimit]
+    );
+
+    res.json({
+      success: true,
+      data: logs
+    });
+  } catch (error) {
+    console.error('Error fetching approval history:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: error.message
+    });
+  }
+};
+
+export const flagPayment = async (req, res) => {
+  try {
+    const { payment_id, reason, send_back_to_pic = false, notes = '' } = req.body;
+    const flaggedBy = req.user?.ic;
+
+    if (!flaggedBy) {
+      return res.status(401).json({
+        success: false,
+        message: 'Unauthorized'
+      });
+    }
+
+    if (!payment_id || !reason) {
+      return res.status(400).json({
+        success: false,
+        message: 'Payment ID and reason are required'
+      });
+    }
+
+    const [rows] = await pool.execute(
+      `SELECT bulan, tahun
+       FROM fees
+       WHERE id = ?`,
+      [payment_id]
+    );
+
+    if (!rows.length) {
+      return res.status(404).json({
+        success: false,
+        message: 'Payment not found'
+      });
+    }
+
+    await pool.execute(
+      `INSERT INTO ib_document_flags 
+        (document_type, payment_id, flagged_by_ic, needs_clarification, send_back_to_pic, reason, notes)
+       VALUES ('fee', ?, ?, 1, ?, ?, ?)`,
+      [payment_id, flaggedBy, send_back_to_pic ? 1 : 0, reason, notes || null]
+    );
+
+    await logIbAction({
+      actionType: send_back_to_pic ? 'send_back_to_pic' : 'flag_payment',
+      userIc: flaggedBy,
+      bulan: rows[0].bulan,
+      tahun: rows[0].tahun,
+      paymentId: payment_id,
+      documentType: 'fee',
+      notes: reason
+    });
+
+    res.json({
+      success: true,
+      message: 'Payment flagged for clarification',
+      data: {
+        payment_id,
+        send_back_to_pic: !!send_back_to_pic
+      }
+    });
+  } catch (error) {
+    console.error('Error flagging payment:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: error.message
+    });
+  }
+};
+
+export const getFlaggedPayments = async (req, res) => {
+  try {
+    const { document_type = 'fee', includeResolved = false } = req.query;
+    if (!['fee', 'attendance'].includes(document_type)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Document type must be fee or attendance'
+      });
+    }
+    const filters = ['flags.document_type = ?'];
+    const params = [document_type];
+
+    const shouldIncludeResolved = includeResolved === 'true' || includeResolved === '1';
+    if (!shouldIncludeResolved) {
+      filters.push('flags.resolved = 0');
+    }
+
+    const [flagged] = await pool.execute(
+      `SELECT flags.*, f.student_ic, f.jumlah, f.bulan, f.tahun, u.nama as pelajar_nama
+       FROM ib_document_flags flags
+       LEFT JOIN fees f ON flags.payment_id = f.id
+       LEFT JOIN users u ON f.student_ic = u.ic
+       WHERE ${filters.join(' AND ')}
+       ORDER BY flags.created_at DESC`,
+      params
+    );
+
+    res.json({
+      success: true,
+      data: flagged
+    });
+  } catch (error) {
+    console.error('Error fetching flagged payments:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: error.message
+    });
+  }
+};
+
+export const exportMonthlySummary = async (req, res) => {
+  try {
+    const { bulan, tahun } = req.query;
+    if (!bulan || !tahun) {
+      return res.status(400).json({
+        success: false,
+        message: 'Bulan dan tahun diperlukan'
+      });
+    }
+
+    const [payments] = await pool.execute(
+      `SELECT 
+        f.id,
+        f.student_ic,
+        u.nama as pelajar_nama,
+        c.nama_kelas,
+        f.jumlah,
+        f.status,
+        f.tarikh,
+        f.tarikh_bayar,
+        f.cara_bayar,
+        f.no_resit,
+        f.document_confirmed,
+        f.confirmed_by,
+        f.confirmed_at,
+        pc.status as confirmation_status
+       FROM fees f
+       INNER JOIN users u ON f.student_ic = u.ic
+       LEFT JOIN students s ON u.ic = s.user_ic
+       LEFT JOIN classes c ON s.kelas_id = c.id
+       LEFT JOIN payment_confirmations pc ON pc.bulan = f.bulan AND pc.tahun = f.tahun
+       WHERE f.bulan = ? AND f.tahun = ?
+       ORDER BY f.tarikh_bayar DESC, u.nama ASC`,
+      [bulan, tahun]
+    );
+
+    const totalAmount = payments.reduce((sum, payment) => sum + parseFloat(payment.jumlah || 0), 0);
+    const paidCount = payments.filter(p => p.status === 'terbayar' || p.status === 'Bayar').length;
+    const pendingCount = payments.filter(p => p.status === 'tunggak' || p.status === 'Belum Bayar' || !p.status).length;
+
+    res.json({
+      success: true,
+      data: {
+        bulan,
+        tahun,
+        summary: {
+          totalPayments: payments.length,
+          totalAmount: parseFloat(totalAmount.toFixed(2)),
+          paidCount,
+          pendingCount
+        },
+        payments
+      }
+    });
+  } catch (error) {
+    console.error('Error exporting monthly summary:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Gagal mengeksport ringkasan',
+      error: error.message
+    });
+  }
+};
+
+export const exportApprovalHistory = async (req, res) => {
+  try {
+    const { bulan, tahun, limit = 500 } = req.query;
+    const filters = [];
+    const params = [];
+
+    if (bulan) {
+      filters.push('l.bulan = ?');
+      params.push(bulan);
+    }
+
+    if (tahun) {
+      filters.push('l.tahun = ?');
+      params.push(tahun);
+    }
+
+    const whereClause = filters.length ? `WHERE ${filters.join(' AND ')}` : '';
+    const sanitizedLimit = Math.min(Math.max(parseInt(limit, 10) || 500, 50), 2000);
+
+    const [logs] = await pool.execute(
+      `SELECT l.*, u.nama as user_name
+       FROM ib_action_logs l
+       LEFT JOIN users u ON l.user_ic = u.ic
+       ${whereClause}
+       ORDER BY l.created_at DESC
+       LIMIT ?`,
+      [...params, sanitizedLimit]
+    );
+
+    res.json({
+      success: true,
+      data: logs
+    });
+  } catch (error) {
+    console.error('Error exporting approval history:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Gagal mengeksport riwayat',
       error: error.message
     });
   }
