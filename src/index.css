@@ -139,7 +139,7 @@
   /* Card Styles - Enhanced smoothness */
   .mosque-card {
     @apply bg-white border border-mosque-primary-100 rounded-xl shadow-mosque hover:shadow-mosque-lg;
-    transition: all 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+    transition: transform 0.2s ease-out, box-shadow 0.2s ease-out;
     transform: translateZ(0);
     will-change: transform, box-shadow;
   }
@@ -157,9 +157,10 @@
     @apply hover:scale-[1.02] hover:border-mosque-primary-300;
   }
 
-  /* Button Styles */
+  /* Button Styles - 200ms for instant feedback */
   .btn-mosque-primary {
-    @apply bg-mosque-primary-600 hover:bg-mosque-primary-700 text-white font-semibold px-6 py-3 rounded-lg shadow-mosque transition-all duration-300 hover:shadow-mosque-lg;
+    @apply bg-mosque-primary-600 hover:bg-mosque-primary-700 text-white font-semibold px-6 py-3 rounded-lg shadow-mosque hover:shadow-mosque-lg;
+    transition: background-color 0.2s ease-out, box-shadow 0.2s ease-out, transform 0.1s ease-out;
   }
 
   /* Primary Button - Ensure text is always visible */
@@ -179,11 +180,13 @@
   }
 
   .btn-mosque-secondary {
-    @apply bg-white hover:bg-mosque-primary-50 text-mosque-primary-700 border-2 border-mosque-primary-600 font-semibold px-6 py-3 rounded-lg transition-all duration-300;
+    @apply bg-white hover:bg-mosque-primary-50 text-mosque-primary-700 border-2 border-mosque-primary-600 font-semibold px-6 py-3 rounded-lg;
+    transition: background-color 0.2s ease-out, border-color 0.2s ease-out;
   }
 
   .btn-mosque-accent {
-    @apply bg-mosque-accent-500 hover:bg-mosque-accent-600 text-white font-semibold px-6 py-3 rounded-lg shadow-gold transition-all duration-300 hover:shadow-gold-lg;
+    @apply bg-mosque-accent-500 hover:bg-mosque-accent-600 text-white font-semibold px-6 py-3 rounded-lg shadow-gold hover:shadow-gold-lg;
+    transition: background-color 0.2s ease-out, box-shadow 0.2s ease-out;
   }
 
   /* Badge Styles */
@@ -349,18 +352,39 @@
       #f0f0f0 100%
     );
     background-size: 200% 100%;
-    animation: shimmer 2s infinite linear;
+    animation: shimmer 1.2s infinite linear;
   }
 
-  /* Card Hover Effects */
+  /* Skeleton loader: shimmer bars + fast card entrance */
+  .skeleton-shimmer-bar {
+    background: linear-gradient(
+      90deg,
+      #e5e7eb 0%,
+      #f3f4f6 50%,
+      #e5e7eb 100%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.2s ease-in-out infinite;
+  }
+
+  .skeleton-card-entrance {
+    animation: fadeInUp 0.15s ease-out backwards;
+  }
+
+  .skeleton-fade-out {
+    opacity: 0;
+    transition: opacity 0.15s ease-out;
+  }
+
+  /* Card Hover Effects - faster (200ms) */
   .card-hover-lift {
-    @apply transition-all duration-300 ease-out hover:-translate-y-2 hover:shadow-mosque-lg;
+    @apply transition-all duration-200 ease-out hover:-translate-y-2 hover:shadow-mosque-lg;
     will-change: transform;
   }
 
-  /* Smooth card entrance */
+  /* Smooth card entrance - 200ms for perceived speed */
   .card-entrance {
-    animation: fadeInUp 0.5s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+    animation: fadeInUp 0.2s cubic-bezier(0.22, 1, 0.36, 1) backwards;
   }
 
   /* Table Row Hover Effects */
@@ -385,8 +409,8 @@
   }
 
   button:active:not(:disabled), .btn-primary:active:not(:disabled), .btn-secondary:active:not(:disabled) {
-    @apply transform scale-[0.98];
-    transition: all 0.1s cubic-bezier(0.22, 1, 0.36, 1);
+    @apply transform scale-[0.97];
+    transition: transform 0.1s ease-out;
   }
 
   /* Smooth focus transitions */
@@ -463,11 +487,11 @@
   }
 
   .fade-in {
-    animation: fadeIn 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+    animation: fadeIn 0.15s ease-out;
   }
 
   .fade-in-up {
-    animation: fadeInUp 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+    animation: fadeInUp 0.2s cubic-bezier(0.22, 1, 0.36, 1);
   }
 
   .fade-in-down {
@@ -486,9 +510,9 @@
     animation: scaleIn 0.3s cubic-bezier(0.22, 1, 0.36, 1);
   }
 
-  /* Smooth hover effects */
+  /* Smooth hover effects - 200ms for instant feel */
   .smooth-hover {
-    transition: all 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+    transition: transform 0.2s ease-out, box-shadow 0.2s ease-out;
   }
 
   .smooth-hover:hover {
@@ -797,6 +821,36 @@ select ~ .text-gray-400 {
     @apply border-2 border-white;
   }
 }
+
+/* Toast (react-toastify) – mosque theme */
+.Toastify__toast--success {
+  background: linear-gradient(135deg, #059669 0%, #047857 100%) !important;
+  color: #fff !important;
+  border-radius: 0.75rem !important;
+  box-shadow: 0 4px 20px rgba(5, 150, 105, 0.25) !important;
+}
+.Toastify__toast--error {
+  background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%) !important;
+  color: #fff !important;
+  border-radius: 0.75rem !important;
+  box-shadow: 0 4px 20px rgba(220, 38, 38, 0.25) !important;
+}
+.Toastify__toast--info {
+  background: linear-gradient(135deg, #059669 0%, #065f46 100%) !important;
+  color: #fff !important;
+  border-radius: 0.75rem !important;
+}
+.Toastify__toast--warning {
+  background: linear-gradient(135deg, #eab308 0%, #ca8a04 100%) !important;
+  color: #422006 !important;
+  border-radius: 0.75rem !important;
+}
+.Toastify__progress-bar--success { background: rgba(255, 255, 255, 0.7) !important; }
+.Toastify__progress-bar--error { background: rgba(255, 255, 255, 0.7) !important; }
+.Toastify__close-button { color: rgba(255, 255, 255, 0.9) !important; opacity: 0.9; }
+.Toastify__close-button--success:hover,
+.Toastify__close-button--error:hover,
+.Toastify__close-button--info:hover { opacity: 1; }
 
 /* ============================================
    CARTOON TREE STYLING

@@ -92,6 +92,32 @@ export const ensureCheckInTable = async () => {
       `);
     }
 
+    // Ensure staff_checkin_attempts table exists (for auto check-in logging)
+    const [attemptsTable] = await pool.execute(
+      `SELECT COUNT(*) as count FROM information_schema.tables 
+       WHERE table_schema = DATABASE() AND table_name = 'staff_checkin_attempts'`
+    );
+
+    if (attemptsTable[0].count === 0) {
+      console.log('Creating staff_checkin_attempts table...');
+      await pool.execute(`
+        CREATE TABLE staff_checkin_attempts (
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          staff_ic VARCHAR(20) NOT NULL,
+          attempted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          latitude DECIMAL(10, 8) NULL,
+          longitude DECIMAL(11, 8) NULL,
+          distance_from_masjid DECIMAL(10, 2) NULL,
+          result ENUM('outside_location', 'gps_unavailable', 'already_checked_in', 'error') NOT NULL,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          INDEX idx_staff_ic (staff_ic),
+          INDEX idx_attempted_at (attempted_at),
+          INDEX idx_result (result)
+        )
+      `);
+      console.log('✓ staff_checkin_attempts table created successfully');
+    }
+
     console.log('✓ Check-in table and settings verified');
     return true;
   } catch (error) {

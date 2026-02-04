@@ -1,7 +1,36 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import { toast } from 'react-toastify';
-import { adminActionsAPI } from '../services/api';
 import DeleteConfirmationModal from '../components/ui/DeleteConfirmationModal';
+
+const CACHE_TTL_MS = 60 * 1000;
+const listCache = new Map();
+
+function getCacheKey(itemName, params) {
+  return `${itemName}:${JSON.stringify(params || {})}`;
+}
+
+function getCached(itemName, params) {
+  const key = getCacheKey(itemName, params);
+  const entry = listCache.get(key);
+  if (!entry || Date.now() > entry.expiry) {
+    if (entry) listCache.delete(key);
+    return null;
+  }
+  return entry.data;
+}
+
+function setCached(itemName, params, data) {
+  listCache.set(getCacheKey(itemName, params), {
+    data,
+    expiry: Date.now() + CACHE_TTL_MS,
+  });
+}
+
+function invalidateCache(itemName) {
+  for (const key of listCache.keys()) {
+    if (key.startsWith(`${itemName}:`)) listCache.delete(key);
+  }
+}
 
 const useCrud = (api, itemName, itemType = null) => {
   const [items, setItems] = useState([]);
@@ -18,23 +47,26 @@ const useCrud = (api, itemName, itemType = null) => {
   });
 
   const fetchItems = useCallback(async (params = {}) => {
-    setLoading(true);
     setError(null);
+    const cached = getCached(itemName, params);
+    if (cached != null) {
+      setItems(Array.isArray(cached) ? cached : (cached.data || []));
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
     try {
-      // Check if user is authenticated
       const token = localStorage.getItem('authToken');
       if (!token) {
         throw new Error('User not authenticated. Please log in.');
       }
-      
       const response = await api.getAll(params);
-      // Only log in development to reduce console noise
       if (process.env.NODE_ENV === 'development') {
         console.log(`Fetched ${itemName}s:`, response);
       }
-      // Handle both array responses and object responses with data property
-      const items = Array.isArray(response) ? response : (response.data || []);
-      setItems(items);
+      const itemsData = Array.isArray(response) ? response : (response.data || []);
+      setItems(itemsData);
+      setCached(itemName, params, itemsData);
     } catch (err) {
       console.error(`Failed to fetch ${itemName}s:`, err);
       setError(err);
@@ -66,97 +98,9 @@ const useCrud = (api, itemName, itemType = null) => {
     setView('detail');
   };
 
-  const handleUndoAction = useCallback(
-    async (snapshotId, closeToast) => {
-      try {
-        await adminActionsAPI.undo(snapshotId);
-        if (typeof closeToast === 'function') {
-          closeToast();
-        }
-        toast.success('Tindakan berjaya diundur.');
-        fetchItems();
-      } catch (err) {
-        console.error('Failed to undo action:', err);
-        toast.error('Gagal mengundur tindakan. Sila cuba lagi.');
-      }
-    },
-    [fetchItems]
-  );
-
-  const renderUndoToastContent = useCallback(
-    (message, expiryText, undoToken, closeToast) => {
-      const children = [
-        React.createElement('span', { key: 'msg' }, message),
-        React.createElement(
-          'button',
-          {
-            key: 'btn',
-            type: 'button',
-            onClick: () => handleUndoAction(undoToken, closeToast),
-            style: {
-              padding: '0.4rem 0.75rem',
-              backgroundColor: '#1d4ed8',
-              color: '#ffffff',
-              border: 'none',
-              borderRadius: '0.375rem',
-              cursor: 'pointer'
-            }
-          },
-          'Undo'
-        )
-      ];
-
-      if (expiryText) {
-        children.push(
-          React.createElement(
-            'span',
-            {
-              key: 'expiry',
-              style: {
-                fontSize: '0.75rem',
-                color: '#d1d5db'
-              }
-            },
-            expiryText
-          )
-        );
-      }
-
-      return React.createElement(
-        'div',
-        {
-          style: {
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '0.5rem'
-          }
-        },
-        children
-      );
-    },
-    [handleUndoAction]
-  );
-
-  const showSuccessWithUndo = useCallback(
-    (message, response) => {
-      if (response?.undoToken) {
-        const expiresAt = response.undoExpiresAt ? new Date(response.undoExpiresAt) : null;
-        const expiryText = expiresAt && !Number.isNaN(expiresAt.getTime())
-          ? `Boleh diundur sehingga ${expiresAt.toLocaleString('ms-MY')}`
-          : null;
-
-        toast.success(({ closeToast }) => (
-          renderUndoToastContent(message, expiryText, response.undoToken, closeToast)
-        ), {
-          closeOnClick: false,
-          autoClose: 8000
-        });
-      } else {
-        toast.success(message);
-      }
-    },
-    [renderUndoToastContent]
-  );
+  const showSuccessWithUndo = useCallback((message) => {
+    toast.success(message);
+  }, []);
 
   const handleDelete = (id, item = null) => {
     // Find the item to get its name/identifier for display
@@ -204,7 +148,8 @@ const useCrud = (api, itemName, itemType = null) => {
         showSuccessWithUndo(`${itemName} berjaya dipadam!`, response);
       }
       setDeleteModal({ isOpen: false, itemId: null, itemName: '', itemIdentifier: '', isLoading: false });
-      fetchItems(); // Refetch data after deletion
+      invalidateCache(itemName);
+      fetchItems();
     } catch (err) {
       console.error(`Failed to delete ${itemName}:`, err);
       toast.error(`Gagal memadam ${itemName}.`);
@@ -317,87 +262,78 @@ const useCrud = (api, itemName, itemType = null) => {
   };
 
   const handleSubmit = async (formData) => {
+    let identifier;
+    let previousItems = null;
+
+    if (currentItem) {
+      identifier = resolveIdentifier(currentItem);
+      if (identifier === undefined && formData.ic) {
+        const normalizedIC = String(formData.ic).replace(/\D/g, '');
+        if (normalizedIC.length === 12) identifier = formData.ic;
+      }
+      if (identifier === undefined) {
+        const itemIC = currentItem.ic || currentItem.IC;
+        if (itemIC && String(itemIC).replace(/\D/g, '').length === 12) identifier = itemIC;
+      }
+      if (identifier === undefined) {
+        toast.error('Identifier untuk kemaskini tidak ditemui. Sila pastikan item mempunyai IC atau ID yang sah.');
+        return;
+      }
+      // Optimistic update: show new data in list immediately
+      previousItems = [...items];
+      setItems((prev) =>
+        prev.map((i) => {
+          const id = resolveIdentifier(i);
+          if (id === identifier || String(id) === String(identifier)) {
+            return { ...i, ...formData, _optimistic: true };
+          }
+          return i;
+        })
+      );
+      setView('list');
+    } else {
+      // Optimistic create: add placeholder to list so UI updates instantly
+      const optimisticItem = { ...formData, _optimistic: true, _tempId: Date.now() };
+      previousItems = [...items];
+      setItems((prev) => [...prev, optimisticItem]);
+      setView('list');
+    }
+
     try {
       let response;
       if (currentItem) {
-        // Try to get identifier from currentItem first
-        let identifier = resolveIdentifier(currentItem);
-        
-        // If not found in currentItem, try to get from formData (for teachers, IC is in formData)
-        if (identifier === undefined && formData.ic) {
-          const normalizedIC = String(formData.ic).replace(/\D/g, '');
-          if (normalizedIC.length === 12) {
-            identifier = formData.ic; // Use the IC from formData
-            console.log(`[${itemName}] Using IC from formData:`, identifier);
-          }
-        }
-        
-        // If still not found, try to get from currentItem's IC or IC field
-        if (identifier === undefined) {
-          const itemIC = currentItem.ic || currentItem.IC;
-          if (itemIC) {
-            const normalizedIC = String(itemIC).replace(/\D/g, '');
-            if (normalizedIC.length === 12) {
-              identifier = itemIC;
-              console.log(`[${itemName}] Using IC from currentItem:`, identifier);
-            }
-          }
-        }
-        
-        if (identifier === undefined) {
-          console.error(`[${itemName}] Failed to resolve identifier. Current item:`, currentItem);
-          console.error(`[${itemName}] Form data:`, formData);
-          console.error(`[${itemName}] Available keys:`, Object.keys(currentItem || {}));
-          throw new Error('Identifier untuk kemaskini tidak ditemui. Sila pastikan item mempunyai IC atau ID yang sah.');
-        }
-        console.log(`[${itemName}] Updating with identifier:`, identifier, 'Current item:', currentItem);
         response = await api.update(identifier, formData);
         if (response?.pendingApproval) {
-          toast.info(
-            response.message || `Permintaan kemaskini ${itemName} dihantar untuk kelulusan admin.`
-          );
+          toast.info(response.message || `Permintaan kemaskini ${itemName} dihantar untuk kelulusan admin.`);
         } else {
-        showSuccessWithUndo(`Maklumat ${itemName} berjaya dikemaskini!`, response);
+          showSuccessWithUndo(`Maklumat ${itemName} berjaya dikemaskini!`, response);
         }
       } else {
-        // Log the formData being sent for debugging
-        console.log(`[${itemName}] Creating with formData:`, JSON.stringify(formData, null, 2));
         response = await api.create(formData);
         if (response?.pendingApproval) {
-          toast.info(
-            response.message || `Permintaan ${itemName} dihantar untuk kelulusan admin.`
-          );
+          toast.info(response.message || `Permintaan ${itemName} dihantar untuk kelulusan admin.`);
         } else {
-        showSuccessWithUndo(`${itemName} baru berjaya ditambah!`, response);
+          showSuccessWithUndo(`${itemName} baru berjaya ditambah!`, response);
         }
       }
-      setView('list');
-      fetchItems(); // Refetch data after submission
+      invalidateCache(itemName);
+      fetchItems();
     } catch (err) {
       console.error(`Failed to save ${itemName}:`, err);
-      console.error('Full error object:', JSON.stringify(err, null, 2));
-      
-      // Extract detailed error messages
+      // Revert optimistic update
+      if (previousItems != null) setItems(previousItems);
       let errorMessage = `Gagal menyimpan maklumat ${itemName}.`;
-      
       if (err?.errors && Array.isArray(err.errors) && err.errors.length > 0) {
-        // Format validation errors nicely
-        const errorDetails = err.errors.map(e => {
-          const field = e.param || e.field || '';
-          const message = e.msg || e.message || 'Invalid';
-          return field ? `${field}: ${message}` : message;
-        }).join('\n');
+        const errorDetails = err.errors
+          .map((e) => ((e.param || e.field) ? `${e.param || e.field}: ${e.msg || e.message}` : e.msg || e.message))
+          .join('\n');
         errorMessage += `\n\nRalat validasi:\n${errorDetails}`;
       } else if (err?.message) {
         errorMessage += `\n\n${err.message}`;
       } else if (typeof err === 'string') {
         errorMessage += `\n\n${err}`;
       }
-      
-      toast.error(errorMessage, {
-        autoClose: 5000,
-        style: { whiteSpace: 'pre-line' }
-      });
+      toast.error(errorMessage, { autoClose: 5000, style: { whiteSpace: 'pre-line' } });
     }
   };
 

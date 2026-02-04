@@ -506,6 +506,21 @@ export const resultsAPI = {
   getTopPerformers: (params) => api.get('/results/top-performers', { params }),
 };
 
+// Resit API (student: eligible modules, apply for resit)
+export const resitAPI = {
+  getMyEligible: async () => {
+    try {
+      const response = await api.get('/resit');
+      if (response?.data && Array.isArray(response.data)) return response.data;
+      return response?.data ?? [];
+    } catch (error) {
+      console.error('Error fetching resit eligible:', error);
+      throw error;
+    }
+  },
+  apply: (resultId) => api.post('/resit/apply', { result_id: resultId }),
+};
+
 // Exams API
 export const examsAPI = {
   getAll: async (params) => {
@@ -581,22 +596,6 @@ export const announcementsAPI = {
   create: (data) => api.post('/announcements', data),
   update: (id, data) => api.put(`/announcements/${id}`, data),
   delete: (id) => api.delete(`/announcements/${id}`),
-};
-
-export const adminActionsAPI = {
-  list: (params) => {
-    // Add timestamp to prevent caching (query parameter, no CORS issues)
-    const cacheBustingParams = {
-      ...params,
-      _t: Date.now() // Timestamp to bust cache
-    };
-    return api.get('/admin-actions', { 
-      params: cacheBustingParams
-      // Removed cache-busting headers to avoid CORS issues
-      // The timestamp query parameter is sufficient for cache-busting
-    });
-  },
-  undo: (snapshotId) => api.post(`/admin-actions/${snapshotId}/undo`)
 };
 
 export const picUsersAPI = {
@@ -689,56 +688,6 @@ export const pendingPicChangesAPI = {
   },
 };
 
-export const picRecycleBinAPI = {
-  list: async () => {
-    try {
-      const response = await api.get('/pic-recycle-bin');
-      return response?.success ? response : { success: true, data: response?.data || response || [] };
-    } catch (error) {
-      if (error.isNetworkError || error.status === 0) {
-        throw { ...error, message: 'Tidak dapat menyambung ke pelayan. Sila semak sambungan internet anda.' };
-      }
-      if (error.status === 403) {
-        throw { ...error, message: 'Anda tidak mempunyai kebenaran untuk mengakses tong sampah PIC.' };
-      }
-      throw error;
-    }
-  },
-  getById: async (id) => {
-    try {
-      const response = await api.get(`/pic-recycle-bin/${id}`);
-      return response?.success ? response : { success: true, data: response?.data || response };
-    } catch (error) {
-      if (error.status === 404) {
-        throw { ...error, message: 'Item tidak ditemui.' };
-      }
-      throw error;
-    }
-  },
-  undo: async (id) => {
-    try {
-      return await api.post(`/pic-recycle-bin/${id}/undo`);
-    } catch (error) {
-      const backendMessage = error?.response?.data?.message || error?.message;
-      if (backendMessage) {
-        throw { ...error, message: backendMessage };
-      }
-      throw error;
-    }
-  },
-  cancelPending: async (id) => {
-    try {
-      return await api.delete(`/pic-recycle-bin/pending/${id}`);
-    } catch (error) {
-      const backendMessage = error?.response?.data?.message || error?.message;
-      if (backendMessage) {
-        throw { ...error, message: backendMessage };
-      }
-      throw error;
-    }
-  }
-};
-
 // Google Form API
 export const googleFormAPI = {
   getClassFormUrl: (classId) => api.get(`/google-form/class/${classId}`),
@@ -753,6 +702,8 @@ export const staffCheckInAPI = {
   getTodayStatus: () => api.get('/staff-checkin/today-status'),
   getHistory: (params) => api.get('/staff-checkin/history', { params }),
   getStaffList: () => api.get('/staff-checkin/staff'),
+  /** Auto check-in on login: pass { latitude, longitude, accuracy? }. Omit coords to log gps_unavailable. */
+  autoCheckIn: (data) => api.post('/staff-checkin/auto', data || {}),
   quickCheckIn: (data) => api.post('/staff-checkin/quick-check-in', data),
   quickCheckOut: (data) => api.post('/staff-checkin/quick-check-out', data),
   quickGetLastAction: (data) => api.post('/staff-checkin/quick-last-action', data),

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import Card from '../ui/Card';
 import Button from '../ui/Button';
 import Badge from '../ui/Badge';
-import { Search, Plus, Edit, Eye, Trash2, Mail, Phone, ShieldCheck, AlertCircle, Users } from 'lucide-react';
+import { Search, Plus, Edit, Trash2, Mail, Phone, ShieldCheck, AlertCircle, Users } from 'lucide-react';
 import { formatIC } from '../../utils/icUtils';
 
 const AdminList = ({ admins = [], onEdit, onView, onDelete, onAdd, loading, adminLimit, isMasterAdmin = false }) => {
@@ -115,9 +115,12 @@ const AdminList = ({ admins = [], onEdit, onView, onDelete, onAdd, loading, admi
                 {filteredAdmins.map((admin, index) => (
                   <tr 
                     key={admin.ic || admin.IC} 
-                    className="hover:bg-gray-50 cursor-pointer fade-in" 
+                    role="button"
+                    tabIndex={0}
+                    className="hover:bg-emerald-50/70 cursor-pointer fade-in transition-colors duration-150" 
                     style={{ animationDelay: `${index * 0.05}s` }}
                     onClick={() => onView(admin)}
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onView(admin); } }}
                   >
                     <td className="px-3 sm:px-6 py-3 sm:py-4">
                       <div>
@@ -148,18 +151,8 @@ const AdminList = ({ admins = [], onEdit, onView, onDelete, onAdd, loading, admi
                         {admin.status === 'aktif' ? 'Aktif' : admin.status === 'tidak_aktif' ? 'Tidak Aktif' : admin.status || 'Aktif'}
                       </Badge>
                     </td>
-                    <td className="px-3 sm:px-6 py-3 sm:py-4 text-sm font-medium">
+                    <td className="px-3 sm:px-6 py-3 sm:py-4 text-sm font-medium" onClick={(e) => e.stopPropagation()}>
                       <div className="flex items-center gap-2">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onView(admin);
-                          }}
-                          className="text-emerald-600 hover:text-emerald-900 flex items-center"
-                          title="Lihat Detail"
-                        >
-                          <Eye className="w-4 h-4" />
-                        </button>
                         {isMasterAdmin && (
                           <>
                             <button

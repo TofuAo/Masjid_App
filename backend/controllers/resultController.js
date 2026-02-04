@@ -9,8 +9,11 @@ import { createSnapshot, SNAPSHOT_TTL_HOURS } from '../utils/adminActionSnapshot
 
 export const getAllResults = async (req, res) => {
   try {
-    const { search, exam_id, gred, year, semester, page = 1, limit = 1000 } = req.query;
-    
+    const { search, exam_id, gred, year, semester, student_ic, page = 1, limit = 1000 } = req.query;
+    const effectiveRole = req.user?.role || req.user?.activeRole;
+    const isStudent = effectiveRole === 'student';
+    const studentFilterIc = isStudent ? (req.user?.ic || req.user?.userId) : student_ic;
+
     let query = `
       SELECT r.*, u.nama as pelajar_nama, u.ic as pelajar_ic, c.nama_kelas as kelas_nama, e.subject as exam_subject, e.tarikh_exam as exam_date
       FROM results r
@@ -22,6 +25,11 @@ export const getAllResults = async (req, res) => {
     `;
     
     const queryParams = [];
+
+    if (studentFilterIc) {
+      query += ` AND r.student_ic = ?`;
+      queryParams.push(studentFilterIc);
+    }
 
     if (search) {
       query += ` AND (u.nama LIKE ? OR u.ic LIKE ? OR e.subject LIKE ?)`;
@@ -72,6 +80,10 @@ export const getAllResults = async (req, res) => {
     `;
     const countParams = [];
 
+    if (studentFilterIc) {
+      countQuery += ` AND r.student_ic = ?`;
+      countParams.push(studentFilterIc);
+    }
     if (search) {
       countQuery += ` AND (u.nama LIKE ? OR u.ic LIKE ? OR e.subject LIKE ?)`;
       const searchTerm = `%${search}%`;

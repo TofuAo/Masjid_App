@@ -1,62 +1,69 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, lazy, Suspense } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
-import { setAuthToken, authAPI, clearAuth } from './services/api';
-import { ToastContainer } from 'react-toastify';
+import { setAuthToken, authAPI, clearAuth, staffCheckInAPI } from './services/api';
+import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import Layout from './Layout';
 import Login from './components/auth/Login';
 import Register from './components/auth/Register';
+import Spinner from './components/ui/Spinner';
 import StudentRegistration from './pages/StudentRegistration';
 import TeacherRegistration from './pages/TeacherRegistration';
-import Dashboard from './pages/Dashboard';
-import Pelajar from './pages/Pelajar';
-import Guru from './pages/Guru';
-import Kelas from './pages/Kelas';
-import Kehadiran from './pages/Kehadiran';
-import Yuran from './pages/Yuran';
-import PayYuran from './pages/PayYuran';
-import PaymentHistory from './pages/PaymentHistory';
-import Keputusan from './pages/Keputusan';
-import Laporan from './pages/Laporan';
-import Settings from './pages/Settings';
-import PersonalSettings from './pages/PersonalSettings';
-import PaymentReturn from './pages/PaymentReturn';
-import ToyyibPaySettings from './pages/ToyyibPaySettings';
 import ForgotPassword from './pages/ForgotPassword';
 import ChooseResetMethod from './pages/ChooseResetMethod';
 import ResetPassword from './pages/ResetPassword';
 import ResetPasswordCode from './pages/ResetPasswordCode';
-import Announcements from './pages/Announcements';
-import AdminActions from './pages/AdminActions';
-import StaffCheckIn from './pages/StaffCheckIn';
 import QuickStaffCheckIn from './pages/QuickStaffCheckIn';
 import CompleteProfile from './pages/CompleteProfile';
-import PendingRegistrations from './pages/PendingRegistrations';
-import PicApprovals from './pages/PicApprovals';
-import PicUsers from './pages/PicUsers';
-import PicRecycleBin from './pages/PicRecycleBin';
-import Admins from './pages/Admins';
-import AllUsers from './pages/AllUsers';
-import AllUserDetail from './pages/AllUserDetail';
-import Contact from './pages/Contact';
-import IbDashboard from './pages/IbDashboard';
-import Hierarchy from './pages/Hierarchy';
+import PaymentReturn from './pages/PaymentReturn';
 import HelpCenter from './pages/HelpCenter';
-import Account from './pages/Account';
-import IbAccount from './pages/IbAccount';
-import Weather from './pages/Weather';
-import AzanTimer from './pages/AzanTimer';
-import ActivityTimeline from './pages/ActivityTimeline';
-import PermissionMatrix from './pages/PermissionMatrix';
+import Contact from './pages/Contact';
 import PendingTeacherDashboard from './pages/PendingTeacherDashboard';
 import PendingTeacherDocuments from './pages/PendingTeacherDocuments';
-import NotificationCenter from './pages/NotificationCenter';
-import AuditLogs from './pages/AuditLogs';
-import SystemHealth from './pages/SystemHealth';
 import { PreferencesProvider, usePreferences } from './contexts/PreferencesContext';
 import { LanguageProvider } from './contexts/LanguageContext';
 import WelcomeModal from './components/ui/WelcomeModal';
 import { getEffectiveRole } from './utils/userRoles';
+
+const Dashboard = lazy(() => import('./pages/Dashboard'));
+const Pelajar = lazy(() => import('./pages/Pelajar'));
+const Guru = lazy(() => import('./pages/Guru'));
+const Kelas = lazy(() => import('./pages/Kelas'));
+const Kehadiran = lazy(() => import('./pages/Kehadiran'));
+const Yuran = lazy(() => import('./pages/Yuran'));
+const PayYuran = lazy(() => import('./pages/PayYuran'));
+const PaymentHistory = lazy(() => import('./pages/PaymentHistory'));
+const Keputusan = lazy(() => import('./pages/Keputusan'));
+const Laporan = lazy(() => import('./pages/Laporan'));
+const Settings = lazy(() => import('./pages/Settings'));
+const ToyyibPaySettings = lazy(() => import('./pages/ToyyibPaySettings'));
+const Announcements = lazy(() => import('./pages/Announcements'));
+const StaffCheckIn = lazy(() => import('./pages/StaffCheckIn'));
+const PendingRegistrations = lazy(() => import('./pages/PendingRegistrations'));
+const PicApprovals = lazy(() => import('./pages/PicApprovals'));
+const PicUsers = lazy(() => import('./pages/PicUsers'));
+const Admins = lazy(() => import('./pages/Admins'));
+const AllUsers = lazy(() => import('./pages/AllUsers'));
+const AllUserDetail = lazy(() => import('./pages/AllUserDetail'));
+const IbDashboard = lazy(() => import('./pages/IbDashboard'));
+const Hierarchy = lazy(() => import('./pages/Hierarchy'));
+const Account = lazy(() => import('./pages/Account'));
+const IbAccount = lazy(() => import('./pages/IbAccount'));
+const Weather = lazy(() => import('./pages/Weather'));
+const AzanTimer = lazy(() => import('./pages/AzanTimer'));
+const PermissionMatrix = lazy(() => import('./pages/PermissionMatrix'));
+const NotificationCenter = lazy(() => import('./pages/NotificationCenter'));
+const AuditLogs = lazy(() => import('./pages/AuditLogs'));
+const SystemHealth = lazy(() => import('./pages/SystemHealth'));
+const Resit = lazy(() => import('./pages/Resit'));
+
+function RouteFallback() {
+  return (
+    <div className="min-h-[40vh] flex items-center justify-center">
+      <Spinner size="lg" />
+    </div>
+  );
+}
 
 function App() {
   return (
@@ -90,6 +97,74 @@ function AppContent() {
       setCheckingProfile(false);
     }
   }, []);
+
+  // Auto GPS check-in on login (staff/teacher/admin/pic): run once when autoCheckInPending is set
+  useEffect(() => {
+    const pending = typeof sessionStorage !== 'undefined' && sessionStorage.getItem('autoCheckInPending');
+    if (!user || !pending) return;
+
+    const role = getEffectiveRole(user);
+    const isStaffForCheckIn = ['teacher', 'staff', 'admin', 'pic'].includes(role);
+    if (!isStaffForCheckIn) {
+      sessionStorage.removeItem('autoCheckInPending');
+      return;
+    }
+
+    sessionStorage.removeItem('autoCheckInPending');
+
+    const getPositionWithTimeout = (timeoutMs = 8000) =>
+      new Promise((resolve, reject) => {
+        if (!navigator.geolocation) {
+          reject(new Error('unsupported'));
+          return;
+        }
+        const id = setTimeout(() => reject(new Error('timeout')), timeoutMs);
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            clearTimeout(id);
+            resolve(pos);
+          },
+          (err) => {
+            clearTimeout(id);
+            reject(err);
+          },
+          { enableHighAccuracy: true, timeout: 7000, maximumAge: 0 }
+        );
+      });
+
+    (async () => {
+      try {
+        const position = await getPositionWithTimeout(8000);
+        const { latitude, longitude, accuracy } = position.coords;
+        const res = await staffCheckInAPI.autoCheckIn({ latitude, longitude, accuracy });
+        if (res.success) {
+          const dist = res.distance != null ? Math.round(res.distance) : 0;
+          toast.success(`Check-in berjaya! Anda ${dist}m dari masjid.`);
+        } else {
+          const reason = res.reason || '';
+          if (reason === 'outside_location') {
+            const dist = res.distance != null ? Math.round(res.distance) : 0;
+            toast.warning(`Anda di luar kawasan. Jarak ${dist}m. Check-in tidak berjaya.`);
+          } else if (reason === 'already_checked_in') {
+            toast.info('Anda telah check-in hari ini.');
+          } else if (reason === 'gps_unavailable') {
+            toast.warning('Lokasi tidak tersedia. Check-in tidak direkodkan.');
+          } else {
+            toast.warning(res.message || 'Check-in tidak berjaya.');
+          }
+        }
+      } catch (err) {
+        try {
+          await staffCheckInAPI.autoCheckIn({});
+        } catch (_) {}
+        if (err?.message === 'timeout' || err?.code === 3) {
+          toast.warning('Lokasi lambat. Sila benarkan lokasi atau cuba Check-In dari menu.');
+        } else {
+          toast.warning('Lokasi tidak tersedia. Check-in tidak direkodkan.');
+        }
+      }
+    })();
+  }, [user]);
 
   useEffect(() => {
     // Check if user is logged in
@@ -238,8 +313,14 @@ function AppContent() {
 
   if (loading || checkingProfile) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-emerald-600"></div>
+      <div className="min-h-screen flex flex-col items-center justify-center bg-mosque-gradient-light islamic-pattern-bg">
+        <div className="relative">
+          <div className="animate-spin rounded-full h-14 w-14 border-2 border-mosque-primary-200 border-t-mosque-primary-600"></div>
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="h-6 w-6 rounded-full bg-mosque-primary-500/20 animate-pulse"></div>
+          </div>
+        </div>
+        <p className="mt-4 text-sm font-medium text-mosque-neutral-600">Memuatkan...</p>
       </div>
     );
   }
@@ -260,7 +341,16 @@ function AppContent() {
             <Route path="/login" element={<Login onLogin={handleLogin} />} />
             <Route path="*" element={<Login onLogin={handleLogin} />} />
           </Routes>
-          <ToastContainer position="top-right" />
+          <ToastContainer 
+            position="top-right" 
+            autoClose={4000}
+            hideProgressBar={false}
+            newestOnTop
+            closeOnClick
+            rtl={false}
+            theme="colored"
+            toastClassName="toast-mosque"
+          />
         </>
       ) : (
         <>
@@ -291,15 +381,17 @@ function AppContent() {
               if (userStatus === 'pending' && (effectiveRole === 'teacher' || user.role === 'teacher')) {
                 return (
                   <Layout user={user} onLogout={handleLogout} onRoleChange={handleRoleChange}>
+                    <Suspense fallback={<RouteFallback />}>
                     <Routes>
                       <Route path="/pending-teacher" element={<PendingTeacherDashboard />} />
                       <Route path="/pending-teacher/documents" element={<PendingTeacherDocuments />} />
                       <Route path="/complete-profile" element={<CompleteProfile user={user} onComplete={handleProfileComplete} />} />
                       <Route path="/help" element={<HelpCenter />} />
                       <Route path="/contact" element={<Contact user={user} />} />
-                      <Route path="/personal-settings" element={<PersonalSettings />} />
+                      <Route path="/personal-settings" element={<Navigate to="/account" replace />} />
                       <Route path="*" element={<Navigate to="/pending-teacher" replace />} />
                     </Routes>
+                    </Suspense>
                   </Layout>
                 );
               }
@@ -312,6 +404,7 @@ function AppContent() {
                 return (
             <Layout user={user} onLogout={handleLogout} onRoleChange={handleRoleChange}>
               <div className="fade-in">
+              <Suspense fallback={<RouteFallback />}>
               <Routes>
                 <Route path="/" element={<Dashboard />} />
                 <Route 
@@ -327,19 +420,18 @@ function AppContent() {
                 <Route path="/payment-history" element={<PaymentHistory />} />
                 <Route path="/payment/return" element={<PaymentReturn />} />
                 <Route path="/keputusan" element={<Keputusan />} />
+                <Route path="/resit" element={<Resit />} />
                 <Route path="/laporan" element={<Laporan />} />
                 <Route path="/settings" element={<Settings />} />
                 <Route path="/toyyibpay-settings" element={<ToyyibPaySettings />} />
-                <Route path="/personal-settings" element={<PersonalSettings />} />
+                <Route path="/personal-settings" element={<Navigate to="/account" replace />} />
                 <Route path="/account" element={<Account />} />
                 <Route path="/ib-account" element={<IbAccount />} />
                 <Route path="/announcements" element={<Announcements user={user} />} />
-                <Route path="/admin-actions" element={<AdminActions user={user} />} />
                 <Route path="/staff-checkin" element={<StaffCheckIn user={user} />} />
                 <Route path="/pending-registrations" element={<PendingRegistrations />} />
                 <Route path="/pic-approvals" element={<PicApprovals user={user} />} />
                 <Route path="/pic-users" element={<PicUsers />} />
-                <Route path="/pic-recycle-bin" element={<PicRecycleBin user={user} />} />
                 <Route path="/admins" element={<Admins />} />
                 <Route path="/all-users/:ic" element={<AllUserDetail user={user} />} />
                 <Route path="/all-users" element={<AllUsers user={user} />} />
@@ -349,7 +441,6 @@ function AppContent() {
                 <Route path="/help" element={<HelpCenter />} />
                 <Route path="/weather" element={<Weather />} />
                 <Route path="/azan-timer" element={<AzanTimer />} />
-                <Route path="/activity-timeline" element={<ActivityTimeline />} />
                 <Route path="/permission-matrix" element={<PermissionMatrix />} />
                 <Route path="/pending-teacher" element={<PendingTeacherDashboard />} />
                 <Route path="/pending-teacher/documents" element={<PendingTeacherDocuments />} />
@@ -358,6 +449,7 @@ function AppContent() {
                 <Route path="/system-health" element={<SystemHealth />} />
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
+              </Suspense>
               </div>
             </Layout>
                 );
@@ -366,7 +458,16 @@ function AppContent() {
             })()}
             </>
           )}
-          <ToastContainer position="top-right" />
+          <ToastContainer 
+            position="top-right" 
+            autoClose={4000}
+            hideProgressBar={false}
+            newestOnTop
+            closeOnClick
+            rtl={false}
+            theme="colored"
+            toastClassName="toast-mosque"
+          />
         </>
       )}
     </LanguageProvider>

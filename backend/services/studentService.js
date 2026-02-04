@@ -546,8 +546,31 @@ export const deleteStudentRecord = async (ic, { actorIc, requestedBy = null } = 
     }
 
     let undoSnapshotId = null;
-    // Only create admin snapshot for admin/teacher actions, not PIC actions
-    if (!isPicAction) {
+    // Create snapshot based on action type
+    if (isPicAction) {
+      // Create PIC snapshot for PIC-initiated actions
+      const { createPicSnapshot } = await import('../utils/picActionSnapshots.js');
+      undoSnapshotId = await createPicSnapshot({
+        entityType: 'student',
+        entityId: 0,
+        entityIdentifier: userRecord.ic,
+        operation: 'delete',
+        data: {
+          user: userRecord,
+          student: studentRecord
+        },
+        metadata: {
+          summary: `Padam pelajar ${userRecord.nama}`,
+          title: userRecord.nama,
+          nama: userRecord.nama,
+          ic: userRecord.ic
+        },
+        picIc: requestedBy,
+        approvedBy: actorIc
+      });
+      console.log(`[DELETE STUDENT] Created PIC snapshot ID ${undoSnapshotId} for ${userRecord.ic}`);
+    } else {
+      // Create admin snapshot for admin/teacher actions
       undoSnapshotId = await createSnapshot({
         entityType: 'student',
         entityId: 0,

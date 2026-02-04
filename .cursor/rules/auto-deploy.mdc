@@ -4,7 +4,7 @@ alwaysApply: true
 
 # Auto-Deploy Rule
 
-**CRITICAL**: After making ANY changes to the codebase (frontend or backend), you MUST automatically update the deployed version. Deployment is MANDATORY and must happen immediately after code changes.
+**CRITICAL**: Always make the changes happen to the deployed version. After making ANY changes to the codebase (frontend or backend), you MUST automatically update the deployed version. Deployment is MANDATORY and must happen immediately after code changes—never leave changes only in the repo without deploying.
 
 ## Deployment Process
 

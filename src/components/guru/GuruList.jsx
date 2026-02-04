@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, Plus, Edit, Eye, Trash2, GraduationCap } from 'lucide-react';
+import { Search, Plus, Edit, Trash2, GraduationCap } from 'lucide-react';
 import { formatPhoneForDisplay } from '../../utils/phoneUtils';
 
 const GuruList = ({ gurus = [], onEdit, onView, onDelete, onAdd, user }) => {
@@ -61,7 +61,14 @@ const GuruList = ({ gurus = [], onEdit, onView, onDelete, onAdd, user }) => {
             </thead>
             <tbody className="bg-white divide-y divide-mosque-primary-100">
               {filteredGurus.map((guru, index) => (
-                <tr key={guru.ic || guru.IC || `guru-${index}`} className="hover:bg-mosque-primary-50 transition-colors duration-200">
+                <tr 
+                  key={guru.ic || guru.IC || `guru-${index}`}
+                  role="button"
+                  tabIndex={0}
+                  className="hover:bg-emerald-50/70 cursor-pointer transition-colors duration-150"
+                  onClick={() => onView(guru)}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onView(guru); } }}
+                >
                   <td className="px-3 sm:px-6 py-3 sm:py-4">
                     <div className="flex items-center">
                       <div className="flex-shrink-0 h-10 w-10">
@@ -70,12 +77,9 @@ const GuruList = ({ gurus = [], onEdit, onView, onDelete, onAdd, user }) => {
                         </div>
                       </div>
                       <div className="ml-4">
-                        <button
-                          onClick={() => onView(guru)}
-                          className="text-sm font-medium text-mosque-neutral-900 hover:text-mosque-primary-600 cursor-pointer transition-colors"
-                        >
+                        <span className="text-sm font-medium text-mosque-neutral-900">
                           {guru.nama}
-                        </button>
+                        </span>
                       </div>
                     </div>
                   </td>
@@ -95,11 +99,8 @@ const GuruList = ({ gurus = [], onEdit, onView, onDelete, onAdd, user }) => {
                       )}
                     </div>
                   </td>
-                  <td className="px-3 sm:px-6 py-3 sm:py-4 text-sm font-medium">
+                  <td className="px-3 sm:px-6 py-3 sm:py-4 text-sm font-medium" onClick={(e) => e.stopPropagation()}>
                     <div className="flex space-x-3">
-                      <button onClick={() => onView(guru)} className="text-mosque-primary-600 hover:text-mosque-primary-800" title="Lihat Detail">
-                        <Eye size={16} />
-                      </button>
                       {user?.role !== 'teacher' && (
                         <>
                           <button onClick={() => onEdit(guru)} className="text-blue-600 hover:text-blue-800" title="Edit">

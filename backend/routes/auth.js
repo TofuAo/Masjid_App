@@ -158,9 +158,13 @@ const updateProfileValidation = [
   body('umur').optional().isInt({ min: 1, max: 150 }).withMessage('Umur must be between 1 and 150'),
   body('telefon').optional().isLength({ min: 1, max: 20 }).withMessage('Telefon must be between 1 and 20 characters'),
   body('email').optional().isEmail().withMessage('Email must be valid'),
+  body('alamat').optional().isLength({ max: 255 }).withMessage('Alamat must be at most 255 characters'),
   body('kelas_id').optional().isInt().withMessage('Kelas ID must be an integer'),
   body('tarikh_daftar').optional().isISO8601().withMessage('Tarikh daftar must be a valid date'),
-  body('kepakaran').optional().isArray().withMessage('Kepakaran must be an array')
+  body('kepakaran').optional().isArray().withMessage('Kepakaran must be an array'),
+  body('academic_bio').optional().isLength({ max: 255 }).withMessage('Academic bio must be at most 255 characters'),
+  body('class_track').optional().isIn(['Full-Time', 'Part-Time', 'Online', '']).withMessage('Class track must be Full-Time, Part-Time, or Online'),
+  body('cover_photo').optional().isLength({ max: 255 }).withMessage('Cover photo path must be at most 255 characters')
 ];
 
 // Student login validation (IC only, no password)

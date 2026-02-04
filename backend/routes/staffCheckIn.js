@@ -1,6 +1,6 @@
 import express from 'express';
 import { body } from 'express-validator';
-import { checkIn, checkOut, getCheckInHistory, getStaffList, getTodayStatus, quickCheckIn, quickCheckOut, quickCheckInShift, quickCheckOutShift, quickGetLastAction } from '../controllers/staffCheckInController.js';
+import { checkIn, checkOut, getCheckInHistory, getStaffList, getTodayStatus, autoCheckIn, quickCheckIn, quickCheckOut, quickCheckInShift, quickCheckOutShift, quickGetLastAction } from '../controllers/staffCheckInController.js';
 import { authenticateToken, requireRole } from '../middleware/auth.js';
 
 const router = express.Router();
@@ -69,6 +69,9 @@ router.post('/check-out', checkInValidation, checkOut);
 
 // Get today's status
 router.get('/today-status', getTodayStatus);
+
+// Auto check-in on login (optional body: latitude, longitude, accuracy)
+router.post('/auto', autoCheckIn);
 
 // Get check-in history
 router.get('/history', getCheckInHistory);

@@ -1188,6 +1188,7 @@ const IbAccount = () => {
                 src={selectedImage}
                 alt="Document"
                 className="max-w-full max-h-[80vh] mx-auto rounded"
+                loading="lazy"
               />
             </div>
           </div>

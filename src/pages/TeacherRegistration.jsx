@@ -225,6 +225,7 @@ const TeacherRegistration = () => {
                 src="/logomnsa1.jpeg" 
                 alt="Masjid Negeri Sultan Ahmad 1" 
                 className="mx-auto h-20 w-auto object-contain"
+                loading="lazy"
               />
             </div>
             <h2 className="text-2xl font-bold text-gray-900">Pendaftaran Guru</h2>

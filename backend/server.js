@@ -20,8 +20,6 @@ import { ensureIbRole } from './utils/ensureIbRole.js';
 import { scheduleAnnualDatabaseBackup } from './schedulers/annualBackupJob.js';
 import { scheduleAnnouncementCleanup } from './schedulers/announcementCleanupJob.js';
 import { schedulePaymentReconciliation } from './schedulers/paymentReconciliationJob.js';
-import { scheduleAdminActionCleanup } from './schedulers/adminActionCleanupJob.js';
-import { schedulePicRecycleBinCleanup } from './schedulers/picRecycleBinCleanupJob.js';
 import { scheduleMonthlyFeeGeneration, scheduleFeeSyncJob } from './schedulers/monthlyFeeGenerationJob.js';
 import { startAccountDeactivationScheduler } from './schedulers/accountDeactivationJob.js';
 import { errorHandler } from './middleware/errorHandler.js';
@@ -412,8 +410,6 @@ Promise.all([
     scheduleAnnouncementCleanup();
     schedulePaymentReconciliation();
     startAccountDeactivationScheduler();
-    scheduleAdminActionCleanup();
-    schedulePicRecycleBinCleanup();
     scheduleMonthlyFeeGeneration();
     scheduleFeeSyncJob();
   });
@@ -431,8 +427,6 @@ Promise.all([
     scheduleAnnouncementCleanup();
     schedulePaymentReconciliation();
     startAccountDeactivationScheduler();
-    scheduleAdminActionCleanup();
-    schedulePicRecycleBinCleanup();
     scheduleMonthlyFeeGeneration();
     scheduleFeeSyncJob();
   });

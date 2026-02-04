@@ -307,7 +307,15 @@ const Login = ({ onLogin }) => {
       setSelectedRoleId(updatedOptionId);
       localStorage.setItem('user', JSON.stringify(persistedUser));
       if (typeof onLogin === 'function') onLogin(persistedUser);
-      
+
+      // Trigger automatic GPS check-in after login for staff/teacher/admin/pic
+      const isStaffForCheckIn = ['teacher', 'staff', 'admin', 'pic'].includes(chosenActiveRole);
+      if (isStaffForCheckIn) {
+        try {
+          sessionStorage.setItem('autoCheckInPending', '1');
+        } catch (_) {}
+      }
+
       if (chosenActiveRole === 'teacher' || chosenActiveRole === 'staff') {
         navigate('/guru');
       } else if (chosenActiveRole === 'pic') {
@@ -521,49 +529,50 @@ const Login = ({ onLogin }) => {
   const handleSubmit = activeTab === 'login' ? handleLogin : activeTab === 'student-login' ? handleStudentLogin : handleQuickCheckIn;
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 py-8 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-4">
+    <div className="min-h-screen flex items-center justify-center bg-mosque-gradient-light islamic-pattern-bg py-10 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-md w-full space-y-6">
         {/* Logo and Title */}
-        <div className="text-center">
-          <div className="mx-auto mb-4">
+        <div className="text-center animate-fade-in-up">
+          <div className="mx-auto mb-4 inline-block p-3 rounded-2xl bg-white/80 shadow-mosque">
             <img 
               src="/logomnsa1.jpeg" 
               alt="Masjid Negeri Sultan Ahmad 1" 
               className="mx-auto h-20 w-auto object-contain"
+              loading="lazy"
             />
           </div>
-          <h2 className="mt-2 text-xl font-bold text-black">e-Quran</h2>
-          <p className="mt-1 text-sm text-black">Masjid Negeri Sultan Ahmad 1</p>
+          <h1 className="mt-2 text-2xl font-bold font-display text-mosque-primary-800">e-Quran</h1>
+          <p className="mt-1 text-sm text-mosque-neutral-600">Masjid Negeri Sultan Ahmad 1</p>
         </div>
 
         {/* Top Action Buttons */}
         <div className="grid grid-cols-3 gap-2">
           <button
             onClick={() => setActiveTab('login')}
-            className={`py-2 px-3 rounded-md text-sm font-medium transition-colors ${
+            className={`py-2.5 px-3 rounded-xl text-sm font-medium transition-all duration-200 ${
               activeTab === 'login'
-                ? 'bg-blue-600 text-white'
-                : 'bg-white text-black border border-gray-300 hover:bg-gray-50'
+                ? 'bg-mosque-primary-600 text-white shadow-mosque'
+                : 'bg-white text-mosque-neutral-700 border-2 border-mosque-primary-200 hover:border-mosque-primary-400 hover:bg-mosque-primary-50'
             }`}
           >
             Login
           </button>
           <button
             onClick={() => setActiveTab('checkin')}
-            className={`py-2 px-3 rounded-md text-sm font-medium transition-colors ${
+            className={`py-2.5 px-3 rounded-xl text-sm font-medium transition-all duration-200 ${
               activeTab === 'checkin'
-                ? 'bg-teal-600 text-white'
-                : 'bg-white text-black border border-gray-300 hover:bg-gray-50'
+                ? 'bg-mosque-primary-600 text-white shadow-mosque'
+                : 'bg-white text-mosque-neutral-700 border-2 border-mosque-primary-200 hover:border-mosque-primary-400 hover:bg-mosque-primary-50'
             }`}
           >
             Check In / Out
           </button>
           <button
             onClick={() => setActiveTab('student-login')}
-            className={`py-2 px-3 rounded-md text-sm font-medium transition-colors ${
+            className={`py-2.5 px-3 rounded-xl text-sm font-medium transition-all duration-200 ${
               activeTab === 'student-login'
-                ? 'bg-purple-600 text-white'
-                : 'bg-white text-black border border-gray-300 hover:bg-gray-50'
+                ? 'bg-mosque-accent-500 text-mosque-accent-950 shadow-gold'
+                : 'bg-white text-mosque-neutral-700 border-2 border-mosque-accent-200 hover:border-mosque-accent-400 hover:bg-mosque-accent-50'
             }`}
           >
             Student Login
@@ -571,21 +580,21 @@ const Login = ({ onLogin }) => {
         </div>
 
         {/* Date and Time Display */}
-        <div className="text-center text-sm text-black font-medium">
+        <div className="text-center text-sm text-mosque-neutral-600 font-medium">
           {formatDateTime(currentTime)}
         </div>
 
         {/* Main Card */}
-        <div className="bg-white rounded-lg shadow-xl p-6 space-y-4" style={{ borderBottomLeftRadius: '1rem', borderBottomRightRadius: '1rem' }}>
+        <div className="mosque-card p-6 sm:p-8 space-y-5 rounded-2xl">
           {activeTab === 'login' ? (
             <form onSubmit={handleLogin} className="space-y-4">
               {error && (
-                <div className="bg-red-50 border-l-4 border-red-500 text-red-700 p-3 rounded-md" role="alert">
-                  <div className="flex items-start">
-                    <AlertCircle className="h-5 w-5 text-red-500 mr-2 flex-shrink-0 mt-0.5" />
+                <div className="bg-red-50 border-l-4 border-red-500 text-red-800 p-4 rounded-xl" role="alert">
+                  <div className="flex items-start gap-3">
+                    <AlertCircle className="h-5 w-5 text-red-500 flex-shrink-0 mt-0.5" />
                     <div>
                       <p className="font-semibold text-sm">Login Gagal</p>
-                      <p className="text-xs mt-1">{error}</p>
+                      <p className="text-sm mt-1">{error}</p>
                     </div>
                   </div>
                 </div>
@@ -593,9 +602,10 @@ const Login = ({ onLogin }) => {
 
               {/* IC Number Input */}
               <div>
+                <label htmlFor="icNumber" className="form-label">Nombor IC</label>
                 <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <User className="h-5 w-5 text-gray-600" />
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-mosque-neutral-500">
+                    <User className="h-5 w-5" />
                   </div>
                   <input
                     id="icNumber"
@@ -605,21 +615,22 @@ const Login = ({ onLogin }) => {
                     value={formData.icNumber}
                     onChange={handleChange}
                     maxLength={14}
-                    className="block w-full pl-10 pr-20 py-2.5 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="input-mosque block w-full pl-10 pr-24 py-2.5"
                     placeholder="Masukkan IC Number"
                     required
                   />
-                  <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                    <span className="text-black text-sm">@masjid.com</span>
+                  <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-mosque-neutral-500 text-sm">
+                    @masjid.com
                   </div>
                 </div>
               </div>
 
               {/* Password Input */}
               <div>
+                <label htmlFor="password" className="form-label">Kata Laluan</label>
                 <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <Lock className="h-5 w-5 text-gray-600" />
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-mosque-neutral-500">
+                    <Lock className="h-5 w-5" />
                   </div>
                   <input
                     id="password"
@@ -628,20 +639,16 @@ const Login = ({ onLogin }) => {
                     autoComplete="current-password"
                     value={formData.password}
                     onChange={handleChange}
-                    className="block w-full pl-10 pr-10 py-2.5 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="input-mosque block w-full pl-10 pr-10 py-2.5"
                     placeholder="Masukkan password"
                     required
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-mosque-neutral-500 hover:text-mosque-primary-600"
                   >
-                    {showPassword ? (
-                      <EyeOff className="h-5 w-5 text-gray-600 hover:text-black" />
-              ) : (
-                      <Eye className="h-5 w-5 text-gray-600 hover:text-black" />
-                    )}
+                    {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                   </button>
                 </div>
               </div>
@@ -650,7 +657,7 @@ const Login = ({ onLogin }) => {
               <button 
                 type="submit" 
                 disabled={loading}
-                className="w-full flex justify-center items-center py-2.5 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="btn-mosque-primary w-full flex justify-center items-center py-3 px-4 rounded-xl text-sm font-medium disabled:opacity-60 disabled:cursor-not-allowed"
               >
                 {loading ? (
                   <div className="flex items-center">
@@ -662,33 +669,32 @@ const Login = ({ onLogin }) => {
                 )}
               </button>
 
-              <div className="relative mt-2">
+              <div className="relative">
+                <label className="form-label">Peranan</label>
                 <button
                   type="button"
                   onClick={toggleRoleOptions}
-                  className="w-full flex items-center justify-between px-4 py-2 rounded-md border border-gray-200 bg-white text-sm text-gray-700 hover:border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+                  className="w-full flex items-center justify-between px-4 py-2.5 rounded-xl border-2 border-mosque-primary-200 bg-white text-sm text-mosque-neutral-700 hover:border-mosque-primary-400 hover:bg-mosque-primary-50 focus:outline-none focus:ring-2 focus:ring-mosque-primary-500 focus:ring-offset-2 transition-all"
                 >
-                  <span>
-                    Pilih Peranan: <strong>{getOptionLabel(selectedRoleId)}</strong>
-                  </span>
-                  <ChevronDown className="w-4 h-4 text-gray-500" />
+                  <span><strong>{getOptionLabel(selectedRoleId)}</strong></span>
+                  <ChevronDown className="w-4 h-4 text-mosque-neutral-500" />
                 </button>
                 {showRoleOptions && (
-                  <div className="absolute z-10 left-0 right-0 mt-2 bg-white border border-gray-200 rounded-md shadow-lg divide-y divide-gray-100">
+                  <div className="absolute z-10 left-0 right-0 mt-2 mosque-card rounded-xl shadow-mosque-lg divide-y divide-mosque-primary-100 overflow-hidden animate-fade-in-down">
                     {roleOptions.map((role) => (
                       <button
                         key={role.id}
                         type="button"
                         onClick={() => handleRoleSelect(role)}
-                        className="w-full text-left py-3 px-4 text-sm hover:bg-gray-50 transition-colors"
+                        className="w-full text-left py-3 px-4 text-sm hover:bg-mosque-primary-50 transition-colors"
                       >
                         <div className="flex items-center justify-between">
                           <div>
-                            <p className="font-semibold text-gray-800">{role.label}</p>
-                            <p className="text-xs text-gray-500">{role.description}</p>
+                            <p className="font-semibold text-mosque-neutral-800">{role.label}</p>
+                            <p className="text-xs text-mosque-neutral-500">{role.description}</p>
                           </div>
                           {selectedRoleId === role.id && (
-                            <CheckCircle className="w-4 h-4 text-emerald-500" />
+                            <CheckCircle className="w-4 h-4 text-mosque-primary-600" />
                           )}
                         </div>
                       </button>
@@ -700,12 +706,12 @@ const Login = ({ onLogin }) => {
           ) : activeTab === 'student-login' ? (
             <form onSubmit={handleStudentLogin} className="space-y-4">
               {error && (
-                <div className="bg-red-50 border-l-4 border-red-500 text-red-700 p-3 rounded-md" role="alert">
-                  <div className="flex items-start">
-                    <AlertCircle className="h-5 w-5 text-red-500 mr-2 flex-shrink-0 mt-0.5" />
+                <div className="bg-red-50 border-l-4 border-red-500 text-red-800 p-4 rounded-xl" role="alert">
+                  <div className="flex items-start gap-3">
+                    <AlertCircle className="h-5 w-5 text-red-500 flex-shrink-0 mt-0.5" />
                     <div>
                       <p className="font-semibold text-sm">Login Gagal</p>
-                      <p className="text-xs mt-1">{error}</p>
+                      <p className="text-sm mt-1">{error}</p>
                     </div>
                   </div>
                 </div>
@@ -713,12 +719,10 @@ const Login = ({ onLogin }) => {
 
               {/* IC Number Input */}
               <div>
-                <label htmlFor="student-icNumber" className="block text-sm font-medium text-gray-700 mb-1">
-                  Nombor IC Pelajar
-                </label>
+                <label htmlFor="student-icNumber" className="form-label">Nombor IC Pelajar</label>
                 <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <User className="h-5 w-5 text-gray-600" />
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-mosque-neutral-500">
+                    <User className="h-5 w-5" />
                   </div>
                   <input
                     id="student-icNumber"
@@ -728,22 +732,22 @@ const Login = ({ onLogin }) => {
                     value={formData.icNumber}
                     onChange={handleChange}
                     maxLength={14}
-                    className="block w-full pl-10 pr-20 py-2.5 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                    className="input-mosque block w-full pl-10 pr-24 py-2.5"
                     placeholder="Masukkan IC Number"
                     required
                   />
-                  <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                    <span className="text-black text-sm">@masjid.com</span>
+                  <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-mosque-neutral-500 text-sm">
+                    @masjid.com
                   </div>
                 </div>
-                <p className="text-xs text-gray-500 mt-1">Hanya untuk pelajar - Masukkan nombor IC sahaja</p>
+                <p className="form-helper">Hanya untuk pelajar — masukkan nombor IC sahaja</p>
               </div>
 
               {/* Student Login Button */}
               <button 
                 type="submit" 
                 disabled={loading || !formData.icNumber}
-                className="w-full flex justify-center items-center py-2.5 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="btn-mosque-accent w-full flex justify-center items-center py-3 px-4 rounded-xl text-sm font-medium text-mosque-accent-950 disabled:opacity-60 disabled:cursor-not-allowed"
               >
                 {loading ? (
                   <div className="flex items-center">
@@ -760,12 +764,12 @@ const Login = ({ onLogin }) => {
 
               {/* Student Registration Link */}
               <div className="text-center pt-2">
-                <p className="text-xs text-gray-600 mb-2">Belum ada akaun?</p>
+                <p className="text-sm text-mosque-neutral-600 mb-2">Belum ada akaun?</p>
                 <Link 
                   to="/student-register" 
-                  className="text-sm text-purple-600 hover:text-purple-800 font-medium inline-flex items-center"
+                  className="text-sm text-mosque-primary-600 hover:text-mosque-primary-800 font-medium inline-flex items-center gap-1"
                 >
-                  <UserPlus className="h-4 w-4 mr-1" />
+                  <UserPlus className="h-4 w-4" />
                   Daftar Sebagai Pelajar
                 </Link>
               </div>
@@ -776,28 +780,28 @@ const Login = ({ onLogin }) => {
                      <input type="text" name="username" autoComplete="username" style={{ display: 'none' }} tabIndex="-1" aria-hidden="true" />
                      
                      {/* Location Status */}
-              <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-                <label className="block text-sm font-medium text-black mb-3 flex items-center">
-                  <MapPin className="h-4 w-4 mr-2 text-blue-600" />
+              <div className="bg-mosque-primary-50 border-2 border-mosque-primary-200 rounded-xl p-4">
+                <label className="form-label flex items-center gap-2">
+                  <MapPin className="h-4 w-4 text-mosque-primary-600" />
                   Lokasi Semasa Anda
                 </label>
                 {locationError && (
-                  <div className="mb-3 p-3 bg-red-50 border-l-4 border-red-500 rounded text-sm text-red-700">
+                  <div className="mb-3 p-3 bg-red-50 border-l-4 border-red-500 rounded-xl text-sm text-red-800">
                     <p className="font-semibold">Ralat Lokasi</p>
-                    <p className="text-xs mt-1">{locationError}</p>
+                    <p className="text-sm mt-1">{locationError}</p>
                   </div>
                 )}
                 {checkingLocation && (
-                  <div className="mb-3 p-3 bg-blue-50 border-l-4 border-blue-500 rounded text-sm text-blue-700">
+                  <div className="mb-3 p-3 bg-mosque-primary-100 border-l-4 border-mosque-primary-500 rounded-xl text-sm text-mosque-primary-800">
                     <p className="font-semibold">Mendapatkan Lokasi...</p>
-                    <p className="text-xs mt-1">Sila benarkan akses lokasi dalam pelayar anda</p>
+                    <p className="text-sm mt-1">Sila benarkan akses lokasi dalam pelayar anda</p>
                   </div>
                 )}
                 {location.latitude && location.longitude && !locationError && (
-                  <div className={`mb-3 p-3 border-l-4 rounded ${
+                  <div className={`mb-3 p-3 border-l-4 rounded-xl ${
                     isWithinRadius 
-                      ? 'bg-green-50 border-green-500' 
-                      : 'bg-red-50 border-red-500'
+                      ? 'bg-mosque-primary-100 border-mosque-primary-500 text-mosque-primary-800' 
+                      : 'bg-red-50 border-red-500 text-red-800'
                   }`}>
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
@@ -841,7 +845,7 @@ const Login = ({ onLogin }) => {
                   type="button"
                   onClick={getCurrentLocation}
                   disabled={checkingLocation}
-                  className="w-full text-sm text-blue-600 hover:text-blue-800 font-medium py-2 px-4 border border-blue-300 rounded-md hover:bg-blue-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  className="w-full text-sm text-mosque-primary-600 hover:text-mosque-primary-800 font-medium py-2.5 px-4 border-2 border-mosque-primary-300 rounded-xl hover:bg-mosque-primary-100 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                 >
                   {checkingLocation ? 'Mencari Lokasi...' : 'Dapatkan Lokasi Semula'}
                 </button>
@@ -874,55 +878,53 @@ const Login = ({ onLogin }) => {
 
               {/* IC Number Input */}
               <div>
+                <label htmlFor="checkin-icNumber" className="form-label">Nombor IC</label>
                 <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <User className="h-5 w-5 text-gray-600" />
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-mosque-neutral-500">
+                    <User className="h-5 w-5" />
                   </div>
                   <input
-                    id="icNumber"
+                    id="checkin-icNumber"
                     name="icNumber"
                     type="text"
                     autoComplete="username"
                     value={formData.icNumber}
                     onChange={handleChange}
                     maxLength={14}
-                    className="block w-full pl-10 pr-20 py-2.5 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                    className="input-mosque block w-full pl-10 pr-24 py-2.5"
                     placeholder="Masukkan IC Number"
                     required
                   />
-                  <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                    <span className="text-black text-sm">@masjid.com</span>
+                  <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-mosque-neutral-500 text-sm">
+                    @masjid.com
                   </div>
                 </div>
               </div>
 
               {/* Password Input */}
               <div>
+                <label htmlFor="checkin-password" className="form-label">Kata Laluan</label>
                 <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <Lock className="h-5 w-5 text-gray-600" />
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-mosque-neutral-500">
+                    <Lock className="h-5 w-5" />
                   </div>
                   <input
-                    id="password"
+                    id="checkin-password"
                     name="password"
                     type={showPassword ? 'text' : 'password'}
                     autoComplete="current-password"
                     value={formData.password}
                     onChange={handleChange}
-                    className="block w-full pl-10 pr-10 py-2.5 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                    className="input-mosque block w-full pl-10 pr-10 py-2.5"
                     placeholder="Masukkan password"
                     required
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-mosque-neutral-500 hover:text-mosque-primary-600"
                   >
-                    {showPassword ? (
-                      <EyeOff className="h-5 w-5 text-gray-600 hover:text-black" />
-              ) : (
-                      <Eye className="h-5 w-5 text-gray-600 hover:text-black" />
-                    )}
+                    {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                   </button>
                 </div>
               </div>
@@ -931,16 +933,16 @@ const Login = ({ onLogin }) => {
               <button
                 type="submit"
                 disabled={loading || !location.latitude || !formData.icNumber || !formData.password}
-                className="w-full flex justify-center items-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-teal-600 hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="btn-mosque-primary w-full flex justify-center items-center gap-2 py-3 px-4 rounded-xl text-sm font-medium disabled:opacity-60 disabled:cursor-not-allowed"
               >
                 {loading ? (
-                  <div className="flex items-center">
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                  <div className="flex items-center gap-2">
+                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
                     Memproses...
                   </div>
                 ) : (
                   <>
-                    <LogIn className="h-4 w-4 mr-2" />
+                    <LogIn className="h-4 w-4" />
                     Check In
                   </>
                 )}
@@ -951,7 +953,7 @@ const Login = ({ onLogin }) => {
                 type="button"
                 onClick={handleQuickCheckOut}
                 disabled={loading || !location.latitude || !formData.icNumber || !formData.password}
-                className="w-full flex justify-center items-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-teal-600 hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="btn-mosque-secondary w-full flex justify-center items-center gap-2 py-3 px-4 rounded-xl text-sm font-medium disabled:opacity-60 disabled:cursor-not-allowed"
               >
                 {loading ? (
                   <div className="flex items-center">
@@ -971,38 +973,36 @@ const Login = ({ onLogin }) => {
           {/* Separator */}
           {activeTab === 'login' && (
             <>
-              <div className="border-t border-dashed border-gray-300 my-4"></div>
+              <div className="border-t border-mosque-primary-200 my-5"></div>
               
               {/* Additional Links */}
-              <div className="space-y-3">
+              <div className="space-y-2">
                 <Link 
                   to="/forgot-password" 
-                  className="flex items-center text-sm text-blue-600 hover:text-blue-800"
+                  className="flex items-center gap-2 text-sm text-mosque-primary-600 hover:text-mosque-primary-800 font-medium"
                 >
-                  <LockKeyhole className="h-4 w-4 mr-2" />
+                  <LockKeyhole className="h-4 w-4" />
                   Lupa kata laluan?
                 </Link>
                 <Link 
                   to="/teacher-register" 
-                  className="flex items-center text-sm text-blue-600 hover:text-blue-800"
+                  className="flex items-center gap-2 text-sm text-mosque-primary-600 hover:text-mosque-primary-800 font-medium"
                 >
-                  <Key className="h-4 w-4 mr-2" />
-                  Register
+                  <Key className="h-4 w-4" />
+                  Daftar Guru
                 </Link>
               </div>
 
-              {/* Support Info */}
-              <div className="text-center">
-                <p className="text-xs text-black">Sokongan Pengguna</p>
+              <div className="text-center pt-2">
+                <p className="text-xs text-mosque-neutral-500">Sokongan Pengguna</p>
               </div>
             </>
           )}
         </div>
 
-        {/* Footer */}
         <div className="text-center">
-          <p className="text-sm text-black">
-            © 2025 e-Quran. Hak Cipta Terpelihara.
+          <p className="text-sm text-mosque-neutral-500">
+            © 2025 e-Quran · Hak Cipta Terpelihara
           </p>
         </div>
       </div>

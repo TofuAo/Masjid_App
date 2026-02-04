@@ -398,6 +398,127 @@ export const getTodayStatus = async (req, res) => {
   }
 };
 
+// Auto check-in on login (JWT required): attempt check-in with optional coords; log all attempts
+export const autoCheckIn = async (req, res) => {
+  try {
+    const staffIc = req.user.ic;
+
+    if (!isStaffRole(req.user.role)) {
+      return res.status(403).json({
+        success: false,
+        message: 'Only staff members can use auto check-in'
+      });
+    }
+
+    const { latitude, longitude, accuracy } = req.body || {};
+    const hasCoords = latitude != null && longitude != null && !Number.isNaN(parseFloat(latitude)) && !Number.isNaN(parseFloat(longitude));
+
+    if (!hasCoords) {
+      try {
+        await pool.execute(
+          `INSERT INTO staff_checkin_attempts (staff_ic, result) VALUES (?, 'gps_unavailable')`,
+          [staffIc]
+        );
+      } catch (logErr) {
+        console.error('Failed to log gps_unavailable attempt:', logErr);
+      }
+      return res.json({
+        success: false,
+        reason: 'gps_unavailable',
+        message: 'Location was not available. Check-in not recorded.'
+      });
+    }
+
+    const lat = parseFloat(latitude);
+    const lon = parseFloat(longitude);
+    const locationCheck = await isWithinRadius(lat, lon, accuracy);
+
+    // Already checked in today (normal shift)
+    const [existingCheckIn] = await pool.execute(
+      `SELECT id FROM staff_checkin 
+       WHERE staff_ic = ? 
+       AND DATE(check_in_time) = CURDATE() 
+       AND status = 'checked_in'
+       AND (shift_type = 'normal' OR shift_type IS NULL)`,
+      [staffIc]
+    );
+
+    if (existingCheckIn.length > 0) {
+      try {
+        await pool.execute(
+          `INSERT INTO staff_checkin_attempts (staff_ic, latitude, longitude, distance_from_masjid, result) VALUES (?, ?, ?, ?, 'already_checked_in')`,
+          [staffIc, lat, lon, locationCheck.distance]
+        );
+      } catch (logErr) {
+        console.error('Failed to log already_checked_in attempt:', logErr);
+      }
+      return res.json({
+        success: false,
+        reason: 'already_checked_in',
+        message: 'You have already checked in today.'
+      });
+    }
+
+    if (!locationCheck.within) {
+      try {
+        await pool.execute(
+          `INSERT INTO staff_checkin_attempts (staff_ic, latitude, longitude, distance_from_masjid, result) VALUES (?, ?, ?, ?, 'outside_location')`,
+          [staffIc, lat, lon, locationCheck.distance]
+        );
+      } catch (logErr) {
+        console.error('Failed to log outside_location attempt:', logErr);
+      }
+      return res.json({
+        success: false,
+        reason: 'outside_location',
+        message: locationCheck.message,
+        distance: locationCheck.distance,
+        effectiveRadius: locationCheck.effectiveRadius
+      });
+    }
+
+    // Within radius: create check-in record
+    const [result] = await pool.execute(
+      `INSERT INTO staff_checkin 
+       (staff_ic, check_in_time, check_in_latitude, check_in_longitude, status, distance_from_masjid, shift_type) 
+       VALUES (?, NOW(), ?, ?, 'checked_in', ?, 'normal')`,
+      [staffIc, lat, lon, locationCheck.distance]
+    );
+
+    const [checkInRecord] = await pool.execute(
+      `SELECT sc.*, u.nama 
+       FROM staff_checkin sc 
+       JOIN users u ON sc.staff_ic = u.ic 
+       WHERE sc.id = ?`,
+      [result.insertId]
+    );
+
+    res.json({
+      success: true,
+      message: 'Check-in successful',
+      data: checkInRecord[0],
+      distance: locationCheck.distance,
+      effectiveRadius: locationCheck.effectiveRadius,
+      accuracyBuffer: locationCheck.accuracyBuffer
+    });
+  } catch (error) {
+    console.error('Auto check-in error:', error);
+    try {
+      await pool.execute(
+        `INSERT INTO staff_checkin_attempts (staff_ic, result) VALUES (?, 'error')`,
+        [req.user?.ic]
+      );
+    } catch (logErr) {
+      console.error('Failed to log error attempt:', logErr);
+    }
+    res.status(500).json({
+      success: false,
+      reason: 'error',
+      message: 'Internal server error'
+    });
+  }
+};
+
 // Quick Check-In (with IC and password, no JWT required)
 export const quickCheckIn = async (req, res) => {
   try {

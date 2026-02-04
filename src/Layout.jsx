@@ -24,7 +24,6 @@ import {
   Network,
   FileCheck,
   HelpCircle,
-  Trash2,
   CloudSun,
   History,
   Shield,
@@ -47,6 +46,7 @@ import SeasonalElements from './components/seasonal/SeasonalElements';
 import SidebarThemeAnimation from './components/seasonal/SidebarThemeAnimation';
 import AnimatedForestBackground from './components/seasonal/AnimatedForestBackground';
 import GlobalClickSpark from './components/ui/GlobalClickSpark';
+import TopProgressBar from './components/ui/TopProgressBar';
 import { getAvailableRoles, getEffectiveRole } from './utils/userRoles';
 import { useLanguage } from './contexts/LanguageContext';
 
@@ -163,7 +163,6 @@ const LayoutContent = ({ children, user, onLogout, onRoleChange }) => {
           { icon: <UserCog className="w-5 h-5" />, label: t('menuPicUsers'), link: '/pic-users' },
           { icon: <UserCheck className="w-5 h-5" />, label: t('menuRegistrationApproval'), link: '/pending-registrations' },
           { icon: <ShieldCheck className="w-5 h-5" />, label: t('menuPicApproval'), link: '/pic-approvals' },
-          { icon: <Trash2 className="w-5 h-5" />, label: t('menuRecycleBin'), link: '/admin-actions' },
           { icon: <Bell className="w-5 h-5" />, label: 'Pusat Notifikasi', link: '/notifications' },
         ]
       });
@@ -188,8 +187,7 @@ const LayoutContent = ({ children, user, onLogout, onRoleChange }) => {
         children: [
           { icon: <Clock className="w-5 h-5" />, label: t('menuCheckIn'), link: '/staff-checkin' },
           { icon: <Calendar className="w-5 h-5" />, label: t('menuAttendance'), link: '/kehadiran' },
-          { icon: <History className="w-5 h-5" />, label: 'Timeline Aktiviti', link: '/activity-timeline' },
-        ]
+          ]
       });
 
       // Finance Group
@@ -275,7 +273,6 @@ const LayoutContent = ({ children, user, onLogout, onRoleChange }) => {
         icon: <Wrench className="w-5 h-5" />,
         children: [
           { icon: <Network className="w-5 h-5" />, label: t('menuSystemHierarchy'), link: '/hierarchy' },
-          { icon: <Trash2 className="w-5 h-5" />, label: t('menuPicRecycleBin'), link: '/pic-recycle-bin' },
         ]
       });
     } else if (effectiveRole === 'teacher') {
@@ -314,7 +311,7 @@ const LayoutContent = ({ children, user, onLogout, onRoleChange }) => {
         icon: <Wrench className="w-5 h-5" />,
         children: [
           { icon: <Network className="w-5 h-5" />, label: t('menuSystemHierarchy'), link: '/hierarchy' },
-          { icon: <Settings className="w-5 h-5" />, label: t('menuSettings'), link: '/personal-settings' },
+          { icon: <Settings className="w-5 h-5" />, label: t('menuSettings'), link: '/account' },
         ]
       });
     } else if (effectiveRole === 'student') {
@@ -351,15 +348,7 @@ const LayoutContent = ({ children, user, onLogout, onRoleChange }) => {
         icon: <TrendingUp className="w-5 h-5" />,
         children: [
           { icon: <FileText className="w-5 h-5" />, label: t('menuResults'), link: '/keputusan' },
-        ]
-      });
-
-      menuGroups.push({
-        key: 'system-config',
-        label: 'System & Configuration',
-        icon: <Wrench className="w-5 h-5" />,
-        children: [
-          { icon: <Settings className="w-5 h-5" />, label: t('menuSettings'), link: '/personal-settings' },
+          { icon: <FileText className="w-5 h-5" />, label: 'Resit / Ulangan', link: '/resit' },
         ]
       });
     } else if (effectiveRole === 'ib') {
@@ -387,7 +376,7 @@ const LayoutContent = ({ children, user, onLogout, onRoleChange }) => {
         label: 'System & Configuration',
         icon: <Wrench className="w-5 h-5" />,
         children: [
-          { icon: <Settings className="w-5 h-5" />, label: t('menuSettings'), link: '/personal-settings' },
+          { icon: <Settings className="w-5 h-5" />, label: t('menuSettings'), link: '/account' },
         ]
       });
     }
@@ -434,7 +423,6 @@ const LayoutContent = ({ children, user, onLogout, onRoleChange }) => {
       return items.filter(item => !groupedLinks.has(item.link));
     } else if (effectiveRole === 'pic') {
       const items = [
-        { icon: <History className="w-5 h-5" />, label: 'Timeline Aktiviti', link: '/activity-timeline' },
         { icon: <UserCheck className="w-5 h-5" />, label: t('menuRegistrationApproval'), link: '/pending-registrations' },
       ];
       return items.filter(item => !groupedLinks.has(item.link));
@@ -462,6 +450,7 @@ const LayoutContent = ({ children, user, onLogout, onRoleChange }) => {
         transition: 'background 0.5s ease'
       }}
     >
+      <TopProgressBar />
       {/* Global Click Spark Effect */}
       <GlobalClickSpark
         sparkColor={colorScheme.colors.primary || '#10b981'}
@@ -555,6 +544,7 @@ const LayoutContent = ({ children, user, onLogout, onRoleChange }) => {
                   src="/logomnsa1.jpeg" 
                   alt="Masjid Negeri Sultan Ahmad 1" 
                   className="h-12 w-auto object-contain flex-shrink-0"
+                  loading="lazy"
                 />
                 <div className="flex-1 min-w-0">
                   <h1 className="text-sm font-bold truncate">e-Quran</h1>
@@ -567,6 +557,7 @@ const LayoutContent = ({ children, user, onLogout, onRoleChange }) => {
                   src="/logomnsa1.jpeg" 
                   alt="MNSA1" 
                   className="h-10 w-10 object-contain flex-shrink-0 rounded"
+                  loading="lazy"
                 />
               </Link>
             )}
@@ -847,6 +838,7 @@ const LayoutContent = ({ children, user, onLogout, onRoleChange }) => {
                             src="/logomnsa1.jpeg" 
                             alt={user?.nama || 'User'} 
                             className="w-full h-full rounded-full object-cover"
+                            loading="lazy"
                             onError={(e) => {
                               e.target.style.display = 'none';
                               e.target.nextSibling.style.display = 'flex';
@@ -926,8 +918,8 @@ const LayoutContent = ({ children, user, onLogout, onRoleChange }) => {
         </header>
 
         {/* Page Content */}
-        <main className="flex-1 overflow-auto p-2 md:p-4 relative z-10" style={{ backgroundColor: 'rgba(255, 255, 255, 0.9)' }}>
-          <div className="max-w-screen-lg mx-auto p-3 md:p-4 lg:p-6 bg-white rounded-lg shadow-lg border border-gray-200 relative z-10">
+        <main className="flex-1 overflow-auto p-4 md:p-6 relative z-10 bg-mosque-neutral-50/80">
+          <div className="max-w-5xl mx-auto p-4 md:p-6 lg:p-8 bg-white rounded-2xl shadow-mosque border border-mosque-primary-100 relative z-10 mosque-card">
             {children}
           </div>
         </main>

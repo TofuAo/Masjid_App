@@ -15,6 +15,7 @@ CREATE TABLE IF NOT EXISTS pic_action_snapshots (
     approved_by VARCHAR(20) NULL COMMENT 'Admin who approved the action (NULL if pending)',
     pending_pic_change_id INT NULL COMMENT 'Reference to original pending_pic_changes.id',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMP NULL COMMENT 'When this record was deleted (for recycle bin)',
     expires_at TIMESTAMP NOT NULL COMMENT 'When this snapshot expires (30 days)',
     was_undone TINYINT(1) DEFAULT 0 COMMENT 'Whether this action has been undone',
     undone_at TIMESTAMP NULL COMMENT 'When this action was undone',
@@ -24,7 +25,8 @@ CREATE TABLE IF NOT EXISTS pic_action_snapshots (
     INDEX idx_pic_snapshots_pic (pic_ic),
     INDEX idx_pic_snapshots_pending (pending_pic_change_id),
     INDEX idx_pic_snapshots_undo (undo_pending_id),
-    INDEX idx_pic_snapshots_approved_by (approved_by)
+    INDEX idx_pic_snapshots_approved_by (approved_by),
+    INDEX idx_pic_snapshots_deleted (deleted_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='PIC Recycle Bin: Stores approved PIC actions for undo capability';
 `;
 
@@ -62,6 +64,19 @@ const ensureSnapshotTable = async () => {
     
     // Create the pic_action_snapshots table
     await pool.execute(PIC_SNAPSHOT_TABLE_SQL);
+    
+    // Add deleted_at column if it doesn't exist
+    try {
+      await pool.execute(`
+        ALTER TABLE pic_action_snapshots
+        ADD COLUMN deleted_at TIMESTAMP NULL COMMENT 'When this record was deleted (for recycle bin)'
+      `);
+      console.log('✓ Added deleted_at column to pic_action_snapshots');
+    } catch (alterError) {
+      if (!alterError.message.includes('Duplicate column') && alterError.code !== 'ER_DUP_FIELDNAME') {
+        console.warn('Could not add deleted_at column:', alterError.message);
+      }
+    }
     
     // Modify approved_by to allow NULL (for pending snapshots)
     try {
@@ -201,14 +216,17 @@ export async function createPicSnapshot({
   });
 
   try {
+    // Set deleted_at for delete operations
+    const deletedAt = operation === 'delete' ? new Date() : null;
+    
     const [result] = await pool.execute(
       `INSERT INTO pic_action_snapshots 
-        (entity_type, entity_id, entity_identifier, operation, data, metadata, pic_ic, approved_by, pending_pic_change_id, expires_at) 
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, DATE_ADD(NOW(), INTERVAL ? HOUR))`,
-      [entityType, numericEntityId, entityIdentifier, operation, jsonData, metadataJson, picIc, approvedBy, pendingPicChangeId, PIC_SNAPSHOT_TTL_HOURS]
+        (entity_type, entity_id, entity_identifier, operation, data, metadata, pic_ic, approved_by, pending_pic_change_id, deleted_at, expires_at) 
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, DATE_ADD(NOW(), INTERVAL ? HOUR))`,
+      [entityType, numericEntityId, entityIdentifier, operation, jsonData, metadataJson, picIc, approvedBy, pendingPicChangeId, deletedAt, PIC_SNAPSHOT_TTL_HOURS]
     );
 
-    console.log(`[PIC SNAPSHOT] ✅ Created snapshot ID ${result.insertId} for ${entityType}:${numericEntityId} (${entityIdentifier || 'no identifier'}) operation:${operation} by PIC ${picIc} (approved by ${approvedBy})`);
+    console.log(`[PIC SNAPSHOT] ✅ Created snapshot ID ${result.insertId} for ${entityType}:${numericEntityId} (${entityIdentifier || 'no identifier'}) operation:${operation} by PIC ${picIc} (approved by ${approvedBy}) deleted_at:${deletedAt}`);
     return result.insertId;
   } catch (error) {
     console.error(`[PIC SNAPSHOT] ❌ Failed to create snapshot:`, error);
@@ -271,7 +289,7 @@ export async function getPicSnapshotById(id) {
  */
 export async function listPicSnapshots({ picIc = null } = {}) {
   await ensureSnapshotTable();
-  const whereClauses = ['pas.was_undone = 0', 'pas.expires_at >= NOW()'];
+  const whereClauses = ['pas.was_undone = 0', 'pas.expires_at >= NOW()', 'pas.deleted_at IS NOT NULL'];
   const params = [];
 
   if (picIc) {
@@ -289,7 +307,7 @@ export async function listPicSnapshots({ picIc = null } = {}) {
      LEFT JOIN users u ON pas.pic_ic = u.ic
      LEFT JOIN users admin ON pas.approved_by = admin.ic
      ${where}
-     ORDER BY pas.created_at DESC`,
+     ORDER BY pas.deleted_at DESC`,
     params
   );
 

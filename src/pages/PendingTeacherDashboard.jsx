@@ -146,7 +146,7 @@ const PendingTeacherDashboard = () => {
         </Card>
 
         <Card className="p-6 hover:shadow-lg transition-shadow cursor-pointer">
-          <Link to="/personal-settings" className="block">
+          <Link to="/account" className="block">
             <div className="flex items-center space-x-4">
               <div className="flex-shrink-0 w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center">
                 <Settings className="w-6 h-6 text-gray-600" />

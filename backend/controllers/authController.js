@@ -969,7 +969,7 @@ export const getProfile = async (req, res) => {
     }
 
     const [users] = await pool.execute(
-      'SELECT ic, nama, email, role, status, created_at, updated_at FROM users WHERE ic = ?',
+      'SELECT ic, nama, email, role, status, umur, alamat, telefon, cover_photo, created_at, updated_at FROM users WHERE ic = ?',
       [userIc]
     );
 
@@ -984,6 +984,30 @@ export const getProfile = async (req, res) => {
     const roleMeta = await attachRoleMetadata(profile);
     profile.roles = roleMeta.roles;
     profile.activeRole = roleMeta.activeRole;
+
+    if (profile.role === 'student') {
+      try {
+        const [students] = await pool.execute(
+          'SELECT s.kelas_id, s.tarikh_daftar, s.class_track, s.academic_bio, c.nama_kelas as kelas_nama FROM students s LEFT JOIN classes c ON s.kelas_id = c.id WHERE s.user_ic = ?',
+          [userIc]
+        );
+        if (students.length > 0) {
+          Object.assign(profile, students[0]);
+        }
+      } catch (studentErr) {
+        if (studentErr.code === 'ER_BAD_FIELD_ERROR') {
+          const [students] = await pool.execute(
+            'SELECT s.kelas_id, s.tarikh_daftar, c.nama_kelas as kelas_nama FROM students s LEFT JOIN classes c ON s.kelas_id = c.id WHERE s.user_ic = ?',
+            [userIc]
+          );
+          if (students.length > 0) {
+            Object.assign(profile, students[0]);
+          }
+        } else {
+          throw studentErr;
+        }
+      }
+    }
 
     res.json({
       success: true,
@@ -2092,7 +2116,7 @@ export const updateProfile = async (req, res) => {
         message: 'User identifier is missing from the session'
       });
     }
-    const { umur, telefon, email, kelas_id, tarikh_daftar, kepakaran } = req.body;
+    const { umur, telefon, email, alamat, kelas_id, tarikh_daftar, kepakaran, academic_bio, class_track, cover_photo } = req.body;
 
     const connection = await pool.getConnection();
 
@@ -2114,6 +2138,14 @@ export const updateProfile = async (req, res) => {
       if (email !== undefined) {
         updateFields.push('email = ?');
         updateValues.push(email === null ? null : email);
+      }
+      if (alamat !== undefined) {
+        updateFields.push('alamat = ?');
+        updateValues.push(alamat === null || alamat === '' ? null : alamat);
+      }
+      if (cover_photo !== undefined) {
+        updateFields.push('cover_photo = ?');
+        updateValues.push(cover_photo === null || cover_photo === '' ? null : cover_photo);
       }
 
       if (updateFields.length > 0) {
@@ -2138,11 +2170,13 @@ export const updateProfile = async (req, res) => {
 
         if (students.length === 0) {
           await connection.execute(
-            'INSERT INTO students (user_ic, kelas_id, tarikh_daftar) VALUES (?, ?, ?)',
+            'INSERT INTO students (user_ic, kelas_id, tarikh_daftar, academic_bio, class_track) VALUES (?, ?, ?, ?, ?)',
             [
               userId,
               kelas_id === undefined || kelas_id === null ? null : kelas_id,
-              tarikh_daftar === undefined || tarikh_daftar === null ? null : tarikh_daftar
+              tarikh_daftar === undefined || tarikh_daftar === null ? null : tarikh_daftar,
+              academic_bio === undefined || academic_bio === '' ? null : academic_bio,
+              class_track === undefined || class_track === '' ? null : class_track
             ]
           );
         } else {
@@ -2156,6 +2190,14 @@ export const updateProfile = async (req, res) => {
           if (tarikh_daftar !== undefined) {
             studentUpdateFields.push('tarikh_daftar = ?');
             studentUpdateValues.push(tarikh_daftar === null ? null : tarikh_daftar);
+          }
+          if (academic_bio !== undefined) {
+            studentUpdateFields.push('academic_bio = ?');
+            studentUpdateValues.push(academic_bio === null || academic_bio === '' ? null : academic_bio);
+          }
+          if (class_track !== undefined) {
+            studentUpdateFields.push('class_track = ?');
+            studentUpdateValues.push(class_track === null || class_track === '' ? null : class_track);
           }
 
           if (studentUpdateFields.length > 0) {
@@ -2194,7 +2236,7 @@ export const updateProfile = async (req, res) => {
       connection.release();
 
       const [updatedUsers] = await pool.execute(
-        'SELECT ic, nama, email, role, status, umur, alamat, telefon FROM users WHERE ic = ?',
+        'SELECT ic, nama, email, role, status, umur, alamat, telefon, cover_photo FROM users WHERE ic = ?',
         [userId]
       );
 

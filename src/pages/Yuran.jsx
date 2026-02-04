@@ -335,6 +335,7 @@ const Yuran = () => {
                         src={qrImagePreview} 
                         alt="QR Code Preview" 
                         className="w-32 h-32 border border-gray-300 rounded-lg object-contain bg-white p-2"
+                        loading="lazy"
                       />
                     </div>
                   )}

@@ -4,9 +4,24 @@ import { safeParseJSON } from '../utils/jsonParser.js';
 import { createSnapshot, SNAPSHOT_TTL_HOURS } from '../utils/adminActionSnapshots.js';
 import { getSafePagination } from '../utils/pagination.js';
 
+// Helper: filter classes by session day and/or time (sessions are array of { days: [], times: [] })
+const filterClassesBySession = (classes, day, time) => {
+  if (!day && !time) return classes;
+  return classes.filter(kelas => {
+    const sessions = Array.isArray(kelas.sessions) ? kelas.sessions : [];
+    return sessions.some(session => {
+      const days = Array.isArray(session?.days) ? session.days : [];
+      const times = Array.isArray(session?.times) ? session.times : [];
+      const matchDay = !day || days.some(d => String(d).toLowerCase() === String(day).toLowerCase());
+      const matchTime = !time || times.some(t => String(t).toLowerCase().includes(String(time).toLowerCase()));
+      return matchDay && matchTime;
+    });
+  });
+};
+
 export const getAllClasses = async (req, res) => {
   try {
-    const { search, guru_id, page = 1, limit } = req.query;
+    const { search, guru_id, day, time, page = 1, limit } = req.query;
     // Default to a large limit to show all classes, or use pagination if specified
     const defaultLimit = limit ? parseInt(limit) : 1000;
     
@@ -56,12 +71,18 @@ export const getAllClasses = async (req, res) => {
     
     const [classes] = await pool.execute(query, queryParams);
 
-    const parsedClasses = classes.map(kelas => ({
+    let parsedClasses = classes.map(kelas => ({
       ...kelas,
       sessions: safeParseJSON(kelas.sessions, [])
     }));
+
+    // Filter by session day and/or time if provided
+    if (day || time) {
+      parsedClasses = filterClassesBySession(parsedClasses, day, time);
+    }
     
-    // Get total count for pagination
+    // Get total count for pagination (use filtered length when day/time filter applied)
+    const totalFiltered = (day || time) ? parsedClasses.length : null;
     let countQuery = `
       SELECT COUNT(*) as total
       FROM classes c
@@ -87,16 +108,25 @@ export const getAllClasses = async (req, res) => {
     }
     
     const [countResult] = await pool.execute(countQuery, countParams);
-    const total = countResult[0].total;
-    
+    let total = countResult[0].total;
+    let dataToReturn = parsedClasses;
+
+    // When day/time filter applied, total and data come from filtered list; apply in-memory pagination
+    if (totalFiltered !== null) {
+      total = totalFiltered;
+      const pageNum = Math.max(1, parseInt(page) || 1);
+      const start = (pageNum - 1) * safeLimit;
+      dataToReturn = parsedClasses.slice(start, start + safeLimit);
+    }
+
     res.json({
       success: true,
-      data: parsedClasses,
+      data: dataToReturn,
       pagination: {
-        page: parseInt(page),
+        page: parseInt(page) || 1,
         limit: safeLimit,
         total,
-        pages: Math.ceil(total / safeLimit)
+        pages: Math.ceil(total / safeLimit) || 1
       }
     });
   } catch (error) {

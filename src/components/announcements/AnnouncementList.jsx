@@ -2,7 +2,7 @@ import React from 'react';
 import Card from '../ui/Card';
 import Button from '../ui/Button';
 import Badge from '../ui/Badge';
-import { Plus, Edit, Eye, Trash2, AlertCircle, Calendar, User } from 'lucide-react';
+import { Plus, Edit, Trash2, AlertCircle, Calendar, User } from 'lucide-react';
 
 const AnnouncementList = ({ announcements = [], onEdit, onView, onDelete, onAdd, user }) => {
   const getPriorityBadge = (priority) => {
@@ -77,7 +77,11 @@ const AnnouncementList = ({ announcements = [], onEdit, onView, onDelete, onAdd,
             announcements.map((announcement) => (
               <div
                 key={announcement.id}
-                className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
+                role="button"
+                tabIndex={0}
+                className="border border-gray-200 rounded-lg p-4 hover:shadow-md hover:bg-emerald-50/50 cursor-pointer transition-all duration-150"
+                onClick={() => onView(announcement)}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onView(announcement); } }}
               >
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
@@ -111,14 +115,7 @@ const AnnouncementList = ({ announcements = [], onEdit, onView, onDelete, onAdd,
                   </div>
                   
                   {(user?.role === 'admin' || user?.role === 'pic') && (
-                    <div className="flex space-x-2 ml-4">
-                      <button
-                        onClick={() => onView(announcement)}
-                        className="text-emerald-600 hover:text-emerald-900"
-                        title="Lihat Detail"
-                      >
-                        <Eye className="w-4 h-4" />
-                      </button>
+                    <div className="flex space-x-2 ml-4" onClick={(e) => e.stopPropagation()}>
                       <button
                         onClick={() => onEdit(announcement)}
                         className="text-blue-600 hover:text-blue-900"

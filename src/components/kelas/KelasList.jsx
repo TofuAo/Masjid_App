@@ -1,9 +1,27 @@
-import React, { useState } from 'react';
-import { Search, Plus, Edit, Eye, Trash2, BookOpen, Users } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Search, Plus, Edit, Trash2, BookOpen, Users, Filter } from 'lucide-react';
 
-const KelasList = ({ kelass = [], onEdit, onView, onDelete, onAdd, gurus = [], user }) => {
+const SESSION_DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+const SESSION_TIMES = ['05:00 - 06:30', '21:00 - 22:30', '08:00 - 09:30', '10:00 - 11:30', '14:00 - 15:30', '16:00 - 17:30'];
+
+const KelasList = ({ kelass = [], onEdit, onView, onDelete, onAdd, gurus = [], user, filterParams = {}, onFilterChange }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [showMyClassesOnly, setShowMyClassesOnly] = useState(false);
+  const [showFilter, setShowFilter] = useState(false);
+  const [localFilter, setLocalFilter] = useState({
+    guru_id: filterParams.guru_id || '',
+    class_id: filterParams.class_id || '',
+    day: filterParams.day || '',
+    time: filterParams.time || '',
+  });
+  useEffect(() => {
+    setLocalFilter({
+      guru_id: filterParams.guru_id || '',
+      class_id: filterParams.class_id || '',
+      day: filterParams.day || '',
+      time: filterParams.time || '',
+    });
+  }, [filterParams.guru_id, filterParams.day, filterParams.time, filterParams.class_id]);
 
   // Check if a class belongs to the current teacher
   const isMyClass = (kelas) => {
@@ -30,16 +48,120 @@ const KelasList = ({ kelass = [], onEdit, onView, onDelete, onAdd, gurus = [], u
     return guru ? guru.nama : 'Tiada Guru';
   };
 
+  const classesByTeacher = localFilter.guru_id ? kelass.filter(k => k.guru_ic === localFilter.guru_id) : kelass;
+  const applyFilter = () => {
+    onFilterChange?.({
+      guru_id: localFilter.guru_id || undefined,
+      day: localFilter.day || undefined,
+      time: localFilter.time || undefined,
+    });
+    if (localFilter.class_id) {
+      const kelas = kelass.find(k => k.id === parseInt(localFilter.class_id, 10));
+      if (kelas) onView?.(kelas);
+    }
+    setShowFilter(false);
+  };
+  const clearFilter = () => {
+    setLocalFilter({ guru_id: '', class_id: '', day: '', time: '' });
+    onFilterChange?.({});
+    setShowFilter(false);
+  };
+  const hasActiveFilter = filterParams.guru_id || filterParams.day || filterParams.time;
+
   return (
-    <div className="mosque-card">
+    <div className="mosque-card border-l-4 border-l-mosque-primary-500 overflow-hidden">
       <div className="p-6 border-b border-mosque-primary-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <h3 className="text-xl font-bold text-mosque-primary-800">Senarai Kelas ({filteredKelass.length})</h3>
-        {user?.role !== 'teacher' && (
-          <button onClick={onAdd} className="btn-mosque-primary flex items-center gap-2">
-            <Plus size={16} />
-            Tambah Kelas
-          </button>
-        )}
+        <div className="flex items-center gap-2">
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setShowFilter(!showFilter)}
+              className={`flex items-center gap-2 px-3 py-2 rounded-lg border transition-colors ${
+                showFilter || hasActiveFilter
+                  ? 'border-mosque-primary-500 bg-mosque-primary-50 text-mosque-primary-800'
+                  : 'border-mosque-primary-200 bg-white text-mosque-primary-700 hover:bg-mosque-primary-50'
+              }`}
+              title="Tapis"
+            >
+              <Filter size={16} />
+              <span className="text-sm font-medium">Tapis</span>
+              {hasActiveFilter && <span className="w-2 h-2 rounded-full bg-mosque-primary-500" />}
+            </button>
+            {showFilter && (
+              <div className="absolute right-0 top-full mt-2 z-50 w-72 rounded-xl border border-mosque-primary-200 bg-white shadow-mosque-lg p-4">
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-xs font-medium text-mosque-neutral-600 mb-1">Guru</label>
+                    <select
+                      value={localFilter.guru_id}
+                      onChange={(e) => setLocalFilter(prev => ({ ...prev, guru_id: e.target.value, class_id: '' }))}
+                      className="input-mosque w-full text-sm"
+                    >
+                      <option value="">Semua</option>
+                      {(gurus || []).map(g => (
+                        <option key={g.ic} value={g.ic}>{g.nama}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-mosque-neutral-600 mb-1">Kelas</label>
+                    <select
+                      value={localFilter.class_id}
+                      onChange={(e) => setLocalFilter(prev => ({ ...prev, class_id: e.target.value }))}
+                      className="input-mosque w-full text-sm"
+                    >
+                      <option value="">Semua</option>
+                      {classesByTeacher.map(k => (
+                        <option key={k.id} value={k.id}>{k.nama_kelas || k.class_name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-mosque-neutral-600 mb-1">Hari</label>
+                    <select
+                      value={localFilter.day}
+                      onChange={(e) => setLocalFilter(prev => ({ ...prev, day: e.target.value }))}
+                      className="input-mosque w-full text-sm"
+                    >
+                      <option value="">Semua</option>
+                      {SESSION_DAYS.map(d => (
+                        <option key={d} value={d}>{d}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-mosque-neutral-600 mb-1">Masa</label>
+                    <select
+                      value={localFilter.time}
+                      onChange={(e) => setLocalFilter(prev => ({ ...prev, time: e.target.value }))}
+                      className="input-mosque w-full text-sm"
+                    >
+                      <option value="">Semua</option>
+                      {SESSION_TIMES.map(t => (
+                        <option key={t} value={t}>{t}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="flex gap-2">
+                    <button type="button" onClick={clearFilter} className="btn-mosque-secondary flex-1 py-2 text-sm">
+                      Reset
+                    </button>
+                    <button type="button" onClick={applyFilter} className="btn-mosque-primary flex-1 py-2 text-sm">
+                      Guna
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+          {user?.role !== 'teacher' && (
+            <button onClick={onAdd} className="btn-mosque-primary flex items-center gap-2">
+              <Plus size={16} />
+              Tambah Kelas
+            </button>
+          )}
+        </div>
       </div>
       <div className="p-6">
         <div className="flex flex-col sm:flex-row gap-4 mb-6">
@@ -86,25 +208,29 @@ const KelasList = ({ kelass = [], onEdit, onView, onDelete, onAdd, gurus = [], u
                 const isMyClassRow = isMyClass(kelas);
                 return (
                 <tr 
-                  key={kelas.id} 
-                  className={`transition-colors duration-200 ${
+                  key={kelas.id}
+                  role="button"
+                  tabIndex={0}
+                  className={`cursor-pointer transition-colors duration-150 border-l-4 ${
                     isMyClassRow 
-                      ? 'bg-emerald-50 hover:bg-emerald-100 border-l-4 border-emerald-500' 
-                      : 'hover:bg-mosque-primary-50'
+                      ? 'bg-mosque-primary-50 hover:bg-mosque-primary-100 border-l-mosque-primary-500' 
+                      : 'border-l-transparent hover:bg-mosque-primary-50/50'
                   }`}
+                  onClick={() => onView(kelas)}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onView(kelas); } }}
                 >
                   <td className="px-3 sm:px-6 py-3 sm:py-4">
                     <div className="flex items-center">
                       <div className={`flex-shrink-0 h-10 w-10 rounded-full flex items-center justify-center ${
-                        isMyClassRow ? 'bg-emerald-200' : 'bg-blue-100'
+                        isMyClassRow ? 'bg-mosque-primary-200' : 'bg-mosque-primary-100'
                       }`}>
-                        <BookOpen className={`h-5 w-5 ${isMyClassRow ? 'text-emerald-700' : 'text-blue-600'}`} />
+                        <BookOpen className={`h-5 w-5 ${isMyClassRow ? 'text-mosque-primary-800' : 'text-mosque-primary-600'}`} />
                       </div>
                       <div className="ml-4 flex-1">
                         <div className="flex items-center gap-2">
                           <div className="text-sm font-medium text-mosque-neutral-900">{kelas.nama_kelas || kelas.class_name || ''}</div>
                           {isMyClassRow && (
-                            <span className="px-2 py-0.5 text-xs font-semibold bg-emerald-500 text-white rounded-full">
+                            <span className="px-2 py-0.5 text-xs font-semibold bg-mosque-primary-600 text-white rounded-full">
                               Kelas Saya
                             </span>
                           )}
@@ -172,14 +298,11 @@ const KelasList = ({ kelass = [], onEdit, onView, onDelete, onAdd, gurus = [], u
                   </td>
                   <td className="px-3 sm:px-6 py-3 sm:py-4 text-sm text-mosque-neutral-700 hidden md:table-cell">{kelas.guru_nama || getGuruName(kelas.guru_ic)}</td>
                   <td className="px-3 sm:px-6 py-3 sm:py-4 text-sm text-mosque-neutral-700">RM {Number(kelas.yuran) || 0}</td>
-                  <td className="px-3 sm:px-6 py-3 sm:py-4 text-sm font-medium">
+                  <td className="px-3 sm:px-6 py-3 sm:py-4 text-sm font-medium" onClick={(e) => e.stopPropagation()}>
                     <div className="flex space-x-3">
-                      <button onClick={() => onView(kelas)} className="text-mosque-primary-600 hover:text-mosque-primary-800" title="Lihat Detail">
-                        <Eye size={16} />
-                      </button>
                       {user?.role !== 'teacher' && (
                         <>
-                          <button onClick={() => onEdit(kelas)} className="text-blue-600 hover:text-blue-800" title="Edit">
+                          <button onClick={() => onEdit(kelas)} className="text-mosque-primary-600 hover:text-mosque-primary-800" title="Edit">
                             <Edit size={16} />
                           </button>
                           <button onClick={() => onDelete(kelas.id, kelas)} className="text-red-600 hover:text-red-800" title="Padam">

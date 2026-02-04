@@ -194,19 +194,20 @@ const Register = ({ onRegister }) => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-teal-50 to-cyan-50 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-mosque-gradient-light islamic-pattern-bg flex items-center justify-center py-10 px-4">
       <div className="max-w-md w-full">
-        <div className="bg-white/90 backdrop-blur-sm border border-white/20 rounded-2xl shadow-2xl p-8">
-          <div className="text-center mb-8">
-            <div className="mx-auto mb-4">
+        <div className="mosque-card rounded-2xl p-6 sm:p-8">
+          <div className="text-center mb-8 animate-fade-in-up">
+            <div className="mx-auto mb-4 inline-block p-3 rounded-2xl bg-white/80 shadow-mosque">
               <img 
                 src="/logomnsa1.jpeg" 
                 alt="Masjid Negeri Sultan Ahmad 1" 
                 className="mx-auto h-20 w-auto object-contain"
+                loading="lazy"
               />
             </div>
-            <h2 className="text-2xl font-bold text-gray-900">Daftar / Kemaskini Akaun</h2>
-            <p className="mt-2 text-sm text-gray-600">
+            <h1 className="text-2xl font-bold font-display text-mosque-primary-800">Daftar / Kemaskini Akaun</h1>
+            <p className="mt-2 text-sm text-mosque-neutral-600">
               Pilih salah satu pilihan di bawah. Sistem akan samakan nama dengan rekod sedia ada dan membetulkan nombor IC secara automatik.
             </p>
           </div>
@@ -215,10 +216,10 @@ const Register = ({ onRegister }) => {
             <button
               type="button"
               onClick={() => setMode('existing')}
-              className={`flex items-center justify-center gap-2 rounded-lg border px-4 py-3 text-sm font-medium transition-all ${
+              className={`flex items-center justify-center gap-2 rounded-xl border-2 px-4 py-3 text-sm font-medium transition-all ${
                 mode === 'existing'
-                  ? 'border-emerald-500 bg-emerald-50 text-emerald-700 shadow'
-                  : 'border-gray-200 bg-white text-gray-600 hover:border-emerald-200'
+                  ? 'border-mosque-primary-500 bg-mosque-primary-50 text-mosque-primary-800 shadow-mosque'
+                  : 'border-mosque-primary-200 bg-white text-mosque-neutral-700 hover:border-mosque-primary-400 hover:bg-mosque-primary-50'
               }`}
             >
               <RefreshCw className="h-4 w-4" />
@@ -227,10 +228,10 @@ const Register = ({ onRegister }) => {
             <button
               type="button"
               onClick={() => setMode('new')}
-              className={`flex items-center justify-center gap-2 rounded-lg border px-4 py-3 text-sm font-medium transition-all ${
+              className={`flex items-center justify-center gap-2 rounded-xl border-2 px-4 py-3 text-sm font-medium transition-all ${
                 mode === 'new'
-                  ? 'border-emerald-500 bg-emerald-50 text-emerald-700 shadow'
-                  : 'border-gray-200 bg-white text-gray-600 hover:border-emerald-200'
+                  ? 'border-mosque-primary-500 bg-mosque-primary-50 text-mosque-primary-800 shadow-mosque'
+                  : 'border-mosque-primary-200 bg-white text-mosque-neutral-700 hover:border-mosque-primary-400 hover:bg-mosque-primary-50'
               }`}
             >
               <UserPlus className="h-4 w-4" />
@@ -238,7 +239,7 @@ const Register = ({ onRegister }) => {
             </button>
           </div>
 
-          <div className="rounded-lg border border-emerald-100 bg-emerald-50/70 p-4 text-sm text-emerald-800 mb-6">
+          <div className="rounded-xl border-2 border-mosque-primary-200 bg-mosque-primary-50/80 p-4 text-sm text-mosque-primary-800 mb-6">
             {mode === 'existing' ? (
               <ul className="space-y-2 list-disc list-inside">
                 <li>Pastikan nama diisi sama seperti rekod asal.</li>
@@ -256,26 +257,22 @@ const Register = ({ onRegister }) => {
 
           <form onSubmit={handleSubmit} className="space-y-6">
             {error && (
-              <div className="bg-red-50 border-l-4 border-red-500 text-red-700 p-4 rounded-md" role="alert">
-                <div className="flex">
-                  <div className="py-1">
-                    <AlertCircle className="h-5 w-5 text-red-500 mr-3" />
-                  </div>
+              <div className="bg-red-50 border-l-4 border-red-500 text-red-800 p-4 rounded-xl" role="alert">
+                <div className="flex gap-3">
+                  <AlertCircle className="h-5 w-5 text-red-500 flex-shrink-0 mt-0.5" />
                   <div>
-                    <p className="font-bold">Ralat Pendaftaran</p>
-                    <p className="text-sm">{error}</p>
+                    <p className="font-semibold text-sm">Ralat Pendaftaran</p>
+                    <p className="text-sm mt-1">{error}</p>
                   </div>
                 </div>
               </div>
             )}
 
             <div>
-              <label htmlFor="nama" className="block text-sm font-medium text-gray-700 mb-2">
-                Nama Penuh *
-              </label>
+              <label htmlFor="nama" className="form-label">Nama Penuh *</label>
               <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <User className="h-5 w-5 text-gray-600" />
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-mosque-neutral-500">
+                  <User className="h-5 w-5" />
                 </div>
                 <input
                   id="nama"
@@ -284,19 +281,17 @@ const Register = ({ onRegister }) => {
                   required
                   value={formData.nama}
                   onChange={handleChange}
-                  className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                  className="input-mosque block w-full pl-10 pr-3 py-2.5 rounded-xl"
                   placeholder="Masukkan nama penuh"
                 />
               </div>
             </div>
 
             <div>
-              <label htmlFor="ic_number" className="block text-sm font-medium text-gray-700 mb-2">
-                Nombor IC *
-              </label>
+              <label htmlFor="ic_number" className="form-label">Nombor IC *</label>
               <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <CreditCard className="h-5 w-5 text-gray-600" />
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-mosque-neutral-500">
+                  <CreditCard className="h-5 w-5" />
                 </div>
                 <input
                   id="ic_number"
@@ -307,21 +302,19 @@ const Register = ({ onRegister }) => {
                   autoComplete="username"
                   value={formData.ic_number}
                   onChange={handleChange}
-                  className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                  className="input-mosque block w-full pl-10 pr-3 py-2.5 rounded-xl"
                   placeholder="123456789012"
                 />
               </div>
-              <p className="mt-1 text-xs text-gray-500">Masukkan 12 digit nombor IC tanpa sengkang. Pastikan nombor ini tepat.</p>
+              <p className="form-helper">Masukkan 12 digit nombor IC tanpa sengkang. Pastikan nombor ini tepat.</p>
             </div>
 
             {mode === 'new' && (
               <div>
-                <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
-                  Emel (Pilihan)
-                </label>
+                <label htmlFor="email" className="form-label">Emel (Pilihan)</label>
                 <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <Mail className="h-5 w-5 text-gray-600" />
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-mosque-neutral-500">
+                    <Mail className="h-5 w-5" />
                   </div>
                   <input
                     id="email"
@@ -330,7 +323,7 @@ const Register = ({ onRegister }) => {
                     autoComplete="email"
                     value={formData.email}
                     onChange={handleChange}
-                    className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                    className="input-mosque block w-full pl-10 pr-3 py-2.5 rounded-xl"
                     placeholder="nama@example.com"
                   />
                 </div>
@@ -338,12 +331,10 @@ const Register = ({ onRegister }) => {
             )}
 
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
-                Kata Laluan Baharu *
-              </label>
+              <label htmlFor="password" className="form-label">Kata Laluan Baharu *</label>
               <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Lock className="h-5 w-5 text-gray-600" />
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-mosque-neutral-500">
+                  <Lock className="h-5 w-5" />
                 </div>
                 <input
                   id="password"
@@ -354,30 +345,24 @@ const Register = ({ onRegister }) => {
                   autoComplete="new-password"
                   value={formData.password}
                   onChange={handleChange}
-                  className="block w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                  className="input-mosque block w-full pl-10 pr-10 py-2.5 rounded-xl"
                   placeholder="Sekurang-kurangnya 6 aksara"
                 />
                 <button
                   type="button"
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-mosque-neutral-500 hover:text-mosque-primary-600"
                   onClick={() => setShowPassword(!showPassword)}
                 >
-                  {showPassword ? (
-                    <EyeOff className="h-5 w-5 text-gray-600 hover:text-gray-800" />
-              ) : (
-                    <Eye className="h-5 w-5 text-gray-600 hover:text-gray-800" />
-                  )}
+                  {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                 </button>
               </div>
             </div>
 
             <div>
-              <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-2">
-                Sahkan Kata Laluan *
-              </label>
+              <label htmlFor="confirmPassword" className="form-label">Sahkan Kata Laluan *</label>
               <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Lock className="h-5 w-5 text-gray-600" />
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-mosque-neutral-500">
+                  <Lock className="h-5 w-5" />
                 </div>
                 <input
                   id="confirmPassword"
@@ -388,7 +373,7 @@ const Register = ({ onRegister }) => {
                   autoComplete="new-password"
                   value={formData.confirmPassword}
                   onChange={handleChange}
-                  className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                  className="input-mosque block w-full pl-10 pr-3 py-2.5 rounded-xl"
                   placeholder="Ulang kata laluan"
                 />
               </div>
@@ -398,11 +383,11 @@ const Register = ({ onRegister }) => {
               <button 
                 type="submit" 
                 disabled={loading} 
-                className="w-full bg-emerald-600 text-white py-3 px-4 rounded-lg font-semibold hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="btn-mosque-primary w-full py-3 px-4 rounded-xl font-medium disabled:opacity-60 disabled:cursor-not-allowed"
               >
                 {loading ? (
-                  <span className="flex items-center justify-center">
-                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
+                  <span className="flex items-center justify-center gap-2">
+                    <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div>
                     Memproses...
                   </span>
                 ) : (
@@ -411,10 +396,10 @@ const Register = ({ onRegister }) => {
               </button>
             </div>
 
-            <div className="text-center">
-              <p className="text-sm text-gray-600">
+            <div className="text-center pt-2">
+              <p className="text-sm text-mosque-neutral-600">
                 Sudah ada akaun?{' '}
-                <Link to="/login" className="text-emerald-600 hover:text-emerald-800 font-medium">
+                <Link to="/login" className="text-mosque-primary-600 hover:text-mosque-primary-800 font-medium">
                   Log Masuk
                 </Link>
               </p>

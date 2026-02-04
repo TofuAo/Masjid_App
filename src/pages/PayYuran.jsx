@@ -303,6 +303,7 @@ const PayYuran = () => {
                       src={qrSettings.qr_code_image} 
                       alt="QR Code Payment" 
                       className="w-64 h-64 mx-auto object-contain"
+                      loading="lazy"
                       onError={(e) => {
                         console.error('QR image failed to load:', qrSettings.qr_code_image);
                         e.target.style.display = 'none';

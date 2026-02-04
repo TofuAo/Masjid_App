@@ -20,7 +20,7 @@ const Settings = () => {
   
   const userRole = getEffectiveRole(user);
   if (!user || userRole !== 'admin') {
-    return <Navigate to="/personal-settings" replace />;
+    return <Navigate to="/account" replace />;
   }
   
   const { t, changeLanguage } = useLanguage();
@@ -985,6 +985,7 @@ const Settings = () => {
                           src={qrImagePreview} 
                           alt="Active QR Code" 
                           className="w-full h-full object-contain"
+                          loading="lazy"
                         />
                       ) : qrSettings.qr_code_image ? (
                         <img 
@@ -1085,6 +1086,7 @@ const Settings = () => {
                               src={qrImagePreview} 
                               alt="QR Code Preview" 
                               className="max-w-full max-h-full object-contain"
+                              loading="lazy"
                             />
                           </div>
                         </div>

@@ -204,6 +204,7 @@ const QuickStaffCheckIn = () => {
               src="/logomnsa1.jpeg" 
               alt="Masjid Negeri Sultan Ahmad 1" 
               className="mx-auto h-20 w-auto object-contain"
+              loading="lazy"
             />
           </div>
           <h2 className="mt-2 text-2xl font-bold text-gray-900">Masjid Negeri Sultan Ahmad 1</h2>

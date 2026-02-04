@@ -287,17 +287,15 @@ const Dashboard = () => {
 
   if (error) {
     return (
-      <div className="text-center py-12">
-        <div className="flex justify-center mb-4">
-          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center">
-            <AlertCircle className="w-8 h-8 text-red-600" />
-          </div>
+      <div className="text-center py-16 px-4 animate-fade-in-up">
+        <div className="inline-flex justify-center mb-6 p-4 bg-red-50 rounded-2xl border-2 border-red-200">
+          <AlertCircle className="w-12 h-12 text-red-500" />
         </div>
-        <h3 className="text-lg font-semibold text-gray-900 mb-2">Ralat Memuatkan Data</h3>
-        <p className="text-red-600 mb-4">{error.message || 'Gagal memuatkan data papan pemuka.'}</p>
+        <h3 className="text-xl font-semibold text-mosque-neutral-800 mb-2">Ralat Memuatkan Data</h3>
+        <p className="text-mosque-neutral-600 mb-6 max-w-md mx-auto">{error.message || 'Gagal memuatkan data papan pemuka.'}</p>
         <button
           onClick={() => window.location.reload()}
-          className="px-4 py-2 bg-emerald-600 text-white rounded-md hover:bg-emerald-700 transition-colors"
+          className="btn-mosque-primary px-6 py-3 rounded-xl"
         >
           Muat Semula
         </button>

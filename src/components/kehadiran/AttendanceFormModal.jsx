@@ -238,6 +238,7 @@ const AttendanceFormModal = ({ isOpen, onClose, classId, className, selectedDate
                         src={proofImagePreview}
                         alt="Preview"
                         className="w-20 h-20 object-cover rounded-lg border border-gray-300"
+                        loading="lazy"
                       />
                       <button
                         onClick={removeImage}
