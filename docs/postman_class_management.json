@@ -1,0 +1,78 @@
+{
+  "info": {
+    "name": "Class Management (Admin)",
+    "description": "Admin class change and rollback APIs. Base URL: {{baseUrl}}/api",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:5000" },
+    { "key": "token", "value": "" }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }]
+  },
+  "item": [
+    {
+      "name": "Get Class List",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/admin/classes?limit=500",
+        "description": "List classes (optional: search, level, page, limit)"
+      }
+    },
+    {
+      "name": "Get Students By Class",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/admin/classes/1/students",
+        "description": "Replace 1 with classId"
+      }
+    },
+    {
+      "name": "Get Exam Sessions",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/admin/classes/exam-sessions"
+      }
+    },
+    {
+      "name": "Change Class",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"student_ids\": [\"IC1\", \"IC2\"],\n  \"from_class_id\": 2,\n  \"to_class_id\": 5,\n  \"assignment_type\": \"exam\",\n  \"exam_session_id\": 2,\n  \"start_date\": \"2026-02-10\",\n  \"end_date\": \"2026-02-20\"\n}"
+        },
+        "url": "{{baseUrl}}/api/admin/classes/change",
+        "description": "Bulk change class. student_ids are ICs (strings). end_date required for exam."
+      }
+    },
+    {
+      "name": "Rollback",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"student_ids\": [\"IC1\", \"IC2\"],\n  \"exam_session_id\": 2\n}"
+        },
+        "url": "{{baseUrl}}/api/admin/classes/rollback",
+        "description": "Rollback exam assignment. Optional: class_id (restore main class), exam_session_id (limit to session)."
+      }
+    },
+    {
+      "name": "Get Student History",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/admin/students/IC123456789012/history",
+        "description": "Replace IC123456789012 with student IC"
+      }
+    }
+  ]
+}

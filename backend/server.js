@@ -90,11 +90,17 @@ const defaultAllowedOrigins = [
   'http://localhost',
   'http://localhost:80',
   'http://localhost:3000',
-  'http://localhost:5173'
+  'http://localhost:5173',
+  'http://localhost:5175',
+  'https://masjid-app-sage.vercel.app'
 ];
-const configuredOrigin = process.env.FRONTEND_URL || '';
-const allowedOrigins = configuredOrigin
-  ? Array.from(new Set([...defaultAllowedOrigins, configuredOrigin]))
+// FRONTEND_URL can be a single URL or comma-separated list (e.g. for Vercel + previews)
+const frontendUrl = process.env.FRONTEND_URL || '';
+const configuredOrigins = frontendUrl
+  ? frontendUrl.split(',').map((u) => u.trim()).filter(Boolean)
+  : [];
+const allowedOrigins = configuredOrigins.length
+  ? Array.from(new Set([...defaultAllowedOrigins, ...configuredOrigins]))
   : defaultAllowedOrigins;
 
 // CORS configuration with proper handling
@@ -102,17 +108,17 @@ const corsOptions = {
   origin: (origin, callback) => {
     // Allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return callback(null, true);
-    
-    // Check if origin is in allowed list
-    const isAllowed = allowedOrigins.includes(origin) || 
-                      origin.startsWith('http://localhost') ||
-                      origin.startsWith('https://localhost') ||
-                      origin.includes('localhost');
-    
+
+    const isAllowed =
+      allowedOrigins.includes(origin) ||
+      origin.startsWith('http://localhost') ||
+      origin.startsWith('https://localhost') ||
+      origin.includes('localhost') ||
+      origin.endsWith('.vercel.app'); // Vercel preview and production
+
     if (isAllowed) {
       callback(null, true);
     } else {
-      // Log blocked origin for debugging
       console.warn('CORS blocked origin:', origin);
       callback(new Error('Not allowed by CORS'));
     }

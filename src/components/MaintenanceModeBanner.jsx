@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { AlertCircle, AlertTriangle, Info, Clock } from 'lucide-react';
+import { getApiOrigin } from '../utils/apiBaseUrl';
 
 /**
  * Maintenance Mode Banner Component
@@ -25,7 +26,7 @@ const MaintenanceModeBanner = () => {
 
   const checkMaintenanceStatus = async () => {
     try {
-      const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000'}/api/maintenance/status`, {
+      const response = await axios.get(`${getApiOrigin()}/api/maintenance/status`, {
         timeout: 5000
       });
       

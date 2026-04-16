@@ -10,6 +10,7 @@ import LoadingSkeleton from '../components/ui/LoadingSkeleton';
 import ReceiptViewer from '../components/receipt/ReceiptViewer';
 import { CreditCard, DollarSign, CheckCircle, XCircle, Clock, Plus, Search, Filter, QrCode, Settings, Upload, Link as LinkIcon, Save, ChevronDown, ChevronUp, AlertCircle, FileCheck, Eye } from 'lucide-react';
 import { getEffectiveRole } from '../utils/userRoles';
+import { getApiOrigin } from '../utils/apiBaseUrl';
 
 
 const Yuran = () => {
@@ -644,9 +645,9 @@ const Yuran = () => {
                               <div className="flex space-x-2 mt-2">
                                 <button
                                   onClick={() => {
-                                    const imageUrl = y.resit_img.startsWith('http') 
-                                      ? y.resit_img 
-                                      : `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/${y.resit_img}`;
+const imageUrl = y.resit_img.startsWith('http')
+                                      ? y.resit_img
+                                      : `${getApiOrigin()}/${y.resit_img}`;
                                     window.open(imageUrl, '_blank');
                                   }}
                                   className="text-xs text-blue-600 hover:text-blue-800 flex items-center space-x-1"

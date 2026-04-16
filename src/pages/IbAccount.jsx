@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { attendanceAPI, feesAPI, studentsAPI, classesAPI, ibAPI } from '../services/api';
+import { getApiOrigin } from '../utils/apiBaseUrl';
 import { toast } from 'react-toastify';
 import Card from '../components/ui/Card';
 import Badge from '../components/ui/Badge';
@@ -368,8 +369,8 @@ const IbAccount = () => {
     if (imagePath.startsWith('data:image')) {
       return imagePath;
     }
-    const apiBaseUrl = process.env.REACT_APP_API_URL || 'http://localhost:5000';
-    return `${apiBaseUrl}/${imagePath}`;
+    const apiOrigin = getApiOrigin();
+    return `${apiOrigin}/${imagePath}`;
   };
 
   const handleImageClick = (imagePath) => {

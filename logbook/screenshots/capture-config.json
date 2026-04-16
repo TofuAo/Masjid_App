@@ -1,0 +1,261 @@
+{
+  "baseUrl": "http://localhost:5173",
+  "viewport": { "width": 1280, "height": 720 },
+  "auth": {
+    "enabled": false,
+    "loginPath": "/login",
+    "usernameSelector": "input[name=\"icNumber\"]",
+    "passwordSelector": "input[name=\"password\"]",
+    "submitSelector": "button[type=\"submit\"]",
+    "username": "",
+    "password": "",
+    "postLoginPath": "/"
+  },
+  "excludeDays": [
+    { "week": 3, "day": 5 },
+    { "week": 4, "day": 1 },
+    { "week": 4, "day": 2 },
+    { "week": 5, "day": 2 },
+    { "week": 5, "day": 4 },
+    { "week": 7, "day": 5 },
+    { "week": 8, "day": 5 },
+    { "week": 10, "day": 4 },
+    { "week": 10, "day": 5 },
+    { "week": 11, "day": 1 },
+    { "week": 11, "day": 2 },
+    { "week": 12, "day": 1 },
+    { "week": 12, "day": 2 },
+    { "week": 13, "day": 1 },
+    { "week": 14, "day": 1 },
+    { "week": 14, "day": 2 },
+    { "week": 14, "day": 3 },
+    { "week": 15, "day": 2 },
+    { "week": 17, "day": 2 },
+    { "week": 20, "day": 1 },
+    { "week": 20, "day": 4 },
+    { "week": 22, "day": 5 },
+    { "week": 23, "day": 1 },
+    { "week": 23, "day": 3 },
+    { "week": 23, "day": 5 },
+    { "week": 24, "day": 1 }
+  ],
+  "topicMappings": [
+    {
+      "keywords": ["student", "pelajar", "registration", "CRUD", "list view", "detail view", "database schema", "student-related"],
+      "path": "/pelajar",
+      "selector": "main .mosque-card",
+      "caption": "Student (Pelajar) management section."
+    },
+    {
+      "keywords": ["teacher", "guru", "teacher management", "teacher registration"],
+      "path": "/guru",
+      "selector": "main .mosque-card",
+      "caption": "Teacher (Guru) management section."
+    },
+    {
+      "keywords": ["class", "kelas", "class management", "schedule", "enrollment"],
+      "path": "/kelas",
+      "selector": "main .mosque-card",
+      "caption": "Class (Kelas) management section."
+    },
+    {
+      "keywords": ["attendance", "kehadiran", "daily attendance", "attendance marking"],
+      "path": "/attendance",
+      "selector": "main .mosque-card",
+      "caption": "Attendance (Kehadiran) section."
+    },
+    {
+      "keywords": ["fee", "yuran", "payment", "terbayar", "tunggak", "fee collection"],
+      "path": "/yuran",
+      "selector": "main .mosque-card",
+      "caption": "Fee (Yuran) and payment section."
+    },
+    {
+      "keywords": ["login", "auth", "authentication", "JWT", "password"],
+      "path": "/login",
+      "selector": "form",
+      "caption": "Login page with IC and password fields."
+    },
+    {
+      "keywords": ["dashboard", "papan pemuka", "stat cards", "overview"],
+      "path": "/",
+      "selector": "main",
+      "caption": "Dashboard main content area."
+    },
+    {
+      "keywords": ["campus life", "campus management", "executive approval", "kelulusan eksekutif"],
+      "path": "/campus-life",
+      "selector": "main .mosque-card",
+      "caption": "Campus Life / Executive approval section."
+    },
+    {
+      "keywords": ["notification", "pusat notifikasi", "inbox"],
+      "path": "/notifications",
+      "selector": "main",
+      "caption": "Notification Center."
+    },
+    {
+      "keywords": ["settings", "tetapan", "configuration", "maintenance"],
+      "path": "/settings",
+      "selector": "main .mosque-card",
+      "caption": "Settings / configuration section."
+    },
+    {
+      "keywords": ["result", "keputusan", "exam", "grade"],
+      "path": "/keputusan",
+      "selector": "main .mosque-card",
+      "caption": "Results (Keputusan) section."
+    },
+    {
+      "keywords": ["report", "laporan", "export"],
+      "path": "/laporan",
+      "selector": "main .mosque-card",
+      "caption": "Reports (Laporan) section."
+    },
+    {
+      "keywords": ["ib", "imam bilal", "ib dashboard", "ib account", "payment confirmation", "ib role"],
+      "path": "/ib-dashboard",
+      "selector": "main",
+      "caption": "IB (Imam Bilal) Dashboard with payment confirmations and stats."
+    },
+    {
+      "keywords": ["pic approval", "pic approvals", "pic users", "recycle bin", "approval screen"],
+      "path": "/pic-approvals",
+      "selector": "main",
+      "caption": "PIC Approvals inbox and approval list."
+    },
+    {
+      "keywords": ["change class", "change classes", "class assignment", "class change"],
+      "path": "/change-classes",
+      "selector": "main",
+      "caption": "Change Classes form and class assignment."
+    },
+    {
+      "keywords": ["system health", "health check", "database status", "backup status"],
+      "path": "/system-health",
+      "selector": "main",
+      "caption": "System Health dashboard with DB and backup status."
+    },
+    {
+      "keywords": ["audit log", "audit trail", "admin action"],
+      "path": "/audit-logs",
+      "selector": "main",
+      "caption": "Audit Logs table of admin actions."
+    },
+    {
+      "keywords": ["permission matrix", "role access", "route access"],
+      "path": "/permission-matrix",
+      "selector": "main",
+      "caption": "Permission Matrix roles and feature access."
+    },
+    {
+      "keywords": ["maintenance mode", "maintenance banner", "503"],
+      "path": "/settings",
+      "selector": "main",
+      "caption": "Settings or maintenance mode control."
+    },
+    {
+      "keywords": ["payment history", "receipt", "pay yuran", "payment method"],
+      "path": "/payment-history",
+      "selector": "main",
+      "caption": "Payment History or Pay Yuran section."
+    },
+    {
+      "keywords": ["staff check-in", "check-in", "gps", "quick staff"],
+      "path": "/quick-checkin",
+      "selector": "main",
+      "caption": "Staff check-in page with time and optional location."
+    },
+    {
+      "keywords": ["help center", "faq", "contact", "feedback"],
+      "path": "/help",
+      "selector": "main",
+      "caption": "Help Center or contact form."
+    },
+    {
+      "keywords": ["pending teacher", "teacher document", "registration approval"],
+      "path": "/pending-teacher/documents",
+      "selector": "main",
+      "caption": "Pending Teacher Documents approval list."
+    },
+    {
+      "keywords": ["attendance take", "attendance by class", "class date attendance"],
+      "path": "/attendance/take",
+      "selector": "main",
+      "caption": "Attendance Take by class and date."
+    }
+  ],
+  "captures": [
+    { "week": 12, "day": 1, "path": "/ib-dashboard" },
+    { "week": 12, "day": 2, "path": "/ib-dashboard" },
+    { "week": 12, "day": 3, "path": "/ib-dashboard" },
+    { "week": 12, "day": 4, "path": "/ib-dashboard" },
+    { "week": 12, "day": 5, "path": "/ib-dashboard" },
+
+    { "week": 13, "day": 1, "path": "/pic-approvals" },
+    { "week": 13, "day": 2, "path": "/pic-approvals" },
+    { "week": 13, "day": 3, "path": "/pic-approvals" },
+    { "week": 13, "day": 4, "path": "/pic-approvals" },
+    { "week": 13, "day": 5, "path": "/pic-approvals" },
+
+    { "week": 14, "day": 1, "path": "/change-classes" },
+    { "week": 14, "day": 2, "path": "/change-classes" },
+    { "week": 14, "day": 3, "path": "/change-classes" },
+    { "week": 14, "day": 4, "path": "/change-classes" },
+    { "week": 14, "day": 5, "path": "/change-classes" },
+
+    { "week": 15, "day": 1, "path": "/audit-logs" },
+    { "week": 15, "day": 2, "path": "/audit-logs" },
+    { "week": 15, "day": 3, "path": "/audit-logs" },
+    { "week": 15, "day": 4, "path": "/audit-logs" },
+    { "week": 15, "day": 5, "path": "/audit-logs" },
+
+    { "week": 16, "day": 1, "path": "/system-health" },
+    { "week": 16, "day": 2, "path": "/system-health" },
+    { "week": 16, "day": 3, "path": "/system-health" },
+    { "week": 16, "day": 4, "path": "/system-health" },
+    { "week": 16, "day": 5, "path": "/system-health" },
+
+    { "week": 17, "day": 1, "path": "/" },
+    { "week": 17, "day": 2, "path": "/" },
+    { "week": 17, "day": 3, "path": "/" },
+    { "week": 17, "day": 4, "path": "/" },
+    { "week": 17, "day": 5, "path": "/" },
+
+    { "week": 18, "day": 1, "path": "/notifications" },
+    { "week": 18, "day": 2, "path": "/notifications" },
+    { "week": 18, "day": 3, "path": "/notifications" },
+    { "week": 18, "day": 4, "path": "/notifications" },
+    { "week": 18, "day": 5, "path": "/notifications" },
+
+    { "week": 19, "day": 1, "path": "/payment-history" },
+    { "week": 19, "day": 2, "path": "/payment-history" },
+    { "week": 19, "day": 3, "path": "/payment-history" },
+    { "week": 19, "day": 4, "path": "/payment-history" },
+    { "week": 19, "day": 5, "path": "/payment-history" },
+
+    { "week": 20, "day": 1, "path": "/yuran" },
+    { "week": 20, "day": 2, "path": "/yuran" },
+    { "week": 20, "day": 3, "path": "/yuran" },
+    { "week": 20, "day": 4, "path": "/yuran" },
+    { "week": 20, "day": 5, "path": "/yuran" },
+
+    { "week": 21, "day": 1, "path": "/" },
+    { "week": 21, "day": 2, "path": "/" },
+    { "week": 21, "day": 3, "path": "/" },
+    { "week": 21, "day": 4, "path": "/" },
+    { "week": 21, "day": 5, "path": "/" },
+
+    { "week": 22, "day": 1, "path": "/settings" },
+    { "week": 22, "day": 2, "path": "/settings" },
+    { "week": 22, "day": 3, "path": "/settings" },
+    { "week": 22, "day": 4, "path": "/settings" },
+    { "week": 22, "day": 5, "path": "/settings" },
+
+    { "week": 23, "day": 1, "path": "/campus-life" },
+    { "week": 23, "day": 2, "path": "/campus-life" },
+    { "week": 23, "day": 3, "path": "/campus-life" },
+    { "week": 23, "day": 4, "path": "/campus-life" },
+    { "week": 23, "day": 5, "path": "/campus-life" }
+  ]
+}
