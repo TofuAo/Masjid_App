@@ -16,7 +16,7 @@ CREATE TABLE IF NOT EXISTS pic_action_snapshots (
     pending_pic_change_id INT NULL COMMENT 'Reference to original pending_pic_changes.id',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     deleted_at TIMESTAMP NULL COMMENT 'When this record was deleted (for recycle bin)',
-    expires_at TIMESTAMP NOT NULL COMMENT 'When this snapshot expires (30 days)',
+    expires_at TIMESTAMP NULL COMMENT 'When this snapshot expires (30 days)',
     was_undone TINYINT(1) DEFAULT 0 COMMENT 'Whether this action has been undone',
     undone_at TIMESTAMP NULL COMMENT 'When this action was undone',
     undo_pending_id INT NULL COMMENT 'Reference to undo request in pending_pic_changes.id',

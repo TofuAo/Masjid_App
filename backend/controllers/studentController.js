@@ -235,7 +235,7 @@ export const createStudent = async (req, res) => {
         data: result.student
       });
     } catch (error) {
-      console.error('Create student error:', error);
+      console.error('Create student error (inner):', error);
       if (error.status === 400 || error.status === 404) {
         return res.status(error.status).json({
           success: false,
@@ -244,14 +244,16 @@ export const createStudent = async (req, res) => {
       }
       res.status(500).json({
         success: false,
-        message: 'Internal server error'
+        message: error.message || 'Internal server error',
+        stack: error.stack
       });
     }
   } catch (error) {
-    console.error('Create student error:', error);
+    console.error('Create student error (outer):', error);
     res.status(500).json({
       success: false,
-      message: 'Internal server error'
+      message: error.message || 'Internal server error',
+      stack: error.stack
     });
   }
 };

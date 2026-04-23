@@ -294,11 +294,57 @@ function AppContent() {
     window.location.reload();
   };
 
-  const handleLogout = () => {
+  const handleLogout = useCallback(() => {
     setUser(null);
     setProfileComplete(null);
     clearAuth();
-  };
+  }, []);
+
+  // Auto-logout after 10 minutes of inactivity
+  useEffect(() => {
+    if (!user) return;
+
+    let inactivityTimer;
+    const INACTIVITY_LIMIT = 10 * 60 * 1000; // 10 minutes in milliseconds
+
+    const resetTimer = () => {
+      clearTimeout(inactivityTimer);
+      inactivityTimer = setTimeout(() => {
+        handleLogout();
+        toast.info('Sesi anda telah tamat tempoh kerana tidak aktif. Sila log masuk semula.', {
+          autoClose: 8000
+        });
+      }, INACTIVITY_LIMIT);
+    };
+
+    // Initialize timer
+    resetTimer();
+
+    // Add event listeners to detect user activity
+    const activityEvents = ['mousedown', 'mousemove', 'keydown', 'scroll', 'touchstart', 'click'];
+    
+    // Use a throttle for mousemove to avoid too many function calls
+    let throttled = false;
+    const handleActivity = () => {
+      if (!throttled) {
+        resetTimer();
+        throttled = true;
+        setTimeout(() => { throttled = false; }, 1000); // Only reset timer max once per second
+      }
+    };
+
+    activityEvents.forEach(eventName => {
+      document.addEventListener(eventName, handleActivity, { passive: true });
+    });
+
+    // Cleanup function
+    return () => {
+      clearTimeout(inactivityTimer);
+      activityEvents.forEach(eventName => {
+        document.removeEventListener(eventName, handleActivity);
+      });
+    };
+  }, [user, handleLogout]);
 
   const handleProfileComplete = () => {
     setProfileComplete(true);

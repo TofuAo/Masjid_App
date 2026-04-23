@@ -15,6 +15,7 @@ const sanitizeStudentInput = (input = {}) => {
     email = null,
     password = null,
     kelas_id = null,
+    status = 'pending',
     tarikh_daftar = null
   } = input;
 

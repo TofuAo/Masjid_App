@@ -5,11 +5,11 @@ dotenv.config();
 
 // ✅ Create connection pool for masjid_app database
 const pool = mysql.createPool({
-  host: process.env.DB_HOST || 'mysql',
-  port: process.env.DB_PORT || 3306,
-  user: process.env.DB_USER || 'masjid_user',
-  password: process.env.DB_PASSWORD || 'masjid_password',
-  database: process.env.DB_NAME || 'masjid_app',
+  host: process.env.DB_HOST ?? 'mysql',
+  port: process.env.DB_PORT ?? 3306,
+  user: process.env.DB_USER ?? 'masjid_user',
+  password: process.env.DB_PASSWORD ?? 'masjid_password',
+  database: process.env.DB_NAME ?? 'masjid_app',
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0,

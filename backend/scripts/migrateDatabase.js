@@ -27,7 +27,7 @@ const migrateDatabase = async () => {
     console.log(`✅ Connected to database: ${dbName}`);
 
     // Read and execute schema SQL file
-    const schemaPath = path.join(__dirname, "../../database/masjid_app_schema.sql");
+    const schemaPath = path.join(__dirname, "../../database/masjid_app_full_schema.sql");
     
     if (!fs.existsSync(schemaPath)) {
       throw new Error(`Schema file not found: ${schemaPath}`);
@@ -46,9 +46,20 @@ const migrateDatabase = async () => {
         try {
           await connection.query(statement);
         } catch (err) {
-          // Ignore errors for "CREATE TABLE IF NOT EXISTS" style errors
-          if (!err.message.includes("already exists") && 
-              !err.message.includes("Duplicate column")) {
+          // Ignore errors for "CREATE TABLE IF NOT EXISTS", duplicate columns, or duplicate keys
+          const ignoreErrors = [
+            "already exists",
+            "Duplicate column name",
+            "Duplicate key name",
+            "Can't drop",
+            "Duplicate entry",
+            "foreign key constraint name",
+            "Duplicate FOREIGN KEY constraint name"
+          ];
+          
+          const shouldIgnore = ignoreErrors.some(msg => err.message.includes(msg));
+          
+          if (!shouldIgnore) {
             console.warn(`⚠️ Warning executing statement: ${err.message}`);
             console.warn(`Statement: ${statement.substring(0, 100)}...`);
           }

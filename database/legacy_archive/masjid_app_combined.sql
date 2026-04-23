@@ -1,0 +1,1 @@
+-- Database Schema Dump for masjid_app\n\nSET FOREIGN_KEY_CHECKS=0;\n\nSET FOREIGN_KEY_CHECKS=1;\n

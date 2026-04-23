@@ -1,0 +1,8 @@
+Error: Access denied for user 'root'@'localhost' (using password: YES)
+Error: Access denied for user 'root'@'localhost' (using password: YES)
+    at PromisePool.query (C:\MyMasjidApp\backend\node_modules\mysql2\lib\promise\pool.js:36:22)
+    at checkDatabase (file:///C:/MyMasjidApp/backend/check_schema.js:7:33)
+    at file:///C:/MyMasjidApp/backend/check_schema.js:26:1
+    at ModuleJob.run (node:internal/modules/esm/module_job:345:25)
+    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:651:26)
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)

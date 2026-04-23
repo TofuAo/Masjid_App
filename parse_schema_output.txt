@@ -1,0 +1,77 @@
+Attendance ALTERS:
+ALTER TABLE attendance 
+ALTER TABLE attendance 
+--   pool.execute(\"ALTER TABLE attendance ADD COLUMN approval_status VARCHAR(20) DEFAULT 'sent' AFTER document_confirmed\").then(() => console.log('Done')).catch(e => console.log(e.message));
+ALTER TABLE attendance 
+ALTER TABLE attendance ADD COLUMN IF NOT EXISTS catatan TEXT AFTER status;
+Fees ALTERS:
+ALTER TABLE fees 
+ALTER TABLE fees
+ALTER TABLE fees
+
+Found tables:
+CREATE TABLE users (
+CREATE TABLE students (
+CREATE TABLE teachers (
+CREATE TABLE classes (
+CREATE TABLE attendance (
+CREATE TABLE exams (
+CREATE TABLE results (
+CREATE TABLE fees (
+CREATE TABLE IF NOT EXISTS pending_pic_changes (
+CREATE TABLE IF NOT EXISTS admin_action_snapshots (
+CREATE TABLE IF NOT EXISTS class_assignments (
+CREATE TABLE IF NOT EXISTS exam_sessions (
+CREATE TABLE IF NOT EXISTS admin_logs (
+CREATE TABLE IF NOT EXISTS resit_applications (
+CREATE TABLE IF NOT EXISTS announcements (
+CREATE TABLE IF NOT EXISTS contact_submissions (
+CREATE TABLE IF NOT EXISTS documents (
+CREATE TABLE IF NOT EXISTS document_access_logs (
+CREATE TABLE IF NOT EXISTS events (
+CREATE TABLE IF NOT EXISTS event_registrations (
+CREATE TABLE IF NOT EXISTS financial_transactions (
+CREATE TABLE IF NOT EXISTS budgets (
+CREATE TABLE IF NOT EXISTS user_points (
+CREATE TABLE IF NOT EXISTS user_streaks (
+CREATE TABLE IF NOT EXISTS achievements (
+CREATE TABLE IF NOT EXISTS user_achievements (
+CREATE TABLE IF NOT EXISTS points_history (
+CREATE TABLE IF NOT EXISTS leaderboard_cache (
+CREATE TABLE IF NOT EXISTS payment_confirmations (
+CREATE TABLE IF NOT EXISTS notifications (
+CREATE TABLE IF NOT EXISTS notification_preferences (
+CREATE TABLE IF NOT EXISTS password_reset_tokens (
+CREATE TABLE IF NOT EXISTS payment_gateway_settings (
+CREATE TABLE IF NOT EXISTS payment_method_settings (
+CREATE TABLE IF NOT EXISTS payments (
+CREATE TABLE IF NOT EXISTS payment_logs (
+CREATE TABLE IF NOT EXISTS payment_reconciliation (
+CREATE TABLE IF NOT EXISTS idempotency_keys (
+CREATE TABLE IF NOT EXISTS report_templates (
+CREATE TABLE IF NOT EXISTS generated_reports (
+CREATE TABLE IF NOT EXISTS settings (
+CREATE TABLE IF NOT EXISTS staff_checkin (
+CREATE TABLE IF NOT EXISTS volunteers (
+CREATE TABLE IF NOT EXISTS volunteer_activities (
+CREATE TABLE IF NOT EXISTS volunteer_recognitions (
+CREATE TABLE IF NOT EXISTS campus_life_items (
+CREATE TABLE IF NOT EXISTS class_assignments (
+CREATE TABLE IF NOT EXISTS exam_sessions (
+CREATE TABLE IF NOT EXISTS admin_logs (
+CREATE TABLE IF NOT EXISTS permissions (
+CREATE TABLE IF NOT EXISTS role_permissions (
+CREATE TABLE IF NOT EXISTS class_change_log (
+CREATE TABLE IF NOT EXISTS archived_students (
+-- Migration: Create table to store additional roles per user
+CREATE TABLE IF NOT EXISTS user_roles (
+CREATE TABLE IF NOT EXISTS staff_checkin (
+CREATE TABLE IF NOT EXISTS ib_action_logs (
+CREATE TABLE IF NOT EXISTS ib_document_flags (
+CREATE TABLE IF NOT EXISTS ib_action_logs (
+CREATE TABLE IF NOT EXISTS ib_document_flags (
+CREATE TABLE IF NOT EXISTS memo_entries (
+CREATE TABLE IF NOT EXISTS notification_interactions (
+CREATE TABLE IF NOT EXISTS global_events (
+CREATE TABLE IF NOT EXISTS appointments (
+CREATE TABLE IF NOT EXISTS staff_checkin_attempts (

@@ -13,7 +13,7 @@ CREATE TABLE IF NOT EXISTS admin_action_snapshots (
     metadata JSON,
     created_by VARCHAR(20) NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    expires_at TIMESTAMP NOT NULL,
+    expires_at TIMESTAMP NULL,
     was_undone TINYINT(1) DEFAULT 0,
     undone_at TIMESTAMP NULL,
     INDEX idx_admin_snapshots_entity (entity_type, entity_id),
