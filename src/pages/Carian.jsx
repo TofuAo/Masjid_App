@@ -46,8 +46,8 @@ const Carian = () => {
             ? data.filter(
                 (s) =>
                   (s.nama || '').toLowerCase().includes(debouncedQuery.toLowerCase()) ||
-                  (s.ic || '').includes(debouncedQuery) ||
-                  (s.user_ic || '').includes(debouncedQuery)
+                  (s.telefon || '').includes(debouncedQuery) ||
+                  (s.user_telefon || '').includes(debouncedQuery)
               )
             : data;
           const start = (page - 1) * limit;
@@ -61,7 +61,7 @@ const Carian = () => {
             ? list.filter(
                 (u) =>
                   (u.nama || '').toLowerCase().includes(debouncedQuery.toLowerCase()) ||
-                  (u.ic || '').includes(debouncedQuery) ||
+                  (u.telefon || '').includes(debouncedQuery) ||
                   (u.email || '').toLowerCase().includes(debouncedQuery.toLowerCase())
               )
             : list;
@@ -99,7 +99,7 @@ const Carian = () => {
   const totalPages = Math.ceil(total / limit) || 1;
 
   const getColumns = () => {
-    if (scope === 'pelajar') return ['Nama', 'IC', 'Kelas'];
+    if (scope === 'pelajar') return ['Nama', 'No. Telefon', 'Kelas'];
     if (scope === 'staf') return ['Nama', 'Peranan', 'Emel'];
     if (scope === 'transfer') return ['Pelajar', 'Dari', 'Ke', 'Tarikh'];
     if (scope === 'arkib') return ['Nama', 'Kelas', 'Tahun'];
@@ -108,7 +108,7 @@ const Carian = () => {
 
   const getRowData = (row) => {
     if (scope === 'pelajar') {
-      return [row.nama || row.name, row.ic || row.user_ic || '-', row.kelas_nama || row.class_name || '-'];
+      return [row.nama || row.name, row.telefon || row.user_telefon || '-', row.kelas_nama || row.class_name || '-'];
     }
     if (scope === 'staf') {
       const roles = row.roles || (row.role ? [row.role] : []);
@@ -196,7 +196,7 @@ const Carian = () => {
                 </thead>
                 <tbody>
                   {results.map((row, i) => (
-                    <tr key={row.id || row.ic || i} className="border-b" style={{ borderColor: '#1f2937' }}>
+                    <tr key={row.id || row.telefon || i} className="border-b" style={{ borderColor: '#1f2937' }}>
                       {getRowData(row).map((cell, j) => (
                         <td key={j} className="px-4 py-3" style={{ color: '#f9fafb' }}>
                           {cell}

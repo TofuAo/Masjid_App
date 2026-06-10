@@ -14,7 +14,7 @@ export const getAllAnnouncements = async (req, res) => {
     let query = `
       SELECT a.*, u.nama as author_nama
       FROM announcements a
-      JOIN users u ON a.author_ic = u.ic
+      JOIN users u ON a.author_telefon = u.telefon
       WHERE 1=1
     `;
     const queryParams = [];
@@ -127,7 +127,7 @@ export const getAnnouncementById = async (req, res) => {
     const [announcements] = await pool.execute(`
       SELECT a.*, u.nama as author_nama
       FROM announcements a
-      JOIN users u ON a.author_ic = u.ic
+      JOIN users u ON a.author_telefon = u.telefon
       WHERE a.id = ?
     `, [id]);
 
@@ -193,7 +193,7 @@ export const createAnnouncement = async (req, res) => {
         target_audience
         // start_date and end_date are automatically set when status is 'published'
       },
-      { actorIc: req.user.ic }
+      { actorPhone: req.user.telefon }
     );
 
     res.status(201).json({
@@ -238,7 +238,7 @@ export const updateAnnouncement = async (req, res) => {
           target_audience
           // start_date and end_date are automatically set when status changes to 'published'
         },
-        { actorIc: req.user.ic }
+        { actorPhone: req.user.telefon }
       );
 
     res.json({
@@ -273,7 +273,7 @@ export const deleteAnnouncement = async (req, res) => {
     try {
       const result = await deleteAnnouncementRecord(
         id,
-        { actorIc: req.user.ic }
+        { actorPhone: req.user.telefon }
       );
 
       res.json({

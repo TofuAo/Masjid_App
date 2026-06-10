@@ -40,9 +40,9 @@ const Dashboard = () => {
           const user = JSON.parse(userStr);
           const effectiveRole = getEffectiveRole(user);
           currentUserRole = effectiveRole || user.role;
-          currentUserIC = user.ic;
+          currentUserIC = user.telefon;
           setUserRole(currentUserRole);
-          setUserIC(user.ic);
+          setUserIC(user.telefon);
         } catch (e) {
           console.error('Error parsing user:', e);
         }
@@ -61,7 +61,7 @@ const Dashboard = () => {
           
           attendanceResponse = await attendanceAPI.getAll({ 
             limit: 1000,
-            student_ic: currentUserIC,
+            student_telefon: currentUserIC,
             start_date: startDate,
             end_date: endDate
           }).catch(() => []);

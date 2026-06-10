@@ -10,8 +10,8 @@ import {
   getDashboardStats
 } from '../controllers/classController.js';
 import { authenticateToken, requireRole } from '../middleware/auth.js';
-import { isValidICFormat } from '../utils/icNormalizer.js';
-import { normalizeICMiddleware } from '../middleware/normalizeIC.js';
+import { isValidPhoneFormat } from '../utils/phoneNormalizer.js';
+import { normalizePhoneMiddleware } from '../middleware/normalizePhone.js';
 
 const router = express.Router();
 
@@ -41,11 +41,11 @@ const classValidation = [
   body('kapasiti')
     .isInt({ min: 1, max: 50 })
     .withMessage('Capacity must be between 1 and 50'),
-  body('guru_ic')
+  body('guru_telefon')
     .notEmpty()
     .withMessage('Teacher IC is required')
     .custom((value) => {
-      if (!isValidICFormat(value)) {
+      if (!isValidPhoneFormat(value)) {
         throw new Error('Teacher IC must be 12 digits (format: 123456-78-9012 or 123456789012)');
       }
       return true;
@@ -65,9 +65,10 @@ const idValidation = [
 router.get('/', getAllClasses);
 router.get('/stats', getClassStats);
 router.get('/:id', idValidation, getClassById);
-router.post('/', requireRole(['admin', 'staff']), classValidation, normalizeICMiddleware, createClass);
+router.post('/', requireRole(['admin', 'staff']), classValidation, normalizePhoneMiddleware, createClass);
 // Allow teachers to update their own classes, admins/staff can update any class
-router.put('/:id', idValidation, classValidation, normalizeICMiddleware, updateClass);
+router.put('/:id', idValidation, classValidation, normalizePhoneMiddleware, updateClass);
 router.delete('/:id', requireRole(['admin']), idValidation, deleteClass);
 
 export default router;
+

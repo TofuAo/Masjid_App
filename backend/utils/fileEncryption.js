@@ -38,7 +38,7 @@ export async function encryptAndSaveFile(fileBuffer, filePath, metadata = {}) {
     // Store encryption metadata in database
     const [result] = await pool.execute(
       `INSERT INTO encrypted_files 
-       (file_path, encrypted_path, iv, auth_tag, original_name, mime_type, user_ic, metadata, created_at)
+       (file_path, encrypted_path, iv, auth_tag, original_name, mime_type, user_telefon, metadata, created_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
       [
         filePath,
@@ -47,7 +47,7 @@ export async function encryptAndSaveFile(fileBuffer, filePath, metadata = {}) {
         authTag,
         metadata.originalName || path.basename(filePath),
         metadata.mimeType || 'application/octet-stream',
-        metadata.userIc || null,
+        metadata.userPhone || null,
         JSON.stringify(metadata)
       ]
     );

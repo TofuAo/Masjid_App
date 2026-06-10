@@ -10,7 +10,7 @@ const GuruList = ({ gurus = [], onEdit, onView, onDelete, onAdd, user }) => {
     
     const lowerSearchTerm = searchTerm.toLowerCase();
     const kepakaranArray = Array.isArray(guru.kepakaran) ? guru.kepakaran : (guru.kepakaran ? [guru.kepakaran] : []);
-    const ic = guru.IC || guru.ic || '';
+    const ic = guru.IC || guru.telefon || '';
     const telefon = guru.telefon || '';
     const nama = guru.nama || '';
     
@@ -50,9 +50,9 @@ const GuruList = ({ gurus = [], onEdit, onView, onDelete, onAdd, user }) => {
           <table className="min-w-full divide-y divide-mosque-primary-100">
             <thead className="bg-mosque-primary-50">
               <tr>
-                {['Guru', 'IC', 'Telefon', 'Kepakaran', 'Tindakan'].map(header => (
+                {['Guru', 'No. Telefon', 'Telefon', 'Kepakaran', 'Tindakan'].map(header => (
                   <th key={header} className={`px-3 sm:px-6 py-2 sm:py-3 text-left text-xs font-bold text-mosque-primary-700 uppercase tracking-wider ${
-                    header === 'IC' || header === 'Telefon' || header === 'Kepakaran' ? 'hidden md:table-cell' : ''
+                    header === 'No. Telefon' || header === 'Telefon' || header === 'Kepakaran' ? 'hidden md:table-cell' : ''
                   }`}>
                     {header}
                   </th>
@@ -62,7 +62,7 @@ const GuruList = ({ gurus = [], onEdit, onView, onDelete, onAdd, user }) => {
             <tbody className="bg-white divide-y divide-mosque-primary-100">
               {filteredGurus.map((guru, index) => (
                 <tr 
-                  key={guru.ic || guru.IC || `guru-${index}`}
+                  key={guru.telefon || guru.IC || `guru-${index}`}
                   role="button"
                   tabIndex={0}
                   className="hover:bg-emerald-50/70 cursor-pointer transition-colors duration-150"
@@ -83,7 +83,7 @@ const GuruList = ({ gurus = [], onEdit, onView, onDelete, onAdd, user }) => {
                       </div>
                     </div>
                   </td>
-                  <td className="px-3 sm:px-6 py-3 sm:py-4 text-sm text-mosque-neutral-700 hidden md:table-cell">{guru.IC || guru.ic || '-'}</td>
+                  <td className="px-3 sm:px-6 py-3 sm:py-4 text-sm text-mosque-neutral-700 hidden md:table-cell">{guru.IC || guru.telefon || '-'}</td>
                   <td className="px-3 sm:px-6 py-3 sm:py-4 text-sm text-mosque-neutral-700 hidden md:table-cell">{guru.telefon ? formatPhoneForDisplay(guru.telefon) : '-'}</td>
                   <td className="px-3 sm:px-6 py-3 sm:py-4 hidden md:table-cell">
                     <div className="flex flex-wrap gap-1">
@@ -106,7 +106,7 @@ const GuruList = ({ gurus = [], onEdit, onView, onDelete, onAdd, user }) => {
                           <button onClick={() => onEdit(guru)} className="text-blue-600 hover:text-blue-800" title="Edit">
                             <Edit size={16} />
                           </button>
-                          <button onClick={() => onDelete(guru.ic, guru)} className="text-red-600 hover:text-red-800" title="Padam">
+                          <button onClick={() => onDelete(guru.telefon, guru)} className="text-red-600 hover:text-red-800" title="Padam">
                             <Trash2 size={16} />
                           </button>
                         </>

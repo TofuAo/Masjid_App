@@ -10,7 +10,7 @@ const SESSION_TIMES_OPTIONS = ["05:00 - 06:30", "21:00 - 22:30"];
 const KelasForm = ({ kelas = null, onSubmit, onCancel, gurus = [] }) => {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
-    nama_kelas: '', level: '', sessions: [{ days: [], times: [] }], yuran: 0, guru_ic: '', kapasiti: 1
+    nama_kelas: '', level: '', sessions: [{ days: [], times: [] }], yuran: 0, guru_telefon: '', kapasiti: 1
   });
   const [validationErrors, setValidationErrors] = useState({});
   
@@ -79,7 +79,7 @@ const KelasForm = ({ kelas = null, onSubmit, onCancel, gurus = [] }) => {
         level: kelas.level || '',
         sessions: normalizedSessions,
         yuran: parseFloat(kelas.yuran) || 0,
-        guru_ic: kelas.guru_ic || '',
+        guru_telefon: kelas.guru_telefon || '',
         kapasiti: parseInt(kelas.kapasiti) || 1
       });
     }
@@ -105,8 +105,8 @@ const KelasForm = ({ kelas = null, onSubmit, onCancel, gurus = [] }) => {
 
   // Get selected teacher display name
   const getSelectedTeacherDisplay = () => {
-    if (!formData.guru_ic) return '';
-    const selectedGuru = gurus.find(g => g.ic === formData.guru_ic || g.IC === formData.guru_ic);
+    if (!formData.guru_telefon) return '';
+    const selectedGuru = gurus.find(g => g.telefon === formData.guru_telefon || g.IC === formData.guru_telefon);
     return selectedGuru ? selectedGuru.nama : '';
   };
 
@@ -115,20 +115,20 @@ const KelasForm = ({ kelas = null, onSubmit, onCancel, gurus = [] }) => {
     if (!teacherSearchTerm) return true;
     const searchLower = teacherSearchTerm.toLowerCase();
     const nama = (guru.nama || '').toLowerCase();
-    const ic = (guru.ic || guru.IC || '').toLowerCase();
+    const ic = (guru.telefon || guru.IC || '').toLowerCase();
     return nama.includes(searchLower) || ic.includes(searchLower);
   });
 
   // Handle teacher selection
-  const handleTeacherSelect = (guruIc) => {
-    setFormData(prev => ({ ...prev, guru_ic: guruIc }));
+  const handleTeacherSelect = (guruPhone) => {
+    setFormData(prev => ({ ...prev, guru_telefon: guruPhone }));
     setTeacherSearchTerm('');
     setIsTeacherDropdownOpen(false);
     // Clear validation error
-    if (validationErrors.guru_ic) {
+    if (validationErrors.guru_telefon) {
       setValidationErrors(prev => {
         const newErrors = { ...prev };
-        delete newErrors.guru_ic;
+        delete newErrors.guru_telefon;
         return newErrors;
       });
     }
@@ -178,7 +178,7 @@ const KelasForm = ({ kelas = null, onSubmit, onCancel, gurus = [] }) => {
       errors.push('Level diperlukan. Sila pilih level.');
     }
     
-    if (!formData.guru_ic || formData.guru_ic === '') {
+    if (!formData.guru_telefon || formData.guru_telefon === '') {
       errors.push('Guru diperlukan. Sila pilih guru.');
     }
     
@@ -204,8 +204,8 @@ const KelasForm = ({ kelas = null, onSubmit, onCancel, gurus = [] }) => {
       if (!formData.level || formData.level === '') {
         errorObj.level = 'Level diperlukan';
       }
-      if (!formData.guru_ic || formData.guru_ic === '') {
-        errorObj.guru_ic = 'Guru diperlukan';
+      if (!formData.guru_telefon || formData.guru_telefon === '') {
+        errorObj.guru_telefon = 'Guru diperlukan';
       }
       if (formData.sessions.length === 0) {
         errorObj.sessions = 'Sekurang-kurangnya satu sesi diperlukan';
@@ -259,10 +259,10 @@ const KelasForm = ({ kelas = null, onSubmit, onCancel, gurus = [] }) => {
             <div>
               <div className="flex items-center justify-between mb-1">
                 <label className="form-label">Guru *</label>
-                {formData.guru_ic && (
+                {formData.guru_telefon && (
                   <button
                     type="button"
-                    onClick={() => navigate(`/guru?view=${encodeURIComponent(formData.guru_ic)}`)}
+                    onClick={() => navigate(`/guru?view=${encodeURIComponent(formData.guru_telefon)}`)}
                     className="text-xs text-emerald-600 hover:text-emerald-700 flex items-center gap-1"
                     title="Lihat maklumat guru"
                   >
@@ -287,7 +287,7 @@ const KelasForm = ({ kelas = null, onSubmit, onCancel, gurus = [] }) => {
                     }}
                     placeholder="Cari guru dengan nama atau IC..."
                     required
-                    className={`input-mosque w-full pr-10 ${validationErrors.guru_ic ? 'border-red-500' : ''}`}
+                    className={`input-mosque w-full pr-10 ${validationErrors.guru_telefon ? 'border-red-500' : ''}`}
                   />
                   <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
                     {isTeacherDropdownOpen ? (
@@ -304,16 +304,16 @@ const KelasForm = ({ kelas = null, onSubmit, onCancel, gurus = [] }) => {
                     ) : (
                       filteredTeachers.map(guru => (
                         <button
-                          key={guru.ic || guru.IC}
+                          key={guru.telefon || guru.IC}
                           type="button"
-                          onClick={() => handleTeacherSelect(guru.ic || guru.IC)}
+                          onClick={() => handleTeacherSelect(guru.telefon || guru.IC)}
                           className={`w-full text-left px-4 py-2 hover:bg-emerald-50 focus:bg-emerald-50 focus:outline-none ${
-                            formData.guru_ic === (guru.ic || guru.IC) ? 'bg-emerald-100' : ''
+                            formData.guru_telefon === (guru.telefon || guru.IC) ? 'bg-emerald-100' : ''
                           }`}
                         >
                           <div className="font-medium text-gray-900">{guru.nama}</div>
-                          {guru.ic || guru.IC ? (
-                            <div className="text-xs text-gray-500">{guru.ic || guru.IC}</div>
+                          {guru.telefon || guru.IC ? (
+                            <div className="text-xs text-gray-500">{guru.telefon || guru.IC}</div>
                           ) : null}
                         </button>
                       ))
@@ -324,11 +324,11 @@ const KelasForm = ({ kelas = null, onSubmit, onCancel, gurus = [] }) => {
               {/* Hidden input for form validation */}
               <input
                 type="hidden"
-                name="guru_ic"
-                value={formData.guru_ic}
+                name="guru_telefon"
+                value={formData.guru_telefon}
                 required
               />
-              {validationErrors.guru_ic && <p className="text-red-500 text-xs mt-1">{validationErrors.guru_ic}</p>}
+              {validationErrors.guru_telefon && <p className="text-red-500 text-xs mt-1">{validationErrors.guru_telefon}</p>}
             </div>
             <div>
               <label className="form-label">Level *</label>

@@ -98,7 +98,7 @@ export const activate = async (req, res) => {
     
     // Activate maintenance mode
     const status = await activateMaintenanceMode(
-      req.user.ic,
+      req.user.telefon,
       modeType,
       reason,
       endDate
@@ -135,7 +135,7 @@ export const deactivate = async (req, res) => {
     const { reason } = req.body;
     
     const status = await deactivateMaintenanceMode(
-      req.user.ic,
+      req.user.telefon,
       reason || 'Maintenance completed'
     );
     
@@ -172,7 +172,7 @@ export const emergencyStop = async (req, res) => {
       });
     }
     
-    const result = await emergencyShutdown(req.user.ic, reason);
+    const result = await emergencyShutdown(req.user.telefon, reason);
     
     res.json({
       success: true,
@@ -231,7 +231,7 @@ export const schedule = async (req, res) => {
     }
     
     const result = await scheduleMaintenanceMode(
-      req.user.ic,
+      req.user.telefon,
       start,
       end,
       reason

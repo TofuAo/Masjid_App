@@ -303,7 +303,7 @@ export const updatePaymentGateway = async (req, res) => {
           redirectPath: '/toyyibpay-settings',
           notes: `Updated payment gateway settings for ${gatewayName}`
         },
-        actorIc: req.user.ic
+        actorPhone: req.user.telefon
       });
     }
 

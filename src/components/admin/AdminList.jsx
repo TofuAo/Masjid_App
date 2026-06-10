@@ -12,7 +12,7 @@ const AdminList = ({ admins = [], onEdit, onView, onDelete, onAdd, loading, admi
     if (!searchTerm) return true;
     const query = searchTerm.toLowerCase();
     const nama = (admin.nama || '').toLowerCase();
-    const ic = (admin.ic || admin.IC || '').toLowerCase();
+    const ic = (admin.telefon || admin.IC || '').toLowerCase();
     const email = (admin.email || '').toLowerCase();
     const telefon = (admin.telefon || '').toLowerCase();
     return nama.includes(query) || ic.includes(query) || email.includes(query) || telefon.includes(query);
@@ -114,7 +114,7 @@ const AdminList = ({ admins = [], onEdit, onView, onDelete, onAdd, loading, admi
               <tbody className="bg-white divide-y divide-gray-200">
                 {filteredAdmins.map((admin, index) => (
                   <tr 
-                    key={admin.ic || admin.IC} 
+                    key={admin.telefon || admin.IC} 
                     role="button"
                     tabIndex={0}
                     className="hover:bg-emerald-50/70 cursor-pointer fade-in transition-colors duration-150" 
@@ -134,7 +134,7 @@ const AdminList = ({ admins = [], onEdit, onView, onDelete, onAdd, loading, admi
                       </div>
                     </td>
                     <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-sm text-gray-900 hidden sm:table-cell">
-                      {(admin.ic || admin.IC) ? formatIC(admin.ic || admin.IC, true) : '-'}
+                      {(admin.telefon || admin.IC) ? formatIC(admin.telefon || admin.IC, true) : '-'}
                     </td>
                     <td className="px-3 sm:px-6 py-3 sm:py-4 text-sm text-gray-900 hidden md:table-cell">
                       {admin.email ? (
@@ -168,7 +168,7 @@ const AdminList = ({ admins = [], onEdit, onView, onDelete, onAdd, loading, admi
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
-                                onDelete(admin.ic || admin.IC, admin);
+                                onDelete(admin.telefon || admin.IC, admin);
                               }}
                               className="text-red-600 hover:text-red-900 flex items-center"
                               title="Padam"

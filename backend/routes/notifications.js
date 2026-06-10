@@ -15,3 +15,4 @@ router.post('/:id/read', markNotificationRead);
 router.post('/mark-all-read', markAllNotificationsRead);
 
 export default router;
+

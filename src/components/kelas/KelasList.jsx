@@ -26,7 +26,7 @@ const KelasList = ({ kelass = [], onEdit, onView, onDelete, onAdd, gurus = [], u
   // Check if a class belongs to the current teacher
   const isMyClass = (kelas) => {
     if (!user || user.role !== 'teacher') return false;
-    return kelas.guru_ic === user.ic;
+    return kelas.guru_telefon === user.telefon;
   };
 
   const filteredKelass = kelass.filter(kelas => {
@@ -42,13 +42,13 @@ const KelasList = ({ kelass = [], onEdit, onView, onDelete, onAdd, gurus = [], u
     return matchesSearch;
   });
 
-  const getGuruName = (guruIc) => {
-    if (!guruIc) return 'Tiada Guru';
-    const guru = gurus.find(g => g.ic === guruIc || g.id === guruIc);
+  const getGuruName = (guruPhone) => {
+    if (!guruPhone) return 'Tiada Guru';
+    const guru = gurus.find(g => g.telefon === guruPhone || g.id === guruPhone);
     return guru ? guru.nama : 'Tiada Guru';
   };
 
-  const classesByTeacher = localFilter.guru_id ? kelass.filter(k => k.guru_ic === localFilter.guru_id) : kelass;
+  const classesByTeacher = localFilter.guru_id ? kelass.filter(k => k.guru_telefon === localFilter.guru_id) : kelass;
   const applyFilter = () => {
     onFilterChange?.({
       guru_id: localFilter.guru_id || undefined,
@@ -100,7 +100,7 @@ const KelasList = ({ kelass = [], onEdit, onView, onDelete, onAdd, gurus = [], u
                     >
                       <option value="">Semua</option>
                       {(gurus || []).map(g => (
-                        <option key={g.ic} value={g.ic}>{g.nama}</option>
+                        <option key={g.telefon} value={g.telefon}>{g.nama}</option>
                       ))}
                     </select>
                   </div>
@@ -296,7 +296,7 @@ const KelasList = ({ kelass = [], onEdit, onView, onDelete, onAdd, gurus = [], u
                       return <span className="text-xs text-gray-600">-</span>;
                     })()}
                   </td>
-                  <td className="px-3 sm:px-6 py-3 sm:py-4 text-sm text-mosque-neutral-700 hidden md:table-cell">{kelas.guru_nama || getGuruName(kelas.guru_ic)}</td>
+                  <td className="px-3 sm:px-6 py-3 sm:py-4 text-sm text-mosque-neutral-700 hidden md:table-cell">{kelas.guru_nama || getGuruName(kelas.guru_telefon)}</td>
                   <td className="px-3 sm:px-6 py-3 sm:py-4 text-sm text-mosque-neutral-700">RM {Number(kelas.yuran) || 0}</td>
                   <td className="px-3 sm:px-6 py-3 sm:py-4 text-sm font-medium" onClick={(e) => e.stopPropagation()}>
                     <div className="flex space-x-3">

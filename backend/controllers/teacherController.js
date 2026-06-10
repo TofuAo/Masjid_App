@@ -18,30 +18,30 @@ export const getAllTeachers = async (req, res) => {
     // 3. Have role 'admin' AND have 'teacher' role in user_roles table
     let query = `
       SELECT 
-        u.ic, u.nama, u.email, u.telefon, u.status, 
+        u.telefon as ic, u.nama, u.email, u.telefon, u.status, 
         COALESCE(t.kepakaran, '[]') as kepakaran, 
         COUNT(DISTINCT c.id) as total_classes
       FROM (
         SELECT 
           u2.*,
           ROW_NUMBER() OVER (
-            PARTITION BY REPLACE(REPLACE(u2.ic, '-', ''), ' ', '') 
-            ORDER BY (CASE WHEN u2.role = 'teacher' THEN 0 WHEN u2.role = 'staff' THEN 1 ELSE 2 END), (CASE WHEN u2.ic LIKE '%-%' THEN 0 ELSE 1 END), u2.created_at DESC
+            PARTITION BY u2.telefon 
+            ORDER BY (CASE WHEN u2.role = 'teacher' THEN 0 WHEN u2.role = 'staff' THEN 1 ELSE 2 END), u2.created_at DESC
           ) as rn
         FROM users u2
         WHERE u2.role IN ('teacher', 'staff', 'admin')
       ) u
-      LEFT JOIN teachers t ON REPLACE(REPLACE(u.ic, '-', ''), ' ', '') = REPLACE(REPLACE(t.user_ic, '-', ''), ' ', '')
-      LEFT JOIN user_roles ur ON REPLACE(REPLACE(u.ic, '-', ''), ' ', '') = REPLACE(REPLACE(ur.user_ic, '-', ''), ' ', '') AND ur.role = 'teacher'
-      LEFT JOIN classes c ON REPLACE(REPLACE(u.ic, '-', ''), ' ', '') = REPLACE(REPLACE(c.guru_ic, '-', ''), ' ', '')
+      LEFT JOIN teachers t ON u.telefon = t.user_telefon
+      LEFT JOIN user_roles ur ON u.telefon = ur.user_telefon AND ur.role = 'teacher'
+      LEFT JOIN classes c ON u.telefon = c.guru_telefon
       WHERE u.rn = 1 
         AND (
           u.role IN ('teacher', 'staff') 
-          OR (u.role = 'admin' AND t.user_ic IS NOT NULL)
-          OR (u.role = 'admin' AND ur.user_ic IS NOT NULL)
+          OR (u.role = 'admin' AND t.user_telefon IS NOT NULL)
+          OR (u.role = 'admin' AND ur.user_telefon IS NOT NULL)
           OR (u.role = 'admin' AND EXISTS (
             SELECT 1 FROM teachers t2 
-            WHERE REPLACE(REPLACE(t2.user_ic, '-', ''), ' ', '') = REPLACE(REPLACE(u.ic, '-', ''), ' ', '')
+            WHERE t2.user_telefon = u.telefon
           ))
         )
     `;
@@ -49,7 +49,7 @@ export const getAllTeachers = async (req, res) => {
     const queryParams = [];
     
     if (search) {
-      query += ` AND (u.nama LIKE ? OR u.ic LIKE ?)`;
+      query += ` AND (u.nama LIKE ? OR u.telefon LIKE ?)`;
       const searchTerm = `%${search}%`;
       queryParams.push(searchTerm, searchTerm);
     }
@@ -61,40 +61,40 @@ export const getAllTeachers = async (req, res) => {
     
     // Add pagination (using safe pagination utility to prevent SQL injection)
     const { limit: safeLimit, offset } = getSafePagination(page, defaultLimit, 1, defaultLimit);
-    query += ` GROUP BY REPLACE(REPLACE(u.ic, '-', ''), ' ', ''), u.ic, u.nama, u.email, u.telefon, u.status, t.kepakaran, u.created_at, ur.user_ic ORDER BY u.created_at DESC LIMIT ${safeLimit} OFFSET ${offset}`;
+    query += ` GROUP BY u.telefon, u.nama, u.email, u.status, t.kepakaran, u.created_at, ur.user_telefon ORDER BY u.created_at DESC LIMIT ${safeLimit} OFFSET ${offset}`;
     
     const [teachers] = await pool.execute(query, queryParams);
     
     // Get total count for pagination (use same deduplication logic)
     let countQuery = `
-      SELECT COUNT(DISTINCT REPLACE(REPLACE(u.ic, '-', ''), ' ', '')) as total
+      SELECT COUNT(DISTINCT u.telefon) as total
       FROM (
         SELECT 
           u2.*,
           ROW_NUMBER() OVER (
-            PARTITION BY REPLACE(REPLACE(u2.ic, '-', ''), ' ', '') 
-            ORDER BY (CASE WHEN u2.role = 'teacher' THEN 0 WHEN u2.role = 'staff' THEN 1 ELSE 2 END), (CASE WHEN u2.ic LIKE '%-%' THEN 0 ELSE 1 END), u2.created_at DESC
+            PARTITION BY u2.telefon 
+            ORDER BY (CASE WHEN u2.role = 'teacher' THEN 0 WHEN u2.role = 'staff' THEN 1 ELSE 2 END), u2.created_at DESC
           ) as rn
         FROM users u2
         WHERE (u2.role IN ('teacher', 'staff', 'admin'))
       ) u
-      LEFT JOIN teachers t ON REPLACE(REPLACE(u.ic, '-', ''), ' ', '') = REPLACE(REPLACE(t.user_ic, '-', ''), ' ', '')
-      LEFT JOIN user_roles ur ON REPLACE(REPLACE(u.ic, '-', ''), ' ', '') = REPLACE(REPLACE(ur.user_ic, '-', ''), ' ', '') AND ur.role = 'teacher'
+      LEFT JOIN teachers t ON u.telefon = t.user_telefon
+      LEFT JOIN user_roles ur ON u.telefon = ur.user_telefon AND ur.role = 'teacher'
       WHERE u.rn = 1 
         AND (
           u.role IN ('teacher', 'staff') 
-          OR (u.role = 'admin' AND t.user_ic IS NOT NULL)
-          OR (u.role = 'admin' AND ur.user_ic IS NOT NULL)
+          OR (u.role = 'admin' AND t.user_telefon IS NOT NULL)
+          OR (u.role = 'admin' AND ur.user_telefon IS NOT NULL)
           OR (u.role = 'admin' AND EXISTS (
             SELECT 1 FROM teachers t2 
-            WHERE REPLACE(REPLACE(t2.user_ic, '-', ''), ' ', '') = REPLACE(REPLACE(u.ic, '-', ''), ' ', '')
+            WHERE t2.user_telefon = u.telefon
           ))
         )
     `;
     const countParams = [];
     
     if (search) {
-      countQuery += ` AND (u.nama LIKE ? OR u.ic LIKE ?)`;
+      countQuery += ` AND (u.nama LIKE ? OR u.telefon LIKE ?)`;
       const searchTerm = `%${search}%`;
       countParams.push(searchTerm, searchTerm);
     }
@@ -110,8 +110,8 @@ export const getAllTeachers = async (req, res) => {
     // Format teachers data
     const formattedTeachers = teachers.map(teacher => ({
       ...teacher,
-      IC: teacher.ic || teacher.IC, // Add uppercase IC for frontend compatibility (handle both cases)
-      ic: teacher.ic || teacher.IC, // Ensure lowercase ic exists
+      IC: teacher.telefon, // Keep IC property for frontend backward compatibility
+      ic: teacher.telefon, 
       kepakaran: teacher.kepakaran ? (typeof teacher.kepakaran === 'string' ? JSON.parse(teacher.kepakaran) : teacher.kepakaran) : []
     }));
 
@@ -163,15 +163,14 @@ export const getTeacherById = async (req, res) => {
   try {
     const { ic } = req.params;
     
-    // Normalize IC for comparison (remove hyphens and spaces)
-    const normalizedIC = ic.replace(/[-\s]/g, '');
+    const normalizedPhone = normalizePhone(ic);
     
     const [teachers] = await pool.execute(`
-      SELECT u.ic, u.nama, u.email, u.telefon, u.status, COALESCE(t.kepakaran, '[]') as kepakaran
+      SELECT u.telefon as ic, u.nama, u.email, u.telefon, u.status, COALESCE(t.kepakaran, '[]') as kepakaran
       FROM users u
-      LEFT JOIN teachers t ON REPLACE(REPLACE(u.ic, '-', ''), ' ', '') = REPLACE(REPLACE(t.user_ic, '-', ''), ' ', '')
-      WHERE REPLACE(REPLACE(u.ic, '-', ''), ' ', '') = ? AND u.role IN ('teacher', 'staff', 'admin')
-    `, [normalizedIC]);
+      LEFT JOIN teachers t ON u.telefon = t.user_telefon
+      WHERE u.telefon = ? AND u.role IN ('teacher', 'staff', 'admin')
+    `, [normalizedPhone]);
     
     if (teachers.length === 0) {
       return res.status(404).json({
@@ -188,19 +187,19 @@ export const getTeacherById = async (req, res) => {
         c.level, 
         c.sessions, 
         c.yuran, 
-        c.guru_ic, 
+        c.guru_telefon as guru_telefon, 
         c.kapasiti, 
         c.status, 
         c.jadual,
         c.created_at,
         c.updated_at,
-        COUNT(DISTINCT s.user_ic) as student_count
+        COUNT(DISTINCT s.user_telefon) as student_count
       FROM classes c
       LEFT JOIN students s ON c.id = s.kelas_id
-      WHERE REPLACE(REPLACE(c.guru_ic, '-', ''), ' ', '') = ?
-      GROUP BY c.id, c.nama_kelas, c.level, c.sessions, c.yuran, c.guru_ic, c.kapasiti, c.status, c.jadual, c.created_at, c.updated_at
+      WHERE c.guru_telefon = ?
+      GROUP BY c.id, c.nama_kelas, c.level, c.sessions, c.yuran, c.guru_telefon, c.kapasiti, c.status, c.jadual, c.created_at, c.updated_at
       ORDER BY c.created_at DESC
-    `, [normalizedIC]);
+    `, [normalizedPhone]);
     
     const teacherData = {
       ...teachers[0],
@@ -245,13 +244,12 @@ export const createTeacher = async (req, res) => {
     await connection.beginTransaction();
 
     try {
-      // Normalize IC for comparison (remove hyphens and spaces)
-      const normalizedIC = ic.replace(/[-\s]/g, '');
+      const normalizedPhone = normalizePhone(telefon || ic);
       
-      // Check if user already exists (compare normalized ICs)
+      // Check if user already exists
       const [existingUsers] = await connection.execute(
-        "SELECT * FROM users WHERE REPLACE(REPLACE(ic, '-', ''), ' ', '') = ?",
-        [normalizedIC]
+        "SELECT * FROM users WHERE telefon = ?",
+        [normalizedPhone]
       );
 
       if (existingUsers && existingUsers.length > 0) {
@@ -262,10 +260,10 @@ export const createTeacher = async (req, res) => {
         const isTeacherOrStaff = existingUser.role === 'teacher' || existingUser.role === 'staff';
         const isAdmin = existingUser.role === 'admin';
         
-        // Check if teachers table entry exists (compare normalized ICs)
+        // Check if teachers table entry exists
         const [existingTeacher] = await connection.execute(
-          "SELECT * FROM teachers WHERE REPLACE(REPLACE(user_ic, '-', ''), ' ', '') = ?",
-          [normalizedIC]
+          "SELECT * FROM teachers WHERE user_telefon = ?",
+          [normalizedPhone]
         );
         
         // If no teachers table entry, create it and update user info
@@ -301,35 +299,34 @@ export const createTeacher = async (req, res) => {
             }
             // Add teacher role to user_roles table if not exists
             const [existingTeacherRole] = await connection.execute(
-              "SELECT * FROM user_roles WHERE REPLACE(REPLACE(user_ic, '-', ''), ' ', '') = ? AND role = 'teacher'",
-              [normalizedIC]
+              "SELECT * FROM user_roles WHERE user_telefon = ? AND role = 'teacher'",
+              [normalizedPhone]
             );
             if (!existingTeacherRole || existingTeacherRole.length === 0) {
               await connection.execute(
-                "INSERT INTO user_roles (user_ic, role) VALUES (?, 'teacher')",
-                [existingUser.ic]
+                "INSERT INTO user_roles (user_telefon, role) VALUES (?, 'teacher')",
+                [normalizedPhone]
               );
             }
             
             if (updateFields.length > 0) {
-              // Use the existing user's IC format (with or without hyphens) for update
-              const updateQuery = `UPDATE users SET ${updateFields.join(', ')}, updated_at = CURRENT_TIMESTAMP WHERE REPLACE(REPLACE(ic, '-', ''), ' ', '') = ?`;
-              await connection.execute(updateQuery, [...updateValues, normalizedIC]);
+              const updateQuery = `UPDATE users SET ${updateFields.join(', ')}, updated_at = CURRENT_TIMESTAMP WHERE telefon = ?`;
+              await connection.execute(updateQuery, [...updateValues, normalizedPhone]);
             }
             
-            // Create teachers table entry using the existing user's IC format
+            // Create teachers table entry
             await connection.execute(
-              `INSERT INTO teachers (user_ic, kepakaran) 
+              `INSERT INTO teachers (user_telefon, kepakaran) 
                VALUES (?, ?)`,
-              [existingUser.ic, JSON.stringify(kepakaran || [])]
+              [normalizedPhone, JSON.stringify(kepakaran || [])]
             );
             
             // Assign classes to teacher if provided (use existing user's IC format)
             if (req.body.kelas_ids && Array.isArray(req.body.kelas_ids) && req.body.kelas_ids.length > 0) {
               for (const kelasId of req.body.kelas_ids) {
                 await connection.execute(
-                  'UPDATE classes SET guru_ic = ? WHERE id = ?',
-                  [existingUser.ic, kelasId]
+                  'UPDATE classes SET guru_telefon = ? WHERE id = ?',
+                  [normalizedPhone, kelasId]
                 );
               }
             }
@@ -337,11 +334,11 @@ export const createTeacher = async (req, res) => {
             await connection.commit();
             
             const [newTeacher] = await pool.execute(`
-              SELECT u.ic, u.nama, u.email, u.status, u.telefon, t.kepakaran
+              SELECT u.telefon as ic, u.nama, u.email, u.status, u.telefon, t.kepakaran
               FROM users u
-              JOIN teachers t ON u.ic = t.user_ic
-              WHERE REPLACE(REPLACE(u.ic, '-', ''), ' ', '') = ?
-            `, [normalizedIC]);
+              JOIN teachers t ON u.telefon = t.user_telefon
+              WHERE u.telefon = ?
+            `, [normalizedPhone]);
             
             res.status(200).json({
               success: true,
@@ -379,25 +376,25 @@ export const createTeacher = async (req, res) => {
             }
             
             if (updateFields.length > 0) {
-              const updateQuery = `UPDATE users SET ${updateFields.join(', ')}, updated_at = CURRENT_TIMESTAMP WHERE REPLACE(REPLACE(ic, '-', ''), ' ', '') = ?`;
-              await connection.execute(updateQuery, [...updateValues, normalizedIC]);
+              const updateQuery = `UPDATE users SET ${updateFields.join(', ')}, updated_at = CURRENT_TIMESTAMP WHERE telefon = ?`;
+              await connection.execute(updateQuery, [...updateValues, normalizedPhone]);
             }
             
             // Update teachers table entry
             await connection.execute(
-              `UPDATE teachers SET kepakaran = ? WHERE REPLACE(REPLACE(user_ic, '-', ''), ' ', '') = ?`,
-              [JSON.stringify(kepakaran || []), normalizedIC]
+              `UPDATE teachers SET kepakaran = ? WHERE user_telefon = ?`,
+              [JSON.stringify(kepakaran || []), normalizedPhone]
             );
             
             // Ensure teacher role exists in user_roles
             const [existingTeacherRole] = await connection.execute(
-              "SELECT * FROM user_roles WHERE REPLACE(REPLACE(user_ic, '-', ''), ' ', '') = ? AND role = 'teacher'",
-              [normalizedIC]
+              "SELECT * FROM user_roles WHERE user_telefon = ? AND role = 'teacher'",
+              [normalizedPhone]
             );
             if (!existingTeacherRole || existingTeacherRole.length === 0) {
               await connection.execute(
-                "INSERT INTO user_roles (user_ic, role) VALUES (?, 'teacher')",
-                [existingUser.ic]
+                "INSERT INTO user_roles (user_telefon, role) VALUES (?, 'teacher')",
+                [normalizedPhone]
               );
             }
             
@@ -407,7 +404,7 @@ export const createTeacher = async (req, res) => {
             return res.status(200).json({
               success: true,
               message: 'Teacher information updated successfully',
-              data: { ic: existingUser.ic, nama: nama || existingUser.nama }
+              data: { ic: normalizedPhone, nama: nama || existingUser.nama }
             });
           }
         } else {
@@ -448,24 +445,23 @@ export const createTeacher = async (req, res) => {
       const registrationStatus = req.user ? 'aktif' : 'pending';
       
       await connection.execute(
-        `INSERT INTO users (ic, nama, telefon, email, password, role, status) 
-         VALUES (?, ?, ?, ?, ?, 'teacher', ?)`,
-        [ic, nama, telefon ? normalizePhone(telefon.trim()) : null, emailValue, hashedPassword, registrationStatus]
+        `INSERT INTO users (telefon, nama, email, password, role, status) 
+         VALUES (?, ?, ?, ?, 'teacher', ?)`,
+        [normalizedPhone, nama, emailValue, hashedPassword, registrationStatus]
       );
 
       // Insert into teachers table
       await connection.execute(
-        `INSERT INTO teachers (user_ic, kepakaran) 
+        `INSERT INTO teachers (user_telefon, kepakaran) 
          VALUES (?, ?)`,
-        [ic, JSON.stringify(kepakaran)]
+        [normalizedPhone, JSON.stringify(kepakaran)]
       );
 
-      // Assign classes to teacher if provided
       if (req.body.kelas_ids && Array.isArray(req.body.kelas_ids) && req.body.kelas_ids.length > 0) {
         for (const kelasId of req.body.kelas_ids) {
           await connection.execute(
-            'UPDATE classes SET guru_ic = ? WHERE id = ?',
-            [ic, kelasId]
+            'UPDATE classes SET guru_telefon = ? WHERE id = ?',
+            [normalizedPhone, kelasId]
           );
         }
       }
@@ -473,11 +469,11 @@ export const createTeacher = async (req, res) => {
       await connection.commit();
 
       const [newTeacher] = await pool.execute(`
-        SELECT u.ic, u.nama, u.email, u.status, u.telefon, t.kepakaran
+        SELECT u.telefon as ic, u.nama, u.email, u.status, u.telefon, t.kepakaran
         FROM users u
-        JOIN teachers t ON u.ic = t.user_ic
-        WHERE u.ic = ?
-      `, [ic]);
+        JOIN teachers t ON u.telefon = t.user_telefon
+        WHERE u.telefon = ?
+      `, [normalizedPhone]);
 
       // Log admin action for undo capability
       if (req.user && req.user.role === 'admin') {
@@ -500,7 +496,7 @@ export const createTeacher = async (req, res) => {
             operationLabel: 'Cipta guru',
             redirectPath: `/guru?view=${ic}`
           },
-          actorIc: req.user.ic
+          actorPhone: req.user.telefon
         });
       }
       
@@ -554,13 +550,15 @@ export const updateTeacher = async (req, res) => {
     const { ic } = req.params;
     const { nama, telefon, email, kepakaran, password } = req.body;
 
+    const normalizedPhone = normalizePhone(telefon || ic);
+
     // Fetch existing teacher data before update for snapshot
     const [existingTeacher] = await pool.execute(`
-      SELECT u.ic, u.nama, u.email, u.status, u.telefon, t.kepakaran
+      SELECT u.telefon as ic, u.nama, u.email, u.status, u.telefon, t.kepakaran
       FROM users u
-      JOIN teachers t ON u.ic = t.user_ic
-      WHERE u.ic = ?
-    `, [ic]);
+      JOIN teachers t ON u.telefon = t.user_telefon
+      WHERE u.telefon = ?
+    `, [normalizedPhone]);
 
     if (existingTeacher.length === 0) {
       return res.status(404).json({
@@ -595,16 +593,16 @@ export const updateTeacher = async (req, res) => {
         const userSetClause = userFields.map(field => `${field} = ?`).join(', ');
         
         await connection.execute(
-          `UPDATE users SET ${userSetClause} WHERE ic = ?`,
-          [...userValues, ic]
+          `UPDATE users SET ${userSetClause} WHERE telefon = ?`,
+          [...userValues, normalizedPhone]
         );
       }
 
       // Update teachers table if kepakaran is provided
       if (kepakaran !== undefined) {
         await connection.execute(
-          `UPDATE teachers SET kepakaran = ? WHERE user_ic = ?`,
-          [JSON.stringify(kepakaran), ic]
+          `UPDATE teachers SET kepakaran = ? WHERE user_telefon = ?`,
+          [JSON.stringify(kepakaran), normalizedPhone]
         );
       }
 
@@ -612,16 +610,16 @@ export const updateTeacher = async (req, res) => {
       if (req.body.kelas_ids !== undefined) {
         // First, remove teacher from all classes
         await connection.execute(
-          'UPDATE classes SET guru_ic = NULL WHERE guru_ic = ?',
-          [ic]
+          'UPDATE classes SET guru_telefon = NULL WHERE guru_telefon = ?',
+          [normalizedPhone]
         );
         
         // Then assign teacher to selected classes
         if (Array.isArray(req.body.kelas_ids) && req.body.kelas_ids.length > 0) {
           for (const kelasId of req.body.kelas_ids) {
             await connection.execute(
-              'UPDATE classes SET guru_ic = ? WHERE id = ?',
-              [ic, kelasId]
+              'UPDATE classes SET guru_telefon = ? WHERE id = ?',
+              [normalizedPhone, kelasId]
             );
           }
         }
@@ -630,11 +628,11 @@ export const updateTeacher = async (req, res) => {
       await connection.commit();
 
       const [updatedTeacher] = await pool.execute(`
-        SELECT u.ic, u.nama, u.email, u.status, u.telefon, t.kepakaran
+        SELECT u.telefon as ic, u.nama, u.email, u.status, u.telefon, t.kepakaran
         FROM users u
-        JOIN teachers t ON u.ic = t.user_ic
-        WHERE u.ic = ?
-      `, [ic]);
+        JOIN teachers t ON u.telefon = t.user_telefon
+        WHERE u.telefon = ?
+      `, [normalizedPhone]);
 
       // Log admin action for undo capability
       if (req.user && req.user.role === 'admin') {
@@ -657,7 +655,7 @@ export const updateTeacher = async (req, res) => {
             operationLabel: 'Kemas kini guru',
             redirectPath: `/guru?view=${ic}`
           },
-          actorIc: req.user.ic
+          actorPhone: req.user.telefon
         });
       }
       
@@ -689,13 +687,15 @@ export const deleteTeacher = async (req, res) => {
   try {
     const { ic } = req.params;
     
+    const normalizedPhone = normalizePhone(ic);
+    
     // Fetch teacher data before deletion for snapshot
     const [existingTeacher] = await pool.execute(`
-      SELECT u.ic, u.nama, u.email, u.status, u.telefon, t.kepakaran
+      SELECT u.telefon as ic, u.nama, u.email, u.status, u.telefon, t.kepakaran
       FROM users u
-      JOIN teachers t ON u.ic = t.user_ic
-      WHERE u.ic = ? AND u.role IN ('teacher', 'staff')
-    `, [ic]);
+      JOIN teachers t ON u.telefon = t.user_telefon
+      WHERE u.telefon = ? AND u.role IN ('teacher', 'staff')
+    `, [normalizedPhone]);
 
     if (existingTeacher.length === 0) {
       return res.status(404).json({
@@ -725,13 +725,13 @@ export const deleteTeacher = async (req, res) => {
           operationLabel: 'Padam guru',
           redirectPath: '/guru'
         },
-        actorIc: req.user.ic
+        actorPhone: req.user.telefon
       });
     }
     
     // The ON DELETE CASCADE in the database schema will handle deleting the teacher record.
     // We just need to delete the user record.
-    const [result] = await pool.execute("DELETE FROM users WHERE ic = ? AND role IN ('teacher', 'staff')", [ic]);
+    const [result] = await pool.execute("DELETE FROM users WHERE telefon = ? AND role IN ('teacher', 'staff')", [normalizedPhone]);
 
     if (result.affectedRows === 0) {
       return res.status(404).json({
@@ -807,23 +807,23 @@ export const registerTeacher = async (req, res) => {
     const { nama, ic, telefon, email, password, kepakaran } = req.body;
     
     // Normalize email (optional field)
-    const emailValue = email && email.trim() !== '' ? email.trim() : null;
+    const normalizedPhone = normalizePhone(telefon || ic);
 
     const connection = await pool.getConnection();
     await connection.beginTransaction();
 
     try {
-      // Check if user already exists by IC
+      // Check if user already exists by phone
       const [existingUsers] = await connection.execute(
-        "SELECT ic, nama, role, status FROM users WHERE ic = ?",
-        [ic]
+        "SELECT telefon as ic, nama, role, status FROM users WHERE telefon = ?",
+        [normalizedPhone]
       );
 
       if (existingUsers && existingUsers.length > 0) {
         const existingUser = existingUsers[0];
         const [existingTeacherRoles] = await connection.execute(
-          'SELECT id FROM user_roles WHERE user_ic = ? AND role = ?',
-          [ic, 'teacher']
+          'SELECT id FROM user_roles WHERE user_telefon = ? AND role = ?',
+          [normalizedPhone, 'teacher']
         );
 
         if (existingUser.role === 'teacher' || existingTeacherRoles.length > 0) {
@@ -839,7 +839,7 @@ export const registerTeacher = async (req, res) => {
       // Check if email already exists (if provided)
       if (emailValue) {
         const [existingEmails] = await connection.execute(
-          "SELECT ic, nama, role FROM users WHERE email = ?",
+          "SELECT telefon as ic, nama, role FROM users WHERE email = ?",
           [emailValue]
         );
 
@@ -900,45 +900,45 @@ export const registerTeacher = async (req, res) => {
           `
             UPDATE users
             SET ${updateFields.join(', ')}, updated_at = CURRENT_TIMESTAMP
-            WHERE ic = ?
+            WHERE telefon = ?
           `,
-          [...updateParams, ic]
+          [...updateParams, normalizedPhone]
         );
 
         // Insert teacher role (ignore if already exists)
         await connection.execute(
-          'INSERT IGNORE INTO user_roles (user_ic, role) VALUES (?, ?)',
-          [ic, 'teacher']
+          'INSERT IGNORE INTO user_roles (user_telefon, role) VALUES (?, ?)',
+          [normalizedPhone, 'teacher']
         );
 
         // Check if teachers entry already exists
         const [existingTeacher] = await connection.execute(
-          'SELECT user_ic FROM teachers WHERE user_ic = ?',
-          [ic]
+          'SELECT user_telefon FROM teachers WHERE user_telefon = ?',
+          [normalizedPhone]
         );
 
         if (existingTeacher.length === 0) {
           await connection.execute(
-            `INSERT INTO teachers (user_ic, kepakaran) 
+            `INSERT INTO teachers (user_telefon, kepakaran) 
              VALUES (?, ?)`,
-            [ic, JSON.stringify(kepakaran)]
+            [normalizedPhone, JSON.stringify(kepakaran)]
           );
         } else {
           // Update existing teachers entry
           await connection.execute(
-            `UPDATE teachers SET kepakaran = ? WHERE user_ic = ?`,
-            [JSON.stringify(kepakaran), ic]
+            `UPDATE teachers SET kepakaran = ? WHERE user_telefon = ?`,
+            [JSON.stringify(kepakaran), normalizedPhone]
           );
         }
 
         await connection.commit();
 
         const [newTeacher] = await pool.execute(`
-          SELECT u.ic, u.nama, u.email, u.status, u.telefon, t.kepakaran, u.created_at
+          SELECT u.telefon as ic, u.nama, u.email, u.status, u.telefon, t.kepakaran, u.created_at
           FROM users u
-          JOIN teachers t ON u.ic = t.user_ic
-          WHERE u.ic = ?
-        `, [ic]);
+          JOIN teachers t ON u.telefon = t.user_telefon
+          WHERE u.telefon = ?
+        `, [normalizedPhone]);
 
         const teacherData = {
           ...newTeacher[0],
@@ -958,27 +958,27 @@ export const registerTeacher = async (req, res) => {
       // Email is optional, status is always 'pending' for public registration
       
       await connection.execute(
-        `INSERT INTO users (ic, nama, telefon, email, password, role, status) 
-         VALUES (?, ?, ?, ?, ?, 'teacher', 'pending')`,
-        [ic, nama.trim(), telefon ? normalizePhone(telefon.trim()) : null, emailValue, hashedPassword]
+        `INSERT INTO users (telefon, nama, email, password, role, status) 
+         VALUES (?, ?, ?, ?, 'teacher', 'pending')`,
+        [normalizedPhone, nama.trim(), emailValue, hashedPassword]
       );
 
       // Insert into teachers table
       await connection.execute(
-        `INSERT INTO teachers (user_ic, kepakaran) 
+        `INSERT INTO teachers (user_telefon, kepakaran) 
          VALUES (?, ?)`,
-        [ic, JSON.stringify(kepakaran)]
+        [normalizedPhone, JSON.stringify(kepakaran)]
       );
 
       await connection.commit();
 
       // Fetch the newly created teacher (without password)
       const [newTeacher] = await pool.execute(`
-        SELECT u.ic, u.nama, u.email, u.status, u.telefon, t.kepakaran, u.created_at
+        SELECT u.telefon as ic, u.nama, u.email, u.status, u.telefon, t.kepakaran, u.created_at
         FROM users u
-        JOIN teachers t ON u.ic = t.user_ic
-        WHERE u.ic = ?
-      `, [ic]);
+        JOIN teachers t ON u.telefon = t.user_telefon
+        WHERE u.telefon = ?
+      `, [normalizedPhone]);
       
       const teacherData = {
         ...newTeacher[0],
@@ -1040,17 +1040,17 @@ export const getUnassignedStaffTeachers = async (req, res) => {
     // 1. Have role 'teacher' or 'staff', OR
     // 2. Have an entry in the teachers table (regardless of role - e.g., admin who is also a teacher)
     let query = `
-      SELECT DISTINCT u.ic, u.nama, u.email, u.telefon, u.status, u.role, u.created_at,
-             CASE WHEN t.user_ic IS NOT NULL THEN 1 ELSE 0 END as has_teacher_entry
+      SELECT DISTINCT u.telefon, u.nama, u.email, u.telefon, u.status, u.role, u.created_at,
+             CASE WHEN t.user_telefon IS NOT NULL THEN 1 ELSE 0 END as has_teacher_entry
       FROM users u
-      LEFT JOIN teachers t ON REPLACE(REPLACE(u.ic, '-', ''), ' ', '') = REPLACE(REPLACE(t.user_ic, '-', ''), ' ', '')
-      WHERE u.role IN ('teacher', 'staff', 'admin') OR t.user_ic IS NOT NULL
+      LEFT JOIN teachers t ON REPLACE(REPLACE(u.telefon, '-', ''), ' ', '') = REPLACE(REPLACE(t.user_telefon, '-', ''), ' ', '')
+      WHERE u.role IN ('teacher', 'staff', 'admin') OR t.user_telefon IS NOT NULL
     `;
     
     const queryParams = [];
     
     if (search) {
-      query += ` AND (u.nama LIKE ? OR u.ic LIKE ?)`;
+      query += ` AND (u.nama LIKE ? OR u.telefon LIKE ?)`;
       const searchTerm = `%${search}%`;
       queryParams.push(searchTerm, searchTerm);
     }
@@ -1063,15 +1063,15 @@ export const getUnassignedStaffTeachers = async (req, res) => {
     
     // Get total count
     let countQuery = `
-      SELECT COUNT(DISTINCT u.ic) as total
+      SELECT COUNT(DISTINCT u.telefon) as total
       FROM users u
-      LEFT JOIN teachers t ON REPLACE(REPLACE(u.ic, '-', ''), ' ', '') = REPLACE(REPLACE(t.user_ic, '-', ''), ' ', '')
-      WHERE u.role IN ('teacher', 'staff', 'admin') OR t.user_ic IS NOT NULL
+      LEFT JOIN teachers t ON REPLACE(REPLACE(u.telefon, '-', ''), ' ', '') = REPLACE(REPLACE(t.user_telefon, '-', ''), ' ', '')
+      WHERE u.role IN ('teacher', 'staff', 'admin') OR t.user_telefon IS NOT NULL
     `;
     const countParams = [];
     
     if (search) {
-      countQuery += ` AND (u.nama LIKE ? OR u.ic LIKE ?)`;
+      countQuery += ` AND (u.nama LIKE ? OR u.telefon LIKE ?)`;
       const searchTerm = `%${search}%`;
       countParams.push(searchTerm, searchTerm);
     }
@@ -1106,7 +1106,7 @@ export const convertUserToTeacher = async (req, res) => {
     if (!ic) {
       return res.status(400).json({
         success: false,
-        message: 'IC number is required'
+        message: 'Nombor telefon diperlukan'
       });
     }
     
@@ -1136,7 +1136,7 @@ export const convertUserToTeacher = async (req, res) => {
       
       // Check if teachers table entry already exists
       const [existingTeacher] = await connection.execute(
-        "SELECT * FROM teachers WHERE REPLACE(REPLACE(user_ic, '-', ''), ' ', '') = ?",
+        "SELECT * FROM teachers WHERE REPLACE(REPLACE(user_telefon, '-', ''), ' ', '') = ?",
         [normalizedIC]
       );
       
@@ -1159,19 +1159,19 @@ export const convertUserToTeacher = async (req, res) => {
       
       // Create teachers table entry
       await connection.execute(
-        `INSERT INTO teachers (user_ic, kepakaran) 
+        `INSERT INTO teachers (user_telefon, kepakaran) 
          VALUES (?, ?)`,
-        [user.ic, JSON.stringify(kepakaran || [])]
+        [user.telefon, JSON.stringify(kepakaran || [])]
       );
       
       await connection.commit();
       
       // Fetch the newly created teacher
       const [newTeacher] = await pool.execute(`
-        SELECT u.ic, u.nama, u.email, u.status, u.telefon, u.role, t.kepakaran
+        SELECT u.telefon, u.nama, u.email, u.status, u.telefon, u.role, t.kepakaran
         FROM users u
-        JOIN teachers t ON u.ic = t.user_ic
-        WHERE REPLACE(REPLACE(u.ic, '-', ''), ' ', '') = ?
+        JOIN teachers t ON u.telefon = t.user_telefon
+        WHERE REPLACE(REPLACE(u.telefon, '-', ''), ' ', '') = ?
       `, [normalizedIC]);
       
       const teacherData = {
@@ -1186,16 +1186,16 @@ export const convertUserToTeacher = async (req, res) => {
         await createSnapshot({
           entityType: 'teacher',
           entityId: 0,
-          entityIdentifier: user.ic,
+          entityIdentifier: user.telefon,
           operation: 'create',
           data: teacherData,
           metadata: {
             title: user.nama,
             nama: user.nama,
             operationLabel: 'Tukar pengguna kepada guru',
-            redirectPath: `/guru?view=${user.ic}`
+            redirectPath: `/guru?view=${user.telefon}`
           },
-          actorIc: req.user.ic
+          actorPhone: req.user.telefon
         });
       }
       

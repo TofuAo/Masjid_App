@@ -17,3 +17,4 @@ router.post('/generate', authenticateToken, generateText);
 router.post('/generate/batch', authenticateToken, generateBatch);
 
 export default router;
+

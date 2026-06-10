@@ -13,10 +13,10 @@ import { pool } from '../config/database.js';
 
 const VALID_ROLES = ['admin', 'pic', 'staff', 'teacher', 'ib'];
 
-async function assignRolesToUser(userIc, roles) {
+async function assignRolesToUser(userPhone, roles) {
   try {
     // Normalize IC (remove hyphens)
-    const normalizedIc = userIc.replace(/-/g, '');
+    const normalizedIc = userPhone.replace(/-/g, '');
     
     // Verify user exists
     const [users] = await pool.execute(
@@ -25,12 +25,12 @@ async function assignRolesToUser(userIc, roles) {
     );
 
     if (users.length === 0) {
-      console.error(`❌ User with IC ${userIc} not found`);
+      console.error(`❌ User with IC ${userPhone} not found`);
       process.exit(1);
     }
 
     const user = users[0];
-    console.log(`✅ Found user: ${user.nama} (IC: ${user.ic})`);
+    console.log(`✅ Found user: ${user.nama} (IC: ${user.telefon})`);
     console.log(`   Current primary role: ${user.role}`);
 
     // Validate roles
@@ -44,16 +44,16 @@ async function assignRolesToUser(userIc, roles) {
 
     // Remove existing roles for this user (except primary role in users table)
     await pool.execute(
-      'DELETE FROM user_roles WHERE user_ic = ?',
-      [user.ic]
+      'DELETE FROM user_roles WHERE user_telefon = ?',
+      [user.telefon]
     );
 
     // Insert new roles
     for (const role of validRoles) {
       try {
         await pool.execute(
-          'INSERT INTO user_roles (user_ic, role) VALUES (?, ?)',
-          [user.ic, role.toLowerCase()]
+          'INSERT INTO user_roles (user_telefon, role) VALUES (?, ?)',
+          [user.telefon, role.toLowerCase()]
         );
         console.log(`   ✅ Assigned role: ${role}`);
       } catch (error) {
@@ -67,8 +67,8 @@ async function assignRolesToUser(userIc, roles) {
 
     // Verify roles were assigned
     const [assignedRoles] = await pool.execute(
-      'SELECT role FROM user_roles WHERE user_ic = ?',
-      [user.ic]
+      'SELECT role FROM user_roles WHERE user_telefon = ?',
+      [user.telefon]
     );
 
     console.log(`\n✅ Successfully assigned roles to ${user.nama}:`);
@@ -91,6 +91,6 @@ if (args.length < 2) {
   process.exit(1);
 }
 
-const [userIc, ...roles] = args;
-assignRolesToUser(userIc, roles);
+const [userPhone, ...roles] = args;
+assignRolesToUser(userPhone, roles);
 

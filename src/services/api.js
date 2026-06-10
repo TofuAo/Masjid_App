@@ -5,6 +5,7 @@ const TOKEN_EXPIRY_KEY = 'authTokenExpiry';
 
 const removeStoredAuth = () => {
   localStorage.removeItem('authToken');
+  localStorage.removeItem('token'); // legacy key cleanup
   localStorage.removeItem('user');
   localStorage.removeItem(TOKEN_EXPIRY_KEY);
 };
@@ -55,7 +56,7 @@ api.interceptors.request.use(
       });
     }
 
-    const token = localStorage.getItem('authToken');
+    const token = localStorage.getItem('authToken') || localStorage.getItem('token');
     // Don't log successful API requests to reduce console noise
     // Only log if there's an issue (handled in response interceptor)
     if (token) {
@@ -267,13 +268,13 @@ export const authAPI = {
     }
   },
   approveRegistration: (data) => {
-    // Support both old format (just user_ic string) and new format (object with user_ic and approval_notes)
-    const payload = typeof data === 'string' ? { user_ic: data } : data;
+    // Support both old format (just user_telefon string) and new format (object with user_telefon and approval_notes)
+    const payload = typeof data === 'string' ? { user_telefon: data } : data;
     return api.post('/auth/approve-registration', payload);
   },
   rejectRegistration: (data) => {
-    // Support both old format (just user_ic string) and new format (object with user_ic and rejection_notes)
-    const payload = typeof data === 'string' ? { user_ic: data } : data;
+    // Support both old format (just user_telefon string) and new format (object with user_telefon and rejection_notes)
+    const payload = typeof data === 'string' ? { user_telefon: data } : data;
     return api.post('/auth/reject-registration', payload);
   },
   getPreferences: () => api.get('/auth/preferences'),
@@ -550,6 +551,7 @@ export const examsAPI = {
 export const setAuthToken = (token, expiresAt) => {
   if (token) {
     localStorage.setItem('authToken', token);
+    localStorage.setItem('token', token); // keep legacy consumers working
     if (expiresAt) {
       localStorage.setItem(TOKEN_EXPIRY_KEY, String(expiresAt));
     }
@@ -563,7 +565,7 @@ export const getAuthToken = () => {
     removeStoredAuth();
     return null;
   }
-  return localStorage.getItem('authToken');
+  return localStorage.getItem('authToken') || localStorage.getItem('token');
 };
 
 export const clearAuth = () => {

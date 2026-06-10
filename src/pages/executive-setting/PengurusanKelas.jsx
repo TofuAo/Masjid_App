@@ -59,7 +59,7 @@ const PengurusanKelas = () => {
         level: formData.details || '',
         sessions: JSON.stringify(sessions),
         yuran: 0,
-        guru_ic: null,
+        guru_telefon: null,
         kapasiti: 30,
       });
       toast.success('Kelas berjaya ditambah.');

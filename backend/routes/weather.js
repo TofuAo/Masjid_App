@@ -11,3 +11,4 @@ router.get('/current', authenticateToken, getCurrentWeather);
 router.delete('/cache', authenticateToken, clearWeatherCache);
 
 export default router;
+

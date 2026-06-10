@@ -106,7 +106,7 @@ export const approvePendingChange = async (req, res) => {
 
     const result = await approvePendingPicChange({
       id: Number(id),
-      adminIc: req.user.ic,
+      adminIc: req.user.telefon,
       notes
     });
 
@@ -144,7 +144,7 @@ export const rejectPendingChange = async (req, res) => {
 
     const result = await rejectPendingPicChange({
       id: Number(id),
-      adminIc: req.user.ic,
+      adminIc: req.user.telefon,
       notes
     });
 

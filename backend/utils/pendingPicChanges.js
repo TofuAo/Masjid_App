@@ -64,11 +64,11 @@ export const createPendingPicChange = async ({
   entityId = null,
   payload,
   metadata = null,
-  actorIc,
+  actorPhone,
   requestMethod,
   requestPath
 }) => {
-  if (!actionKey || !entityType || !payload || !actorIc || !requestMethod || !requestPath) {
+  if (!actionKey || !entityType || !payload || !actorPhone || !requestMethod || !requestPath) {
     throw new Error('Missing required fields when creating pending PIC change.');
   }
 
@@ -80,7 +80,7 @@ export const createPendingPicChange = async ({
     actionKey,
     entityType,
     entityId,
-    actorIc,
+    actorPhone,
     requestMethod,
     requestPath
   });
@@ -89,7 +89,7 @@ export const createPendingPicChange = async ({
     `INSERT INTO pending_pic_changes
       (action_key, entity_type, entity_id, request_method, request_path, payload, metadata, created_by)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-    [actionKey, entityType, entityId, requestMethod, requestPath, payloadJson, metadataJson, actorIc]
+    [actionKey, entityType, entityId, requestMethod, requestPath, payloadJson, metadataJson, actorPhone]
   );
 
   console.log(`[PENDING PIC] ✅ Created pending change with ID: ${result.insertId}`);
@@ -213,7 +213,7 @@ export const approvePendingPicChange = async ({ id, adminIc, notes = null }) => 
       payload,
       metadata,
       entityId: change.entity_id,
-      actorIc: change.created_by,
+      actorPhone: change.created_by,
       adminIc,
       pendingId: id,
       connection
@@ -264,7 +264,7 @@ export const approvePendingPicChange = async ({ id, adminIc, notes = null }) => 
           operation: operation,
           data: snapshotData,
           metadata: metadata,
-          picIc: change.created_by,
+          picPhone: change.created_by,
           approvedBy: adminIc,
           pendingPicChangeId: id
         });
@@ -375,9 +375,9 @@ export const ensurePendingPicTable = async () => {
  * Cancel a pending PIC change (before admin approval)
  * Only the PIC who created it can cancel it
  */
-export const cancelPendingPicChange = async ({ id, picIc }) => {
-  if (!id || !picIc) {
-    throw new Error('cancelPendingPicChange requires id and picIc.');
+export const cancelPendingPicChange = async ({ id, picPhone }) => {
+  if (!id || !picPhone) {
+    throw new Error('cancelPendingPicChange requires id and picPhone.');
   }
 
   await ensureTable();
@@ -398,7 +398,7 @@ export const cancelPendingPicChange = async ({ id, picIc }) => {
     const change = rows[0];
     
     // Only allow PIC who created it to cancel
-    if (change.created_by !== picIc) {
+    if (change.created_by !== picPhone) {
       throw new Error('You can only cancel your own pending requests.');
     }
 

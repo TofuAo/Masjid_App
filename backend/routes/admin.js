@@ -14,3 +14,4 @@ router.use('/classes', adminClassesRoutes);
 router.get('/students/:id/history', requirePermission('class.view'), getAdminStudentHistory);
 
 export default router;
+

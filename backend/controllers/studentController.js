@@ -8,12 +8,7 @@ import {
 } from '../services/studentService.js';
 import { getSafePagination } from '../utils/pagination.js';
 
-const normalizeIcForQuery = (ic) => {
-  if (typeof ic !== 'string') {
-    return ic;
-  }
-  return ic.replace(/-/g, '');
-};
+import { normalizePhone } from '../utils/phoneNormalizer.js';
 
 export const getAllStudents = async (req, res) => {
   try {
@@ -36,7 +31,7 @@ export const getAllStudents = async (req, res) => {
     // Only show active students (those with entries in students table, not archived)
     let query = `
       SELECT 
-        u.ic, 
+        u.telefon as ic, 
         u.nama, 
         u.email, 
         u.telefon, 
@@ -47,11 +42,11 @@ export const getAllStudents = async (req, res) => {
         c.nama_kelas,
         c.level,
         t.nama as guru_nama,
-        t.ic as guru_ic
+        t.telefon as guru_telefon
       FROM users u
-      INNER JOIN students s ON u.ic = s.user_ic
+      INNER JOIN students s ON u.telefon = s.user_telefon
       LEFT JOIN classes c ON s.kelas_id = c.id
-      LEFT JOIN users t ON c.guru_ic = t.ic
+      LEFT JOIN users t ON c.guru_telefon = t.telefon
       WHERE u.role = 'student'
     `;
 
@@ -59,12 +54,12 @@ export const getAllStudents = async (req, res) => {
 
     // If user is a teacher, only show students in their classes
     if (req.user && req.user.role === 'teacher') {
-      query += ` AND c.guru_ic = ?`;
-      queryParams.push(req.user.ic);
+      query += ` AND c.guru_telefon = ?`;
+      queryParams.push(req.user.telefon);
     }
 
     if (search) {
-      query += ` AND (u.nama LIKE ? OR u.ic LIKE ?)`;
+      query += ` AND (u.nama LIKE ? OR u.telefon LIKE ?)`;
       const searchTerm = `%${search}%`;
       queryParams.push(searchTerm, searchTerm);
     }
@@ -83,7 +78,7 @@ export const getAllStudents = async (req, res) => {
     // Format students data to match frontend expectations
     const formattedStudents = students.map(student => ({
       ...student,
-      IC: student.ic, // Add uppercase IC for frontend compatibility
+      IC: student.telefon, // Add uppercase IC for frontend compatibility
       kelas_id: student.kelas_id || null,
       nama_kelas: student.nama_kelas || 'Tiada Kelas',
       umur: student.umur || null
@@ -94,7 +89,7 @@ export const getAllStudents = async (req, res) => {
     let countQuery = `
       SELECT COUNT(*) as total
       FROM users u
-      INNER JOIN students s ON u.ic = s.user_ic
+      INNER JOIN students s ON u.telefon = s.user_telefon
       LEFT JOIN classes c ON s.kelas_id = c.id
       WHERE u.role = 'student'
     `;
@@ -102,12 +97,12 @@ export const getAllStudents = async (req, res) => {
 
     // If user is a teacher, only count students in their classes
     if (req.user && req.user.role === 'teacher') {
-      countQuery += ` AND c.guru_ic = ?`;
-      countParams.push(req.user.ic);
+      countQuery += ` AND c.guru_telefon = ?`;
+      countParams.push(req.user.telefon);
     }
 
     if (search) {
-      countQuery += ` AND (u.nama LIKE ? OR u.ic LIKE ?)`;
+      countQuery += ` AND (u.nama LIKE ? OR u.telefon LIKE ?)`;
       const searchTerm = `%${search}%`;
       countParams.push(searchTerm, searchTerm);
     }
@@ -147,8 +142,8 @@ export const getAllStudents = async (req, res) => {
 export const getStudentById = async (req, res) => {
   try {
     const { ic } = req.params;
-    const cleanedIc = normalizeIcForQuery(ic);
-    const cacheKey = `student:${ic}`;
+    const cleanedPhone = normalizePhone(ic);
+    const cacheKey = `student:${cleanedPhone}`;
 
     // Clear cache for this student to ensure fresh data with teacher information
     // This ensures we always get the latest data including teacher details
@@ -158,7 +153,7 @@ export const getStudentById = async (req, res) => {
 
     const [students] = await pool.execute(`
       SELECT 
-        u.ic, 
+        u.telefon as ic, 
         u.nama, 
         u.email, 
         u.status, 
@@ -170,13 +165,13 @@ export const getStudentById = async (req, res) => {
         c.nama_kelas,
         c.level,
         t.nama as guru_nama,
-        t.ic as guru_ic
+        t.telefon as guru_telefon
       FROM users u
-      JOIN students s ON u.ic = s.user_ic
+      JOIN students s ON u.telefon = s.user_telefon
       LEFT JOIN classes c ON s.kelas_id = c.id
-      LEFT JOIN users t ON c.guru_ic = t.ic
-      WHERE REPLACE(u.ic, '-', '') = ? AND u.role = 'student'
-    `, [cleanedIc]);
+      LEFT JOIN users t ON c.guru_telefon = t.telefon
+      WHERE u.telefon = ? AND u.role = 'student'
+    `, [cleanedPhone]);
 
     if (students.length === 0) {
       return res.status(404).json({
@@ -192,7 +187,7 @@ export const getStudentById = async (req, res) => {
       kelas_id: studentData.kelas_id,
       nama_kelas: studentData.nama_kelas,
       guru_nama: studentData.guru_nama,
-      guru_ic: studentData.guru_ic
+      guru_telefon: studentData.guru_telefon
     });
 
     const response = {
@@ -228,7 +223,7 @@ export const createStudent = async (req, res) => {
     }
 
     try {
-      const result = await createStudentRecord(req.body, { actorIc: req.user.ic });
+      const result = await createStudentRecord(req.body, { actorPhone: req.user.telefon });
       res.status(201).json({
         success: true,
         message: 'Student created successfully',
@@ -282,7 +277,7 @@ export const updateStudent = async (req, res) => {
     }
 
     try {
-      const result = await updateStudentRecord(req.params.ic, req.body, { actorIc: req.user.ic });
+      const result = await updateStudentRecord(req.params.telefon, req.body, { actorPhone: req.user.telefon });
       res.json({
         success: true,
         message: 'Student updated successfully',
@@ -313,7 +308,7 @@ export const updateStudent = async (req, res) => {
 export const deleteStudent = async (req, res) => {
   try {
     try {
-      const result = await deleteStudentRecord(req.params.ic, { actorIc: req.user.ic });
+      const result = await deleteStudentRecord(req.params.telefon, { actorPhone: req.user.telefon });
       res.json({
         success: true,
         message: 'Student deleted successfully',
@@ -360,7 +355,7 @@ export const getStudentStats = async (req, res) => {
         0 as on_leave,
         SUM(CASE WHEN DATE(u.created_at) >= DATE_SUB(CURDATE(), INTERVAL 1 MONTH) THEN 1 ELSE 0 END) as new_this_month
       FROM users u
-      INNER JOIN students s ON u.ic = s.user_ic
+      INNER JOIN students s ON u.telefon = s.user_telefon
       WHERE u.role = 'student'
     `);
     

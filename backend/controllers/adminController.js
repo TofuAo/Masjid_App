@@ -67,8 +67,8 @@ export const getAllAdmins = async (req, res) => {
     // Format admins data
     const formattedAdmins = admins.map(admin => ({
       ...admin,
-      IC: admin.ic, // Add uppercase IC for frontend compatibility
-      ic_formatted: formatICWithHyphen(admin.ic)
+      IC: admin.telefon, // Add uppercase IC for frontend compatibility
+      ic_formatted: formatICWithHyphen(admin.telefon)
     }));
 
     res.json({
@@ -100,7 +100,7 @@ export const getAdminById = async (req, res) => {
     const { ic } = req.params;
     
     const [admins] = await pool.execute(
-      'SELECT ic, nama, email, telefon, status, created_at, updated_at FROM users WHERE ic = ? AND role = ?',
+      'SELECT ic, nama, email, telefon, status, created_at, updated_at FROM users WHERE telefon = ? AND role = ?',
       [ic, 'admin']
     );
 
@@ -112,8 +112,8 @@ export const getAdminById = async (req, res) => {
     }
 
     const admin = admins[0];
-    admin.IC = admin.ic;
-    admin.ic_formatted = formatICWithHyphen(admin.ic);
+    admin.IC = admin.telefon;
+    admin.telefon_formatted = formatICWithHyphen(admin.telefon);
 
     res.json({
       success: true,
@@ -163,7 +163,7 @@ export const createAdmin = async (req, res) => {
 
       // Check if user already exists
       const [existingUsers] = await connection.execute(
-        "SELECT * FROM users WHERE ic = ?",
+        "SELECT * FROM users WHERE telefon = ?",
         [ic]
       );
 
@@ -209,13 +209,13 @@ export const createAdmin = async (req, res) => {
       const [newAdmin] = await pool.execute(
         `SELECT ic, nama, email, telefon, status, created_at, updated_at
          FROM users
-         WHERE ic = ?`,
+         WHERE telefon = ?`,
         [ic]
       );
       
       const admin = newAdmin[0];
-      admin.IC = admin.ic;
-      admin.ic_formatted = formatICWithHyphen(admin.ic);
+      admin.IC = admin.telefon;
+      admin.telefon_formatted = formatICWithHyphen(admin.telefon);
 
       // Log admin action for undo capability
       if (req.user && req.user.role === 'admin') {
@@ -238,7 +238,7 @@ export const createAdmin = async (req, res) => {
             operationLabel: 'Cipta admin',
             redirectPath: '/admins'
           },
-          actorIc: req.user.ic
+          actorPhone: req.user.telefon
         });
       }
       
@@ -298,7 +298,7 @@ export const updateAdmin = async (req, res) => {
     try {
       // Check if admin exists (either as admin or pic if role is being changed)
       const [existingUsers] = await connection.execute(
-        'SELECT * FROM users WHERE ic = ?',
+        'SELECT * FROM users WHERE telefon = ?',
         [ic]
       );
 
@@ -334,7 +334,7 @@ export const updateAdmin = async (req, res) => {
       // Check if email is being changed and if it already exists
       if (email && email.trim() !== '') {
         const [existingEmails] = await connection.execute(
-          'SELECT * FROM users WHERE email = ? AND ic != ?',
+          'SELECT * FROM users WHERE email = ? AND telefon != ?',
           [email.trim(), ic]
         );
 
@@ -375,6 +375,7 @@ export const updateAdmin = async (req, res) => {
       if (role !== undefined && (role === 'pic' || role === 'ib')) {
         // If assigning IB role, ensure only one IB user exists
         if (role === 'ib') {
+          // `ic` route param is legacy; after migration it represents `telefon`.
           await ensureSingleIb(ic);
         }
         updateFields.push('role = ?');
@@ -400,8 +401,8 @@ export const updateAdmin = async (req, res) => {
 
       // If role is being changed, don't filter by role in WHERE clause
       const whereClause = role && role === 'pic' && existingUser.role === 'admin'
-        ? 'WHERE ic = ?'
-        : 'WHERE ic = ? AND role = ?';
+        ? 'WHERE telefon = ?'
+        : 'WHERE telefon = ? AND role = ?';
 
       if (role && role === 'pic' && existingUser.role === 'admin') {
         // Role is being changed, don't filter by role
@@ -418,13 +419,13 @@ export const updateAdmin = async (req, res) => {
 
       // Get updated user (could be admin or pic now)
       const [updatedUser] = await pool.execute(
-        'SELECT ic, nama, email, telefon, status, role, created_at, updated_at FROM users WHERE ic = ?',
+        'SELECT ic, nama, email, telefon, status, role, created_at, updated_at FROM users WHERE telefon = ?',
         [ic]
       );
 
       const user = updatedUser[0];
-      user.IC = user.ic;
-      user.ic_formatted = formatICWithHyphen(user.ic);
+      user.IC = user.telefon;
+      user.telefon_formatted = formatICWithHyphen(user.telefon);
 
       // Log admin action for undo capability
       if (req.user && req.user.role === 'admin') {
@@ -440,7 +441,7 @@ export const updateAdmin = async (req, res) => {
             operationLabel: role === 'pic' && existingUser.role === 'admin' ? 'Tukar admin kepada PIC' : 'Kemas kini admin',
             redirectPath: '/admins'
           },
-          actorIc: req.user.ic
+          actorPhone: req.user.telefon
         });
       }
 
@@ -477,7 +478,7 @@ export const deleteAdmin = async (req, res) => {
     const { ic } = req.params;
 
     // Prevent deleting yourself
-    if (req.user && req.user.ic === ic) {
+    if (req.user && req.user.telefon === ic) {
       return res.status(400).json({
         success: false,
         message: 'You cannot delete your own account'
@@ -490,7 +491,7 @@ export const deleteAdmin = async (req, res) => {
     try {
       // Check if admin exists
       const [existingAdmins] = await connection.execute(
-        'SELECT * FROM users WHERE ic = ? AND role = ?',
+        'SELECT * FROM users WHERE telefon = ? AND role = ?',
         [ic, 'admin']
       );
 
@@ -515,7 +516,7 @@ export const deleteAdmin = async (req, res) => {
 
       // Delete admin (CASCADE will handle related data if any)
       await connection.execute(
-        'DELETE FROM users WHERE ic = ? AND role = ?',
+        'DELETE FROM users WHERE telefon = ? AND role = ?',
         [ic, 'admin']
       );
 
@@ -535,7 +536,7 @@ export const deleteAdmin = async (req, res) => {
             operationLabel: 'Padam admin',
             redirectPath: '/admins'
           },
-          actorIc: req.user.ic
+          actorPhone: req.user.telefon
         });
       }
 

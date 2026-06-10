@@ -27,7 +27,7 @@ export const paymentAPI = {
     if (filters.status) params.append('status', filters.status);
     if (filters.method) params.append('method', filters.method);
     if (filters.provider) params.append('provider', filters.provider);
-    if (filters.user_ic) params.append('user_ic', filters.user_ic);
+    if (filters.user_telefon) params.append('user_telefon', filters.user_telefon);
     if (filters.search) params.append('search', filters.search);
     if (filters.limit) params.append('limit', filters.limit);
     if (filters.offset) params.append('offset', filters.offset);

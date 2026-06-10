@@ -31,7 +31,7 @@ const PicUserList = ({ picUsers = [], onAdd, onEdit, onDelete, loading }) => {
             {picUsers.map((pic) => {
               return (
                 <div
-                  key={pic.ic}
+                  key={pic.telefon}
                   className="border border-gray-200 rounded-lg p-4 hover:border-emerald-400 transition-colors"
                 >
                   <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
@@ -39,7 +39,7 @@ const PicUserList = ({ picUsers = [], onAdd, onEdit, onDelete, loading }) => {
                       <div className="flex items-center gap-2">
                         <h3 className="text-lg font-semibold text-gray-900">{pic.nama}</h3>
                       </div>
-                      <p className="text-sm text-gray-500 mt-1">IC: {pic.ic_formatted || pic.ic}</p>
+                      <p className="text-sm text-gray-500 mt-1">IC: {pic.ic_formatted || pic.telefon}</p>
                       <div className="flex flex-wrap items-center gap-3 mt-2 text-sm text-gray-600">
                         {pic.email && (
                           <span className="flex items-center gap-1">
@@ -63,7 +63,7 @@ const PicUserList = ({ picUsers = [], onAdd, onEdit, onDelete, loading }) => {
                       <Button
                         variant="outline"
                         className="border-red-200 text-red-600 hover:bg-red-50 flex items-center gap-2"
-                        onClick={() => onDelete(pic.ic, pic)}
+                        onClick={() => onDelete(pic.telefon, pic)}
                       >
                         <Trash2 className="w-4 h-4" />
                         Padam

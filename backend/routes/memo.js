@@ -12,3 +12,4 @@ router.put('/:id', requireRole(['admin', 'pic']), memoController.update);
 router.delete('/:id', requireRole(['admin', 'pic']), memoController.remove);
 
 export default router;
+

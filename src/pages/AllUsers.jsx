@@ -104,7 +104,7 @@ const AllUsers = ({ user }) => {
     return users.filter(userItem => {
       const matchesSearch = !searchTerm.trim() || 
         (userItem.nama || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (userItem.ic || userItem.IC || '').includes(searchTerm) ||
+        (userItem.telefon || userItem.IC || '').includes(searchTerm) ||
         (userItem.email || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
         (userItem.telefon || '').includes(searchTerm);
       
@@ -131,7 +131,7 @@ const AllUsers = ({ user }) => {
           acc[role] = [];
         }
         // Only add if not already added to this role group
-        if (!acc[role].some(u => (u.ic || u.IC) === (userItem.ic || userItem.IC))) {
+        if (!acc[role].some(u => (u.telefon || u.IC) === (userItem.telefon || userItem.IC))) {
           acc[role].push(userItem);
         }
       });
@@ -328,10 +328,10 @@ const AllUsers = ({ user }) => {
                       </thead>
                       <tbody className="bg-white divide-y divide-gray-200">
                         {roleUsers.map((userItem, index) => {
-                          const userIc = userItem.ic || userItem.IC;
-                          const detailLink = userIc ? `/all-users/${encodeURIComponent(userIc)}` : null;
+                          const userPhone = userItem.telefon || userItem.IC;
+                          const detailLink = userPhone ? `/all-users/${encodeURIComponent(userPhone)}` : null;
                           return (
-                            <tr key={userIc || userItem.nama || `user-${index}`} className="hover:bg-gray-50 transition-colors">
+                            <tr key={userPhone || userItem.nama || `user-${index}`} className="hover:bg-gray-50 transition-colors">
                               <td className="px-4 py-3 whitespace-nowrap">
                                 <div className="text-sm font-medium text-gray-900">
                                   {detailLink ? (
@@ -348,7 +348,7 @@ const AllUsers = ({ user }) => {
                                 </div>
                               </td>
                               <td className="px-4 py-3 whitespace-nowrap">
-                                <div className="text-sm text-gray-600">{formatIC(userItem.ic || userItem.IC)}</div>
+                                <div className="text-sm text-gray-600">{formatIC(userItem.telefon || userItem.IC)}</div>
                               </td>
                               <td className="px-4 py-3 whitespace-nowrap hidden md:table-cell">
                                 <div className="text-sm text-gray-600">{userItem.email || '-'}</div>

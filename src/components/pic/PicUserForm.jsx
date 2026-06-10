@@ -21,7 +21,7 @@ const PicUserForm = ({ picUser, onSubmit, onCancel }) => {
     if (picUser) {
       setFormData({
         nama: picUser.nama || '',
-        ic: picUser.ic ? formatIC(picUser.ic, true) : '',
+        ic: picUser.telefon ? formatIC(picUser.telefon, true) : '',
         email: picUser.email || '',
         telefon: picUser.telefon ? formatPhone(picUser.telefon, true) : '',
         password: '',
@@ -59,11 +59,11 @@ const PicUserForm = ({ picUser, onSubmit, onCancel }) => {
     if (!formData.nama.trim()) {
       validationErrors.nama = 'Nama diperlukan.';
     }
-    const normalizedIc = formatIC(formData.ic, false);
+    const normalizedIc = formatIC(formData.telefon, false);
     if (!normalizedIc) {
-      validationErrors.ic = 'IC diperlukan.';
+      validationErrors.telefon = 'IC diperlukan.';
     } else if (!isValidIC(normalizedIc)) {
-      validationErrors.ic = 'IC mesti 12 digit yang sah.';
+      validationErrors.telefon = 'IC mesti 12 digit yang sah.';
     }
     if (!picUser && !formData.password.trim()) {
       validationErrors.password = 'Kata laluan diperlukan.';
@@ -86,7 +86,7 @@ const PicUserForm = ({ picUser, onSubmit, onCancel }) => {
     if (!validate()) {
       return;
     }
-    const normalizedIc = formatIC(formData.ic, false);
+    const normalizedIc = formatIC(formData.telefon, false);
     const normalizedPhone = formData.telefon ? formatPhone(formData.telefon, false) : null;
 
     const payload = {
@@ -107,8 +107,8 @@ const PicUserForm = ({ picUser, onSubmit, onCancel }) => {
 
     // Remove IC from payload when editing (IC is in URL params)
     if (picUser) {
-      console.log('[PicUserForm] Editing PIC user:', picUser.ic, 'Payload (before removing IC):', payload);
-      delete payload.ic;
+      console.log('[PicUserForm] Editing PIC user:', picUser.telefon, 'Payload (before removing IC):', payload);
+      delete payload.telefon;
       console.log('[PicUserForm] Payload (after removing IC):', payload);
     } else {
       console.log('[PicUserForm] Creating new PIC user. Payload:', payload);
@@ -155,15 +155,15 @@ const PicUserForm = ({ picUser, onSubmit, onCancel }) => {
             <input
               type="text"
               name="ic"
-              value={formData.ic}
+              value={formData.telefon}
               onChange={handleChange}
               disabled={Boolean(picUser)}
               className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500 ${
-                errors.ic ? 'border-red-500' : 'border-gray-300'
+                errors.telefon ? 'border-red-500' : 'border-gray-300'
               } ${picUser ? 'bg-gray-100 cursor-not-allowed' : ''}`}
               placeholder="Contoh: 123456-78-9012"
             />
-            {errors.ic && <p className="mt-1 text-xs text-red-500">{errors.ic}</p>}
+            {errors.telefon && <p className="mt-1 text-xs text-red-500">{errors.telefon}</p>}
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

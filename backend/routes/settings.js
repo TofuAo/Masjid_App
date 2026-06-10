@@ -98,3 +98,4 @@ router.get('/', getSettings);
 router.put('/:key', requireRole(['admin']), settingKeyValidation, updateSettingValidation, updateSetting);
 
 export default router;
+

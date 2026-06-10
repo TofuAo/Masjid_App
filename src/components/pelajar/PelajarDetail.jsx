@@ -22,11 +22,11 @@ const PelajarDetail = ({ pelajar, onEdit, onClose }) => {
   // Fetch fresh student data to ensure we have teacher information
   useEffect(() => {
     const fetchStudentData = async () => {
-      if (pelajar && (pelajar.ic || pelajar.IC)) {
-        const studentIc = pelajar.ic || pelajar.IC;
+      if (pelajar && (pelajar.telefon || pelajar.IC)) {
+        const studentPhone = pelajar.telefon || pelajar.IC;
         try {
           setLoadingStudent(true);
-          const response = await studentsAPI.getById(studentIc);
+          const response = await studentsAPI.getById(studentPhone);
           console.log('Student data response:', response);
           
           // Handle different response structures
@@ -61,7 +61,7 @@ const PelajarDetail = ({ pelajar, onEdit, onClose }) => {
   }, [pelajar]);
 
   useEffect(() => {
-    if (studentData && (studentData.ic || studentData.IC)) {
+    if (studentData && (studentData.telefon || studentData.IC)) {
       fetchReceipts();
     }
   }, [studentData]);
@@ -69,8 +69,8 @@ const PelajarDetail = ({ pelajar, onEdit, onClose }) => {
   const fetchReceipts = async () => {
     try {
       setLoadingReceipts(true);
-      const studentIc = studentData.ic || studentData.IC;
-      const response = await receiptAPI.getUserReceipts(studentIc);
+      const studentPhone = studentData.telefon || studentData.IC;
+      const response = await receiptAPI.getUserReceipts(studentPhone);
       if (response?.success && response?.data) {
         setReceipts(response.data);
       } else {
@@ -173,7 +173,7 @@ const PelajarDetail = ({ pelajar, onEdit, onClose }) => {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-500">Nombor IC</label>
-                  <p className="mt-1 text-sm text-gray-900">{(displayData.IC || displayData.ic) ? formatIC(displayData.IC || displayData.ic, true) : '-'}</p>
+                  <p className="mt-1 text-sm text-gray-900">{(displayData.IC || displayData.telefon) ? formatIC(displayData.IC || displayData.telefon, true) : '-'}</p>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-500">Umur</label>

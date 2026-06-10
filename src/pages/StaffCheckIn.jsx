@@ -5,6 +5,8 @@ import { calculateDistance } from '../utils/distanceUtils';
 import { useMasjidLocation } from '../hooks/useMasjidLocation';
 import { useAccurateGPS } from '../hooks/useAccurateGPS';
 
+
+
 const formatDateParam = (date) => {
   if (!date) return null;
   const parsed = date instanceof Date ? date : new Date(date);
@@ -109,22 +111,24 @@ const StaffCheckIn = ({ user }) => {
         suffix = ' (PIC)';
       }
       return {
-        value: staff.ic,
+        value: staff.telefon,
         label: `${staff.nama}${suffix}`
       };
     });
 
-    if (resolvedUser?.ic) {
-      const selfIndex = options.findIndex((option) => option.value === resolvedUser.ic);
-      const selfLabel = `${resolvedUser.nama || resolvedUser.ic} (Saya)`;
+    if (resolvedUser?.telefon) {
+      const selfIndex = options.findIndex((option) => option.value === resolvedUser.telefon);
+      const selfLabel = `${resolvedUser.nama || resolvedUser.telefon} (Saya)`;
       if (selfIndex >= 0) {
-        options[selfIndex] = { value: resolvedUser.ic, label: selfLabel };
+        options[selfIndex] = { value: resolvedUser.telefon, label: selfLabel };
       } else {
-        options.unshift({ value: resolvedUser.ic, label: selfLabel });
+        options.unshift({ value: resolvedUser.telefon, label: selfLabel });
       }
     }
 
-    return options;
+    return options.filter((option, index, self) =>
+      index === self.findIndex((o) => o.value === option.value)
+    );
   }, [isAdmin, staffList, resolvedUser]);
 
   const selectedStaffName = useMemo(() => {
@@ -134,8 +138,8 @@ const StaffCheckIn = ({ user }) => {
     if (!selectedStaff) {
       return 'Semua Staf';
     }
-    if (resolvedUser?.ic && selectedStaff === resolvedUser.ic) {
-      return resolvedUser.nama ? `${resolvedUser.nama} (Saya)` : resolvedUser.ic;
+    if (resolvedUser?.telefon && selectedStaff === resolvedUser.telefon) {
+      return resolvedUser.nama ? `${resolvedUser.nama} (Saya)` : resolvedUser.telefon;
     }
     const match = staffOptions.find((option) => option.value === selectedStaff);
     return match?.label || selectedStaff;
@@ -180,7 +184,7 @@ const StaffCheckIn = ({ user }) => {
         params.limit = override.limit;
       }
       if (isAdmin && selectedStaff) {
-        params.staff_ic = selectedStaff;
+        params.staff_telefon = selectedStaff;
       }
       const response = await staffCheckInAPI.getHistory(params);
       if (response.success) {
@@ -286,8 +290,8 @@ const StaffCheckIn = ({ user }) => {
       if (selectedStaff === null) {
         setSelectedStaff('');
       }
-    } else if (resolvedUser?.ic && selectedStaff !== resolvedUser.ic) {
-      setSelectedStaff(resolvedUser.ic);
+    } else if (resolvedUser?.telefon && selectedStaff !== resolvedUser.telefon) {
+      setSelectedStaff(resolvedUser.telefon);
     }
   }, [isAdmin, resolvedUser, selectedStaff]);
 
@@ -454,10 +458,10 @@ const StaffCheckIn = ({ user }) => {
         return;
       }
 
-      const headers = ['Nama', 'IC', 'Tarikh', 'Check-In', 'Check-Out', 'Status'];
+      const headers = ['Nama', 'No. Telefon', 'Tarikh', 'Check-In', 'Check-Out', 'Status'];
       const rows = response.data.map((record) => ({
         Nama: record.nama || '-',
-        IC: record.staff_ic,
+        IC: record.staff_telefon,
         Tarikh: formatDate(record.check_in_time),
         'Check-In': formatDateTime(record.check_in_time),
         'Check-Out': record.check_out_time ? formatDateTime(record.check_out_time) : '-',
@@ -515,8 +519,8 @@ const StaffCheckIn = ({ user }) => {
 
     const rows = history.map((record, index) => ({
       No: index + 1,
-      Nama: record.nama || selectedStaffName || resolvedUser?.nama || record.staff_ic,
-      IC: record.staff_ic,
+      Nama: record.nama || selectedStaffName || resolvedUser?.nama || record.staff_telefon,
+      IC: record.staff_telefon,
       Tarikh: formatDate(record.check_in_time),
       'Check-In': formatDateTime(record.check_in_time),
       'Check-Out': record.check_out_time ? formatDateTime(record.check_out_time) : '-',
@@ -777,9 +781,9 @@ const StaffCheckIn = ({ user }) => {
                     disabled={staffListLoading}
                     className="min-w-[220px] rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200 disabled:cursor-not-allowed disabled:opacity-60"
                   >
-                    <option value="">
-                      {staffListLoading ? 'Memuat senarai...' : 'Semua Staf'}
-                    </option>
+                    <option key="all-staff" value="">
+                     {staffListLoading ? 'Memuat senarai...' : 'Semua Staf'}
+                     </option>
                     {staffOptions.map((option) => (
                       <option key={option.value} value={option.value}>
                         {option.label}

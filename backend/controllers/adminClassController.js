@@ -64,7 +64,7 @@ export const postAdminChange = async (req, res) => {
     if (!errors.isEmpty()) {
       return res.status(400).json({ success: false, message: 'Validation failed', errors: errors.array() });
     }
-    const adminIc = req.user?.ic;
+    const adminIc = req.user?.telefon;
     if (!adminIc) return res.status(401).json({ success: false, message: 'Unauthorized' });
 
     const body = {
@@ -101,7 +101,7 @@ export const postAdminRollback = async (req, res) => {
     if (!errors.isEmpty()) {
       return res.status(400).json({ success: false, message: 'Validation failed', errors: errors.array() });
     }
-    const adminIc = req.user?.ic;
+    const adminIc = req.user?.telefon;
     if (!adminIc) return res.status(401).json({ success: false, message: 'Unauthorized' });
 
     const result = await classManagementService.rollbackClass(req.body, adminIc);

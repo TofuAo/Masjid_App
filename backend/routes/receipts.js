@@ -26,3 +26,4 @@ router.get('/user/:userId', getUserReceipts);
 
 export default router;
 
+

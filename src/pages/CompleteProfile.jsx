@@ -19,10 +19,10 @@ const CompleteProfile = ({ user, onComplete }) => {
 
   useEffect(() => {
     // Pre-fill IC if available
-    if (user?.ic) {
+    if (user?.telefon) {
       setFormData(prev => ({
         ...prev,
-        ic: user.ic
+        ic: user.telefon
       }));
     }
   }, [user]);
@@ -257,7 +257,7 @@ const CompleteProfile = ({ user, onComplete }) => {
                 <input
                   type="text"
                   name="ic"
-                  value={formData.ic}
+                  value={formData.telefon}
                   onChange={handleChange}
                   className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 border-gray-300 bg-gray-100 cursor-not-allowed"
                   placeholder="123456789012"

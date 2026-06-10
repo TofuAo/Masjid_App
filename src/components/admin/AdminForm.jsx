@@ -25,7 +25,7 @@ const AdminForm = ({ admin, onSubmit, onCancel }) => {
     if (admin) {
       setFormData({
         nama: admin.nama || '',
-        ic: admin.ic ? formatIC(admin.ic, true) : '',
+        ic: admin.telefon ? formatIC(admin.telefon, true) : '',
         email: admin.email || '',
         telefon: admin.telefon ? formatPhone(admin.telefon, true) : '',
         password: '',
@@ -76,11 +76,11 @@ const AdminForm = ({ admin, onSubmit, onCancel }) => {
       validationErrors.nama = 'Nama diperlukan.';
     }
 
-    const normalizedIc = formatIC(formData.ic, false);
+    const normalizedIc = formatIC(formData.telefon, false);
     if (!normalizedIc) {
-      validationErrors.ic = 'IC diperlukan.';
+      validationErrors.telefon = 'IC diperlukan.';
     } else if (!isValidIC(normalizedIc)) {
-      validationErrors.ic = 'IC mesti 12 digit yang sah.';
+      validationErrors.telefon = 'IC mesti 12 digit yang sah.';
     }
 
     if (!admin && !formData.password.trim()) {
@@ -119,7 +119,7 @@ const AdminForm = ({ admin, onSubmit, onCancel }) => {
       return;
     }
 
-    const normalizedIc = formatIC(formData.ic, false);
+    const normalizedIc = formatIC(formData.telefon, false);
     const normalizedPhone = formData.telefon ? formatPhone(formData.telefon, false) : null;
 
     const payload = {
@@ -140,7 +140,7 @@ const AdminForm = ({ admin, onSubmit, onCancel }) => {
     }
 
     if (admin) {
-      delete payload.ic; // Don't send IC when updating
+      delete payload.telefon; // Don't send IC when updating
     }
 
     if (typeof onSubmit === 'function') {
@@ -184,15 +184,15 @@ const AdminForm = ({ admin, onSubmit, onCancel }) => {
             <input
               type="text"
               name="ic"
-              value={formData.ic}
+              value={formData.telefon}
               onChange={handleChange}
               disabled={Boolean(admin)}
               className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500 ${
-                errors.ic ? 'border-red-500' : 'border-gray-300'
+                errors.telefon ? 'border-red-500' : 'border-gray-300'
               } ${admin ? 'bg-gray-100 cursor-not-allowed' : ''}`}
               placeholder="Contoh: 123456-78-9012"
             />
-            {errors.ic && <p className="mt-1 text-xs text-red-500">{errors.ic}</p>}
+            {errors.telefon && <p className="mt-1 text-xs text-red-500">{errors.telefon}</p>}
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

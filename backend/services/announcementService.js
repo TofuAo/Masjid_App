@@ -22,7 +22,7 @@ const fetchAnnouncementById = async (id, connection = null) => {
     `
     SELECT a.*, u.nama as author_nama
     FROM announcements a
-    JOIN users u ON a.author_ic = u.ic
+    JOIN users u ON a.author_telefon = u.telefon
     WHERE a.id = ?
     `,
     [id]
@@ -32,7 +32,7 @@ const fetchAnnouncementById = async (id, connection = null) => {
 
 export const createAnnouncementRecord = async (
   input,
-  { actorIc, requestedBy = null, authorIc = null } = {},
+  { actorPhone, requestedBy = null, authorPhone = null } = {},
   connection = null
 ) => {
   const {
@@ -47,7 +47,7 @@ export const createAnnouncementRecord = async (
 
   const executor = getExecutor(connection);
 
-  const author = authorIc ?? actorIc;
+  const author = authorPhone ?? actorPhone;
 
   // Automatically set dates when status is 'published' (when admin approves)
   let finalStartDate = formatDateTimeForDB(start_date);
@@ -68,7 +68,7 @@ export const createAnnouncementRecord = async (
 
   const [result] = await executor.execute(
     `
-    INSERT INTO announcements (title, content, author_ic, status, priority, target_audience, start_date, end_date)
+    INSERT INTO announcements (title, content, author_telefon, status, priority, target_audience, start_date, end_date)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `,
     [
@@ -98,7 +98,7 @@ export const createAnnouncementRecord = async (
         ? `Approved pending announcement (diminta oleh ${requestedBy})`
         : 'Created announcement'
     },
-    actorIc
+    actorPhone
   });
 
   return {
@@ -108,7 +108,7 @@ export const createAnnouncementRecord = async (
   };
 };
 
-export const updateAnnouncementRecord = async (id, input, { actorIc, requestedBy = null } = {}, connection = null) => {
+export const updateAnnouncementRecord = async (id, input, { actorPhone, requestedBy = null } = {}, connection = null) => {
   const executor = getExecutor(connection);
 
   const [existingRows] = await executor.execute(
@@ -137,7 +137,7 @@ export const updateAnnouncementRecord = async (id, input, { actorIc, requestedBy
         ? `Approved update (diminta oleh ${requestedBy})`
         : 'Updated announcement'
     },
-    actorIc
+    actorPhone
   });
 
   // Automatically set dates when status changes to 'published' (when admin approves)
@@ -193,7 +193,7 @@ export const updateAnnouncementRecord = async (id, input, { actorIc, requestedBy
   };
 };
 
-export const deleteAnnouncementRecord = async (id, { actorIc, requestedBy = null } = {}, connection = null) => {
+export const deleteAnnouncementRecord = async (id, { actorPhone, requestedBy = null } = {}, connection = null) => {
   const executor = getExecutor(connection);
 
   const [existingRows] = await executor.execute(
@@ -222,7 +222,7 @@ export const deleteAnnouncementRecord = async (id, { actorIc, requestedBy = null
         ? `Approved deletion (diminta oleh ${requestedBy})`
         : 'Deleted announcement'
     },
-    actorIc
+    actorPhone
   });
 
   await executor.execute(
@@ -236,10 +236,10 @@ export const deleteAnnouncementRecord = async (id, { actorIc, requestedBy = null
   };
 };
 
-registerPendingPicHandler('announcements:create', async ({ payload, actorIc, adminIc, connection }) => {
+registerPendingPicHandler('announcements:create', async ({ payload, actorPhone, adminIc, connection }) => {
   const result = await createAnnouncementRecord(
     payload,
-    { actorIc: adminIc, requestedBy: actorIc, authorIc: actorIc },
+    { actorPhone: adminIc, requestedBy: actorPhone, authorPhone: actorPhone },
     connection
   );
   // Return data in format expected by PIC snapshot creation
@@ -251,11 +251,11 @@ registerPendingPicHandler('announcements:create', async ({ payload, actorIc, adm
   };
 });
 
-registerPendingPicHandler('announcements:update', async ({ payload, entityId, actorIc, adminIc, connection }) => {
+registerPendingPicHandler('announcements:update', async ({ payload, entityId, actorPhone, adminIc, connection }) => {
   const result = await updateAnnouncementRecord(
     entityId,
     payload,
-    { actorIc: adminIc, requestedBy: actorIc },
+    { actorPhone: adminIc, requestedBy: actorPhone },
     connection
   );
   // Return data in format expected by PIC snapshot creation
@@ -267,7 +267,7 @@ registerPendingPicHandler('announcements:update', async ({ payload, entityId, ac
   };
 });
 
-registerPendingPicHandler('announcements:delete', async ({ entityId, actorIc, adminIc, connection, metadata }) => {
+registerPendingPicHandler('announcements:delete', async ({ entityId, actorPhone, adminIc, connection, metadata }) => {
   // Get announcement data BEFORE deletion for PIC snapshot
   const executor = connection || pool;
   const [existingRows] = await executor.execute(
@@ -286,7 +286,7 @@ registerPendingPicHandler('announcements:delete', async ({ entityId, actorIc, ad
   // Now delete the announcement
   const result = await deleteAnnouncementRecord(
     entityId,
-    { actorIc: adminIc, requestedBy: actorIc },
+    { actorPhone: adminIc, requestedBy: actorPhone },
     connection
   );
   

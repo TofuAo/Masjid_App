@@ -2,31 +2,37 @@ import express from 'express';
 import { body } from 'express-validator';
 import { login, studentLogin, getProfile, changePassword, register, registerExistingUser, adminChangePassword, requestPasswordReset, checkResetOptions, requestPasswordResetEmail, requestPasswordResetPhone, resetPassword, checkProfileComplete, updateProfile, getPendingRegistrations, approveRegistration, rejectRegistration, getPreferences, updatePreferences } from '../controllers/authController.js';
 import { authenticateToken, requireRole } from '../middleware/auth.js';
-import { normalizeICMiddleware } from '../middleware/normalizeIC.js';
+import { normalizePhoneMiddleware } from '../middleware/normalizePhone.js';
 import { registrationLimiter, passwordResetLimiter, checkResetOptionsLimiter } from '../middleware/security.js';
+// Add to imports at top
+import { addUserRole, removeUserRole, getUserRoles } from '../controllers/authController.js';
+
 
 const router = express.Router();
-
+// Add these routes
+router.get('/user-roles/:telefon', authenticateToken, requireRole(['admin']), getUserRoles);
+router.post('/user-roles', authenticateToken, requireRole(['admin']), addUserRole);
+router.delete('/user-roles', authenticateToken, requireRole(['admin']), removeUserRole);
 const registerValidation = [
   body('nama')
     .notEmpty()
     .withMessage('Nama is required')
     .trim(),
-  body('ic_number')
+  body('telefon')
     .notEmpty()
-    .withMessage('IC Number is required')
+    .withMessage('Nombor telefon diperlukan')
     .custom((value) => {
       // STRICT: Reject T0-prefixed or any IC starting with non-digits
       if (value.toString().trim().startsWith('T0') || /^[^0-9]/.test(value.toString().trim())) {
-        throw new Error('Invalid IC format. IC must be 12 digits (format: XXXXXX-XX-XXXX)');
+        throw new Error('Format nombor telefon tidak sah');
       }
       // Remove hyphens and spaces for validation
       const cleaned = value.toString().replace(/[-\s]/g, '');
       if (cleaned.length !== 12) {
-        throw new Error('IC Number must be exactly 12 digits');
+        throw new Error('Nombor telefon tidak sah');
       }
       if (!/^\d{12}$/.test(cleaned)) {
-        throw new Error('IC Number must contain only digits (format: XXXXXX-XX-XXXX)');
+        throw new Error('Nombor telefon mesti mengandungi nombor sahaja');
       }
       return true;
     }),
@@ -67,16 +73,16 @@ const registerExistingValidation = [
     .notEmpty()
     .withMessage('Nama diperlukan')
     .trim(),
-  body('ic_number')
+  body('telefon')
     .notEmpty()
-    .withMessage('Nombor IC diperlukan')
+    .withMessage('Nombor telefon diperlukan')
     .custom((value) => {
       const cleaned = value.toString().replace(/[-\s]/g, '');
       if (cleaned.length !== 12) {
-        throw new Error('Nombor IC mestilah 12 digit');
+        throw new Error('Nombor telefon tidak sah');
       }
       if (!/^\d{12}$/.test(cleaned)) {
-        throw new Error('Nombor IC mestilah hanya nombor');
+        throw new Error('Nombor telefon mesti mengandungi nombor sahaja');
       }
       return true;
     }),
@@ -95,9 +101,9 @@ const registerExistingValidation = [
 
 // Login validation rules
 const loginValidation = [
-  body('icNumber')
+  body('telefon')
     .notEmpty()
-    .withMessage('IC Number is required'),
+    .withMessage('Nombor telefon diperlukan'),
   body('password')
     .isLength({ min: 6 })
     .withMessage('Password must be at least 6 characters')
@@ -115,9 +121,9 @@ const changePasswordValidation = [
 
 // Admin change password validation (no current password required)
 const adminChangePasswordValidation = [
-  body('user_ic')
+  body('user_telefon')
     .notEmpty()
-    .withMessage('User IC is required'),
+    .withMessage('Nombor telefon pengguna diperlukan'),
   body('newPassword')
     .isLength({ min: 6 })
     .withMessage('New password must be at least 6 characters')
@@ -125,9 +131,9 @@ const adminChangePasswordValidation = [
 
 // Password reset validation
 const requestPasswordResetValidation = [
-  body('icNumber')
+  body('telefon')
     .notEmpty()
-    .withMessage('IC number is required')
+    .withMessage('Nombor telefon diperlukan')
     .isLength({ min: 6 })
     .withMessage('IC number must be at least 6 characters')
 ];
@@ -169,44 +175,45 @@ const updateProfileValidation = [
 
 // Student login validation (IC only, no password)
 const studentLoginValidation = [
-  body('icNumber')
+  body('telefon')
     .notEmpty()
-    .withMessage('IC Number is required')
+    .withMessage('Nombor telefon diperlukan')
     .custom((value) => {
       const cleaned = value.toString().replace(/[-\s]/g, '');
       if (cleaned.length !== 12) {
-        throw new Error('IC Number must be exactly 12 digits');
+        throw new Error('Nombor telefon tidak sah');
       }
       if (!/^\d{12}$/.test(cleaned)) {
-        throw new Error('IC Number must contain only digits');
+        throw new Error('Nombor telefon mesti mengandungi nombor sahaja');
       }
       return true;
     })
 ];
 
 // Routes with security rate limiting
-router.post('/login', loginValidation, normalizeICMiddleware, login);
-router.post('/student-login', studentLoginValidation, normalizeICMiddleware, studentLogin);
-router.post('/register', registrationLimiter, registerValidation, normalizeICMiddleware, register);
-router.post('/self-register', registrationLimiter, registerExistingValidation, normalizeICMiddleware, registerExistingUser);
+router.post('/login', loginValidation, normalizePhoneMiddleware, login);
+router.post('/student-login', studentLoginValidation, normalizePhoneMiddleware, studentLogin);
+router.post('/register', registrationLimiter, registerValidation, normalizePhoneMiddleware, register);
+router.post('/self-register', registrationLimiter, registerExistingValidation, normalizePhoneMiddleware, registerExistingUser);
 router.get('/profile', authenticateToken, getProfile);
 router.get('/profile/complete', authenticateToken, checkProfileComplete);
 router.put('/profile', authenticateToken, updateProfileValidation, updateProfile);
 router.put('/change-password', authenticateToken, changePasswordValidation, changePassword);
-router.put('/admin/change-password', authenticateToken, requireRole(['admin']), adminChangePasswordValidation, normalizeICMiddleware, adminChangePassword);
-router.post('/forgot-password', passwordResetLimiter, requestPasswordResetValidation, normalizeICMiddleware, requestPasswordReset);
-router.post('/check-reset-options', checkResetOptionsLimiter, requestPasswordResetValidation, normalizeICMiddleware, checkResetOptions);
-router.post('/request-reset-email', passwordResetLimiter, requestPasswordResetValidation, normalizeICMiddleware, requestPasswordResetEmail);
-router.post('/request-reset-phone', passwordResetLimiter, requestPasswordResetValidation, normalizeICMiddleware, requestPasswordResetPhone);
+router.put('/admin/change-password', authenticateToken, requireRole(['admin']), adminChangePasswordValidation, normalizePhoneMiddleware, adminChangePassword);
+router.post('/forgot-password', passwordResetLimiter, requestPasswordResetValidation, normalizePhoneMiddleware, requestPasswordReset);
+router.post('/check-reset-options', checkResetOptionsLimiter, requestPasswordResetValidation, normalizePhoneMiddleware, checkResetOptions);
+router.post('/request-reset-email', passwordResetLimiter, requestPasswordResetValidation, normalizePhoneMiddleware, requestPasswordResetEmail);
+router.post('/request-reset-phone', passwordResetLimiter, requestPasswordResetValidation, normalizePhoneMiddleware, requestPasswordResetPhone);
 router.post('/reset-password', passwordResetLimiter, resetPasswordValidation, resetPassword);
 
 // Admin routes for managing pending registrations
 router.get('/pending-registrations', authenticateToken, requireRole(['admin']), getPendingRegistrations);
-router.post('/approve-registration', authenticateToken, requireRole(['admin']), body('user_ic').notEmpty().withMessage('User IC is required'), normalizeICMiddleware, approveRegistration);
-router.post('/reject-registration', authenticateToken, requireRole(['admin']), body('user_ic').notEmpty().withMessage('User IC is required'), normalizeICMiddleware, rejectRegistration);
+router.post('/approve-registration', authenticateToken, requireRole(['admin']), body('user_telefon').notEmpty().withMessage('Nombor telefon pengguna diperlukan'), normalizePhoneMiddleware, approveRegistration);
+router.post('/reject-registration', authenticateToken, requireRole(['admin']), body('user_telefon').notEmpty().withMessage('Nombor telefon pengguna diperlukan'), normalizePhoneMiddleware, rejectRegistration);
 
 // User preferences routes (available to all authenticated users)
 router.get('/preferences', authenticateToken, getPreferences);
 router.put('/preferences', authenticateToken, updatePreferences);
 
 export default router;
+

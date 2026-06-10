@@ -59,13 +59,13 @@ export const ensureClassChangeTables = async () => {
         CREATE TABLE class_change_log (
           id INT AUTO_INCREMENT PRIMARY KEY,
           admin_ic VARCHAR(20) NOT NULL,
-          student_ic VARCHAR(20) NOT NULL,
+          student_telefon VARCHAR(20) NOT NULL,
           from_class_id INT NULL,
           to_class_id INT NOT NULL,
           assignment_type ENUM('permanent', 'exam') NOT NULL DEFAULT 'permanent',
           end_date DATE NULL,
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-          INDEX idx_class_change_student (student_ic),
+          INDEX idx_class_change_student (student_telefon),
           INDEX idx_class_change_created (created_at),
           INDEX idx_class_change_admin (admin_ic)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci

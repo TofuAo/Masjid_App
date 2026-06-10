@@ -860,7 +860,7 @@ const IbDashboard = () => {
                             <span className="text-xs text-gray-500">{formatDateTime(entry.created_at)}</span>
                           </div>
                           <p className="text-xs text-gray-600">
-                            {entry.user_name || entry.user_ic}
+                            {entry.user_name || entry.user_telefon}
                             {entry.notes ? ` — ${entry.notes}` : ' '}
                           </p>
                         </li>

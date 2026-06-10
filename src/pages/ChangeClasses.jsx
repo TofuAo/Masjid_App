@@ -91,7 +91,7 @@ export default function ChangeClasses({ user }) {
         const res = await classesAPI.getById(classId);
         const data = res?.data || res;
         const raw = data?.students || [];
-        list = raw.map((s) => ({ id: s.ic, name: s.nama, status: s.status, current_assignment_type: 'permanent' }));
+        list = raw.map((s) => ({ id: s.telefon, name: s.nama, status: s.status, current_assignment_type: 'permanent' }));
       }
       setStudents(list);
       setSelectedIcs(new Set());
@@ -126,13 +126,13 @@ export default function ChangeClasses({ user }) {
       ? students.filter(
           (s) =>
             (s.name || s.nama || '').toLowerCase().includes(searchStudent.trim().toLowerCase()) ||
-            (s.id || s.ic || '').toLowerCase().includes(searchStudent.trim().toLowerCase())
+            (s.id || s.telefon || '').toLowerCase().includes(searchStudent.trim().toLowerCase())
         )
       : students;
     if (selectedIcs.size === filtered.length) {
       setSelectedIcs(new Set());
     } else {
-      setSelectedIcs(new Set(filtered.map((s) => s.id || s.ic)));
+      setSelectedIcs(new Set(filtered.map((s) => s.id || s.telefon)));
     }
   };
 

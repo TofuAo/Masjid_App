@@ -20,9 +20,9 @@ const checkInValidation = [
 ];
 
 const quickCheckInValidation = [
-  body('icNumber')
+  body('telefon')
     .notEmpty()
-    .withMessage('IC Number is required'),
+    .withMessage('Nombor telefon diperlukan'),
   body('password')
     .notEmpty()
     .withMessage('Password is required'),
@@ -39,9 +39,9 @@ const quickCheckInValidation = [
 ];
 
 const quickLastActionValidation = [
-  body('icNumber')
+  body('telefon')
     .notEmpty()
-    .withMessage('IC Number is required'),
+    .withMessage('Nombor telefon diperlukan'),
   body('password')
     .notEmpty()
     .withMessage('Password is required')
@@ -77,3 +77,4 @@ router.post('/auto', autoCheckIn);
 router.get('/history', getCheckInHistory);
 
 export default router;
+

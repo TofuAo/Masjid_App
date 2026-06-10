@@ -187,7 +187,7 @@ const Yuran = () => {
     }
   };
 
-  const updateYuranStatus = async (id, newStatus, studentIC = null) => {
+  const updateYuranStatus = async (id, newStatus, studentPhone = null) => {
     try {
       // This action should only be available to admin/teacher
       if (userRole === 'student') return; 
@@ -196,11 +196,11 @@ const Yuran = () => {
       // We need to find the student from the list and create a fee record first
       if (id === 0 || !id || id === '0') {
         // Find student by IC if provided, otherwise find by id
-        const student = studentIC 
-          ? yuranArray.find(y => y.pelajar_ic === studentIC || y.student_ic === studentIC)
-          : yuranArray.find(y => (y.id === id || y.id === 0 || !y.id) && y.pelajar_ic);
+        const student = studentPhone 
+          ? yuranArray.find(y => y.pelajar_telefon === studentPhone || y.student_telefon === studentPhone)
+          : yuranArray.find(y => (y.id === id || y.id === 0 || !y.id) && y.pelajar_telefon);
         
-        if (!student || !student.pelajar_ic) {
+        if (!student || !student.pelajar_telefon) {
           toast.error('Maklumat pelajar tidak ditemui.');
           return;
         }
@@ -212,7 +212,7 @@ const Yuran = () => {
         const tahun = currentDate.getFullYear();
 
         await feesAPI.create({
-          student_ic: student.pelajar_ic || student.student_ic,
+          student_telefon: student.pelajar_telefon || student.student_telefon,
           jumlah: student.jumlah || 150.00,
           status: 'terbayar',
           tarikh: currentDate.toISOString().split('T')[0],
@@ -563,7 +563,7 @@ const Yuran = () => {
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {yuranArray.map((y, index) => (
-                    <tr key={y.id || `student-${y.pelajar_ic || index}`} className="hover:bg-gray-50">
+                    <tr key={y.id || `student-${y.pelajar_telefon || index}`} className="hover:bg-gray-50">
                       {userRole !== 'student' && (
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm font-medium text-black">{y.pelajar_nama}</div>
@@ -610,7 +610,7 @@ const Yuran = () => {
                           <div className="flex space-x-2">
                             {(!y.status || y.status === 'tunggak' || y.status === 'pending' || y.status === 'Belum Bayar') && (
                               <button
-                                onClick={() => updateYuranStatus(y.id || 0, 'terbayar', y.pelajar_ic || y.student_ic)}
+                                onClick={() => updateYuranStatus(y.id || 0, 'terbayar', y.pelajar_telefon || y.student_telefon)}
                                 className="px-3 py-1 text-xs bg-green-100 text-green-800 rounded hover:bg-green-200 font-medium"
                                 title="Tandakan sebagai terbayar"
                               >

@@ -51,7 +51,7 @@ const ensureSnapshotTable = async () => {
  * @param {'create'|'update'|'delete'} params.operation
  * @param {Object} params.data
  * @param {Object|null} params.metadata
- * @param {string} params.actorIc
+ * @param {string} params.actorPhone
  * @returns {Promise<number>} snapshotId
  */
 export async function createSnapshot({
@@ -61,10 +61,10 @@ export async function createSnapshot({
   operation,
   data,
   metadata = null,
-  actorIc
+  actorPhone
 }) {
   await ensureSnapshotTable();
-  if (!entityType || entityId === undefined || !operation || !data || !actorIc) {
+  if (!entityType || entityId === undefined || !operation || !data || !actorPhone) {
     throw new Error('Missing required fields when creating admin action snapshot.');
   }
 
@@ -98,10 +98,10 @@ export async function createSnapshot({
     `INSERT INTO admin_action_snapshots 
       (entity_type, entity_id, entity_identifier, operation, data, metadata, created_by, expires_at) 
      VALUES (?, ?, ?, ?, ?, ?, ?, DATE_ADD(NOW(), INTERVAL ? HOUR))`,
-    [entityType, entityId, entityIdentifier, operation, jsonData, metadataJson, actorIc, SNAPSHOT_TTL_HOURS]
+    [entityType, entityId, entityIdentifier, operation, jsonData, metadataJson, actorPhone, SNAPSHOT_TTL_HOURS]
   );
 
-  console.log(`[SNAPSHOT] Created snapshot ID ${result.insertId} for ${entityType}:${entityId} operation:${operation} by ${actorIc}`);
+  console.log(`[SNAPSHOT] Created snapshot ID ${result.insertId} for ${entityType}:${entityId} operation:${operation} by ${actorPhone}`);
   return result.insertId;
 }
 
@@ -175,7 +175,7 @@ export async function listSnapshots({ entityType = null } = {}) {
   const [rows] = await pool.execute(
     `SELECT aas.*, u.nama as created_by_nama
      FROM admin_action_snapshots aas
-     LEFT JOIN users u ON aas.created_by = u.ic
+     LEFT JOIN users u ON aas.created_by = u.telefon
      ${where}
      ORDER BY aas.created_at DESC`,
     params

@@ -45,7 +45,7 @@ export const initiateToyyibPayPayment = async (req, res) => {
     }
 
     // Get user information
-    const userIc = req.user?.ic || req.user?.userId || 'anonymous';
+    const userPhone = req.user?.telefon || req.user?.userId || 'anonymous';
     
     // Initialize variables that can be modified
     let description = initialDescription;
@@ -60,7 +60,7 @@ export const initiateToyyibPayPayment = async (req, res) => {
         const [fees] = await pool.execute(
           `SELECT f.*, u.nama as pelajar_nama, u.email, u.telefon
            FROM fees f
-           JOIN users u ON f.student_ic = u.ic
+           JOIN users u ON f.student_telefon = u.telefon
            WHERE f.id = ?`,
           [feeId]
         );
@@ -95,7 +95,7 @@ export const initiateToyyibPayPayment = async (req, res) => {
 
     // Create payment intent in our database
     const payment = await createPaymentIntent({
-      user_ic: userIc,
+      user_telefon: userPhone,
       amount: Number(amount),
       currency: 'MYR',
       method: 'toyyibpay',
@@ -275,7 +275,7 @@ export const toyibPayCallback = async (req, res) => {
 export const checkPaymentStatus = async (req, res) => {
   try {
     const { paymentId } = req.params;
-    const userIc = req.user?.ic || req.user?.userId;
+    const userPhone = req.user?.telefon || req.user?.userId;
     const userRole = req.user?.role;
 
     // Get payment
@@ -289,7 +289,7 @@ export const checkPaymentStatus = async (req, res) => {
     }
 
     // Check access permissions
-    if (userRole !== 'admin' && payment.user_ic !== userIc) {
+    if (userRole !== 'admin' && payment.user_telefon !== userPhone) {
       return res.status(403).json({
         success: false,
         message: 'Access denied'

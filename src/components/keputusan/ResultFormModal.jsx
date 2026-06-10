@@ -13,7 +13,7 @@ const ResultFormModal = ({
   canManageGrades = false
 }) => {
   const [formData, setFormData] = useState({
-    student_ic: '', exam_id: '', markah: '', gred: '', status: '', catatan: ''
+    student_telefon: '', exam_id: '', markah: '', gred: '', status: '', catatan: ''
   });
   const [students, setStudents] = useState([]);
   const [exams, setExams] = useState([]);
@@ -75,10 +75,10 @@ const ResultFormModal = ({
     fetchDependencies();
 
     setFormData(() => {
-      const studentIc =
-        initialData?.student_ic ||
-        initialData?.pelajar_ic ||
-        initialData?.pelajar_user_ic ||
+      const studentPhone =
+        initialData?.student_telefon ||
+        initialData?.pelajar_telefon ||
+        initialData?.pelajar_user_telefon ||
         '';
       const examId = initialData?.exam_id ? String(initialData.exam_id) : '';
       const markValue =
@@ -92,7 +92,7 @@ const ResultFormModal = ({
       const statusFromGrade = getStatusFromGrade(initialGrade);
 
       return {
-        student_ic: studentIc,
+        student_telefon: studentPhone,
         exam_id: examId,
         markah: markValue,
         gred: initialGrade,
@@ -147,32 +147,32 @@ const ResultFormModal = ({
 
   // Filter students based on search term
   const filteredStudents = students.filter(s => {
-    const studentIc = s.ic || s.IC || s.user_ic || '';
+    const studentPhone = s.telefon || s.IC || s.user_telefon || '';
     const studentName = s.nama || s.name || '';
     const searchLower = studentSearchTerm.toLowerCase();
     return studentName.toLowerCase().includes(searchLower) || 
-           studentIc.toLowerCase().includes(searchLower) ||
-           studentIc.includes(studentSearchTerm);
+           studentPhone.toLowerCase().includes(searchLower) ||
+           studentPhone.includes(studentSearchTerm);
   });
 
   // Get selected student display name
   const getSelectedStudentDisplay = () => {
-    if (!formData.student_ic) return '';
+    if (!formData.student_telefon) return '';
     const student = students.find(s => {
-      const studentIc = s.ic || s.IC || s.user_ic || '';
-      return studentIc === formData.student_ic;
+      const studentPhone = s.telefon || s.IC || s.user_telefon || '';
+      return studentPhone === formData.student_telefon;
     });
     if (student) {
-      const studentIc = student.ic || student.IC || student.user_ic || '';
+      const studentPhone = student.telefon || student.IC || student.user_telefon || '';
       const studentName = student.nama || student.name || '';
-      return `${studentName} (${studentIc})`;
+      return `${studentName} (${studentPhone})`;
     }
     return '';
   };
 
   const handleStudentSelect = (student) => {
-    const studentIc = student.ic || student.IC || student.user_ic || '';
-    setFormData(prev => ({ ...prev, student_ic: studentIc }));
+    const studentPhone = student.telefon || student.IC || student.user_telefon || '';
+    setFormData(prev => ({ ...prev, student_telefon: studentPhone }));
     setStudentSearchTerm('');
     setIsStudentDropdownOpen(false);
   };
@@ -182,7 +182,7 @@ const ResultFormModal = ({
     e.stopPropagation();
     
     // Validate required fields
-    if (!formData.student_ic || !formData.exam_id || !formData.markah || !formData.gred) {
+    if (!formData.student_telefon || !formData.exam_id || !formData.markah || !formData.gred) {
       setError('Sila isi semua medan yang diperlukan.');
       return;
     }
@@ -288,12 +288,12 @@ const ResultFormModal = ({
                       <div className="py-1">
                         {filteredStudents.length > 0 ? (
                           filteredStudents.map(s => {
-                            const studentIc = s.ic || s.IC || s.user_ic || '';
+                            const studentPhone = s.telefon || s.IC || s.user_telefon || '';
                             const studentName = s.nama || s.name || '';
-                            const isSelected = formData.student_ic === studentIc;
+                            const isSelected = formData.student_telefon === studentPhone;
                             return (
                               <button
-                                key={studentIc}
+                                key={studentPhone}
                                 type="button"
                                 onClick={() => handleStudentSelect(s)}
                                 className={`w-full text-left px-4 py-2 hover:bg-emerald-50 focus:bg-emerald-50 focus:outline-none ${
@@ -303,7 +303,7 @@ const ResultFormModal = ({
                                 <div className="flex items-center justify-between">
                                   <div>
                                     <div className="font-medium text-black">{studentName}</div>
-                                    <div className="text-sm text-black">{studentIc}</div>
+                                    <div className="text-sm text-black">{studentPhone}</div>
                                   </div>
                                   {isSelected && (
                                     <Check className="w-5 h-5 text-emerald-600" />
@@ -324,8 +324,8 @@ const ResultFormModal = ({
                 {/* Hidden input for form validation */}
                 <input
                   type="hidden"
-                  name="student_ic"
-                  value={formData.student_ic}
+                  name="student_telefon"
+                  value={formData.student_telefon}
                   required
                 />
               </div>
@@ -336,8 +336,8 @@ const ResultFormModal = ({
                   {(() => {
                     // Get selected student's class
                     const selectedStudent = students.find(s => {
-                      const studentIc = s.ic || s.IC || s.user_ic || '';
-                      return studentIc === formData.student_ic;
+                      const studentPhone = s.telefon || s.IC || s.user_telefon || '';
+                      return studentPhone === formData.student_telefon;
                     });
                     const studentClassId = selectedStudent?.kelas_id || selectedStudent?.class_id;
                     

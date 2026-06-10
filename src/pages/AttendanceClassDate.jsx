@@ -70,7 +70,7 @@ const AttendanceClassDate = () => {
       const attendance = records.find(r => r.id === id);
       if (!attendance) throw new Error('Attendance record not found');
       await attendanceAPI.update(id, {
-        student_ic: attendance.pelajar_ic || attendance.student_ic,
+        student_telefon: attendance.pelajar_telefon || attendance.student_telefon,
         class_id: attendance.class_id || attendance.kelas_id,
         tarikh: date,
         status: newStatus,
@@ -236,8 +236,8 @@ const AttendanceClassDate = () => {
                   className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50"
                 >
                   <div>
-                    <p className="font-medium">{r.pelajar_nama || r.nama || r.student_ic}</p>
-                    <p className="text-sm text-gray-500">{r.pelajar_ic || r.student_ic}</p>
+                    <p className="font-medium">{r.pelajar_nama || r.nama || r.student_telefon}</p>
+                    <p className="text-sm text-gray-500">{r.pelajar_telefon || r.student_telefon}</p>
                   </div>
                   <Badge variant={r.status === 'Hadir' ? 'success' : r.status === 'Tidak Hadir' ? 'danger' : 'warning'}>
                     {r.status}

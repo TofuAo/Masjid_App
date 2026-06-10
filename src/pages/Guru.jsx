@@ -58,11 +58,11 @@ const Guru = () => {
 
   // Fetch full teacher details when viewing
   useEffect(() => {
-    if (currentView === 'detail' && selectedGuru?.ic) {
+    if (currentView === 'detail' && selectedGuru?.telefon) {
       const fetchTeacherDetails = async () => {
         setLoadingDetails(true);
         try {
-          const response = await teachersAPI.getById(selectedGuru.ic);
+          const response = await teachersAPI.getById(selectedGuru.telefon);
           // Handle response format
           const teacherData = response?.data || response;
           setTeacherDetails(teacherData);
@@ -91,7 +91,7 @@ const Guru = () => {
   useEffect(() => {
     const viewIC = searchParams.get('view');
     if (viewIC && gurus.length > 0) {
-      const guru = gurus.find(g => g.ic === viewIC || g.IC === viewIC);
+      const guru = gurus.find(g => g.telefon === viewIC || g.IC === viewIC);
       if (guru) {
         handleView(guru);
         // Remove the view parameter from URL after setting the view
@@ -131,9 +131,9 @@ const Guru = () => {
   };
 
   // Convert user to teacher
-  const handleConvertToTeacher = async (userIc) => {
+  const handleConvertToTeacher = async (userPhone) => {
     try {
-      await teachersAPI.convertToTeacher({ ic: userIc, kepakaran: [] });
+      await teachersAPI.convertToTeacher({ ic: userPhone, kepakaran: [] });
       toast.success('Pengguna berjaya ditukar kepada guru!');
       fetchUnassigned(); // Refresh list
       fetchItems({ limit: 1000 }); // Refresh teachers list
@@ -231,7 +231,7 @@ const Guru = () => {
                         </div>
                         <div>
                           <label className="block text-sm font-medium text-gray-500">Nombor IC</label>
-                          <p className="mt-1 text-sm text-gray-900">{displayGuru?.IC || displayGuru?.ic || '-'}</p>
+                          <p className="mt-1 text-sm text-gray-900">{displayGuru?.IC || displayGuru?.telefon || '-'}</p>
                         </div>
                         <div>
                           <label className="block text-sm font-medium text-gray-500">Nombor Telefon</label>
@@ -426,7 +426,7 @@ const Guru = () => {
                             const hasTeacherEntry = usr.has_teacher_entry === 1 || usr.has_teacher_entry === true;
                             return (
                               <div
-                                key={usr.ic}
+                                key={usr.telefon}
                                 className={`flex items-center justify-between p-4 border rounded-lg ${
                                   hasTeacherEntry 
                                     ? 'bg-green-50 border-green-200' 
@@ -436,7 +436,7 @@ const Guru = () => {
                                 <div className="flex-1">
                                   <div className="font-medium text-gray-900">{usr.nama}</div>
                                   <div className="text-sm text-gray-600 mt-1">
-                                    <span>IC: {formatIC(usr.ic)}</span>
+                                    <span>IC: {formatIC(usr.telefon)}</span>
                                     {usr.email && <span className="ml-3">Email: {usr.email}</span>}
                                     {usr.telefon && <span className="ml-3">Tel: {formatPhoneForDisplay(usr.telefon)}</span>}
                                   </div>
@@ -458,7 +458,7 @@ const Guru = () => {
                                 </div>
                                 {!hasTeacherEntry && (
                                   <Button
-                                    onClick={() => handleConvertToTeacher(usr.ic)}
+                                    onClick={() => handleConvertToTeacher(usr.telefon)}
                                     className="ml-4"
                                   >
                                     <UserPlus className="w-4 h-4 mr-2" />

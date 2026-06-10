@@ -26,9 +26,9 @@ export const getAllFees = async (req, res) => {
     let query = `
       SELECT 
         COALESCE(f.id, 0) as id,
-        u.ic as student_ic,
+        u.telefon as student_telefon,
         u.nama as pelajar_nama,
-        u.ic as pelajar_ic,
+        u.telefon as pelajar_ic,
         c.nama_kelas,
         c.nama_kelas as kelas_nama,
         CASE 
@@ -50,21 +50,21 @@ export const getAllFees = async (req, res) => {
         f.created_at,
         f.updated_at
       FROM users u
-      LEFT JOIN students s ON u.ic = s.user_ic
+      LEFT JOIN students s ON u.telefon = s.user_telefon
       LEFT JOIN classes c ON s.kelas_id = c.id
       LEFT JOIN (
         SELECT f1.*
         FROM fees f1
         INNER JOIN (
-          SELECT student_ic, 
+          SELECT student_telefon, 
                  COALESCE(
                    MAX(CASE WHEN f1.bulan = ? AND f1.tahun = ? THEN created_at END),
                    MAX(created_at)
                  ) as max_created
           FROM fees f1
-          GROUP BY student_ic
-        ) f2 ON f1.student_ic = f2.student_ic AND f1.created_at = f2.max_created
-      ) f ON u.ic = f.student_ic
+          GROUP BY student_telefon
+        ) f2 ON f1.student_telefon = f2.student_telefon AND f1.created_at = f2.max_created
+      ) f ON u.telefon = f.student_telefon
       WHERE u.role = 'student'
     `;
     
@@ -72,18 +72,18 @@ export const getAllFees = async (req, res) => {
 
     // If user is a student, only show their own fees
     if (req.user && req.user.role === 'student') {
-      query += ` AND u.ic = ?`;
-      queryParams.push(req.user.ic);
+      query += ` AND u.telefon = ?`;
+      queryParams.push(req.user.telefon);
     }
     
     // If user is a teacher, only show fees for students in their classes
     if (req.user && req.user.role === 'teacher') {
-      query += ` AND c.guru_ic = ?`;
-      queryParams.push(req.user.ic);
+      query += ` AND c.guru_telefon = ?`;
+      queryParams.push(req.user.telefon);
     }
 
     if (search) {
-      query += ` AND (u.nama LIKE ? OR u.ic LIKE ?)`;
+      query += ` AND (u.nama LIKE ? OR u.telefon LIKE ?)`;
       const searchTerm = `%${search}%`;
       queryParams.push(searchTerm, searchTerm);
     }
@@ -136,10 +136,10 @@ export const getAllFees = async (req, res) => {
         
         // Get all unpaid fees for current month that need syncing
         const [unpaidFees] = await pool.execute(`
-          SELECT f.id, f.student_ic, f.jumlah, c.yuran as class_yuran
+          SELECT f.id, f.student_telefon, f.jumlah, c.yuran as class_yuran
           FROM fees f
-          JOIN users u ON f.student_ic = u.ic
-          JOIN students s ON u.ic = s.user_ic
+          JOIN users u ON f.student_telefon = u.telefon
+          JOIN students s ON u.telefon = s.user_telefon
           JOIN classes c ON s.kelas_id = c.id
           WHERE f.bulan = ?
             AND f.tahun = ?
@@ -168,7 +168,7 @@ export const getAllFees = async (req, res) => {
     let countQuery = `
       SELECT COUNT(*) as total
       FROM users u
-      LEFT JOIN students s ON u.ic = s.user_ic
+      LEFT JOIN students s ON u.telefon = s.user_telefon
       LEFT JOIN classes c ON s.kelas_id = c.id
       WHERE u.role = 'student'
     `;
@@ -176,18 +176,18 @@ export const getAllFees = async (req, res) => {
 
     // If user is a student, only count their own fees
     if (req.user && req.user.role === 'student') {
-      countQuery += ` AND u.ic = ?`;
-      countParams.push(req.user.ic);
+      countQuery += ` AND u.telefon = ?`;
+      countParams.push(req.user.telefon);
     }
     
     // If user is a teacher, only count fees for students in their classes
     if (req.user && req.user.role === 'teacher') {
-      countQuery += ` AND c.guru_ic = ?`;
-      countParams.push(req.user.ic);
+      countQuery += ` AND c.guru_telefon = ?`;
+      countParams.push(req.user.telefon);
     }
     
     if (search) {
-      countQuery += ` AND (u.nama LIKE ? OR u.ic LIKE ?)`;
+      countQuery += ` AND (u.nama LIKE ? OR u.telefon LIKE ?)`;
       const searchTerm = `%${search}%`;
       countParams.push(searchTerm, searchTerm);
     }
@@ -195,7 +195,7 @@ export const getAllFees = async (req, res) => {
     if (status) {
       countQuery += ` AND EXISTS (
         SELECT 1 FROM fees f2 
-        WHERE f2.student_ic = u.ic 
+        WHERE f2.student_telefon = u.telefon 
         AND f2.status = ?
       )`;
       countParams.push(status);
@@ -204,7 +204,7 @@ export const getAllFees = async (req, res) => {
     if (bulan) {
       countQuery += ` AND EXISTS (
         SELECT 1 FROM fees f2 
-        WHERE f2.student_ic = u.ic 
+        WHERE f2.student_telefon = u.telefon 
         AND (f2.bulan = ? OR MONTH(f2.tarikh) = ?)
       )`;
       countParams.push(bulan, bulan);
@@ -213,7 +213,7 @@ export const getAllFees = async (req, res) => {
     if (tahun) {
       countQuery += ` AND EXISTS (
         SELECT 1 FROM fees f2 
-        WHERE f2.student_ic = u.ic 
+        WHERE f2.student_telefon = u.telefon 
         AND (f2.tahun = ? OR YEAR(f2.tarikh) = ?)
       )`;
       countParams.push(tahun, tahun);
@@ -246,10 +246,10 @@ export const getFeeById = async (req, res) => {
     const { id } = req.params;
 
     let query = `
-      SELECT f.*, u.nama as pelajar_nama, u.ic as pelajar_ic, c.nama_kelas, c.guru_ic
+      SELECT f.*, u.nama as pelajar_nama, u.telefon as pelajar_ic, c.nama_kelas, c.guru_telefon
       FROM fees f
-      JOIN users u ON f.student_ic = u.ic
-      LEFT JOIN students s ON u.ic = s.user_ic
+      JOIN users u ON f.student_telefon = u.telefon
+      LEFT JOIN students s ON u.telefon = s.user_telefon
       LEFT JOIN classes c ON s.kelas_id = c.id
       WHERE f.id = ?
     `;
@@ -267,7 +267,7 @@ export const getFeeById = async (req, res) => {
     const fee = fees[0];
     
     // If user is a student, only allow access to their own fee
-    if (req.user && req.user.role === 'student' && fee.pelajar_ic !== req.user.ic) {
+    if (req.user && req.user.role === 'student' && fee.pelajar_ic !== req.user.telefon) {
       return res.status(403).json({
         success: false,
         message: 'Access denied: You can only view your own fee records'
@@ -275,7 +275,7 @@ export const getFeeById = async (req, res) => {
     }
     
     // If user is a teacher, only allow access to fees for students in their classes
-    if (req.user && req.user.role === 'teacher' && fee.guru_ic !== req.user.ic) {
+    if (req.user && req.user.role === 'teacher' && fee.guru_telefon !== req.user.telefon) {
       return res.status(403).json({
         success: false,
         message: 'Access denied: You can only view fee records for students in your classes'
@@ -306,10 +306,10 @@ export const createFee = async (req, res) => {
       });
     }
 
-    const { student_ic, jumlah, status, tarikh, bulan, tahun, cara_bayar, no_resit, resit_img } = req.body;
+    const { student_telefon, jumlah, status, tarikh, bulan, tahun, cara_bayar, no_resit, resit_img } = req.body;
     
     // Normalize IC for lookup (remove dashes and convert to uppercase)
-    const normalizedIC = student_ic ? student_ic.replace(/-/g, '').toUpperCase() : null;
+    const normalizedIC = student_telefon ? student_telefon.replace(/-/g, '').toUpperCase() : null;
     const normalizedICNoDash = normalizedIC ? normalizedIC.replace(/-/g, '') : null;
     
     // Check if student exists - try multiple formats to handle inconsistent IC storage
@@ -321,14 +321,14 @@ export const createFee = async (req, res) => {
          REPLACE(UPPER(ic), '-', '') = ? OR
          REPLACE(UPPER(ic), '-', '') = REPLACE(UPPER(?), '-', '')
        ) AND role = 'student'`,
-      [student_ic, normalizedIC, normalizedICNoDash, student_ic]
+      [student_telefon, normalizedIC, normalizedICNoDash, student_telefon]
     );
     
     if (students.length === 0) {
       // Try case-insensitive search as last resort
       [students] = await pool.execute(
         "SELECT ic FROM users WHERE UPPER(REPLACE(ic, '-', '')) = UPPER(REPLACE(?, '-', '')) AND role = 'student'",
-        [student_ic]
+        [student_telefon]
       );
     }
     
@@ -336,7 +336,7 @@ export const createFee = async (req, res) => {
       return res.status(400).json({
         success: false,
         message: 'Student not found',
-        debug: { provided_ic: student_ic, normalized_ic: normalizedIC }
+        debug: { provided_ic: student_telefon, normalized_ic: normalizedIC }
       });
     }
     
@@ -383,7 +383,7 @@ export const createFee = async (req, res) => {
     const safeResitImg = receiptPath || null;
     
     const [result] = await pool.execute(`
-      INSERT INTO fees (student_ic, jumlah, status, tarikh, tarikh_bayar, bulan, tahun, cara_bayar, no_resit, resit_img)
+      INSERT INTO fees (student_telefon, jumlah, status, tarikh, tarikh_bayar, bulan, tahun, cara_bayar, no_resit, resit_img)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `, [safeActualStudentIC, safeJumlah, safeBackendStatus, safeFeeDate, safeTarikhBayar, safeFeeBulan, safeFeeTahun, safeCaraBayar, safeNoResit, safeResitImg]);
     
@@ -407,17 +407,17 @@ export const createFee = async (req, res) => {
     }
     
     const [newFee] = await pool.execute(`
-      SELECT f.*, u.nama as pelajar_nama, u.ic as pelajar_ic, c.nama_kelas
+      SELECT f.*, u.nama as pelajar_nama, u.telefon as pelajar_ic, c.nama_kelas
       FROM fees f
-      JOIN users u ON f.student_ic = u.ic
-      LEFT JOIN students s ON u.ic = s.user_ic
+      JOIN users u ON f.student_telefon = u.telefon
+      LEFT JOIN students s ON u.telefon = s.user_telefon
       LEFT JOIN classes c ON s.kelas_id = c.id
       WHERE f.id = ?
     `, [result.insertId]);
     
     // Create snapshot after create (only for admin/PIC)
-    const actorIc = req.user?.ic;
-    if (actorIc && (req.user?.role === 'admin' || req.user?.role === 'pic')) {
+    const actorPhone = req.user?.telefon;
+    if (actorPhone && (req.user?.role === 'admin' || req.user?.role === 'pic')) {
       await createSnapshot({
         entityType: 'fee',
         entityId: result.insertId,
@@ -428,7 +428,7 @@ export const createFee = async (req, res) => {
           title: `Yuran - ${safeActualStudentIC}`,
           notes: `Yuran baru ditambah: RM${safeJumlah} - ${safeBackendStatus}`
         },
-        actorIc
+        actorPhone
       });
     }
     
@@ -458,11 +458,11 @@ export const updateFee = async (req, res) => {
     }
 
     const { id } = req.params;
-    const { student_ic, jumlah, status, tarikh, bulan, tahun, cara_bayar, no_resit, resit_img } = req.body;
+    const { student_telefon, jumlah, status, tarikh, bulan, tahun, cara_bayar, no_resit, resit_img } = req.body;
     
     // Check if fee exists
     const [existingFees] = await pool.execute(
-      'SELECT id, student_ic FROM fees WHERE id = ?',
+      'SELECT id, student_telefon FROM fees WHERE id = ?',
       [id]
     );
     
@@ -473,11 +473,11 @@ export const updateFee = async (req, res) => {
       });
     }
     
-    // If student_ic is provided, validate it exists
-    let actualStudentIC = existingFees[0].student_ic; // Use existing student_ic from fee record
-    if (student_ic && student_ic !== existingFees[0].student_ic) {
+    // If student_telefon is provided, validate it exists
+    let actualStudentIC = existingFees[0].student_telefon; // Use existing student_telefon from fee record
+    if (student_telefon && student_telefon !== existingFees[0].student_telefon) {
       // Normalize IC for lookup
-      const normalizedIC = student_ic.replace(/-/g, '').toUpperCase();
+      const normalizedIC = student_telefon.replace(/-/g, '').toUpperCase();
       const normalizedICNoDash = normalizedIC.replace(/-/g, '');
       
       // Check if student exists - try multiple formats
@@ -489,14 +489,14 @@ export const updateFee = async (req, res) => {
            REPLACE(UPPER(ic), '-', '') = ? OR
            REPLACE(UPPER(ic), '-', '') = REPLACE(UPPER(?), '-', '')
          ) AND role = 'student'`,
-        [student_ic, normalizedIC, normalizedICNoDash, student_ic]
+        [student_telefon, normalizedIC, normalizedICNoDash, student_telefon]
       );
       
       if (students.length === 0) {
         // Try case-insensitive search as last resort
         [students] = await pool.execute(
           "SELECT ic FROM users WHERE UPPER(REPLACE(ic, '-', '')) = UPPER(REPLACE(?, '-', '')) AND role = 'student'",
-          [student_ic]
+          [student_telefon]
         );
       }
       
@@ -523,19 +523,19 @@ export const updateFee = async (req, res) => {
     const existingData = existingFeeData[0];
     
     // Create snapshot before update (only for admin/PIC)
-    const actorIc = req.user?.ic;
-    if (actorIc && (req.user?.role === 'admin' || req.user?.role === 'pic') && existingData) {
+    const actorPhone = req.user?.telefon;
+    if (actorPhone && (req.user?.role === 'admin' || req.user?.role === 'pic') && existingData) {
       await createSnapshot({
         entityType: 'fee',
         entityId: parseInt(id),
-        entityIdentifier: `${existingData.student_ic}-${existingData.bulan}-${existingData.tahun}`,
+        entityIdentifier: `${existingData.student_telefon}-${existingData.bulan}-${existingData.tahun}`,
         operation: 'update',
         data: existingData,
         metadata: {
-          title: `Yuran - ${existingData.student_ic}`,
+          title: `Yuran - ${existingData.student_telefon}`,
           notes: `Yuran dikemaskini: RM${jumlah || existingData.jumlah} - ${backendStatus}`
         },
-        actorIc
+        actorPhone
       });
     }
     
@@ -560,7 +560,7 @@ export const updateFee = async (req, res) => {
     
     await pool.execute(`
       UPDATE fees 
-      SET student_ic = ?, jumlah = ?, status = ?, tarikh = ?, tarikh_bayar = ?, bulan = ?, tahun = ?, cara_bayar = ?, no_resit = ?, resit_img = ?, updated_at = CURRENT_TIMESTAMP
+      SET student_telefon = ?, jumlah = ?, status = ?, tarikh = ?, tarikh_bayar = ?, bulan = ?, tahun = ?, cara_bayar = ?, no_resit = ?, resit_img = ?, updated_at = CURRENT_TIMESTAMP
       WHERE id = ?
     `, [actualStudentIC, jumlah, backendStatus, tarikh, tarikh_bayar, bulan, tahun, cara_bayar, receiptNumber, receiptPath, id]);
     
@@ -586,10 +586,10 @@ export const updateFee = async (req, res) => {
     }
     
     const [updatedFee] = await pool.execute(`
-      SELECT f.*, u.nama as pelajar_nama, u.ic as pelajar_ic, c.nama_kelas
+      SELECT f.*, u.nama as pelajar_nama, u.telefon as pelajar_ic, c.nama_kelas
       FROM fees f
-      JOIN users u ON f.student_ic = u.ic
-      LEFT JOIN students s ON u.ic = s.user_ic
+      JOIN users u ON f.student_telefon = u.telefon
+      LEFT JOIN students s ON u.telefon = s.user_telefon
       LEFT JOIN classes c ON s.kelas_id = c.id
       WHERE f.id = ?
     `, [id]);
@@ -682,7 +682,7 @@ export const markAsPaid = async (req, res) => {
       const [updatedFee] = await pool.execute(`
         SELECT f.*, u.email, u.nama as pelajar_nama
         FROM fees f
-        JOIN users u ON f.student_ic = u.ic
+        JOIN users u ON f.student_telefon = u.telefon
         WHERE f.id = ?
       `, [id]);
       
@@ -705,8 +705,8 @@ export const markAsPaid = async (req, res) => {
     const [updatedFee] = await pool.execute(`
       SELECT f.*, u.nama as pelajar_nama, c.nama_kelas
       FROM fees f
-      JOIN users u ON f.student_ic = u.ic
-      LEFT JOIN students s ON u.ic = s.user_ic
+      JOIN users u ON f.student_telefon = u.telefon
+      LEFT JOIN students s ON u.telefon = s.user_telefon
       LEFT JOIN classes c ON s.kelas_id = c.id
       WHERE f.id = ?
     `, [id]);
@@ -747,21 +747,21 @@ export const deleteFee = async (req, res) => {
     }
     
     const feeData = existingFees[0];
-    const actorIc = req.user?.ic;
+    const actorPhone = req.user?.telefon;
     
     // Create snapshot before delete (only for admin/PIC)
-    if (actorIc && (req.user?.role === 'admin' || req.user?.role === 'pic')) {
+    if (actorPhone && (req.user?.role === 'admin' || req.user?.role === 'pic')) {
       await createSnapshot({
         entityType: 'fee',
         entityId: parseInt(id),
-        entityIdentifier: `${feeData.student_ic}-${feeData.bulan}-${feeData.tahun}`,
+        entityIdentifier: `${feeData.student_telefon}-${feeData.bulan}-${feeData.tahun}`,
         operation: 'delete',
         data: feeData,
         metadata: {
-          title: `Yuran - ${feeData.student_ic}`,
+          title: `Yuran - ${feeData.student_telefon}`,
           notes: `Yuran dipadam: RM${feeData.jumlah} - ${feeData.status}`
         },
-        actorIc
+        actorPhone
       });
     }
     
@@ -888,7 +888,7 @@ export const confirmFeeDocument = async (req, res) => {
   try {
     const { id } = req.params;
     const { confirmed, notes } = req.body;
-    const confirmedBy = req.user?.ic;
+    const confirmedBy = req.user?.telefon;
 
     if (!confirmedBy) {
       return res.status(401).json({
@@ -924,13 +924,13 @@ export const confirmFeeDocument = async (req, res) => {
     );
 
     const [updatedFee] = await pool.execute(
-      `SELECT f.*, u.nama as pelajar_nama, u.ic as pelajar_ic, c.nama_kelas,
+      `SELECT f.*, u.nama as pelajar_nama, u.telefon as pelajar_ic, c.nama_kelas,
               cu.nama as confirmed_by_name
        FROM fees f
-       JOIN users u ON f.student_ic = u.ic
-       LEFT JOIN students s ON u.ic = s.user_ic
+       JOIN users u ON f.student_telefon = u.telefon
+       LEFT JOIN students s ON u.telefon = s.user_telefon
        LEFT JOIN classes c ON s.kelas_id = c.id
-       LEFT JOIN users cu ON f.confirmed_by = cu.ic
+       LEFT JOIN users cu ON f.confirmed_by = cu.telefon
        WHERE f.id = ?`,
       [id]
     );

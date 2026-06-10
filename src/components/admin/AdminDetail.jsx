@@ -66,7 +66,7 @@ const AdminDetail = ({ admin, onEdit, onClose }) => {
                   <label className="block text-sm font-medium text-gray-500">Nombor IC</label>
                   <p className="mt-1 text-sm text-gray-900 flex items-center">
                     <CreditCard className="w-4 h-4 mr-2 text-emerald-600" />
-                    {(admin.ic || admin.IC) ? formatIC(admin.ic || admin.IC, true) : '-'}
+                    {(admin.telefon || admin.IC) ? formatIC(admin.telefon || admin.IC, true) : '-'}
                   </p>
                 </div>
                 {admin.email && (

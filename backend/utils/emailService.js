@@ -50,7 +50,7 @@ const createTransporter = () => {
 
 // Email templates
 export const emailTemplates = {
-  passwordReset: (resetLink, userNama, userIc) => ({
+  passwordReset: (resetLink, userNama, userPhone) => ({
     subject: 'Penetapan Semula Kata Laluan e-Quran',
     html: `
       <!DOCTYPE html>
@@ -203,7 +203,7 @@ export const emailTemplates = {
                 <strong>Nama Akaun Pengguna:</strong> ${userNama}
               </div>
               <div class="account-item">
-                <strong>No Kad Pengenalan / Passport:</strong> ${userIc || 'N/A'}
+                <strong>No Kad Pengenalan / Passport:</strong> ${userPhone || 'N/A'}
               </div>
             </div>
             <div class="reason-text">
@@ -242,7 +242,7 @@ export const emailTemplates = {
       Butiran Akaun e-Quran adalah seperti dibawah :
 
       Nama Akaun Pengguna: ${userNama}
-      No Kad Pengenalan / Passport: ${userIc || 'N/A'}
+      No Kad Pengenalan / Passport: ${userPhone || 'N/A'}
 
       Emel ini dihantar kerana kami telah menerima permintaan anda untuk menetapkan semula kata laluan.
 
@@ -553,8 +553,8 @@ export const sendEmail = async (to, subject, html, text) => {
 };
 
 // Convenience functions
-export const sendPasswordResetEmail = async (email, resetLink, userNama, userIc) => {
-  const template = emailTemplates.passwordReset(resetLink, userNama, userIc);
+export const sendPasswordResetEmail = async (email, resetLink, userNama, userPhone) => {
+  const template = emailTemplates.passwordReset(resetLink, userNama, userPhone);
   return await sendEmail(email, template.subject, template.html, template.text);
 };
 

@@ -55,7 +55,7 @@ router.get('/class-documents', requireRole(['ib', 'admin']), getClassDocuments);
 router.post('/confirm-class-attendance',
   requireRole(['ib']),
   body('class_id').isInt().withMessage('Class ID must be a valid integer'),
-  body('exclude_student_ics').optional().isArray().withMessage('Exclude student ICs must be an array'),
+  body('exclude_student_telefons').optional().isArray().withMessage('Exclude student ICs must be an array'),
   body('notes').optional().isString().withMessage('Notes must be a string'),
   body('confirmed').optional().isBoolean().withMessage('Confirmed must be a boolean'),
   confirmClassAttendance
@@ -65,7 +65,7 @@ router.post('/confirm-class-attendance',
 router.post('/confirm-class-fees',
   requireRole(['ib']),
   body('class_id').isInt().withMessage('Class ID must be a valid integer'),
-  body('exclude_student_ics').optional().isArray().withMessage('Exclude student ICs must be an array'),
+  body('exclude_student_telefons').optional().isArray().withMessage('Exclude student ICs must be an array'),
   body('notes').optional().isString().withMessage('Notes must be a string'),
   body('confirmed').optional().isBoolean().withMessage('Confirmed must be a boolean'),
   confirmClassFees
@@ -115,4 +115,5 @@ router.get('/export/history',
 );
 
 export default router;
+
 

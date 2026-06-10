@@ -1,13 +1,13 @@
 import { pool } from '../config/database.js';
 import { flushStudentCache } from '../utils/studentCache.js';
 
-const normalizeIcForQuery = (ic) => (typeof ic === 'string' ? ic.replace(/-/g, '') : ic);
+const normalizePhoneForQuery = (ic) => (typeof ic === 'string' ? ic.replace(/-/g, '') : ic);
 
 /**
  * Archive a student - move them from active students to archived_students table
  */
 export const archiveStudent = async (ic, reason = null, archivedBy = null) => {
-  const cleanedIc = normalizeIcForQuery(ic);
+  const cleanedIc = normalizePhoneForQuery(ic);
   const connection = await pool.getConnection();
   
   try {
@@ -17,9 +17,9 @@ export const archiveStudent = async (ic, reason = null, archivedBy = null) => {
     const [users] = await connection.execute(
       `SELECT u.*, s.kelas_id, s.tarikh_daftar, c.nama_kelas
        FROM users u
-       LEFT JOIN students s ON u.ic = s.user_ic
+       LEFT JOIN students s ON u.telefon = s.user_telefon
        LEFT JOIN classes c ON s.kelas_id = c.id
-       WHERE REPLACE(u.ic, '-', '') = ? AND u.role = 'student'`,
+       WHERE REPLACE(u.telefon, '-', '') = ? AND u.role = 'student'`,
       [cleanedIc]
     );
     
@@ -34,10 +34,10 @@ export const archiveStudent = async (ic, reason = null, archivedBy = null) => {
     // Insert into archived_students table
     await connection.execute(
       `INSERT INTO archived_students 
-       (user_ic, nama, umur, alamat, telefon, email, kelas_id, tarikh_daftar, alasan_arkib, archived_by, original_data)
+       (user_telefon, nama, umur, alamat, telefon, email, kelas_id, tarikh_daftar, alasan_arkib, archived_by, original_data)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
-        student.ic,
+        student.telefon,
         student.nama,
         student.umur,
         student.alamat,
@@ -53,7 +53,7 @@ export const archiveStudent = async (ic, reason = null, archivedBy = null) => {
     
     // Delete from students table (but keep in users table for historical reference)
     await connection.execute(
-      `DELETE FROM students WHERE REPLACE(user_ic, '-', '') = ?`,
+      `DELETE FROM students WHERE REPLACE(user_telefon, '-', '') = ?`,
       [cleanedIc]
     );
     
@@ -73,7 +73,7 @@ export const archiveStudent = async (ic, reason = null, archivedBy = null) => {
  * Unarchive a student - move them back from archived_students to active students
  */
 export const unarchiveStudent = async (ic) => {
-  const cleanedIc = normalizeIcForQuery(ic);
+  const cleanedIc = normalizePhoneForQuery(ic);
   const connection = await pool.getConnection();
   
   try {
@@ -81,7 +81,7 @@ export const unarchiveStudent = async (ic) => {
     
     // Fetch from archived_students
     const [archived] = await connection.execute(
-      `SELECT * FROM archived_students WHERE REPLACE(user_ic, '-', '') = ? ORDER BY tarikh_arkib DESC LIMIT 1`,
+      `SELECT * FROM archived_students WHERE REPLACE(user_telefon, '-', '') = ? ORDER BY tarikh_arkib DESC LIMIT 1`,
       [cleanedIc]
     );
     
@@ -95,13 +95,13 @@ export const unarchiveStudent = async (ic) => {
     
     // Restore to students table
     await connection.execute(
-      `INSERT INTO students (user_ic, kelas_id, tarikh_daftar)
+      `INSERT INTO students (user_telefon, kelas_id, tarikh_daftar)
        VALUES (?, ?, ?)
        ON DUPLICATE KEY UPDATE
        kelas_id = VALUES(kelas_id),
        tarikh_daftar = VALUES(tarikh_daftar)`,
       [
-        archivedStudent.user_ic,
+        archivedStudent.user_telefon,
         archivedStudent.kelas_id,
         archivedStudent.tarikh_daftar
       ]
@@ -136,7 +136,7 @@ export const getArchivedStudents = async (search = null, page = 1, limit = 1000)
   const queryParams = [];
   
   if (search) {
-    query += ` AND (a.nama LIKE ? OR a.user_ic LIKE ?)`;
+    query += ` AND (a.nama LIKE ? OR a.user_telefon LIKE ?)`;
     const searchTerm = `%${search}%`;
     queryParams.push(searchTerm, searchTerm);
   }
@@ -152,7 +152,7 @@ export const getArchivedStudents = async (search = null, page = 1, limit = 1000)
   const countParams = [];
   
   if (search) {
-    countQuery += ` AND (nama LIKE ? OR user_ic LIKE ?)`;
+    countQuery += ` AND (nama LIKE ? OR user_telefon LIKE ?)`;
     const searchTerm = `%${search}%`;
     countParams.push(searchTerm, searchTerm);
   }

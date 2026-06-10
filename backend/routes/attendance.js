@@ -11,8 +11,8 @@ import {
   confirmAttendanceDocument
 } from '../controllers/attendanceController.js';
 import { authenticateToken, requireRole } from '../middleware/auth.js';
-import { isValidICFormat } from '../utils/icNormalizer.js';
-import { normalizeICMiddleware } from '../middleware/normalizeIC.js';
+import { isValidPhoneFormat } from '../utils/phoneNormalizer.js';
+import { normalizePhoneMiddleware } from '../middleware/normalizePhone.js';
 import { uploadAttendanceProof } from '../middleware/upload.js';
 import { requirePicApproval } from '../middleware/picApproval.js';
 import { pool } from '../config/database.js';
@@ -23,9 +23,9 @@ const router = express.Router();
 
 // Validation rules
 const attendanceValidation = [
-  body('student_ic')
+  body('student_telefon')
     .custom((value) => {
-      if (!isValidICFormat(value)) {
+      if (!isValidPhoneFormat(value)) {
         throw new Error('Student IC must be 12 digits (format: 123456-78-9012 or 123456789012)');
       }
       return true;
@@ -51,9 +51,9 @@ const bulkAttendanceValidation = [
   body('attendance_data')
     .isArray({ min: 1 })
     .withMessage('Attendance data must be a non-empty array'),
-  body('attendance_data.*.student_ic')
+  body('attendance_data.*.student_telefon')
     .custom((value) => {
-      if (!isValidICFormat(value)) {
+      if (!isValidPhoneFormat(value)) {
         throw new Error('Student IC must be 12 digits (format: 123456-78-9012 or 123456789012)');
       }
       return true;
@@ -64,9 +64,9 @@ const bulkAttendanceValidation = [
 ];
 
 const icValidation = [
-  param('student_ic')
+  param('student_telefon')
     .custom((value) => {
-      if (!isValidICFormat(value)) {
+      if (!isValidPhoneFormat(value)) {
         throw new Error('IC must be 12 digits (format: 123456-78-9012 or 123456789012)');
       }
       return true;
@@ -109,31 +109,31 @@ router.use((req, res, next) => {
 // Routes
 router.get('/', getAttendance);
 router.get('/stats', getAttendanceStats);
-router.get('/student/:student_ic', icValidation, normalizeICMiddleware, getStudentAttendanceHistory);
+router.get('/student/:student_telefon', icValidation, normalizePhoneMiddleware, getStudentAttendanceHistory);
 router.post(
   '/',
   requireRole(['admin', 'staff', 'teacher', 'pic']),
   attendanceValidation,
-  normalizeICMiddleware,
+  normalizePhoneMiddleware,
   requirePicApproval({
     actionKey: 'attendance:create',
     entityType: 'attendance',
     message: 'Permintaan kehadiran dihantar untuk kelulusan admin.',
     prepare: async (req) => {
-      const { student_ic, class_id, tarikh } = req.body;
+      const { student_telefon, class_id, tarikh } = req.body;
       // Try to find existing attendance to determine if this is create or update
       const attendanceDate = tarikh || new Date().toISOString().split('T')[0];
       const [existing] = await pool.execute(
-        'SELECT id, status FROM attendance WHERE student_ic = ? AND class_id = ? AND tarikh = ?',
-        [student_ic, class_id, attendanceDate]
+        'SELECT id, status FROM attendance WHERE student_telefon = ? AND class_id = ? AND tarikh = ?',
+        [student_telefon, class_id, attendanceDate]
       );
       return {
         entityId: existing.length > 0 ? existing[0].id.toString() : null,
         metadata: {
           summary: existing.length > 0 
-            ? `Kemaskini kehadiran untuk ${student_ic}` 
-            : `Tambah kehadiran untuk ${student_ic}`,
-          student_ic,
+            ? `Kemaskini kehadiran untuk ${student_telefon}` 
+            : `Tambah kehadiran untuk ${student_telefon}`,
+          student_telefon,
           class_id,
           tarikh: attendanceDate,
           current_status: existing.length > 0 ? existing[0].status : null
@@ -147,7 +147,7 @@ router.post(
   '/bulk',
   requireRole(['admin', 'staff', 'teacher', 'pic']),
   bulkAttendanceValidation,
-  normalizeICMiddleware,
+  normalizePhoneMiddleware,
   requirePicApproval({
     actionKey: 'attendance:bulk-create',
     entityType: 'attendance',
@@ -176,7 +176,7 @@ router.post(
   '/bulk-with-proof',
   requireRole(['admin', 'staff', 'teacher', 'pic']),
   uploadAttendanceProof,
-  normalizeICMiddleware,
+  normalizePhoneMiddleware,
   requirePicApproval({
     actionKey: 'attendance:bulk-create-with-proof',
     entityType: 'attendance',
@@ -222,7 +222,7 @@ router.put(
   requireRole(['admin', 'pic']),
   idValidation,
   attendanceValidation,
-  normalizeICMiddleware,
+  normalizePhoneMiddleware,
   requirePicApproval({
     actionKey: 'attendance:update',
     entityType: 'attendance',
@@ -281,7 +281,7 @@ router.delete('/:id',
   },
   
   // STEP 4: Normalize IC
-  normalizeICMiddleware,
+  normalizePhoneMiddleware,
   (req, res, next) => {
     console.log('[DELETE ROUTE] ✅ STEP 4: IC normalization passed');
     next();
@@ -345,3 +345,4 @@ router.post('/:id/confirm-document', requireRole(['admin', 'pic', 'ib']), idVali
 // IMPORTANT: This must be LAST - catch-all for any DELETE that doesn't match above
 // This helps debug if DELETE requests aren't matching the /:id route
 export default router;
+

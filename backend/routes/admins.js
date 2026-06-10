@@ -9,8 +9,6 @@ import {
 } from '../controllers/adminController.js';
 import { authenticateToken, requireRole } from '../middleware/auth.js';
 import { requireMasterAdmin } from '../middleware/requireMasterAdmin.js';
-import { isValidICFormat } from '../utils/icNormalizer.js';
-import { normalizeICMiddleware } from '../middleware/normalizeIC.js';
 import { isValidPhoneFormat } from '../utils/phoneNormalizer.js';
 import { normalizePhoneMiddleware } from '../middleware/normalizePhone.js';
 
@@ -23,11 +21,11 @@ const createAdminValidation = [
     .withMessage('Name is required')
     .isLength({ min: 2, max: 100 })
     .withMessage('Name must be between 2 and 100 characters'),
-  body('ic')
+  body('telefon')
     .notEmpty()
-    .withMessage('IC number is required')
+    .withMessage('Nombor telefon diperlukan')
     .custom((value) => {
-      if (!isValidICFormat(value)) {
+      if (!isValidPhoneFormat(value)) {
         throw new Error('IC must be 12 digits (format: 123456-78-9012 or 123456789012)');
       }
       return true;
@@ -69,11 +67,11 @@ const updateAdminValidation = [
     .optional()
     .isLength({ min: 2, max: 100 })
     .withMessage('Name must be between 2 and 100 characters'),
-  body('ic')
+  body('telefon')
     .notEmpty()
-    .withMessage('IC number is required')
+    .withMessage('Nombor telefon diperlukan')
     .custom((value) => {
-      if (!isValidICFormat(value)) {
+      if (!isValidPhoneFormat(value)) {
         throw new Error('IC must be 12 digits (format: 123456-78-9012 or 123456789012)');
       }
       return true;
@@ -121,7 +119,7 @@ const updateAdminValidation = [
 const icValidation = [
   param('ic')
     .custom((value) => {
-      if (!isValidICFormat(value)) {
+      if (!isValidPhoneFormat(value)) {
         throw new Error('IC must be 12 digits (format: 123456-78-9012 or 123456789012)');
       }
       return true;
@@ -130,12 +128,13 @@ const icValidation = [
 
 // GET routes: All admins can view admin details
 router.get('/', authenticateToken, requireRole(['admin']), getAllAdmins);
-router.get('/:ic', authenticateToken, requireRole(['admin']), icValidation, normalizeICMiddleware, getAdminById);
+router.get('/:ic', authenticateToken, requireRole(['admin']), icValidation, normalizePhoneMiddleware, getAdminById);
 
 // POST, PUT, DELETE routes: Only master admin can create/update/delete admins
-router.post('/', authenticateToken, requireRole(['admin']), requireMasterAdmin, createAdminValidation, normalizeICMiddleware, normalizePhoneMiddleware, createAdmin);
-router.put('/:ic', authenticateToken, requireRole(['admin']), requireMasterAdmin, icValidation, updateAdminValidation, normalizeICMiddleware, normalizePhoneMiddleware, updateAdmin);
-router.delete('/:ic', authenticateToken, requireRole(['admin']), requireMasterAdmin, icValidation, normalizeICMiddleware, deleteAdmin);
+router.post('/', authenticateToken, requireRole(['admin']), requireMasterAdmin, createAdminValidation, normalizePhoneMiddleware, normalizePhoneMiddleware, createAdmin);
+router.put('/:ic', authenticateToken, requireRole(['admin']), requireMasterAdmin, icValidation, updateAdminValidation, normalizePhoneMiddleware, normalizePhoneMiddleware, updateAdmin);
+router.delete('/:ic', authenticateToken, requireRole(['admin']), requireMasterAdmin, icValidation, normalizePhoneMiddleware, deleteAdmin);
 
 export default router;
+
 

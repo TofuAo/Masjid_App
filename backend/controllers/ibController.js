@@ -3,7 +3,7 @@ import { validationResult } from 'express-validator';
 
 const logIbAction = async ({
   actionType,
-  userIc,
+  userPhone,
   bulan = null,
   tahun = null,
   paymentId = null,
@@ -15,9 +15,9 @@ const logIbAction = async ({
 }) => {
   await pool.execute(
     `INSERT INTO ib_action_logs 
-      (action_type, user_ic, bulan, tahun, payment_id, attendance_id, document_type, amount, notes, metadata)
+      (action_type, user_telefon, bulan, tahun, payment_id, attendance_id, document_type, amount, notes, metadata)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    [actionType, userIc, bulan, tahun, paymentId, attendanceId, documentType, amount, notes, metadata]
+    [actionType, userPhone, bulan, tahun, paymentId, attendanceId, documentType, amount, notes, metadata]
   );
 };
 
@@ -89,7 +89,7 @@ export const getMonthlyPaymentReport = async (req, res) => {
     const [payments] = await pool.execute(
       `SELECT 
         f.id,
-        f.student_ic,
+        f.student_telefon,
         u.nama as pelajar_nama,
         c.nama_kelas,
         f.jumlah,
@@ -106,8 +106,8 @@ export const getMonthlyPaymentReport = async (req, res) => {
         f.confirmed_at,
         f.created_at
       FROM fees f
-      INNER JOIN users u ON f.student_ic = u.ic
-      LEFT JOIN students s ON u.ic = s.user_ic
+      INNER JOIN users u ON f.student_telefon = u.telefon
+      LEFT JOIN students s ON u.telefon = s.user_telefon
       LEFT JOIN classes c ON s.kelas_id = c.id
       WHERE f.bulan = ? AND f.tahun = ?
       ORDER BY f.tarikh_bayar DESC, u.nama ASC`,
@@ -168,7 +168,7 @@ export const confirmMonthlyPayment = async (req, res) => {
     }
 
     const { bulan, tahun, notes, status } = req.body;
-    const ibIc = req.user.ic;
+    const ibIc = req.user.telefon;
 
     if (!bulan || !tahun) {
       return res.status(400).json({
@@ -272,14 +272,14 @@ export const confirmMonthlyPayment = async (req, res) => {
     const [updated] = await pool.execute(
       `SELECT pc.*, u.nama as confirmed_by_name
        FROM payment_confirmations pc
-       INNER JOIN users u ON pc.confirmed_by_ic = u.ic
+       INNER JOIN users u ON pc.confirmed_by_ic = u.telefon
        WHERE pc.bulan = ? AND pc.tahun = ?`,
       [bulan, tahun]
     );
 
     await logIbAction({
       actionType: status === 'rejected' ? 'reject_month' : 'confirm_month',
-      userIc: ibIc,
+      userPhone: ibIc,
       bulan,
       tahun,
       amount: totalAmount,
@@ -324,7 +324,7 @@ export const getAvailableMonthlyReports = async (req, res) => {
         pc.confirmation_period_end
       FROM fees f
       LEFT JOIN payment_confirmations pc ON f.bulan = pc.bulan AND f.tahun = pc.tahun
-      LEFT JOIN users u ON pc.confirmed_by_ic = u.ic
+      LEFT JOIN users u ON pc.confirmed_by_ic = u.telefon
       GROUP BY f.bulan, f.tahun, pc.status, pc.confirmed_at, pc.confirmed_by_ic, u.nama, 
                pc.confirmation_period_start, pc.confirmation_period_end
       ORDER BY f.tahun DESC, 
@@ -388,8 +388,8 @@ export const getAvailableMonthlyReports = async (req, res) => {
 // Bulk confirm attendance documents by class
 export const confirmClassAttendance = async (req, res) => {
   try {
-    const { class_id, exclude_student_ics = [], notes = '', confirmed = true } = req.body;
-    const confirmedBy = req.user?.ic;
+    const { class_id, exclude_student_telefons = [], notes = '', confirmed = true } = req.body;
+    const confirmedBy = req.user?.telefon;
 
     if (!confirmedBy) {
       return res.status(401).json({
@@ -407,7 +407,7 @@ export const confirmClassAttendance = async (req, res) => {
 
     // Get all attendance records for the class that have proof images and are not yet confirmed
     let query = `
-      SELECT a.id, a.student_ic, a.proof_image, a.document_confirmed
+      SELECT a.id, a.student_telefon, a.proof_image, a.document_confirmed
       FROM attendance a
       WHERE a.class_id = ? 
         AND a.proof_image IS NOT NULL 
@@ -416,10 +416,10 @@ export const confirmClassAttendance = async (req, res) => {
     const queryParams = [class_id];
 
     // Exclude specific students if provided
-    if (exclude_student_ics && exclude_student_ics.length > 0) {
-      const placeholders = exclude_student_ics.map(() => '?').join(',');
-      query += ` AND a.student_ic NOT IN (${placeholders})`;
-      queryParams.push(...exclude_student_ics);
+    if (exclude_student_telefons && exclude_student_telefons.length > 0) {
+      const placeholders = exclude_student_telefons.map(() => '?').join(',');
+      query += ` AND a.student_telefon NOT IN (${placeholders})`;
+      queryParams.push(...exclude_student_telefons);
     }
 
     const [attendanceRecords] = await pool.execute(query, queryParams);
@@ -457,7 +457,7 @@ export const confirmClassAttendance = async (req, res) => {
       data: {
         confirmed: attendanceRecords.length,
         total: attendanceRecords.length,
-        excluded: exclude_student_ics.length
+        excluded: exclude_student_telefons.length
       }
     });
   } catch (error) {
@@ -473,8 +473,8 @@ export const confirmClassAttendance = async (req, res) => {
 // Bulk confirm fee documents by class
 export const confirmClassFees = async (req, res) => {
   try {
-    const { class_id, exclude_student_ics = [], notes = '', confirmed = true } = req.body;
-    const confirmedBy = req.user?.ic;
+    const { class_id, exclude_student_telefons = [], notes = '', confirmed = true } = req.body;
+    const confirmedBy = req.user?.telefon;
 
     if (!confirmedBy) {
       return res.status(401).json({
@@ -492,9 +492,9 @@ export const confirmClassFees = async (req, res) => {
 
     // Get all fee records for students in the class that have receipt images and are not yet confirmed
     let query = `
-      SELECT f.id, f.student_ic, f.resit_img, f.document_confirmed, f.jumlah
+      SELECT f.id, f.student_telefon, f.resit_img, f.document_confirmed, f.jumlah
       FROM fees f
-      INNER JOIN students s ON f.student_ic = s.user_ic
+      INNER JOIN students s ON f.student_telefon = s.user_telefon
       WHERE s.kelas_id = ? 
         AND f.resit_img IS NOT NULL 
         AND f.resit_img != ''
@@ -502,10 +502,10 @@ export const confirmClassFees = async (req, res) => {
     const queryParams = [class_id];
 
     // Exclude specific students if provided
-    if (exclude_student_ics && exclude_student_ics.length > 0) {
-      const placeholders = exclude_student_ics.map(() => '?').join(',');
-      query += ` AND f.student_ic NOT IN (${placeholders})`;
-      queryParams.push(...exclude_student_ics);
+    if (exclude_student_telefons && exclude_student_telefons.length > 0) {
+      const placeholders = exclude_student_telefons.map(() => '?').join(',');
+      query += ` AND f.student_telefon NOT IN (${placeholders})`;
+      queryParams.push(...exclude_student_telefons);
     }
 
     const [feeRecords] = await pool.execute(query, queryParams);
@@ -543,7 +543,7 @@ export const confirmClassFees = async (req, res) => {
       data: {
         confirmed: feeRecords.length,
         total: feeRecords.length,
-        excluded: exclude_student_ics.length
+        excluded: exclude_student_telefons.length
       }
     });
   } catch (error) {
@@ -572,7 +572,7 @@ export const getClassDocuments = async (req, res) => {
     const [attendanceRecords] = await pool.execute(
       `SELECT 
         a.id,
-        a.student_ic,
+        a.student_telefon,
         a.tarikh,
         a.status,
         a.proof_image,
@@ -582,7 +582,7 @@ export const getClassDocuments = async (req, res) => {
         u.nama as pelajar_nama,
         c.nama_kelas
       FROM attendance a
-      INNER JOIN users u ON a.student_ic = u.ic
+      INNER JOIN users u ON a.student_telefon = u.telefon
       INNER JOIN classes c ON a.class_id = c.id
       WHERE a.class_id = ? 
         AND a.proof_image IS NOT NULL 
@@ -595,7 +595,7 @@ export const getClassDocuments = async (req, res) => {
     const [feeRecords] = await pool.execute(
       `SELECT 
         f.id,
-        f.student_ic,
+        f.student_telefon,
         f.tarikh,
         f.bulan,
         f.tahun,
@@ -608,9 +608,9 @@ export const getClassDocuments = async (req, res) => {
         u.nama as pelajar_nama,
         c.nama_kelas
       FROM fees f
-      INNER JOIN students s ON f.student_ic = s.user_ic
+      INNER JOIN students s ON f.student_telefon = s.user_telefon
       INNER JOIN classes c ON s.kelas_id = c.id
-      INNER JOIN users u ON f.student_ic = u.ic
+      INNER JOIN users u ON f.student_telefon = u.telefon
       WHERE s.kelas_id = ? 
         AND f.resit_img IS NOT NULL 
         AND f.resit_img != ''
@@ -640,7 +640,7 @@ export const getClassDocuments = async (req, res) => {
 export const approvePaymentsByDateRange = async (req, res) => {
   try {
     const { bulan, tahun, start_date, end_date, exclude_payment_ids = [], notes = '' } = req.body;
-    const confirmedBy = req.user?.ic;
+    const confirmedBy = req.user?.telefon;
 
     if (!confirmedBy) {
       return res.status(401).json({
@@ -670,7 +670,7 @@ export const approvePaymentsByDateRange = async (req, res) => {
 
     // Build query to get payments in the date range
     let query = `
-      SELECT f.id, f.student_ic, f.resit_img, f.document_confirmed
+      SELECT f.id, f.student_telefon, f.resit_img, f.document_confirmed
       FROM fees f
       WHERE f.bulan = ? AND f.tahun = ?
         AND f.resit_img IS NOT NULL 
@@ -728,7 +728,7 @@ export const approvePaymentsByDateRange = async (req, res) => {
 
     await logIbAction({
       actionType: 'approve_payments',
-      userIc: confirmedBy,
+      userPhone: confirmedBy,
       bulan,
       tahun,
       amount: totalApprovedAmount,
@@ -783,7 +783,7 @@ export const getApprovalHistory = async (req, res) => {
     const [logs] = await pool.execute(
       `SELECT l.*, u.nama as user_name
        FROM ib_action_logs l
-       LEFT JOIN users u ON l.user_ic = u.ic
+       LEFT JOIN users u ON l.user_telefon = u.telefon
        ${whereClause}
        ORDER BY l.created_at DESC
        LIMIT ?`,
@@ -807,7 +807,7 @@ export const getApprovalHistory = async (req, res) => {
 export const flagPayment = async (req, res) => {
   try {
     const { payment_id, reason, send_back_to_pic = false, notes = '' } = req.body;
-    const flaggedBy = req.user?.ic;
+    const flaggedBy = req.user?.telefon;
 
     if (!flaggedBy) {
       return res.status(401).json({
@@ -846,7 +846,7 @@ export const flagPayment = async (req, res) => {
 
     await logIbAction({
       actionType: send_back_to_pic ? 'send_back_to_pic' : 'flag_payment',
-      userIc: flaggedBy,
+      userPhone: flaggedBy,
       bulan: rows[0].bulan,
       tahun: rows[0].tahun,
       paymentId: payment_id,
@@ -890,10 +890,10 @@ export const getFlaggedPayments = async (req, res) => {
     }
 
     const [flagged] = await pool.execute(
-      `SELECT flags.*, f.student_ic, f.jumlah, f.bulan, f.tahun, u.nama as pelajar_nama
+      `SELECT flags.*, f.student_telefon, f.jumlah, f.bulan, f.tahun, u.nama as pelajar_nama
        FROM ib_document_flags flags
        LEFT JOIN fees f ON flags.payment_id = f.id
-       LEFT JOIN users u ON f.student_ic = u.ic
+       LEFT JOIN users u ON f.student_telefon = u.telefon
        WHERE ${filters.join(' AND ')}
        ORDER BY flags.created_at DESC`,
       params
@@ -926,7 +926,7 @@ export const exportMonthlySummary = async (req, res) => {
     const [payments] = await pool.execute(
       `SELECT 
         f.id,
-        f.student_ic,
+        f.student_telefon,
         u.nama as pelajar_nama,
         c.nama_kelas,
         f.jumlah,
@@ -940,8 +940,8 @@ export const exportMonthlySummary = async (req, res) => {
         f.confirmed_at,
         pc.status as confirmation_status
        FROM fees f
-       INNER JOIN users u ON f.student_ic = u.ic
-       LEFT JOIN students s ON u.ic = s.user_ic
+       INNER JOIN users u ON f.student_telefon = u.telefon
+       LEFT JOIN students s ON u.telefon = s.user_telefon
        LEFT JOIN classes c ON s.kelas_id = c.id
        LEFT JOIN payment_confirmations pc ON pc.bulan = f.bulan AND pc.tahun = f.tahun
        WHERE f.bulan = ? AND f.tahun = ?
@@ -999,7 +999,7 @@ export const exportApprovalHistory = async (req, res) => {
     const [logs] = await pool.execute(
       `SELECT l.*, u.nama as user_name
        FROM ib_action_logs l
-       LEFT JOIN users u ON l.user_ic = u.ic
+       LEFT JOIN users u ON l.user_telefon = u.telefon
        ${whereClause}
        ORDER BY l.created_at DESC
        LIMIT ?`,

@@ -3,35 +3,37 @@
 
 import { pool } from '../config/database.js';
 
-export async function ensureSingleIb(newIbIc) {
+// Ensures only one user has role = 'ib' at a time.
+// After phone-centric auth migration, the identifier is users.telefon.
+export async function ensureSingleIb(newIbTelefon) {
   try {
     // Get all current IB users
     const [currentIbs] = await pool.execute(
-      "SELECT ic, nama FROM users WHERE role = 'ib'"
+      "SELECT telefon, nama FROM users WHERE role = 'ib'"
     );
 
     // If there are other IB users, remove their IB role
-    const otherIbs = currentIbs.filter(ib => ib.ic !== newIbIc);
+    const otherIbs = currentIbs.filter(ib => ib.telefon !== newIbTelefon);
     
     if (otherIbs.length > 0) {
       // Change their role to 'staff' or keep their previous role if stored
       for (const otherIb of otherIbs) {
         // Try to find if they have another role (e.g., admin, teacher)
         const [user] = await pool.execute(
-          "SELECT * FROM users WHERE ic = ?",
-          [otherIb.ic]
+          "SELECT * FROM users WHERE telefon = ?",
+          [otherIb.telefon]
         );
 
         if (user.length > 0) {
           // Check if user has admin or teacher role in other tables
           const [isAdmin] = await pool.execute(
-            "SELECT COUNT(*) as count FROM users WHERE ic = ? AND role = 'admin'",
-            [otherIb.ic]
+            "SELECT COUNT(*) as count FROM users WHERE telefon = ? AND role = 'admin'",
+            [otherIb.telefon]
           );
           
           const [isTeacher] = await pool.execute(
-            "SELECT COUNT(*) as count FROM teachers WHERE user_ic = ?",
-            [otherIb.ic]
+            "SELECT COUNT(*) as count FROM teachers WHERE user_telefon = ?",
+            [otherIb.telefon]
           );
 
           let newRole = 'staff'; // Default fallback
@@ -42,11 +44,11 @@ export async function ensureSingleIb(newIbIc) {
           }
 
           await pool.execute(
-            "UPDATE users SET role = ? WHERE ic = ?",
-            [newRole, otherIb.ic]
+            "UPDATE users SET role = ? WHERE telefon = ?",
+            [newRole, otherIb.telefon]
           );
           
-          console.log(`✅ Removed IB role from ${otherIb.nama} (IC: ${otherIb.ic}), set to ${newRole}`);
+          console.log(`✅ Removed IB role from ${otherIb.nama} (telefon: ${otherIb.telefon}), set to ${newRole}`);
         }
       }
     }

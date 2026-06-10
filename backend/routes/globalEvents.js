@@ -8,3 +8,4 @@ router.use(authenticateToken);
 router.get('/', globalEventsController.list);
 
 export default router;
+

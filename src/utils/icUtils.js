@@ -1,51 +1,41 @@
 /**
- * Formats IC number by removing all non-digits and optionally adding hyphens
- * @param {string} value - IC input value
- * @param {boolean} autoFormat - Whether to auto-format with hyphens as user types
- * @returns {string} - Formatted IC
+ * Formats phone number by removing all non-digits and optionally adding separators.
  */
-export const formatIC = (value, autoFormat = false) => {
+export const formatPhone = (value, autoFormat = false) => {
   if (!value) return '';
 
   // Remove all non-digit characters
-  const digitsOnly = value.replace(/\D/g, '');
-
-  // Limit to 12 digits
-  const limited = digitsOnly.slice(0, 12);
+  const digitsOnly = value.toString().replace(/\D/g, '');
 
   if (!autoFormat) {
-    return limited;
+    return digitsOnly;
   }
 
-  if (limited.length <= 6) {
-    return limited;
+  if (digitsOnly.length <= 3) {
+    return digitsOnly;
   }
 
-  if (limited.length <= 8) {
-    return `${limited.slice(0, 6)}-${limited.slice(6)}`;
+  if (digitsOnly.length <= 7) {
+    return `${digitsOnly.slice(0, 3)}-${digitsOnly.slice(3)}`;
   }
 
-  if (limited.length <= 12) {
-    const first = limited.slice(0, 6);
-    const middle = limited.slice(6, 8);
-    const last = limited.slice(8);
-    return `${first}-${middle}-${last}`;
-  }
-
-  return limited;
+  // Format as 012-345 6789
+  const first = digitsOnly.slice(0, 3);
+  const middle = digitsOnly.slice(3, 7);
+  const last = digitsOnly.slice(7);
+  return `${first}-${middle} ${last}`;
 };
 
 /**
- * Validates if IC number is in valid format (with or without hyphens)
- * STRICT: Only accepts 12 digits starting with a digit (rejects T0-prefixed, letters, etc.)
- * @param {string} ic - IC number to validate
- * @returns {boolean} - True if valid
+ * Validates if phone number is in a plausible format.
  */
-export const isValidIC = (ic) => {
-  if (!ic) return false;
-  const digitsOnly = ic.replace(/\D/g, '');
-  // STRICT: Must be exactly 12 digits and must start with a digit (not T, not letter)
-  // Reject any IC that starts with non-digit characters (like T0, etc.)
-  return digitsOnly.length === 12 && /^\d/.test(ic.toString().trim());
+export const isValidPhone = (phone) => {
+  if (!phone) return false;
+  const digitsOnly = phone.toString().replace(/\D/g, '');
+  // Phone numbers in Malaysia are typically 10 to 11 digits
+  return digitsOnly.length >= 10 && digitsOnly.length <= 15 && /^\d/.test(phone.toString().trim());
 };
 
+// Backward-compatible aliases (legacy naming in UI components)
+export const formatIC = formatPhone;
+export const isValidIC = isValidPhone;

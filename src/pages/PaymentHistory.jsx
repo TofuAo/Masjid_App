@@ -33,11 +33,11 @@ const PaymentHistory = () => {
       }
       
       const user = JSON.parse(userStr);
-      if (!user || !user.ic) {
+      if (!user || !user.telefon) {
         throw new Error('Maklumat pengguna tidak dijumpai. Sila log masuk semula.');
       }
 
-      const response = await paymentAPI.getByUser(user.ic, 100, 0);
+      const response = await paymentAPI.getByUser(user.telefon, 100, 0);
       if (response?.success && response?.data) {
         setPayments(Array.isArray(response.data) ? response.data : []);
       } else {

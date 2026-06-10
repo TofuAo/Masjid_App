@@ -6,7 +6,7 @@ const VALID_ROLES = ['admin', 'teacher', 'student', 'pic', 'staff', 'ib'];
 
 const USER_BASE_SELECT = `
   SELECT 
-    u.ic,
+    u.telefon,
     u.nama,
     u.email,
     u.telefon,
@@ -20,26 +20,26 @@ const USER_BASE_SELECT = `
     MAX(c.nama_kelas) as nama_kelas,
     MAX(t.kepakaran) as kepakaran,
     COUNT(DISTINCT cls.id) as total_classes,
-    MAX(CASE WHEN s.user_ic IS NOT NULL THEN 1 ELSE 0 END) as is_student,
-    MAX(CASE WHEN t.user_ic IS NOT NULL THEN 1 ELSE 0 END) as is_teacher,
+    MAX(CASE WHEN s.user_telefon IS NOT NULL THEN 1 ELSE 0 END) as is_student,
+    MAX(CASE WHEN t.user_telefon IS NOT NULL THEN 1 ELSE 0 END) as is_teacher,
     MAX(CASE WHEN u.role = 'admin' OR EXISTS (
       SELECT 1 FROM user_roles ur 
-      WHERE REPLACE(REPLACE(ur.user_ic, '-', ''), ' ', '') = REPLACE(REPLACE(u.ic, '-', ''), ' ', '') 
+      WHERE REPLACE(REPLACE(ur.user_telefon, '-', ''), ' ', '') = REPLACE(REPLACE(u.telefon, '-', ''), ' ', '') 
         AND ur.role = 'admin'
     ) THEN 1 ELSE 0 END) as is_admin,
     MAX(CASE WHEN u.role = 'pic' OR EXISTS (
       SELECT 1 FROM user_roles ur 
-      WHERE REPLACE(REPLACE(ur.user_ic, '-', ''), ' ', '') = REPLACE(REPLACE(u.ic, '-', ''), ' ', '') 
+      WHERE REPLACE(REPLACE(ur.user_telefon, '-', ''), ' ', '') = REPLACE(REPLACE(u.telefon, '-', ''), ' ', '') 
         AND ur.role = 'pic'
     ) THEN 1 ELSE 0 END) as is_pic,
     MAX(CASE WHEN u.role = 'staff' OR EXISTS (
       SELECT 1 FROM user_roles ur 
-      WHERE REPLACE(REPLACE(ur.user_ic, '-', ''), ' ', '') = REPLACE(REPLACE(u.ic, '-', ''), ' ', '') 
+      WHERE REPLACE(REPLACE(ur.user_telefon, '-', ''), ' ', '') = REPLACE(REPLACE(u.telefon, '-', ''), ' ', '') 
         AND ur.role = 'staff'
     ) THEN 1 ELSE 0 END) as is_staff,
     MAX(CASE WHEN u.role = 'ib' OR EXISTS (
       SELECT 1 FROM user_roles ur 
-      WHERE REPLACE(REPLACE(ur.user_ic, '-', ''), ' ', '') = REPLACE(REPLACE(u.ic, '-', ''), ' ', '') 
+      WHERE REPLACE(REPLACE(ur.user_telefon, '-', ''), ' ', '') = REPLACE(REPLACE(u.telefon, '-', ''), ' ', '') 
         AND ur.role = 'ib'
     ) THEN 1 ELSE 0 END) as is_ib
   FROM (
@@ -51,28 +51,30 @@ const USER_BASE_SELECT = `
       ) as rn
     FROM users u2
   ) u
-  LEFT JOIN students s ON REPLACE(REPLACE(u.ic, '-', ''), ' ', '') = REPLACE(REPLACE(s.user_ic, '-', ''), ' ', '')
+  LEFT JOIN students s ON REPLACE(REPLACE(u.telefon, '-', ''), ' ', '') = REPLACE(REPLACE(s.user_telefon, '-', ''), ' ', '')
   LEFT JOIN classes c ON s.kelas_id = c.id
-  LEFT JOIN teachers t ON REPLACE(REPLACE(u.ic, '-', ''), ' ', '') = REPLACE(REPLACE(t.user_ic, '-', ''), ' ', '')
-  LEFT JOIN classes cls ON REPLACE(REPLACE(u.ic, '-', ''), ' ', '') = REPLACE(REPLACE(cls.guru_ic, '-', ''), ' ', '')
+  LEFT JOIN teachers t ON REPLACE(REPLACE(u.telefon, '-', ''), ' ', '') = REPLACE(REPLACE(t.user_telefon, '-', ''), ' ', '')
+  LEFT JOIN classes cls ON REPLACE(REPLACE(u.telefon, '-', ''), ' ', '') = REPLACE(REPLACE(cls.guru_telefon, '-', ''), ' ', '')
 `;
 
 const USER_GROUP_BY = `
-  GROUP BY u.ic, u.nama, u.email, u.telefon, u.umur, u.alamat, u.role, u.status, u.created_at, u.updated_at
+  GROUP BY u.telefon, u.nama, u.email, u.telefon, u.umur, u.alamat, u.role, u.status, u.created_at, u.updated_at
   ORDER BY u.nama, u.created_at DESC
 `;
 
-const normalizeIc = (value) => {
+const normalizePhone = (value) => {
   if (!value || typeof value !== 'string') return '';
   return value.replace(/[-\s]/g, '');
 };
 
-const hyphenateIc = (normalizedIc, originalIc) => {
-  if (typeof normalizedIc !== 'string' || normalizedIc.length !== 12) {
-    return originalIc;
-  }
-  return `${normalizedIc.substring(0, 6)}-${normalizedIc.substring(6, 8)}-${normalizedIc.substring(8, 12)}`;
+const hyphenatePhone = (value) => {
+  const digits = normalizePhone(value);
+  if (!digits) return '';
+  if (digits.length <= 3) return digits;
+  if (digits.length <= 7) return `${digits.slice(0, 3)}-${digits.slice(3)}`;
+  return `${digits.slice(0, 3)}-${digits.slice(3, 7)} ${digits.slice(7)}`;
 };
+
 
 const parseKepakaran = (value) => {
   if (!value) return [];
@@ -87,9 +89,9 @@ const parseKepakaran = (value) => {
 };
 
 const buildUserPayload = async (user) => {
-  const normalizedIc = normalizeIc(user.ic);
-  const hyphenatedIc = hyphenateIc(normalizedIc, user.ic);
-  const candidateIcs = [user.ic, normalizedIc, hyphenatedIc].filter((value) => typeof value === 'string' && value.trim());
+  const normalizedIc = normalizePhone(user.telefon);
+  const hyphenatedIc = hyphenatePhone(user.telefon || normalizedIc);
+  const candidateIcs = [user.telefon, normalizedIc, hyphenatedIc].filter((value) => typeof value === 'string' && value.trim());
 
   let allRoles = [];
   for (const candidate of candidateIcs) {
@@ -135,8 +137,8 @@ const buildUserPayload = async (user) => {
   }
 
   const baseUser = {
-    ic: user.ic,
-    IC: user.ic,
+    ic: user.telefon,
+    IC: user.telefon,
     nama: user.nama,
     email: user.email,
     telefon: user.telefon,
@@ -191,38 +193,38 @@ export const getAllUsers = async (req, res) => {
     const queryParams = [];
 
     if (search) {
-      query += ` AND (u.nama LIKE ? OR u.ic LIKE ? OR u.email LIKE ? OR u.telefon LIKE ?)`;
+      query += ` AND (u.nama LIKE ? OR u.telefon LIKE ? OR u.email LIKE ? OR u.telefon LIKE ?)`;
       const searchTerm = `%${search}%`;
       queryParams.push(searchTerm, searchTerm, searchTerm, searchTerm);
     }
 
     if (role) {
       if (role === 'student') {
-        query += ` AND s.user_ic IS NOT NULL`;
+        query += ` AND s.user_telefon IS NOT NULL`;
       } else if (role === 'teacher') {
-        query += ` AND t.user_ic IS NOT NULL`;
+        query += ` AND t.user_telefon IS NOT NULL`;
       } else if (role === 'admin') {
         query += ` AND (u.role = 'admin' OR EXISTS (
           SELECT 1 FROM user_roles ur 
-          WHERE REPLACE(REPLACE(ur.user_ic, '-', ''), ' ', '') = REPLACE(REPLACE(u.ic, '-', ''), ' ', '') 
+          WHERE REPLACE(REPLACE(ur.user_telefon, '-', ''), ' ', '') = REPLACE(REPLACE(u.telefon, '-', ''), ' ', '') 
             AND ur.role = 'admin'
         ))`;
       } else if (role === 'pic') {
         query += ` AND (u.role = 'pic' OR EXISTS (
           SELECT 1 FROM user_roles ur 
-          WHERE REPLACE(REPLACE(ur.user_ic, '-', ''), ' ', '') = REPLACE(REPLACE(u.ic, '-', ''), ' ', '') 
+          WHERE REPLACE(REPLACE(ur.user_telefon, '-', ''), ' ', '') = REPLACE(REPLACE(u.telefon, '-', ''), ' ', '') 
             AND ur.role = 'pic'
         ))`;
       } else if (role === 'staff') {
         query += ` AND (u.role = 'staff' OR EXISTS (
           SELECT 1 FROM user_roles ur 
-          WHERE REPLACE(REPLACE(ur.user_ic, '-', ''), ' ', '') = REPLACE(REPLACE(u.ic, '-', ''), ' ', '') 
+          WHERE REPLACE(REPLACE(ur.user_telefon, '-', ''), ' ', '') = REPLACE(REPLACE(u.telefon, '-', ''), ' ', '') 
             AND ur.role = 'staff'
         ))`;
       } else if (role === 'ib') {
         query += ` AND (u.role = 'ib' OR EXISTS (
           SELECT 1 FROM user_roles ur 
-          WHERE REPLACE(REPLACE(ur.user_ic, '-', ''), ' ', '') = REPLACE(REPLACE(u.ic, '-', ''), ' ', '') 
+          WHERE REPLACE(REPLACE(ur.user_telefon, '-', ''), ' ', '') = REPLACE(REPLACE(u.telefon, '-', ''), ' ', '') 
             AND ur.role = 'ib'
         ))`;
       } else {
@@ -243,7 +245,7 @@ export const getAllUsers = async (req, res) => {
     const formattedUsers = await Promise.all(users.map(buildUserPayload));
 
     let countQuery = `
-      SELECT COUNT(DISTINCT REPLACE(REPLACE(u.ic, '-', ''), ' ', '')) as total
+      SELECT COUNT(DISTINCT REPLACE(REPLACE(u.telefon, '-', ''), ' ', '')) as total
       FROM (
         SELECT 
           u2.*,
@@ -253,45 +255,45 @@ export const getAllUsers = async (req, res) => {
           ) as rn
         FROM users u2
       ) u
-      LEFT JOIN students s ON REPLACE(REPLACE(u.ic, '-', ''), ' ', '') = REPLACE(REPLACE(s.user_ic, '-', ''), ' ', '')
-      LEFT JOIN teachers t ON REPLACE(REPLACE(u.ic, '-', ''), ' ', '') = REPLACE(REPLACE(t.user_ic, '-', ''), ' ', '')
+      LEFT JOIN students s ON REPLACE(REPLACE(u.telefon, '-', ''), ' ', '') = REPLACE(REPLACE(s.user_telefon, '-', ''), ' ', '')
+      LEFT JOIN teachers t ON REPLACE(REPLACE(u.telefon, '-', ''), ' ', '') = REPLACE(REPLACE(t.user_telefon, '-', ''), ' ', '')
       WHERE u.rn = 1
     `;
     const countParams = [];
 
     if (search) {
-      countQuery += ` AND (u.nama LIKE ? OR u.ic LIKE ? OR u.email LIKE ? OR u.telefon LIKE ?)`;
+      countQuery += ` AND (u.nama LIKE ? OR u.telefon LIKE ? OR u.email LIKE ? OR u.telefon LIKE ?)`;
       const searchTerm = `%${search}%`;
       countParams.push(searchTerm, searchTerm, searchTerm, searchTerm);
     }
 
     if (role) {
       if (role === 'student') {
-        countQuery += ` AND s.user_ic IS NOT NULL`;
+        countQuery += ` AND s.user_telefon IS NOT NULL`;
       } else if (role === 'teacher') {
-        countQuery += ` AND t.user_ic IS NOT NULL`;
+        countQuery += ` AND t.user_telefon IS NOT NULL`;
       } else if (role === 'admin') {
         countQuery += ` AND (u.role = 'admin' OR EXISTS (
           SELECT 1 FROM user_roles ur 
-          WHERE REPLACE(REPLACE(ur.user_ic, '-', ''), ' ', '') = REPLACE(REPLACE(u.ic, '-', ''), ' ', '') 
+          WHERE REPLACE(REPLACE(ur.user_telefon, '-', ''), ' ', '') = REPLACE(REPLACE(u.telefon, '-', ''), ' ', '') 
             AND ur.role = 'admin'
         ))`;
       } else if (role === 'pic') {
         countQuery += ` AND (u.role = 'pic' OR EXISTS (
           SELECT 1 FROM user_roles ur 
-          WHERE REPLACE(REPLACE(ur.user_ic, '-', ''), ' ', '') = REPLACE(REPLACE(u.ic, '-', ''), ' ', '') 
+          WHERE REPLACE(REPLACE(ur.user_telefon, '-', ''), ' ', '') = REPLACE(REPLACE(u.telefon, '-', ''), ' ', '') 
             AND ur.role = 'pic'
         ))`;
       } else if (role === 'staff') {
         countQuery += ` AND (u.role = 'staff' OR EXISTS (
           SELECT 1 FROM user_roles ur 
-          WHERE REPLACE(REPLACE(ur.user_ic, '-', ''), ' ', '') = REPLACE(REPLACE(u.ic, '-', ''), ' ', '') 
+          WHERE REPLACE(REPLACE(ur.user_telefon, '-', ''), ' ', '') = REPLACE(REPLACE(u.telefon, '-', ''), ' ', '') 
             AND ur.role = 'staff'
         ))`;
       } else if (role === 'ib') {
         countQuery += ` AND (u.role = 'ib' OR EXISTS (
           SELECT 1 FROM user_roles ur 
-          WHERE REPLACE(REPLACE(ur.user_ic, '-', ''), ' ', '') = REPLACE(REPLACE(u.ic, '-', ''), ' ', '') 
+          WHERE REPLACE(REPLACE(ur.user_telefon, '-', ''), ' ', '') = REPLACE(REPLACE(u.telefon, '-', ''), ' ', '') 
             AND ur.role = 'ib'
         ))`;
       } else {
@@ -352,8 +354,8 @@ export const getUserByIc = async (req, res) => {
       });
     }
 
-    const rawIc = String(req.params.ic || '');
-    const normalizedSearchIc = normalizeIc(rawIc);
+    const rawIc = String(req.params.telefon || '');
+    const normalizedSearchIc = normalizePhone(rawIc);
     if (!normalizedSearchIc) {
       return res.status(400).json({
         success: false,
@@ -364,7 +366,7 @@ export const getUserByIc = async (req, res) => {
     const query = `
       ${USER_BASE_SELECT}
       WHERE u.rn = 1
-        AND REPLACE(REPLACE(u.ic, '-', ''), ' ', '') = ?
+        AND REPLACE(REPLACE(u.telefon, '-', ''), ' ', '') = ?
       ${USER_GROUP_BY}
       LIMIT 1
     `;

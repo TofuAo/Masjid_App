@@ -12,8 +12,6 @@ import {
   convertUserToTeacher
 } from '../controllers/teacherController.js';
 import { authenticateToken, requireRole } from '../middleware/auth.js';
-import { isValidICFormat } from '../utils/icNormalizer.js';
-import { normalizeICMiddleware } from '../middleware/normalizeIC.js';
 import { isValidPhoneFormat } from '../utils/phoneNormalizer.js';
 import { normalizePhoneMiddleware } from '../middleware/normalizePhone.js';
 
@@ -38,11 +36,11 @@ export const registerTeacherValidation = [
     .isLength({ min: 2, max: 100 })
     .withMessage('Name must be between 2 and 100 characters')
     .trim(),
-  body('ic')
+  body('telefon')
     .notEmpty()
-    .withMessage('IC number is required')
+    .withMessage('Nombor telefon diperlukan')
     .custom((value) => {
-      if (!isValidICFormat(value)) {
+      if (!isValidPhoneFormat(value)) {
         throw new Error('IC must be 12 digits (format: 123456-78-9012 or 123456789012)');
       }
       return true;
@@ -86,11 +84,11 @@ const createTeacherValidation = [
     .withMessage('Name is required')
     .isLength({ min: 2, max: 100 })
     .withMessage('Name must be between 2 and 100 characters'),
-  body('ic')
+  body('telefon')
     .notEmpty()
-    .withMessage('IC number is required')
+    .withMessage('Nombor telefon diperlukan')
     .custom((value) => {
-      if (!isValidICFormat(value)) {
+      if (!isValidPhoneFormat(value)) {
         throw new Error('IC must be 12 digits (format: 123456-78-9012 or 123456789012)');
       }
       return true;
@@ -134,11 +132,11 @@ const updateTeacherValidation = [
     .optional()
     .isLength({ min: 2, max: 100 })
     .withMessage('Name must be between 2 and 100 characters'),
-  body('ic')
+  body('telefon')
     .notEmpty()
-    .withMessage('IC number is required')
+    .withMessage('Nombor telefon diperlukan')
     .custom((value) => {
-      if (!isValidICFormat(value)) {
+      if (!isValidPhoneFormat(value)) {
         throw new Error('IC must be 12 digits (format: 123456-78-9012 or 123456789012)');
       }
       return true;
@@ -186,7 +184,7 @@ const updateTeacherValidation = [
 const icValidation = [
   param('ic')
     .custom((value) => {
-      if (!isValidICFormat(value)) {
+      if (!isValidPhoneFormat(value)) {
         throw new Error('IC must be 12 digits (format: 123456-78-9012 or 123456789012)');
       }
       return true;
@@ -202,19 +200,20 @@ router.post('/register', (req, res, next) => {
   req._skipAuthForTeacherRegister = true;
   console.log('✅ Teacher registration route matched - setting skipAuth flags');
   next();
-}, registerTeacherValidation, normalizeICMiddleware, normalizePhoneMiddleware, registerTeacher);
+}, registerTeacherValidation, normalizePhoneMiddleware, normalizePhoneMiddleware, registerTeacher);
 
 // Routes - Apply authentication to each route individually (NOT using router.use to avoid affecting /register)
 router.get('/', authenticateToken, getAllTeachers);
 router.get('/stats', authenticateToken, getTeacherStats);
 router.get('/unassigned', authenticateToken, requireRole(['admin']), getUnassignedStaffTeachers);
 router.post('/convert', authenticateToken, requireRole(['admin']), [
-  body('ic').notEmpty().withMessage('IC number is required'),
+  body('telefon').notEmpty().withMessage('Nombor telefon diperlukan'),
   body('kepakaran').optional().isArray().withMessage('Kepakaran must be an array')
-], normalizeICMiddleware, convertUserToTeacher);
-router.get('/:ic', authenticateToken, icValidation, normalizeICMiddleware, getTeacherById);
-router.post('/', authenticateToken, requireRole(['admin', 'teacher']), removeStatusMiddleware, createTeacherValidation, normalizeICMiddleware, normalizePhoneMiddleware, createTeacher);
-router.put('/:ic', authenticateToken, requireRole(['admin', 'teacher']), icValidation, updateTeacherValidation, normalizeICMiddleware, normalizePhoneMiddleware, updateTeacher);
-router.delete('/:ic', authenticateToken, requireRole(['admin']), icValidation, normalizeICMiddleware, deleteTeacher);
+], normalizePhoneMiddleware, convertUserToTeacher);
+router.get('/:ic', authenticateToken, icValidation, normalizePhoneMiddleware, getTeacherById);
+router.post('/', authenticateToken, requireRole(['admin', 'teacher']), removeStatusMiddleware, createTeacherValidation, normalizePhoneMiddleware, normalizePhoneMiddleware, createTeacher);
+router.put('/:ic', authenticateToken, requireRole(['admin', 'teacher']), icValidation, updateTeacherValidation, normalizePhoneMiddleware, normalizePhoneMiddleware, updateTeacher);
+router.delete('/:ic', authenticateToken, requireRole(['admin']), icValidation, normalizePhoneMiddleware, deleteTeacher);
 
 export default router;
+

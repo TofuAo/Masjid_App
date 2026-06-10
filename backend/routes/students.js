@@ -9,15 +9,13 @@ import {
   getStudentStats
 } from '../controllers/studentController.js';
 import { authenticateToken, requireRole } from '../middleware/auth.js';
-import { isValidICFormat } from '../utils/icNormalizer.js';
-import { normalizeICMiddleware } from '../middleware/normalizeIC.js';
 import { isValidPhoneFormat } from '../utils/phoneNormalizer.js';
 import { normalizePhoneMiddleware } from '../middleware/normalizePhone.js';
 import { requirePicApproval } from '../middleware/picApproval.js';
 import { pool } from '../config/database.js';
-import { fetchStudentByIc } from '../services/studentService.js';
+import { fetchStudentByPhone } from '../services/studentService.js';
 
-const normalizeIcForQuery = (value) => (typeof value === 'string' ? value.replace(/-/g, '') : value);
+const normalizePhoneForQuery = (value) => (typeof value === 'string' ? value.replace(/-/g, '') : value);
 
 const router = express.Router();
 
@@ -28,11 +26,11 @@ const studentValidation = [
     .withMessage('Name is required')
     .isLength({ min: 2, max: 100 })
     .withMessage('Name must be between 2 and 100 characters'),
-  body('ic')
+  body('telefon')
     .notEmpty()
-    .withMessage('IC number is required')
+    .withMessage('Nombor telefon diperlukan')
     .custom((value) => {
-      if (!isValidICFormat(value)) {
+      if (!isValidPhoneFormat(value)) {
         throw new Error('IC must be 12 digits (format: 123456-78-9012 or 123456789012)');
       }
       return true;
@@ -79,10 +77,10 @@ const studentUpdateValidation = [
     .optional()
     .isLength({ min: 2, max: 100 })
     .withMessage('Name must be between 2 and 100 characters'),
-  body('ic')
+  body('telefon')
     .optional()
     .custom((value) => {
-      if (value && !isValidICFormat(value)) {
+      if (value && !isValidPhoneFormat(value)) {
         throw new Error('IC must be 12 digits (format: 123456-78-9012 or 123456789012)');
       }
       return true;
@@ -139,7 +137,7 @@ const studentUpdateValidation = [
 const icValidation = [
   param('ic')
     .custom((value) => {
-      if (!isValidICFormat(value)) {
+      if (!isValidPhoneFormat(value)) {
         throw new Error('IC must be 12 digits (format: 123456-78-9012 or 123456789012)');
       }
       return true;
@@ -152,12 +150,12 @@ router.use(authenticateToken);
 // Routes
 router.get('/', getAllStudents);
 router.get('/stats', getStudentStats);
-router.get('/:ic', icValidation, normalizeICMiddleware, getStudentById);
+router.get('/:ic', icValidation, normalizePhoneMiddleware, getStudentById);
 router.post(
   '/',
   requireRole(['admin', 'staff', 'pic']),
   studentValidation,
-  normalizeICMiddleware,
+  normalizePhoneMiddleware,
   normalizePhoneMiddleware,
   requirePicApproval({
     actionKey: 'students:create',
@@ -178,47 +176,47 @@ router.put(
   requireRole(['admin', 'staff', 'pic']),
   icValidation,
   studentUpdateValidation,
-  normalizeICMiddleware,
+  normalizePhoneMiddleware,
   normalizePhoneMiddleware,
   requirePicApproval({
     actionKey: 'students:update',
     entityType: 'student',
     message: 'Permintaan kemaskini pelajar dihantar untuk kelulusan admin.',
     prepare: async (req) => {
-      console.log('requirePicApproval prepare: IC from params:', req.params.ic);
-      // Use the same fetchStudentByIc function to ensure consistency
-      // IC in params might be normalized by normalizeICMiddleware, but we'll handle all formats
-      let student = await fetchStudentByIc(req.params.ic);
+      console.log('requirePicApproval prepare: IC from params:', req.params.telefon);
+      // Use the same fetchStudentByPhone function to ensure consistency
+      // IC in params might be normalized by normalizePhoneMiddleware, but we'll handle all formats
+      let student = await fetchStudentByPhone(req.params.telefon);
       
       // If not found, try with original IC before normalization
-      if (!student && req.params.ic) {
+      if (!student && req.params.telefon) {
         // Try with cleaned version
-        const cleanedIc = normalizeIcForQuery(req.params.ic);
-        if (cleanedIc !== req.params.ic) {
-          student = await fetchStudentByIc(cleanedIc);
+        const cleanedIc = normalizePhoneForQuery(req.params.telefon);
+        if (!student && cleanedIc) {
+          student = await fetchStudentByPhone(cleanedIc);
         }
       }
       
       // If still not found, try with normalized format
-      if (!student && req.params.ic) {
-        const cleanedIc = normalizeIcForQuery(req.params.ic);
+      if (!student && req.params.telefon) {
+        const cleanedIc = normalizePhoneForQuery(req.params.telefon);
         if (cleanedIc.length === 12) {
           const normalizedIc = `${cleanedIc.substring(0, 6)}-${cleanedIc.substring(6, 8)}-${cleanedIc.substring(8, 12)}`;
-          if (normalizedIc !== req.params.ic) {
-            student = await fetchStudentByIc(normalizedIc);
+          if (normalizedIc && normalizedIc !== req.params.telefon) {
+            student = await fetchStudentByPhone(normalizedIc);
           }
         }
       }
       
       if (!student) {
-        console.error('requirePicApproval: Student not found after all attempts. IC:', req.params.ic);
+        console.error('requirePicApproval: Student not found after all attempts. IC:', req.params.telefon);
         const error = new Error('Pelajar tidak dijumpai.');
         error.status = 404;
         throw error;
       }
       
-      console.log('requirePicApproval: Found student:', student.ic, student.nama);
-      const cleanedIc = normalizeIcForQuery(student.ic || req.params.ic);
+      console.log('requirePicApproval: Found student:', student.telefon, student.nama);
+      const cleanedIc = normalizePhoneForQuery(student.telefon || req.params.telefon);
       
       return {
         entityId: cleanedIc,
@@ -227,7 +225,7 @@ router.put(
           current: student,
           requested: {
             ...req.body,
-            ic: normalizeIcForQuery(req.body?.ic || student.ic || cleanedIc)
+            ic: normalizePhoneForQuery(req.body?.ic || student.telefon || cleanedIc)
           }
         }
       };
@@ -240,33 +238,33 @@ router.delete(
   requireRole(['admin', 'pic']),
   // Store original IC before normalization middleware (for special IDs)
   (req, res, next) => {
-    req.originalIc = req.params.ic;
+    req.originalIc = req.params.telefon;
     next();
   },
-  normalizeICMiddleware,
+  normalizePhoneMiddleware,
   requirePicApproval({
     actionKey: 'students:delete',
     entityType: 'student',
     message: 'Permintaan padam pelajar dihantar untuk kelulusan admin.',
     prepare: async (req) => {
-      // Use original IC if normalizeIC returned null (for special IDs like SPUTERIZULAIQHA001)
-      const ic = req.params.ic || req.originalIc;
+      // Use original IC if normalizePhone returned null (for special IDs like SPUTERIZULAIQHA001)
+      const ic = req.params.telefon || req.originalIc;
       if (!ic) {
         const error = new Error('IC pelajar diperlukan.');
         error.status = 400;
         throw error;
       }
       
-      const cleanedIc = normalizeIcForQuery(ic);
+      const cleanedIc = normalizePhoneForQuery(ic);
       console.log('[PIC Delete Prepare] Looking up student with IC:', ic, 'cleaned:', cleanedIc);
       
       // Try multiple lookup strategies to handle both standard ICs and special student IDs
       // Strategy 1: Direct match (for special IDs like SSITIHAWA001, SPUTERIZULAIQHA001)
       let [rows] = await pool.execute(
-        `SELECT u.ic, u.nama, u.email, u.telefon, s.kelas_id, s.tarikh_daftar
+        `SELECT u.telefon, u.nama, u.email, u.telefon, s.kelas_id, s.tarikh_daftar
          FROM users u
-         LEFT JOIN students s ON u.ic = s.user_ic
-         WHERE u.ic = ? AND u.role = 'student'`,
+         LEFT JOIN students s ON u.telefon = s.user_telefon
+         WHERE u.telefon = ? AND u.role = 'student'`,
         [ic]
       );
       console.log('[PIC Delete Prepare] Strategy 1 (direct match) found:', rows.length, 'rows');
@@ -274,10 +272,10 @@ router.delete(
       // Strategy 2: If not found, try with cleaned IC (remove hyphens) - only for standard ICs
       if (rows.length === 0 && cleanedIc !== ic && cleanedIc.length === 12) {
         [rows] = await pool.execute(
-          `SELECT u.ic, u.nama, u.email, u.telefon, s.kelas_id, s.tarikh_daftar
+          `SELECT u.telefon, u.nama, u.email, u.telefon, s.kelas_id, s.tarikh_daftar
            FROM users u
-           LEFT JOIN students s ON u.ic = s.user_ic
-           WHERE REPLACE(u.ic, '-', '') = ? AND u.role = 'student'`,
+           LEFT JOIN students s ON u.telefon = s.user_telefon
+           WHERE REPLACE(u.telefon, '-', '') = ? AND u.role = 'student'`,
           [cleanedIc]
         );
         console.log('[PIC Delete Prepare] Strategy 2 (cleaned IC) found:', rows.length, 'rows');
@@ -286,10 +284,10 @@ router.delete(
       // Strategy 3: Try case-insensitive match (for special IDs and case variations)
       if (rows.length === 0) {
         [rows] = await pool.execute(
-          `SELECT u.ic, u.nama, u.email, u.telefon, s.kelas_id, s.tarikh_daftar
+          `SELECT u.telefon, u.nama, u.email, u.telefon, s.kelas_id, s.tarikh_daftar
            FROM users u
-           LEFT JOIN students s ON u.ic = s.user_ic
-           WHERE UPPER(u.ic) = UPPER(?) AND u.role = 'student'`,
+           LEFT JOIN students s ON u.telefon = s.user_telefon
+           WHERE UPPER(u.telefon) = UPPER(?) AND u.role = 'student'`,
           [ic]
         );
         console.log('[PIC Delete Prepare] Strategy 3 (case-insensitive) found:', rows.length, 'rows');
@@ -298,10 +296,10 @@ router.delete(
       // Strategy 4: Try exact match with original IC from URL (in case of encoding issues)
       if (rows.length === 0 && req.originalIc && req.originalIc !== ic) {
         [rows] = await pool.execute(
-          `SELECT u.ic, u.nama, u.email, u.telefon, s.kelas_id, s.tarikh_daftar
+          `SELECT u.telefon, u.nama, u.email, u.telefon, s.kelas_id, s.tarikh_daftar
            FROM users u
-           LEFT JOIN students s ON u.ic = s.user_ic
-           WHERE u.ic = ? AND u.role = 'student'`,
+           LEFT JOIN students s ON u.telefon = s.user_telefon
+           WHERE u.telefon = ? AND u.role = 'student'`,
           [req.originalIc]
         );
         console.log('[PIC Delete Prepare] Strategy 4 (original IC) found:', rows.length, 'rows');
@@ -328,3 +326,4 @@ router.delete(
 );
 
 export default router;
+

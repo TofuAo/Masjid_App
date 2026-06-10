@@ -32,7 +32,7 @@ const AttendanceFormModal = ({ isOpen, onClose, classId, className, selectedDate
       // Initialize attendance data - default all to 'Hadir'
       const initialData = {};
       studentsList.forEach(student => {
-        initialData[student.ic] = 'Hadir';
+        initialData[student.telefon] = 'Hadir';
       });
       setAttendanceData(initialData);
     } catch (error) {
@@ -43,10 +43,10 @@ const AttendanceFormModal = ({ isOpen, onClose, classId, className, selectedDate
     }
   };
 
-  const handleStatusChange = (studentIc, status) => {
+  const handleStatusChange = (studentPhone, status) => {
     setAttendanceData(prev => ({
       ...prev,
-      [studentIc]: status
+      [studentPhone]: status
     }));
   };
 
@@ -91,8 +91,8 @@ const AttendanceFormModal = ({ isOpen, onClose, classId, className, selectedDate
       setSubmitting(true);
 
       // Prepare attendance data array
-      const attendanceArray = Object.entries(attendanceData).map(([student_ic, status]) => ({
-        student_ic,
+      const attendanceArray = Object.entries(attendanceData).map(([student_telefon, status]) => ({
+        student_telefon,
         status
       }));
 
@@ -151,7 +151,7 @@ const AttendanceFormModal = ({ isOpen, onClose, classId, className, selectedDate
 
   const filteredStudents = students.filter(student =>
     student.nama?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    student.ic?.includes(searchTerm)
+    student.telefon?.includes(searchTerm)
   );
 
   if (!isOpen) return null;
@@ -258,7 +258,7 @@ const AttendanceFormModal = ({ isOpen, onClose, classId, className, selectedDate
                   <div className="grid grid-cols-12 gap-4 text-sm font-medium text-gray-700">
                     <div className="col-span-1"></div>
                     <div className="col-span-4">Nama Pelajar</div>
-                    <div className="col-span-3">No. IC</div>
+                    <div className="col-span-3">No. Telefon</div>
                     <div className="col-span-4">Status</div>
                   </div>
                 </div>
@@ -270,19 +270,19 @@ const AttendanceFormModal = ({ isOpen, onClose, classId, className, selectedDate
                   ) : (
                     filteredStudents.map((student) => (
                       <div
-                        key={student.ic}
+                        key={student.telefon}
                         className="px-4 py-3 border-b border-gray-100 hover:bg-gray-50 transition-colors"
                       >
                         <div className="grid grid-cols-12 gap-4 items-center">
                           <div className="col-span-1">
                             <input
                               type="checkbox"
-                              checked={attendanceData[student.ic] !== undefined && attendanceData[student.ic] !== 'Tidak Hadir'}
+                              checked={attendanceData[student.telefon] !== undefined && attendanceData[student.telefon] !== 'Tidak Hadir'}
                               onChange={(e) => {
                                 if (e.target.checked) {
-                                  handleStatusChange(student.ic, 'Hadir');
+                                  handleStatusChange(student.telefon, 'Hadir');
                                 } else {
-                                  handleStatusChange(student.ic, 'Tidak Hadir');
+                                  handleStatusChange(student.telefon, 'Tidak Hadir');
                                 }
                               }}
                               className="w-4 h-4 text-emerald-600 border-gray-300 rounded focus:ring-emerald-500"
@@ -293,17 +293,17 @@ const AttendanceFormModal = ({ isOpen, onClose, classId, className, selectedDate
                             {student.nama}
                           </div>
                           <div className="col-span-3 text-sm text-black">
-                            {student.ic}
+                            {student.telefon}
                           </div>
                           <div className="col-span-4">
                             <div className="flex gap-2">
                               {['Hadir', 'Tidak Hadir', 'Lewat', 'Sakit'].map((status) => (
                                 <button
                                   key={status}
-                                  onClick={() => handleStatusChange(student.ic, status)}
+                                  onClick={() => handleStatusChange(student.telefon, status)}
                                   disabled={submitting}
                                   className={`flex items-center gap-1 px-3 py-1 text-xs rounded-lg transition-colors ${
-                                    attendanceData[student.ic] === status
+                                    attendanceData[student.telefon] === status
                                       ? getStatusButtonClass(status, true)
                                       : getStatusButtonClass(status, false)
                                   }`}

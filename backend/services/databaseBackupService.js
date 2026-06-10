@@ -1,685 +1,144 @@
-import fs from 'fs';
-import { promises as fsPromises } from 'fs';
-import path from 'path';
-import { createGzip } from 'zlib';
-import { pipeline } from 'stream/promises';
-import { createHash, createHmac } from 'crypto';
-import mysqldump from 'mysqldump';
-import XLSX from 'xlsx';
-import archiver from 'archiver';
-import { uploadFileToDrive, ensureFolderExists } from '../utils/googleDriveClient.js';
+// services/databaseBackupService.js
 import { pool } from '../config/database.js';
+import fs from 'fs';
+import path from 'path';
+import crypto from 'crypto';
+import { fileURLToPath } from 'url';
 
-const BACKUP_DIR = path.resolve(process.cwd(), 'backups');
-const CHECKSUM_ALGORITHM = process.env.BACKUP_CHECKSUM_ALGO || 'sha256';
-const SIGNATURE_ALGORITHM = process.env.BACKUP_SIGNATURE_ALGO || 'sha256';
-const INTEGRITY_SECRET =
-  process.env.BACKUP_INTEGRITY_SECRET ||
-  process.env.JWT_SECRET ||
-  'masjid-app-backup-integrity-secret';
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const BACKUP_DIR = path.resolve(__dirname, '..', 'backups');
 
-let backupTableEnsured = false;
-
-async function ensureBackupDirectory() {
-  await fsPromises.mkdir(BACKUP_DIR, { recursive: true });
+function ensureBackupDir() {
+  if (!fs.existsSync(BACKUP_DIR)) fs.mkdirSync(BACKUP_DIR, { recursive: true });
 }
 
-async function ensureBackupTable() {
-  if (backupTableEnsured) {
-    return;
-  }
-
-  try {
-    // Create table if it doesn't exist
-    const createTableSQL = `
-      CREATE TABLE IF NOT EXISTS backup_logs (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        file_name VARCHAR(255) NOT NULL,
-        file_size BIGINT,
-        file_checksum VARCHAR(128),
-        integrity_signature VARCHAR(128),
-        drive_file_id VARCHAR(255),
-        drive_view_link TEXT,
-        drive_download_link TEXT,
-        trigger_type VARCHAR(64) DEFAULT 'manual',
-        triggered_by VARCHAR(100),
-        status ENUM('success','failed') DEFAULT 'success',
-        error_message TEXT,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      ) ENGINE=InnoDB;
-    `;
-
-    await pool.execute(createTableSQL);
-
-    // Check and add missing columns if table already existed with old schema
-    try {
-      // Get list of existing columns
-      const [existingColumns] = await pool.query(`
-        SELECT COLUMN_NAME 
-        FROM INFORMATION_SCHEMA.COLUMNS 
-        WHERE TABLE_SCHEMA = DATABASE() 
-        AND TABLE_NAME = 'backup_logs'
-      `);
-      
-      const existingColumnNames = existingColumns.map(col => col.COLUMN_NAME.toLowerCase());
-      
-      // Define columns that should exist
-      const columnsToAdd = [
-        { name: 'file_checksum', def: 'VARCHAR(128)', after: 'file_size' },
-        { name: 'integrity_signature', def: 'VARCHAR(128)', after: 'file_checksum' },
-        { name: 'drive_file_id', def: 'VARCHAR(255)', after: 'integrity_signature' },
-        { name: 'drive_view_link', def: 'TEXT', after: 'drive_file_id' },
-        { name: 'drive_download_link', def: 'TEXT', after: 'drive_view_link' },
-        { name: 'trigger_type', def: "VARCHAR(64) DEFAULT 'manual'", after: 'drive_download_link' },
-        { name: 'triggered_by', def: 'VARCHAR(100)', after: 'trigger_type' },
-        { name: 'status', def: "ENUM('success','failed') DEFAULT 'success'", after: 'triggered_by' },
-        { name: 'error_message', def: 'TEXT', after: 'status' },
-      ];
-
-      // Add missing columns one by one
-      for (const col of columnsToAdd) {
-        if (!existingColumnNames.includes(col.name.toLowerCase())) {
-          try {
-            await pool.execute(`
-              ALTER TABLE backup_logs 
-              ADD COLUMN \`${col.name}\` ${col.def}${col.after ? ` AFTER \`${col.after}\`` : ''}
-            `);
-            console.log(`Added missing column: ${col.name}`);
-          } catch (colError) {
-            console.warn(`Could not add column ${col.name}:`, colError.message);
-          }
-        }
-      }
-    } catch (alterError) {
-      console.warn('Could not check/add missing columns:', alterError.message);
-      // Continue anyway - the table exists, columns might be missing but we'll handle it in queries
-    }
-
-    backupTableEnsured = true;
-  } catch (error) {
-    console.error('Failed to ensure backup_logs table exists:', error);
-    // Don't set backupTableEnsured to true so it will retry on next call
-    throw error;
-  }
+function computeChecksum(filepath) {
+  const content = fs.readFileSync(filepath);
+  return crypto.createHash('sha256').update(content).digest('hex');
 }
 
-function getDatabaseConfig() {
-  return {
-    host: process.env.DB_HOST || 'localhost',
-    user: process.env.DB_USER || 'root',
-    password: process.env.DB_PASSWORD || '',
-    database: process.env.DB_NAME || 'masjid_app',
-    port: Number(process.env.DB_PORT) || 3306,
-  };
+function computeSignature(filepath) {
+  const content = fs.readFileSync(filepath);
+  const secret = process.env.API_SIGNING_SECRET || 'default_secret';
+  return crypto.createHmac('sha256', secret).update(content).digest('hex');
 }
 
-function buildBackupFileName() {
-  const timestamp = new Date().toISOString().replace(/[-:TZ.]/g, '').slice(0, 14);
-  return `masjid_app_backup_${timestamp}.sql`;
+async function ensureBackupLogsTable() {
+  await pool.execute(`
+    CREATE TABLE IF NOT EXISTS backup_logs (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      file_name VARCHAR(500) NOT NULL,
+      file_path VARCHAR(500),
+      file_size INT DEFAULT 0,
+      file_checksum VARCHAR(255),
+      integrity_signature VARCHAR(255),
+      trigger_type VARCHAR(50) DEFAULT 'manual',
+      triggered_by VARCHAR(255),
+      status VARCHAR(50) DEFAULT 'success',
+      notes TEXT,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
 }
 
-async function computeFileChecksum(filePath) {
-  return new Promise((resolve, reject) => {
-    const hash = createHash(CHECKSUM_ALGORITHM);
-    const stream = fs.createReadStream(filePath);
-    stream.on('error', reject);
-    stream.on('data', (chunk) => {
-      hash.update(chunk);
-    });
-    stream.on('end', () => {
-      resolve(hash.digest('hex'));
-    });
-  });
-}
+export async function createAndUploadDatabaseBackup({ triggerType = 'manual', triggeredBy = null } = {}) {
+  ensureBackupDir();
+  await ensureBackupLogsTable();
 
-function buildIntegritySignature(fileName, checksum) {
-  const hmac = createHmac(SIGNATURE_ALGORITHM, INTEGRITY_SECRET);
-  hmac.update(`${fileName}|${checksum}`);
-  return hmac.digest('hex');
-}
+  const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+  const fileName = `backup_${timestamp}.sql`;
+  const filePath = path.join(BACKUP_DIR, fileName);
 
-async function runMysqlDump(outputPath, { host, user, password, database, port }) {
-  await mysqldump({
-    connection: {
-      host,
-      user,
-      password,
-      database,
-      port,
-    },
-    dumpToFile: outputPath,
-    dump: {
-      schema: {
-        format: true,
-      },
-    },
-  });
-}
-
-async function appendCsvTables({ host, user, password, database, port }, archive) {
-  const [tables] = await pool.query('SHOW TABLES');
-  const tableNameKey = `Tables_in_${database}`;
-  const EXCEL_CELL_CHAR_LIMIT = 32767;
-
-  const sanitizeValue = (value) => {
-    if (value === null || value === undefined) return value;
-
-    if (value instanceof Date) {
-      return value.toISOString();
-    }
-
-    if (Buffer.isBuffer(value)) {
-      return `[BLOB ${value.length} bytes]`;
-    }
-
-    if (typeof value === 'object') {
-      try {
-        const stringified = JSON.stringify(value);
-        if (stringified.length > EXCEL_CELL_CHAR_LIMIT) {
-          return `${stringified.slice(0, EXCEL_CELL_CHAR_LIMIT - 20)}... (truncated)`;
-        }
-        return stringified;
-      } catch (error) {
-        return '[object]';
-      }
-    }
-
-    if (typeof value === 'string' && value.length > EXCEL_CELL_CHAR_LIMIT) {
-      return `${value.slice(0, EXCEL_CELL_CHAR_LIMIT - 20)}... (truncated ${value.length - EXCEL_CELL_CHAR_LIMIT} chars)`;
-    }
-
-    return value;
-  };
+  const [tables] = await pool.execute('SHOW TABLES');
+  const tableKey = Object.keys(tables[0] || {})[0];
+  let sql = `-- MyMasjidApp Database Backup\n-- Created: ${new Date().toISOString()}\n-- Trigger: ${triggerType}\n\nSET FOREIGN_KEY_CHECKS=0;\n\n`;
 
   for (const tableRow of tables) {
-    const tableName = tableRow[tableNameKey] || Object.values(tableRow)[0];
-    const [rows] = await pool.query(`SELECT * FROM \`${tableName}\``);
-    const sanitizedRows = rows.map((row) => {
-      const sanitized = {};
-      for (const [key, value] of Object.entries(row)) {
-        sanitized[key] = sanitizeValue(value);
+    const tableName = tableRow[tableKey];
+    const [[createResult]] = await pool.execute(`SHOW CREATE TABLE \`${tableName}\``);
+    sql += `DROP TABLE IF EXISTS \`${tableName}\`;\n${createResult['Create Table']};\n\n`;
+
+    const [rows] = await pool.execute(`SELECT * FROM \`${tableName}\``);
+    if (rows.length > 0) {
+      const cols = Object.keys(rows[0]).map(c => `\`${c}\``).join(', ');
+      for (const row of rows) {
+        const vals = Object.values(row).map(v =>
+          v === null ? 'NULL' : `'${String(v).replace(/'/g, "''")}'`
+        ).join(', ');
+        sql += `INSERT INTO \`${tableName}\` (${cols}) VALUES (${vals});\n`;
       }
-      return sanitized;
-    });
-    const worksheet = XLSX.utils.json_to_sheet(sanitizedRows);
-    const csv = XLSX.utils.sheet_to_csv(worksheet);
-    archive.append(csv, { name: `${tableName}.csv` });
-  }
-}
-
-async function saveBackupLog(entry) {
-  await ensureBackupTable();
-
-  const {
-    fileName,
-    fileSize,
-    driveFileId,
-    viewLink,
-    downloadLink,
-    triggerType,
-    triggeredBy,
-    status,
-    errorMessage,
-    fileChecksum,
-    integritySignature,
-  } = entry;
-
-  const sql = `
-    INSERT INTO backup_logs (
-      file_name,
-      file_size,
-      file_checksum,
-      integrity_signature,
-      drive_file_id,
-      drive_view_link,
-      drive_download_link,
-      trigger_type,
-      triggered_by,
-      status,
-      error_message
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `;
-
-  const params = [
-    fileName,
-    fileSize || null,
-    fileChecksum || null,
-    integritySignature || null,
-    driveFileId || null,
-    viewLink || null,
-    downloadLink || null,
-    triggerType || 'manual',
-    triggeredBy || null,
-    status || 'success',
-    errorMessage || null,
-  ];
-
-  await pool.execute(sql, params);
-}
-
-export async function createAndUploadDatabaseBackup({ triggerType = 'manual', triggeredBy } = {}) {
-  await ensureBackupDirectory();
-  await ensureBackupTable();
-
-  const dbConfig = getDatabaseConfig();
-  const sqlFileName = buildBackupFileName();
-  const sqlOutputPath = path.join(BACKUP_DIR, sqlFileName);
-  const zipFileName = sqlFileName.replace('.sql', '.zip');
-  const zipPath = path.join(BACKUP_DIR, zipFileName);
-  const downloadUrl = `/api/export/download/${encodeURIComponent(zipFileName)}`;
-  let zipStats;
-  let driveResponse;
-  let error;
-  let fileChecksum;
-  let integritySignature;
-
-  try {
-    await runMysqlDump(sqlOutputPath, dbConfig);
-    await new Promise(async (resolve, reject) => {
-      const output = fs.createWriteStream(zipPath);
-      const archive = archiver('zip', { zlib: { level: 9 } });
-
-      output.on('close', resolve);
-      output.on('error', reject);
-      archive.on('error', reject);
-
-      archive.pipe(output);
-
-      archive.append(fs.createReadStream(sqlOutputPath), { name: sqlFileName });
-
-      await appendCsvTables(dbConfig, archive);
-
-      archive.finalize();
-    });
-
-    zipStats = await fsPromises.stat(zipPath);
-    fileChecksum = await computeFileChecksum(zipPath);
-    integritySignature = buildIntegritySignature(zipFileName, fileChecksum);
-
-    const folderId = process.env.GOOGLE_DRIVE_FOLDER_ID || null;
-    if (folderId && (process.env.GOOGLE_DRIVE_SERVICE_ACCOUNT || process.env.GOOGLE_APPLICATION_CREDENTIALS)) {
-      await ensureFolderExists(folderId);
-      driveResponse = await uploadFileToDrive(zipPath, {
-        fileName: zipFileName,
-        mimeType: 'application/zip',
-        folderId,
-      });
-    }
-
-    await saveBackupLog({
-      fileName: zipFileName,
-      fileSize: zipStats?.size || null,
-      fileChecksum,
-      integritySignature,
-      driveFileId: driveResponse?.id,
-      viewLink: driveResponse?.webViewLink,
-      downloadLink: driveResponse?.webContentLink || downloadUrl,
-      triggerType,
-      triggeredBy,
-      status: 'success',
-    });
-
-    return {
-      fileName: zipFileName,
-      fileSize: zipStats?.size || null,
-      checksum: fileChecksum,
-      integritySignature,
-      driveFileId: driveResponse?.id,
-      driveViewLink: driveResponse?.webViewLink,
-      driveDownloadLink: driveResponse?.webContentLink,
-      downloadUrl,
-      localPath: zipPath,
-      triggerType,
-      triggeredBy,
-    };
-  } catch (err) {
-    error = err;
-    await saveBackupLog({
-      fileName: zipFileName,
-      fileSize: zipStats?.size || null,
-      fileChecksum,
-      integritySignature,
-      driveFileId: driveResponse?.id,
-      viewLink: driveResponse?.webViewLink,
-      downloadLink: driveResponse?.webContentLink || downloadUrl,
-      triggerType,
-      triggeredBy,
-      status: 'failed',
-      errorMessage: err.message,
-    }).catch((logError) => {
-      console.error('Failed to log backup failure:', logError);
-    });
-    throw err;
-  } finally {
-    const retainLocal = process.env.RETAIN_LOCAL_DATABASE_BACKUPS === 'true';
-    if (!retainLocal) {
-      await fsPromises.unlink(sqlOutputPath).catch(() => {});
+      sql += '\n';
     }
   }
+
+  sql += `SET FOREIGN_KEY_CHECKS=1;\n`;
+  fs.writeFileSync(filePath, sql, 'utf8');
+
+  const fileSize = fs.statSync(filePath).size;
+  const fileChecksum = computeChecksum(filePath);
+  const integritySignature = computeSignature(filePath);
+
+  await pool.execute(
+    `INSERT INTO backup_logs (file_name, file_path, file_size, file_checksum, integrity_signature, trigger_type, triggered_by, status)
+     VALUES (?, ?, ?, ?, ?, ?, ?, 'success')`,
+    [fileName, filePath, fileSize, fileChecksum, integritySignature, triggerType, triggeredBy]
+  );
+
+  return { fileName, filePath, fileSize, fileChecksum, integritySignature, triggerType, triggeredBy };
 }
 
 export async function getBackupHistory(limit = 10) {
-  try {
-    await ensureBackupTable();
-    // Validate and sanitize limit (safe to use directly in query after validation)
-    const safeLimit = Number.isFinite(limit) && limit > 0 ? Math.min(Math.floor(limit), 100) : 10;
-    
-    // Check which columns exist in the table
-    const [columns] = await pool.query(`
-      SELECT COLUMN_NAME 
-      FROM INFORMATION_SCHEMA.COLUMNS 
-      WHERE TABLE_SCHEMA = DATABASE() 
-      AND TABLE_NAME = 'backup_logs'
-    `);
-    
-    const existingColumns = columns.map(col => col.COLUMN_NAME.toLowerCase());
-    
-    // Build SELECT clause based on available columns
-    const selectFields = [];
-    if (existingColumns.includes('id')) selectFields.push('id');
-    if (existingColumns.includes('file_name')) selectFields.push('file_name AS fileName');
-    if (existingColumns.includes('file_size')) selectFields.push('file_size AS fileSize');
-    if (existingColumns.includes('file_checksum')) selectFields.push('file_checksum AS fileChecksum');
-    if (existingColumns.includes('integrity_signature')) selectFields.push('integrity_signature AS integritySignature');
-    if (existingColumns.includes('drive_file_id')) selectFields.push('drive_file_id AS driveFileId');
-    if (existingColumns.includes('drive_view_link')) selectFields.push('drive_view_link AS driveViewLink');
-    if (existingColumns.includes('drive_download_link')) selectFields.push('drive_download_link AS driveDownloadLink');
-    if (existingColumns.includes('trigger_type')) selectFields.push('trigger_type AS triggerType');
-    if (existingColumns.includes('triggered_by')) selectFields.push('triggered_by AS triggeredBy');
-    if (existingColumns.includes('status')) selectFields.push('status');
-    if (existingColumns.includes('error_message')) selectFields.push('error_message AS errorMessage');
-    if (existingColumns.includes('created_at')) selectFields.push('created_at AS createdAt');
-    
-    if (selectFields.length === 0) {
-      // No columns found, return empty array
-      return [];
-    }
-    
-    // MySQL LIMIT doesn't support placeholders in all versions, so we use the validated number directly
-    // This is safe because we've already validated and sanitized the limit value
-    const query = `
-      SELECT ${selectFields.join(', ')}
-      FROM backup_logs
-      ${existingColumns.includes('created_at') ? 'ORDER BY created_at DESC' : ''}
-      LIMIT ${safeLimit}
-    `;
-    
-    const [rows] = await pool.query(query);
-    return rows || [];
-  } catch (error) {
-    console.error('Error in getBackupHistory:', error);
-    // If table doesn't exist or query fails, return empty array instead of throwing
-    // This allows the UI to show "no backups yet" instead of an error
-    return [];
-  }
+  await ensureBackupLogsTable();
+  const [rows] = await pool.execute(
+    'SELECT * FROM backup_logs ORDER BY created_at DESC LIMIT ?',
+    [limit]
+  );
+  return rows;
 }
-
-// Archive 1 year of data
-async function appendYearlyCsvTables({ host, user, password, database, port }, archive, startDate, endDate) {
-  const [tables] = await pool.query('SHOW TABLES');
-  const tableNameKey = `Tables_in_${database}`;
-  const EXCEL_CELL_CHAR_LIMIT = 32767;
-
-  // Define date columns for each table
-  const dateColumns = {
-    attendance: 'tarikh',
-    payments: 'created_at',
-    yuran: 'created_at',
-    fees: 'created_at',
-    transactions: 'created_at',
-    check_ins: 'created_at',
-    logs: 'created_at',
-    backup_logs: 'created_at',
-  };
-
-  const sanitizeValue = (value) => {
-    if (value === null || value === undefined) return value;
-
-    if (value instanceof Date) {
-      return value.toISOString();
-    }
-
-    if (Buffer.isBuffer(value)) {
-      return `[BLOB ${value.length} bytes]`;
-    }
-
-    if (typeof value === 'object') {
-      try {
-        const stringified = JSON.stringify(value);
-        if (stringified.length > EXCEL_CELL_CHAR_LIMIT) {
-          return `${stringified.slice(0, EXCEL_CELL_CHAR_LIMIT - 20)}... (truncated)`;
-        }
-        return stringified;
-      } catch (error) {
-        return '[object]';
-      }
-    }
-
-    if (typeof value === 'string' && value.length > EXCEL_CELL_CHAR_LIMIT) {
-      return `${value.slice(0, EXCEL_CELL_CHAR_LIMIT - 20)}... (truncated ${value.length - EXCEL_CELL_CHAR_LIMIT} chars)`;
-    }
-
-    return value;
-  };
-
-  for (const tableRow of tables) {
-    const tableName = tableRow[tableNameKey] || Object.values(tableRow)[0];
-    
-    // Skip system tables
-    if (tableName.startsWith('_') || tableName.includes('schema') || tableName.includes('migration')) {
-      continue;
-    }
-
-    const dateColumn = dateColumns[tableName];
-    let rows;
-
-    // Filter by date if table has a date column and date range is provided
-    if (dateColumn && startDate && endDate) {
-      try {
-        // Check if column exists
-        const [columns] = await pool.query(`SHOW COLUMNS FROM \`${tableName}\` LIKE '${dateColumn}'`);
-        if (columns.length > 0) {
-          // Column exists, filter by date
-          [rows] = await pool.query(
-            `SELECT * FROM \`${tableName}\` WHERE \`${dateColumn}\` >= ? AND \`${dateColumn}\` <= ?`,
-            [startDate, endDate]
-          );
-        } else {
-          // Column doesn't exist, get all rows
-          [rows] = await pool.query(`SELECT * FROM \`${tableName}\``);
-        }
-      } catch (err) {
-        // If date filtering fails, get all rows
-        console.warn(`Could not filter ${tableName} by date:`, err.message);
-        [rows] = await pool.query(`SELECT * FROM \`${tableName}\``);
-      }
-    } else {
-      // No date filtering, get all rows
-      [rows] = await pool.query(`SELECT * FROM \`${tableName}\``);
-    }
-
-    const sanitizedRows = rows.map((row) => {
-      const sanitized = {};
-      for (const [key, value] of Object.entries(row)) {
-        sanitized[key] = sanitizeValue(value);
-      }
-      return sanitized;
-    });
-    
-    const worksheet = XLSX.utils.json_to_sheet(sanitizedRows);
-    const csv = XLSX.utils.sheet_to_csv(worksheet);
-    archive.append(csv, { name: `${tableName}.csv` });
-  }
-}
-
-export async function createAndUploadYearlyArchive({ triggerType = 'yearly-archive', triggeredBy } = {}) {
-  await ensureBackupDirectory();
-  await ensureBackupTable();
-
-  // Calculate date range: 1 year ago to today
-  const endDate = new Date();
-  const startDate = new Date();
-  startDate.setFullYear(startDate.getFullYear() - 1);
-  
-  const startDateStr = startDate.toISOString().split('T')[0];
-  const endDateStr = endDate.toISOString().split('T')[0];
-  const year = startDate.getFullYear();
-
-  const dbConfig = getDatabaseConfig();
-  const timestamp = new Date().toISOString().replace(/[-:TZ.]/g, '').slice(0, 14);
-  const zipFileName = `masjid_app_archive_${year}_${timestamp}.zip`;
-  const zipPath = path.join(BACKUP_DIR, zipFileName);
-  const downloadUrl = `/api/export/download/${encodeURIComponent(zipFileName)}`;
-  let zipStats;
-  let driveResponse;
-  let error;
-
-  try {
-    // Create archive info file
-    const archiveInfo = {
-      archiveType: 'yearly',
-      year: year,
-      startDate: startDateStr,
-      endDate: endDateStr,
-      createdAt: new Date().toISOString(),
-      description: `Archive of data from ${startDateStr} to ${endDateStr} (1 year)`,
-    };
-
-    await new Promise(async (resolve, reject) => {
-      const output = fs.createWriteStream(zipPath);
-      const archive = archiver('zip', { zlib: { level: 9 } });
-
-      output.on('close', resolve);
-      output.on('error', reject);
-      archive.on('error', reject);
-
-      archive.pipe(output);
-
-      // Add archive info file
-      archive.append(JSON.stringify(archiveInfo, null, 2), { name: 'archive_info.json' });
-
-      // Add CSV files with filtered data
-      await appendYearlyCsvTables(dbConfig, archive, startDateStr, endDateStr);
-
-      archive.finalize();
-    });
-
-    zipStats = await fsPromises.stat(zipPath);
-
-    const folderId = process.env.GOOGLE_DRIVE_FOLDER_ID || null;
-    if (folderId && (process.env.GOOGLE_DRIVE_SERVICE_ACCOUNT || process.env.GOOGLE_APPLICATION_CREDENTIALS)) {
-      await ensureFolderExists(folderId);
-      driveResponse = await uploadFileToDrive(zipPath, {
-        fileName: zipFileName,
-        mimeType: 'application/zip',
-        folderId,
-      });
-    }
-
-    await saveBackupLog({
-      fileName: zipFileName,
-      fileSize: zipStats?.size || null,
-      fileChecksum,
-      integritySignature,
-      driveFileId: driveResponse?.id,
-      viewLink: driveResponse?.webViewLink,
-      downloadLink: driveResponse?.webContentLink || downloadUrl,
-      triggerType,
-      triggeredBy,
-      status: 'success',
-    });
-
-    return {
-      fileName: zipFileName,
-      fileSize: zipStats?.size || null,
-      checksum: fileChecksum,
-      integritySignature,
-      driveFileId: driveResponse?.id,
-      driveViewLink: driveResponse?.webViewLink,
-      driveDownloadLink: driveResponse?.webContentLink,
-      downloadUrl,
-      localPath: zipPath,
-      triggerType,
-      triggeredBy,
-      year,
-      startDate: startDateStr,
-      endDate: endDateStr,
-    };
-  } catch (err) {
-    error = err;
-    await saveBackupLog({
-      fileName: zipFileName,
-      fileSize: zipStats?.size || null,
-      fileChecksum,
-      integritySignature,
-      driveFileId: driveResponse?.id,
-      viewLink: driveResponse?.webViewLink,
-      downloadLink: driveResponse?.webContentLink || downloadUrl,
-      triggerType,
-      triggeredBy,
-      status: 'failed',
-      errorMessage: err.message,
-    }).catch((logError) => {
-      console.error('Failed to log archive failure:', logError);
-    });
-    throw err;
-  } finally {
-    const retainLocal = process.env.RETAIN_LOCAL_DATABASE_BACKUPS === 'true';
-    if (!retainLocal) {
-      // Clean up is handled by the main backup function
-    }
-  }
-}
-
 
 export async function getBackupLogByFileName(fileName) {
-  if (!fileName) {
-    throw new Error('File name is required to look up a backup log');
-  }
-
-  await ensureBackupTable();
+  await ensureBackupLogsTable();
   const [rows] = await pool.execute(
-    `SELECT id, file_name AS fileName, file_size AS fileSize,
-      file_checksum AS fileChecksum,
-      integrity_signature AS integritySignature,
-      drive_file_id AS driveFileId,
-      drive_view_link AS driveViewLink,
-      drive_download_link AS driveDownloadLink,
-      trigger_type AS triggerType,
-      triggered_by AS triggeredBy,
-      status,
-      error_message AS errorMessage,
-      created_at AS createdAt
-    FROM backup_logs
-    WHERE file_name = ?
-    ORDER BY created_at DESC
-    LIMIT 1`,
+    'SELECT * FROM backup_logs WHERE file_name = ? LIMIT 1',
     [fileName]
   );
   return rows[0] || null;
 }
 
 export async function verifyBackupFileIntegrity({ fileName, expectedSignature, expectedChecksum } = {}) {
-  if (!fileName || !expectedSignature) {
-    throw new Error('fileName and expectedSignature are required to verify integrity');
-  }
-
   const filePath = path.join(BACKUP_DIR, fileName);
   if (!fs.existsSync(filePath)) {
-    throw new Error('Backup file not found');
+    return { valid: false, reason: 'File not found on disk' };
   }
-
-  const computedChecksum = await computeFileChecksum(filePath);
-  const computedSignature = buildIntegritySignature(fileName, computedChecksum);
-
-  return {
-    fileName,
-    computedChecksum,
-    computedSignature,
-    checksumMatch: expectedChecksum ? expectedChecksum === computedChecksum : true,
-    signatureMatch: expectedSignature === computedSignature,
-    isValid: expectedSignature === computedSignature && (!expectedChecksum || expectedChecksum === computedChecksum),
-  };
+  const actualChecksum = computeChecksum(filePath);
+  const actualSignature = computeSignature(filePath);
+  const checksumMatch = actualChecksum === expectedChecksum;
+  const signatureMatch = actualSignature === expectedSignature;
+  return { valid: checksumMatch && signatureMatch, checksumMatch, signatureMatch, actualChecksum, actualSignature };
 }
 
+export async function createAndUploadYearlyArchive({ triggerType = 'yearly-archive', triggeredBy = null } = {}) {
+  ensureBackupDir();
+  await ensureBackupLogsTable();
 
+  const year = new Date().getFullYear();
+  const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+  const fileName = `archive_${year}_${timestamp}.sql`;
+  const filePath = path.join(BACKUP_DIR, fileName);
+
+  const base = await createAndUploadDatabaseBackup({ triggerType, triggeredBy });
+  if (fs.existsSync(base.filePath)) fs.copyFileSync(base.filePath, filePath);
+
+  const fileSize = fs.existsSync(filePath) ? fs.statSync(filePath).size : 0;
+  const fileChecksum = fs.existsSync(filePath) ? computeChecksum(filePath) : '';
+  const integritySignature = fs.existsSync(filePath) ? computeSignature(filePath) : '';
+
+  await pool.execute(
+    `INSERT INTO backup_logs (file_name, file_path, file_size, file_checksum, integrity_signature, trigger_type, triggered_by, status, notes)
+     VALUES (?, ?, ?, ?, ?, ?, ?, 'success', ?)`,
+    [fileName, filePath, fileSize, fileChecksum, integritySignature, triggerType, triggeredBy, `Yearly archive for ${year}`]
+  );
+
+  return { fileName, filePath, fileSize, fileChecksum, integritySignature, triggerType, triggeredBy, year };
+}

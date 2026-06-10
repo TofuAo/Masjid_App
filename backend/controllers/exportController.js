@@ -17,7 +17,7 @@ export async function exportDatabase(req, res) {
   try {
     const result = await createAndUploadDatabaseBackup({
       triggerType: req.body?.triggerType || 'manual',
-      triggeredBy: req.user?.ic || req.user?.user_ic || req.user?.id || null,
+      triggeredBy: req.user?.telefon || req.user?.user_telefon || req.user?.id || null,
     })
 
     return res.status(200).json({
@@ -118,7 +118,7 @@ export async function archiveYearData(req, res) {
   try {
     const result = await createAndUploadYearlyArchive({
       triggerType: req.body?.triggerType || 'yearly-archive',
-      triggeredBy: req.user?.ic || req.user?.user_ic || req.user?.id || null,
+      triggeredBy: req.user?.telefon || req.user?.user_telefon || req.user?.id || null,
     })
 
     return res.status(200).json({

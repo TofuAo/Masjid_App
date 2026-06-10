@@ -13,13 +13,13 @@ import {
   syncCurrentMonthFees
 } from '../controllers/feeController.js';
 import { authenticateToken, requireRole } from '../middleware/auth.js';
-import { normalizeICMiddleware } from '../middleware/normalizeIC.js';
+import { normalizePhoneMiddleware } from '../middleware/normalizePhone.js';
 
 const router = express.Router();
 
 // Validation rules
 const feeValidation = [
-  body('student_ic')
+  body('student_telefon')
     .custom((value) => {
       // Accept multiple formats:
       // - 12 digits: 123456-78-9012 or 123456789012
@@ -75,10 +75,11 @@ router.get('/stats', getFeeStats);
 router.post('/generate-monthly', requireRole(['admin']), generateMonthlyFees);
 router.post('/sync-current-month', requireRole(['admin']), syncCurrentMonthFees);
 router.get('/:id', idValidation, getFeeById);
-router.post('/', requireRole(['admin', 'staff']), feeValidation, normalizeICMiddleware, createFee);
-router.put('/:id', requireRole(['admin', 'staff']), idValidation, feeValidation, normalizeICMiddleware, updateFee);
+router.post('/', requireRole(['admin', 'staff']), feeValidation, normalizePhoneMiddleware, createFee);
+router.put('/:id', requireRole(['admin', 'staff']), idValidation, feeValidation, normalizePhoneMiddleware, updateFee);
 router.put('/:id/mark-paid', requireRole(['admin', 'staff']), idValidation, markPaidValidation, markAsPaid);
 router.delete('/:id', requireRole(['admin']), idValidation, deleteFee);
 router.post('/:id/confirm-document', requireRole(['admin', 'pic', 'ib']), idValidation, confirmFeeDocument);
 
 export default router;
+

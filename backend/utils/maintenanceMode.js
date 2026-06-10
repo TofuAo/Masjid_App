@@ -72,7 +72,7 @@ export async function getMaintenanceStatus() {
         m.*,
         u.nama as activated_by_name
       FROM maintenance_mode m
-      LEFT JOIN users u ON m.activated_by COLLATE utf8mb4_unicode_ci = u.ic COLLATE utf8mb4_unicode_ci
+      LEFT JOIN users u ON m.activated_by COLLATE utf8mb4_unicode_ci = u.telefon COLLATE utf8mb4_unicode_ci
       ORDER BY m.id DESC 
       LIMIT 1
     `);
@@ -349,7 +349,7 @@ export async function getMaintenanceHistory(limit = 50) {
         m.*,
         u.nama as activated_by_name
       FROM maintenance_mode m
-      LEFT JOIN users u ON m.activated_by = u.ic
+      LEFT JOIN users u ON m.activated_by = u.telefon
       ORDER BY m.created_at DESC
       LIMIT ?
     `, [limit]);

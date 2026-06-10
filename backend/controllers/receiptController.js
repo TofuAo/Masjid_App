@@ -14,7 +14,7 @@ const __dirname = path.dirname(__filename);
 export const getReceiptByNumber = async (req, res) => {
   try {
     const { receiptNumber } = req.params;
-    const userIc = req.user?.ic || req.user?.userId;
+    const userPhone = req.user?.telefon || req.user?.userId;
     const userRole = req.user?.role;
 
     if (!receiptNumber) {
@@ -78,10 +78,10 @@ export const getReceiptByNumber = async (req, res) => {
     if (userRole !== 'admin') {
       if (receipt.type === 'fee') {
         const [fees] = await pool.execute(
-          'SELECT student_ic FROM fees WHERE id = ?',
+          'SELECT student_telefon FROM fees WHERE id = ?',
           [receipt.feeId]
         );
-        if (fees.length > 0 && fees[0].student_ic !== userIc) {
+        if (fees.length > 0 && fees[0].student_telefon !== userPhone) {
           return res.status(403).json({
             success: false,
             message: 'Access denied'
@@ -89,10 +89,10 @@ export const getReceiptByNumber = async (req, res) => {
         }
       } else if (receipt.type === 'payment') {
         const [payments] = await pool.execute(
-          'SELECT user_ic FROM payments WHERE id = ?',
+          'SELECT user_telefon FROM payments WHERE id = ?',
           [receipt.paymentId]
         );
-        if (payments.length > 0 && payments[0].user_ic !== userIc) {
+        if (payments.length > 0 && payments[0].user_telefon !== userPhone) {
           return res.status(403).json({
             success: false,
             message: 'Access denied'
@@ -121,15 +121,15 @@ export const getReceiptByNumber = async (req, res) => {
 export const getFeeReceipt = async (req, res) => {
   try {
     const { feeId } = req.params;
-    const userIc = req.user?.ic || req.user?.userId;
+    const userPhone = req.user?.telefon || req.user?.userId;
     const userRole = req.user?.role;
 
     // Check fee exists and user has access
     const [fees] = await pool.execute(`
       SELECT f.*, u.nama as pelajar_nama, c.nama_kelas
       FROM fees f
-      JOIN users u ON f.student_ic = u.ic
-      LEFT JOIN students s ON u.ic = s.user_ic
+      JOIN users u ON f.student_telefon = u.telefon
+      LEFT JOIN students s ON u.telefon = s.user_telefon
       LEFT JOIN classes c ON s.kelas_id = c.id
       WHERE f.id = ?
     `, [feeId]);
@@ -144,7 +144,7 @@ export const getFeeReceipt = async (req, res) => {
     const fee = fees[0];
 
     // Check access
-    if (userRole !== 'admin' && fee.student_ic !== userIc) {
+    if (userRole !== 'admin' && fee.student_telefon !== userPhone) {
       return res.status(403).json({
         success: false,
         message: 'Access denied'
@@ -194,7 +194,7 @@ export const getFeeReceipt = async (req, res) => {
 export const getPaymentReceipt = async (req, res) => {
   try {
     const { paymentId } = req.params;
-    const userIc = req.user?.ic || req.user?.userId;
+    const userPhone = req.user?.telefon || req.user?.userId;
     const userRole = req.user?.role;
 
     // Check payment exists and user has access
@@ -213,7 +213,7 @@ export const getPaymentReceipt = async (req, res) => {
     const payment = payments[0];
 
     // Check access
-    if (userRole !== 'admin' && payment.user_ic !== userIc) {
+    if (userRole !== 'admin' && payment.user_telefon !== userPhone) {
       return res.status(403).json({
         success: false,
         message: 'Access denied'
@@ -264,7 +264,7 @@ export const getPaymentReceipt = async (req, res) => {
 export const getUserReceipts = async (req, res) => {
   try {
     const { userId } = req.params;
-    const requestingUserIc = req.user?.ic || req.user?.userId;
+    const requestingUserIc = req.user?.telefon || req.user?.userId;
     const userRole = req.user?.role;
 
     // Check access
@@ -288,7 +288,7 @@ export const getUserReceipts = async (req, res) => {
         f.cara_bayar,
         'fee' as receipt_type
       FROM fees f
-      WHERE f.student_ic = ? 
+      WHERE f.student_telefon = ? 
         AND f.status = 'terbayar'
         AND f.no_resit IS NOT NULL
         AND f.resit_img IS NOT NULL
@@ -305,7 +305,7 @@ export const getUserReceipts = async (req, res) => {
         metadata,
         'payment' as receipt_type
       FROM payments
-      WHERE user_ic = ?
+      WHERE user_telefon = ?
         AND status = 'completed'
         AND metadata LIKE '%receiptNumber%'
       ORDER BY updated_at DESC`,

@@ -109,7 +109,7 @@ const useCrud = (api, itemName, itemType = null) => {
     
     if (item) {
       displayName = item.nama || item.nama_kelas || item.title || item.subject || item.name || `ID ${id}`;
-      displayIdentifier = item.ic || item.IC || item.id || id;
+      displayIdentifier = item.telefon || item.IC || item.id || id;
     } else {
       // Try to find item in items array
       const foundItem = items.find(i => {
@@ -118,7 +118,7 @@ const useCrud = (api, itemName, itemType = null) => {
       });
       if (foundItem) {
         displayName = foundItem.nama || foundItem.nama_kelas || foundItem.title || foundItem.subject || foundItem.name || `ID ${id}`;
-        displayIdentifier = foundItem.ic || foundItem.IC || foundItem.id || id;
+        displayIdentifier = foundItem.telefon || foundItem.IC || foundItem.id || id;
       } else {
         displayName = `ID ${id}`;
         displayIdentifier = id;
@@ -204,16 +204,16 @@ const useCrud = (api, itemName, itemType = null) => {
     
     // If we have an ic field but it wasn't 12 digits, still use it for special student IDs
     // This handles special IDs like SSITIHAWA001, SPUTERIZULAIQHA001, etc.
-    if (item.ic !== undefined && item.ic !== null && item.ic !== '') {
-      const normalized = String(item.ic).replace(/\D/g, '');
+    if (item.telefon !== undefined && item.telefon !== null && item.telefon !== '') {
+      const normalized = String(item.telefon).replace(/\D/g, '');
       if (normalized.length === 12) {
-        console.log(`[useCrud] Resolved identifier from ic field: ${item.ic}`);
-        return item.ic; // Return original format
+        console.log(`[useCrud] Resolved identifier from ic field: ${item.telefon}`);
+        return item.telefon; // Return original format
       } else {
         // For special student IDs (not 12 digits), still use the IC field
         // The backend can handle these special formats
-        console.log(`[useCrud] Using special student ID format: ${item.ic}`);
-        return item.ic; // Return original format even if not 12 digits
+        console.log(`[useCrud] Using special student ID format: ${item.telefon}`);
+        return item.telefon; // Return original format even if not 12 digits
       }
     }
     
@@ -267,12 +267,12 @@ const useCrud = (api, itemName, itemType = null) => {
 
     if (currentItem) {
       identifier = resolveIdentifier(currentItem);
-      if (identifier === undefined && formData.ic) {
-        const normalizedIC = String(formData.ic).replace(/\D/g, '');
-        if (normalizedIC.length === 12) identifier = formData.ic;
+      if (identifier === undefined && formData.telefon) {
+        const normalizedIC = String(formData.telefon).replace(/\D/g, '');
+        if (normalizedIC.length === 12) identifier = formData.telefon;
       }
       if (identifier === undefined) {
-        const itemIC = currentItem.ic || currentItem.IC;
+        const itemIC = currentItem.telefon || currentItem.IC;
         if (itemIC && String(itemIC).replace(/\D/g, '').length === 12) identifier = itemIC;
       }
       if (identifier === undefined) {

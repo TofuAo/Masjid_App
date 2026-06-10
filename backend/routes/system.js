@@ -7,3 +7,4 @@ const router = Router();
 router.get('/health', authenticateToken, authorizeRoles('admin'), getHealth);
 
 export default router;
+

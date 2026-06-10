@@ -45,7 +45,7 @@ const getOptionLabel = (optionId) => {
 
 const Login = ({ onLogin }) => {
   const [activeTab, setActiveTab] = useState('login'); // 'login', 'checkin', 'student-login'
-  const [formData, setFormData] = useState({ icNumber: '', password: '' });
+  const [formData, setFormData] = useState({ telefon: '', password: '' });
   const [selectedRoleId, setSelectedRoleId] = useState('staff-teacher');
   const [showRoleOptions, setShowRoleOptions] = useState(false);
   const [error, setError] = useState(null);
@@ -195,7 +195,7 @@ const Login = ({ onLogin }) => {
     const { name, value } = e.target;
     setFormData({
       ...formData,
-      [name]: name === 'icNumber' ? formatIC(value, true) : value
+      [name]: name === 'telefon' ? value.replace(/[^0-9]/g, '') : value
     });
     setError(null);
     setMessage(null);
@@ -240,10 +240,10 @@ const Login = ({ onLogin }) => {
 
     try {
       const response = await api.post('/auth/login', {
-        icNumber: formData.icNumber,
-        password: formData.password,
-        requestedRole: selectedRoleId
-      });
+  telefon: formData.telefon,
+  password: formData.password,
+  requestedRole: selectedRoleId === 'staff-teacher' ? 'staff' : selectedRoleId
+});
       
       let token, user;
       
@@ -330,7 +330,7 @@ const Login = ({ onLogin }) => {
       }
     } catch (err) {
       console.error('Login error:', err);
-      let errorMessage = err.message || err.response?.data?.message || 'IC Number atau kata laluan salah.';
+      let errorMessage = err.message || err.response?.data?.message || 'Nombor Telefon atau kata laluan salah.';
       
       // Handle specific account status errors
       if (err.response?.data?.accountStatus === 'pending') {
@@ -342,7 +342,7 @@ const Login = ({ onLogin }) => {
         // Auto-switch to student login tab
         setTimeout(() => {
           setActiveTab('student-login');
-          setFormData({ icNumber: formData.icNumber, password: '' });
+          setFormData({ telefon: formData.telefon, password: '' });
         }, 1500);
       }
       
@@ -359,15 +359,15 @@ const Login = ({ onLogin }) => {
     setError(null);
     setLoading(true);
 
-    if (!formData.icNumber) {
-      showMessage('Sila masukkan IC Number', 'error');
+    if (!formData.telefon) {
+      showMessage('Sila masukkan Nombor Telefon', 'error');
       setLoading(false);
       return;
     }
 
     try {
       const response = await api.post('/auth/student-login', {
-        icNumber: formData.icNumber
+        telefon: formData.telefon
       });
       
       let token, user;
@@ -421,7 +421,7 @@ const Login = ({ onLogin }) => {
       navigate('/');
     } catch (err) {
       console.error('Student login error:', err);
-      let errorMessage = err.message || err.response?.data?.message || 'IC Number tidak ditemui.';
+      let errorMessage = err.message || err.response?.data?.message || 'Nombor Telefon tidak ditemui.';
       
       if (err.response?.data?.accountStatus === 'pending') {
         errorMessage = err.response.data.message || 'Akaun anda sedang menunggu kelulusan daripada pentadbir.';
@@ -453,7 +453,7 @@ const Login = ({ onLogin }) => {
     setLoading(true);
     try {
       const response = await api.post('/staff-checkin/quick-check-in', {
-        icNumber: formData.icNumber,
+        telefon: formData.telefon,
         password: formData.password,
         latitude: location.latitude,
         longitude: location.longitude
@@ -465,7 +465,7 @@ const Login = ({ onLogin }) => {
           `Check-in success! You are ${distance}m away from the masjid.`,
           'success'
         );
-        setFormData({ icNumber: '', password: '' });
+        setFormData({ telefon: '', password: '' });
       } else {
         // Show error message from backend (which includes distance info)
         showMessage(response.message || 'You are too far. Check-in failed.', 'error');
@@ -498,7 +498,7 @@ const Login = ({ onLogin }) => {
     setLoading(true);
     try {
       const response = await api.post('/staff-checkin/quick-check-out', {
-        icNumber: formData.icNumber,
+        telefon: formData.telefon,
         password: formData.password,
         latitude: location.latitude,
         longitude: location.longitude
@@ -510,7 +510,7 @@ const Login = ({ onLogin }) => {
           `Check-out success! You are ${distance}m away from the masjid.`,
           'success'
         );
-        setFormData({ icNumber: '', password: '' });
+        setFormData({ telefon: '', password: '' });
       } else {
         // Show error message from backend (which includes distance info)
         showMessage(response.message || 'You are too far. Check-out failed.', 'error');
@@ -600,28 +600,25 @@ const Login = ({ onLogin }) => {
                 </div>
               )}
 
-              {/* IC Number Input */}
+              {/* Phone Number Input */}
               <div>
-                <label htmlFor="icNumber" className="form-label">Nombor IC</label>
+                <label htmlFor="telefon" className="form-label">Nombor Telefon</label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-mosque-neutral-500">
                     <User className="h-5 w-5" />
                   </div>
                   <input
-                    id="icNumber"
-                    name="icNumber"
+                    id="telefon"
+                    name="telefon"
                     type="text"
                     autoComplete="username"
-                    value={formData.icNumber}
+                    value={formData.telefon}
                     onChange={handleChange}
-                    maxLength={14}
-                    className="input-mosque block w-full pl-10 pr-24 py-2.5"
-                    placeholder="Masukkan IC Number"
+                    maxLength={15}
+                    className="input-mosque block w-full pl-10 pr-4 py-2.5"
+                    placeholder="Masukkan Nombor Telefon"
                     required
                   />
-                  <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-mosque-neutral-500 text-sm">
-                    @masjid.com
-                  </div>
                 </div>
               </div>
 
@@ -717,36 +714,32 @@ const Login = ({ onLogin }) => {
                 </div>
               )}
 
-              {/* IC Number Input */}
+              {/* Phone Number Input */}
               <div>
-                <label htmlFor="student-icNumber" className="form-label">Nombor IC Pelajar</label>
+                <label htmlFor="student-telefon" className="form-label">Nombor Telefon Pelajar</label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-mosque-neutral-500">
                     <User className="h-5 w-5" />
                   </div>
                   <input
-                    id="student-icNumber"
-                    name="icNumber"
+                    id="student-telefon"
+                    name="telefon"
                     type="text"
                     autoComplete="username"
-                    value={formData.icNumber}
+                    value={formData.telefon}
                     onChange={handleChange}
-                    maxLength={14}
-                    className="input-mosque block w-full pl-10 pr-24 py-2.5"
-                    placeholder="Masukkan IC Number"
+                    maxLength={15}
+                    className="input-mosque block w-full pl-10 pr-4 py-2.5"
+                    placeholder="Masukkan Nombor Telefon"
                     required
                   />
-                  <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-mosque-neutral-500 text-sm">
-                    @masjid.com
-                  </div>
                 </div>
-                <p className="form-helper">Hanya untuk pelajar — masukkan nombor IC sahaja</p>
               </div>
 
               {/* Student Login Button */}
               <button 
                 type="submit" 
-                disabled={loading || !formData.icNumber}
+                disabled={loading || !formData.telefon}
                 className="btn-mosque-accent w-full flex justify-center items-center py-3 px-4 rounded-xl text-sm font-medium text-mosque-accent-950 disabled:opacity-60 disabled:cursor-not-allowed"
               >
                 {loading ? (

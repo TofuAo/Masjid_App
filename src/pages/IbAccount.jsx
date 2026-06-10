@@ -118,10 +118,10 @@ const IbAccount = () => {
       const filteredData = {
         ...responseData,
         attendance: responseData.attendance?.filter(a => 
-          selectedStudentIds.includes(a.student_ic)
+          selectedStudentIds.includes(a.student_telefon)
         ) || [],
         fees: responseData.fees?.filter(f => 
-          selectedStudentIds.includes(f.student_ic)
+          selectedStudentIds.includes(f.student_telefon)
         ) || []
       };
       setClassDocuments(filteredData);
@@ -150,7 +150,7 @@ const IbAccount = () => {
     try {
       await ibAPI.confirmClassAttendance({
         class_id: parseInt(selectedClassId),
-        exclude_student_ics: excludedStudents,
+        exclude_student_telefons: excludedStudents,
         confirmed: true,
         notes: `Bulk confirmation for class ${selectedClassId}`
       });
@@ -177,7 +177,7 @@ const IbAccount = () => {
     try {
       await ibAPI.confirmClassFees({
         class_id: parseInt(selectedClassId),
-        exclude_student_ics: excludedStudents,
+        exclude_student_telefons: excludedStudents,
         confirmed: true,
         notes: `Bulk confirmation for class ${selectedClassId}`
       });
@@ -190,24 +190,24 @@ const IbAccount = () => {
     }
   };
 
-  const toggleExcludeStudent = (studentIc) => {
+  const toggleExcludeStudent = (studentPhone) => {
     setExcludedStudents(prev => 
-      prev.includes(studentIc)
-        ? prev.filter(ic => ic !== studentIc)
-        : [...prev, studentIc]
+      prev.includes(studentPhone)
+        ? prev.filter(ic => ic !== studentPhone)
+        : [...prev, studentPhone]
     );
   };
 
-  const toggleSelectStudent = (studentIc) => {
+  const toggleSelectStudent = (studentPhone) => {
     setSelectedStudentIds(prev => 
-      prev.includes(studentIc)
-        ? prev.filter(ic => ic !== studentIc)
-        : [...prev, studentIc]
+      prev.includes(studentPhone)
+        ? prev.filter(ic => ic !== studentPhone)
+        : [...prev, studentPhone]
     );
   };
 
   const selectAllStudents = () => {
-    setSelectedStudentIds(classStudents.map(s => s.ic));
+    setSelectedStudentIds(classStudents.map(s => s.telefon));
   };
 
   const deselectAllStudents = () => {
@@ -223,21 +223,21 @@ const IbAccount = () => {
       });
       const attendanceArray = Array.isArray(attendanceData) ? attendanceData : (attendanceData?.data || []);
       
-      // Group by student_ic and get only the latest attendance record per student
+      // Group by student_telefon and get only the latest attendance record per student
       const latestAttendanceMap = new Map();
       attendanceArray.forEach(record => {
-        const studentIc = record.student_ic || record.pelajar_ic;
-        if (!studentIc) return;
+        const studentPhone = record.student_telefon || record.pelajar_telefon;
+        if (!studentPhone) return;
         
-        const existing = latestAttendanceMap.get(studentIc);
+        const existing = latestAttendanceMap.get(studentPhone);
         if (!existing) {
-          latestAttendanceMap.set(studentIc, record);
+          latestAttendanceMap.set(studentPhone, record);
         } else {
           // Compare dates - keep the latest one
           const existingDate = new Date(existing.tarikh);
           const currentDate = new Date(record.tarikh);
           if (currentDate > existingDate) {
-            latestAttendanceMap.set(studentIc, record);
+            latestAttendanceMap.set(studentPhone, record);
           }
         }
       });
@@ -260,24 +260,24 @@ const IbAccount = () => {
     }
   };
 
-  const handleStudentClick = async (studentIc, studentName) => {
-    setSelectedStudent({ ic: studentIc, name: studentName });
+  const handleStudentClick = async (studentPhone, studentName) => {
+    setSelectedStudent({ ic: studentPhone, name: studentName });
     setStudentDetailModalOpen(true);
     // Set default month to current month
     const now = new Date();
     const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
     setStudentAttendanceMonth(currentMonth);
-    await fetchStudentAttendance(studentIc, currentMonth);
+    await fetchStudentAttendance(studentPhone, currentMonth);
   };
 
-  const fetchStudentAttendance = async (studentIc, month) => {
-    if (!studentIc || !month) return;
+  const fetchStudentAttendance = async (studentPhone, month) => {
+    if (!studentPhone || !month) return;
     
     setLoadingStudentAttendance(true);
     try {
       // Use the attendance API with pelajar_id and date (month format)
       const attendanceData = await attendanceAPI.getAll({
-        pelajar_id: studentIc,
+        pelajar_id: studentPhone,
         date: month, // Format: YYYY-MM
         limit: 1000
       });
@@ -294,8 +294,8 @@ const IbAccount = () => {
 
   const handleStudentAttendanceMonthChange = async (month) => {
     setStudentAttendanceMonth(month);
-    if (selectedStudent?.ic) {
-      await fetchStudentAttendance(selectedStudent.ic, month);
+    if (selectedStudent?.telefon) {
+      await fetchStudentAttendance(selectedStudent.telefon, month);
     }
   };
 
@@ -310,8 +310,8 @@ const IbAccount = () => {
       toast.success(confirmed ? 'Dokumen kehadiran berjaya disahkan!' : 'Pengesahan dokumen kehadiran dibatalkan.');
       await fetchAllData();
       // Refresh student attendance if modal is open
-      if (selectedStudent?.ic && studentAttendanceMonth) {
-        await fetchStudentAttendance(selectedStudent.ic, studentAttendanceMonth);
+      if (selectedStudent?.telefon && studentAttendanceMonth) {
+        await fetchStudentAttendance(selectedStudent.telefon, studentAttendanceMonth);
       }
     } catch (error) {
       console.error('Error confirming attendance document:', error);
@@ -399,7 +399,7 @@ const IbAccount = () => {
     // Search by name or IC only (not class name)
     const matchesSearch = !searchTerm || 
       record.pelajar_nama?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      record.pelajar_ic?.toLowerCase().includes(searchTerm.toLowerCase());
+      record.pelajar_telefon?.toLowerCase().includes(searchTerm.toLowerCase());
     
     // Filter by class
     const matchesClass = !filterClass || 
@@ -425,7 +425,7 @@ const IbAccount = () => {
   const filteredFees = allFees.filter(fee => {
     const matchesSearch = !searchTerm || 
       fee.pelajar_nama?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      fee.pelajar_ic?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      fee.pelajar_telefon?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       fee.kelas_nama?.toLowerCase().includes(searchTerm.toLowerCase());
     
     const matchesFilter = filterConfirmed === 'all' ||
@@ -475,7 +475,7 @@ const IbAccount = () => {
               <div>
                 <Card.Title>IB Account - Master Admin</Card.Title>
                 <p className="text-sm text-gray-600 mt-1">
-                  {user.nama || 'IB Admin'} | IC: {user.ic_formatted || user.ic}
+                  {user.nama || 'IB Admin'} | IC: {user.ic_formatted || user.telefon}
                 </p>
               </div>
             </div>
@@ -570,20 +570,20 @@ const IbAccount = () => {
                 <div className="max-h-96 overflow-y-auto border rounded-lg p-4 space-y-2">
                   {classStudents.map((student) => (
                     <div
-                      key={student.ic}
+                      key={student.telefon}
                       className="flex items-center justify-between p-3 hover:bg-gray-50 rounded border"
                     >
                       <div className="flex items-center space-x-3 flex-1">
                         <button
-                          onClick={() => toggleSelectStudent(student.ic)}
+                          onClick={() => toggleSelectStudent(student.telefon)}
                           className={`flex items-center justify-center w-6 h-6 border-2 rounded transition-colors ${
-                            selectedStudentIds.includes(student.ic)
+                            selectedStudentIds.includes(student.telefon)
                               ? 'border-emerald-600 bg-emerald-50'
                               : 'border-gray-300 bg-gray-100'
                           } hover:border-emerald-600`}
-                          title={selectedStudentIds.includes(student.ic) ? 'Klik untuk batal pilih' : 'Klik untuk pilih'}
+                          title={selectedStudentIds.includes(student.telefon) ? 'Klik untuk batal pilih' : 'Klik untuk pilih'}
                         >
-                          {selectedStudentIds.includes(student.ic) ? (
+                          {selectedStudentIds.includes(student.telefon) ? (
                             <Check className="w-4 h-4 text-emerald-600" />
                           ) : (
                             <X className="w-4 h-4 text-gray-600" />
@@ -591,7 +591,7 @@ const IbAccount = () => {
                         </button>
                         <div>
                           <span className="text-sm font-medium text-gray-900">{student.nama}</span>
-                          <div className="text-xs text-gray-500">{student.ic}</div>
+                          <div className="text-xs text-gray-500">{student.telefon}</div>
                         </div>
                       </div>
                     </div>
@@ -672,15 +672,15 @@ const IbAccount = () => {
                           >
                             <div className="flex items-center space-x-2 flex-1">
                               <button
-                                onClick={() => toggleExcludeStudent(record.student_ic)}
+                                onClick={() => toggleExcludeStudent(record.student_telefon)}
                                 className={`flex items-center justify-center w-5 h-5 border-2 rounded transition-colors ${
-                                  excludedStudents.includes(record.student_ic)
+                                  excludedStudents.includes(record.student_telefon)
                                     ? 'border-gray-300 bg-gray-100'
                                     : 'border-emerald-600 bg-emerald-50'
                                 } hover:border-emerald-600`}
-                                title={excludedStudents.includes(record.student_ic) ? 'Klik untuk sertakan' : 'Klik untuk kecualikan'}
+                                title={excludedStudents.includes(record.student_telefon) ? 'Klik untuk sertakan' : 'Klik untuk kecualikan'}
                               >
-                                {excludedStudents.includes(record.student_ic) ? (
+                                {excludedStudents.includes(record.student_telefon) ? (
                                   <X className="w-3 h-3 text-gray-500" />
                                 ) : (
                                   <Check className="w-3 h-3 text-emerald-600" />
@@ -728,15 +728,15 @@ const IbAccount = () => {
                           >
                             <div className="flex items-center space-x-2 flex-1">
                               <button
-                                onClick={() => toggleExcludeStudent(record.student_ic)}
+                                onClick={() => toggleExcludeStudent(record.student_telefon)}
                                 className={`flex items-center justify-center w-5 h-5 border-2 rounded transition-colors ${
-                                  excludedStudents.includes(record.student_ic)
+                                  excludedStudents.includes(record.student_telefon)
                                     ? 'border-gray-300 bg-gray-100'
                                     : 'border-emerald-600 bg-emerald-50'
                                 } hover:border-emerald-600`}
-                                title={excludedStudents.includes(record.student_ic) ? 'Klik untuk sertakan' : 'Klik untuk kecualikan'}
+                                title={excludedStudents.includes(record.student_telefon) ? 'Klik untuk sertakan' : 'Klik untuk kecualikan'}
                               >
-                                {excludedStudents.includes(record.student_ic) ? (
+                                {excludedStudents.includes(record.student_telefon) ? (
                                   <X className="w-3 h-3 text-gray-500" />
                                 ) : (
                                   <Check className="w-3 h-3 text-emerald-600" />
@@ -947,12 +947,12 @@ const IbAccount = () => {
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-black">
                             <button
-                              onClick={() => handleStudentClick(record.pelajar_ic || record.student_ic, record.pelajar_nama)}
+                              onClick={() => handleStudentClick(record.pelajar_telefon || record.student_telefon, record.pelajar_nama)}
                               className="text-left hover:text-emerald-600 hover:underline cursor-pointer"
                               title="Klik untuk lihat data bulanan pelajar"
                             >
                               <div className="font-medium">{record.pelajar_nama}</div>
-                              <div className="text-xs text-gray-500">{record.pelajar_ic}</div>
+                              <div className="text-xs text-gray-500">{record.pelajar_telefon}</div>
                             </button>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-black">
@@ -1084,7 +1084,7 @@ const IbAccount = () => {
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-black">
                             <div className="font-medium">{fee.pelajar_nama}</div>
-                            <div className="text-xs text-gray-500">{fee.pelajar_ic}</div>
+                            <div className="text-xs text-gray-500">{fee.pelajar_telefon}</div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-black">
                             {fee.kelas_nama || 'N/A'}
@@ -1205,7 +1205,7 @@ const IbAccount = () => {
                 <div>
                   <h3 className="text-2xl font-semibold text-gray-900">Data Kehadiran Pelajar</h3>
                   <p className="text-sm text-gray-600 mt-1">
-                    {selectedStudent.name} ({selectedStudent.ic})
+                    {selectedStudent.name} ({selectedStudent.telefon})
                   </p>
                 </div>
                 <button
@@ -1316,7 +1316,7 @@ const IbAccount = () => {
                                   <button
                                     onClick={async () => {
                                       await handleConfirmAttendanceDocument(record.id, true);
-                                      await fetchStudentAttendance(selectedStudent.ic, studentAttendanceMonth);
+                                      await fetchStudentAttendance(selectedStudent.telefon, studentAttendanceMonth);
                                     }}
                                     disabled={confirming[`attendance_${record.id}`]}
                                     className="text-emerald-600 hover:text-emerald-700 flex items-center space-x-1 disabled:opacity-50"
@@ -1332,7 +1332,7 @@ const IbAccount = () => {
                                   <button
                                     onClick={async () => {
                                       await handleConfirmAttendanceDocument(record.id, false);
-                                      await fetchStudentAttendance(selectedStudent.ic, studentAttendanceMonth);
+                                      await fetchStudentAttendance(selectedStudent.telefon, studentAttendanceMonth);
                                     }}
                                     disabled={confirming[`attendance_${record.id}`]}
                                     className="text-red-600 hover:text-red-700 flex items-center space-x-1 disabled:opacity-50"
@@ -1351,7 +1351,7 @@ const IbAccount = () => {
                                   onClick={async () => {
                                     if (window.confirm('Adakah anda pasti ingin mengesahkan rekod kehadiran ini (tanpa bukti)?')) {
                                       await handleConfirmAttendanceDocument(record.id, true);
-                                      await fetchStudentAttendance(selectedStudent.ic, studentAttendanceMonth);
+                                      await fetchStudentAttendance(selectedStudent.telefon, studentAttendanceMonth);
                                     }
                                   }}
                                   disabled={confirming[`attendance_${record.id}`]}

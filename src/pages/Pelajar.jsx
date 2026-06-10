@@ -21,7 +21,7 @@ function PelajarDetailRoute({ user, pelajars, onEdit }) {
   const [pelajar, setPelajar] = useState(() => {
     const list = Array.isArray(pelajars) ? pelajars : [];
     const ic = decodeURIComponent(id || '');
-    return list.find((p) => (p.ic || p.IC || '') === ic || String(p.ic || p.IC) === ic) ?? null;
+    return list.find((p) => (p.telefon || p.IC || '') === ic || String(p.telefon || p.IC) === ic) ?? null;
   });
   const [loading, setLoading] = useState(!pelajar);
   const [fetchError, setFetchError] = useState(null);

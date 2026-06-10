@@ -14,7 +14,7 @@ const PendingTeacherDocuments = () => {
   const documentTypes = [
     { id: 'sijil', label: 'Sijil Kelayakan', required: true },
     { id: 'resume', label: 'Resume / CV', required: true },
-    { id: 'ic', label: 'Salinan IC', required: true },
+    { id: 'ic', label: 'Salinan Kad Pengenalan / Bil', required: true },
     { id: 'sijil_akademik', label: 'Sijil Akademik', required: false },
     { id: 'sijil_pengalaman', label: 'Sijil Pengalaman Mengajar', required: false },
     { id: 'lain', label: 'Dokumen Lain', required: false }

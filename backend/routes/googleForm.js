@@ -21,7 +21,7 @@ const googleFormWebhookValidation = [
   body('attendance_data')
     .isArray({ min: 1 })
     .withMessage('Attendance data must be a non-empty array'),
-  body('attendance_data.*.student_ic')
+  body('attendance_data.*.student_telefon')
     .notEmpty()
     .withMessage('Student IC is required'),
   body('attendance_data.*.status')
@@ -54,4 +54,5 @@ router.get('/class/:class_id', authenticateToken, classIdValidation, getClassGoo
 router.put('/class/:class_id', requireRole(['admin']), classIdValidation, setFormUrlValidation, setClassGoogleFormUrl);
 
 export default router;
+
 

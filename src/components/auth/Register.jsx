@@ -10,7 +10,7 @@ const Register = ({ onRegister }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [mode, setMode] = useState('existing'); // 'existing' or 'new'
   const [formData, setFormData] = useState({
-    ic_number: '',
+    telefon: '',
     nama: '',
     password: '',
     confirmPassword: '',
@@ -23,9 +23,9 @@ const Register = ({ onRegister }) => {
   const handleChange = (e) => {
     const { name, value } = e.target;
     
-    // Format IC number as user types
-    if (name === 'ic_number') {
-      const formatted = formatIC(value, true);
+    // Format telefon as user types
+    if (name === 'telefon') {
+      const formatted = value.replace(/[^0-9]/g, '');
       setFormData((prev) => ({
         ...prev,
         [name]: formatted,
@@ -41,12 +41,12 @@ const Register = ({ onRegister }) => {
   };
 
   const validate = () => {
-    if (!formData.ic_number || formData.ic_number.trim() === '') {
-      setError('Sila masukkan nombor IC');
+    if (!formData.telefon || formData.telefon.trim() === '') {
+      setError('Sila masukkan nombor telefon');
       return false;
     }
-    if (!isValidIC(formData.ic_number)) {
-      setError('Nombor IC mestilah 12 digit');
+    if (formData.telefon.length < 10) {
+      setError('Nombor telefon mestilah sekurang-kurangnya 10 digit');
       return false;
     }
     if (!formData.nama || formData.nama.trim() === '') {
@@ -88,7 +88,7 @@ const Register = ({ onRegister }) => {
 
     try {
       const payload = {
-        ic_number: formData.ic_number,
+        telefon: formData.telefon,
         nama: formData.nama,
         password: formData.password,
         confirmPassword: formData.confirmPassword,
@@ -208,7 +208,7 @@ const Register = ({ onRegister }) => {
             </div>
             <h1 className="text-2xl font-bold font-display text-mosque-primary-800">Daftar / Kemaskini Akaun</h1>
             <p className="mt-2 text-sm text-mosque-neutral-600">
-              Pilih salah satu pilihan di bawah. Sistem akan samakan nama dengan rekod sedia ada dan membetulkan nombor IC secara automatik.
+              Pilih salah satu pilihan di bawah. Sistem akan samakan nama dengan rekod sedia ada dan membetulkan nombor telefon secara automatik.
             </p>
           </div>
 
@@ -243,14 +243,14 @@ const Register = ({ onRegister }) => {
             {mode === 'existing' ? (
               <ul className="space-y-2 list-disc list-inside">
                 <li>Pastikan nama diisi sama seperti rekod asal.</li>
-                <li>Sistem akan mengemaskini nombor IC dan kata laluan anda secara automatik.</li>
+                <li>Sistem akan mengemaskini nombor telefon dan kata laluan anda secara automatik.</li>
                 <li>Jika rekod telah aktif, anda boleh terus log masuk selepas berjaya.</li>
               </ul>
             ) : (
               <ul className="space-y-2 list-disc list-inside">
                 <li>Permohonan baharu akan dihantar untuk kelulusan pentadbir.</li>
                 <li>Anda boleh masukkan emel untuk menerima pemberitahuan (pilihan).</li>
-                <li>Sila gunakan nombor IC sebenar bagi mengelakkan permohonan ditolak.</li>
+                <li>Sila gunakan nombor telefon sebenar bagi mengelakkan permohonan ditolak.</li>
               </ul>
             )}
           </div>
@@ -288,25 +288,25 @@ const Register = ({ onRegister }) => {
             </div>
 
             <div>
-              <label htmlFor="ic_number" className="form-label">Nombor IC *</label>
+              <label htmlFor="telefon" className="form-label">Nombor Telefon *</label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-mosque-neutral-500">
                   <CreditCard className="h-5 w-5" />
                 </div>
                 <input
-                  id="ic_number"
-                  name="ic_number"
+                  id="telefon"
+                  name="telefon"
                   type="text"
                   required
-                  maxLength={14}
+                  maxLength={15}
                   autoComplete="username"
-                  value={formData.ic_number}
+                  value={formData.telefon}
                   onChange={handleChange}
                   className="input-mosque block w-full pl-10 pr-3 py-2.5 rounded-xl"
-                  placeholder="123456789012"
+                  placeholder="Contoh: 0123456789"
                 />
               </div>
-              <p className="form-helper">Masukkan 12 digit nombor IC tanpa sengkang. Pastikan nombor ini tepat.</p>
+              <p className="form-helper">Masukkan nombor telefon tanpa tanda sengkang atau ruang.</p>
             </div>
 
             {mode === 'new' && (

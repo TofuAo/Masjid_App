@@ -12,3 +12,4 @@ router.get('/:ic', authenticateToken, requireRole(['admin']), getUserByIc);
 
 export default router;
 
+

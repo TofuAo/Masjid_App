@@ -89,14 +89,14 @@ const PayYuran = () => {
     const accountNumber = qrSettings?.payment_account_number || '111026425788';
     const feeId = fee.id || '0';
     const amount = fee.jumlah || '0.00';
-    const studentIc = fee.pelajar_ic || fee.student_ic || 'N/A';
+    const studentPhone = fee.pelajar_telefon || fee.student_telefon || 'N/A';
     const bulan = fee.bulan || new Date().toLocaleString('ms-MY', { month: 'long' });
     const tahun = fee.tahun || new Date().getFullYear();
     
     // Format for Malaysian payment systems (DuitNow/DuitNow QR compatible)
     // Format: Account|Amount|Reference|Description
     const reference = `FEE${String(feeId).padStart(6, '0')}`;
-    const description = `Yuran ${bulan} ${tahun} - ${studentIc}`;
+    const description = `Yuran ${bulan} ${tahun} - ${studentPhone}`;
     
     // Malaysian DuitNow QR format
     const qrData = `${accountNumber}|${amount}|${reference}|${description}`;

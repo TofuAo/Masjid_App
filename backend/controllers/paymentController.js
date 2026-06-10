@@ -42,7 +42,7 @@ export const createPayment = async (req, res) => {
       idempotency_key
     } = req.body;
 
-    const userIc = req.user.ic || req.user.userId;
+    const userPhone = req.user.telefon || req.user.userId;
 
     // Check idempotency
     if (idempotency_key) {
@@ -94,7 +94,7 @@ export const createPayment = async (req, res) => {
 
     // Create payment intent
     const payment = await createPaymentIntent({
-      user_ic: userIc,
+      user_telefon: userPhone,
       amount: parseFloat(amount),
       currency,
       method,
@@ -130,7 +130,7 @@ export const createPayment = async (req, res) => {
 export const getPayment = async (req, res) => {
   try {
     const { id } = req.params;
-    const userIc = req.user.ic || req.user.userId;
+    const userPhone = req.user.telefon || req.user.userId;
     const userRole = req.user.role;
 
     const payment = await getPaymentById(id);
@@ -143,7 +143,7 @@ export const getPayment = async (req, res) => {
     }
 
     // Users can only view their own payments (unless admin)
-    if (userRole !== 'admin' && payment.user_ic !== userIc) {
+    if (userRole !== 'admin' && payment.user_telefon !== userPhone) {
       return res.status(403).json({
         success: false,
         message: 'Access denied'
@@ -178,7 +178,7 @@ export const getPayment = async (req, res) => {
 export const getUserPayments = async (req, res) => {
   try {
     const { userId } = req.params;
-    const requestingUserIc = req.user.ic || req.user.userId;
+    const requestingUserIc = req.user.telefon || req.user.userId;
     const userRole = req.user.role;
 
     // Users can only view their own payments (unless admin)
@@ -228,7 +228,7 @@ export const getAdminPayments = async (req, res) => {
       status: req.query.status,
       method: req.query.method,
       provider: req.query.provider,
-      user_ic: req.query.user_ic,
+      user_telefon: req.query.user_telefon,
       search: req.query.search
     };
 
@@ -303,7 +303,7 @@ export const updateStatus = async (req, res) => {
         operation: 'update',
         data: {
           id: previousPayment.id,
-          user_ic: previousPayment.user_ic,
+          user_telefon: previousPayment.user_telefon,
           amount: previousPayment.amount,
           currency: previousPayment.currency,
           method: previousPayment.method,
@@ -317,7 +317,7 @@ export const updateStatus = async (req, res) => {
           redirectPath: `/payments/${id}`,
           notes: `Status changed from ${previousPayment.status} to ${status}`
         },
-        actorIc: req.user.ic
+        actorPhone: req.user.telefon
       });
     }
 
@@ -342,7 +342,7 @@ export const updateStatus = async (req, res) => {
 export const initializePayment = async (req, res) => {
   try {
     const { id } = req.params;
-    const userIc = req.user.ic || req.user.userId;
+    const userPhone = req.user.telefon || req.user.userId;
 
     const payment = await getPaymentById(id);
 
@@ -353,7 +353,7 @@ export const initializePayment = async (req, res) => {
       });
     }
 
-    if (payment.user_ic !== userIc) {
+    if (payment.user_telefon !== userPhone) {
       return res.status(403).json({
         success: false,
         message: 'Access denied'
@@ -382,8 +382,8 @@ export const initializePayment = async (req, res) => {
 
     // Get user info
     const [users] = await pool.execute(
-      'SELECT nama, email, telefon FROM users WHERE ic = ?',
-      [userIc]
+      'SELECT nama, email, telefon FROM users WHERE telefon = ?',
+      [userPhone]
     );
     const user = users[0];
 
@@ -470,7 +470,7 @@ export const initializePayment = async (req, res) => {
 export const uploadProof = async (req, res) => {
   try {
     const { id } = req.params;
-    const userIc = req.user.ic || req.user.userId;
+    const userPhone = req.user.telefon || req.user.userId;
 
     if (!req.file) {
       return res.status(400).json({
@@ -488,7 +488,7 @@ export const uploadProof = async (req, res) => {
       });
     }
 
-    if (payment.user_ic !== userIc) {
+    if (payment.user_telefon !== userPhone) {
       return res.status(403).json({
         success: false,
         message: 'Access denied'

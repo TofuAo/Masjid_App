@@ -85,7 +85,7 @@ export const generateReceiptHTML = async (receiptData) => {
   const {
     receiptNumber,
     studentName,
-    studentIc,
+    studentPhone,
     studentEmail,
     amount,
     paymentDate,
@@ -373,7 +373,7 @@ export const generateReceiptHTML = async (receiptData) => {
             <div class="info-row">
                 <span class="info-label">Bill To:</span>
                 <span class="info-value">
-                    ${studentEmail ? `<a href="mailto:${studentEmail}">${studentEmail}</a>` : (studentIc || 'N/A')}
+                    ${studentEmail ? `<a href="mailto:${studentEmail}">${studentEmail}</a>` : (studentPhone || 'N/A')}
                 </span>
             </div>
             <div class="info-row">
@@ -436,7 +436,7 @@ export const generateReceiptHTML = async (receiptData) => {
                 </div>
                 <div class="student-info-item">
                     <div class="student-info-label">IC Number</div>
-                    <div class="student-info-value">${studentIc || 'N/A'}</div>
+                    <div class="student-info-value">${studentPhone || 'N/A'}</div>
                 </div>
                 <div class="student-info-item">
                     <div class="student-info-label">Class (Kelas)</div>
@@ -518,16 +518,16 @@ export const generateFeeReceipt = async (feeId, paymentData = {}) => {
       SELECT 
         f.*,
         u.nama as student_name,
-        u.ic as student_ic,
+        u.telefon as student_telefon,
         u.email as student_email,
         c.nama_kelas as kelas_nama,
         c.level as peringkat,
         t.nama as teacher_name
       FROM fees f
-      JOIN users u ON f.student_ic = u.ic
-      LEFT JOIN students s ON u.ic = s.user_ic
+      JOIN users u ON f.student_telefon = u.telefon
+      LEFT JOIN students s ON u.telefon = s.user_telefon
       LEFT JOIN classes c ON s.kelas_id = c.id
-      LEFT JOIN users t ON c.guru_ic = t.ic
+      LEFT JOIN users t ON c.guru_telefon = t.ic
       WHERE f.id = ?
     `, [feeId]);
 
@@ -566,7 +566,7 @@ export const generateFeeReceipt = async (feeId, paymentData = {}) => {
     const receiptData = {
       receiptNumber,
       studentName: fee.student_name || 'N/A',
-      studentIc: fee.student_ic,
+      studentPhone: fee.student_telefon,
       studentEmail: fee.student_email || null,
       amount: fee.jumlah,
       paymentDate: fee.tarikh_bayar || fee.tarikh || new Date(),
@@ -621,16 +621,16 @@ export const generatePaymentReceipt = async (paymentId, feeId = null) => {
       SELECT 
         p.*, 
         u.nama as user_name, 
-        u.ic as user_ic, 
+        u.telefon as user_telefon, 
         u.email as user_email,
         c.nama_kelas as kelas_nama,
         c.level as peringkat,
         t.nama as teacher_name
       FROM payments p
-      JOIN users u ON p.user_ic = u.ic
-      LEFT JOIN students s ON u.ic = s.user_ic
+      JOIN users u ON p.user_telefon = u.telefon
+      LEFT JOIN students s ON u.telefon = s.user_telefon
       LEFT JOIN classes c ON s.kelas_id = c.id
-      LEFT JOIN users t ON c.guru_ic = t.ic
+      LEFT JOIN users t ON c.guru_telefon = t.ic
       WHERE p.id = ?
     `, [paymentId]);
 
@@ -666,7 +666,7 @@ export const generatePaymentReceipt = async (paymentId, feeId = null) => {
     const receiptData = {
       receiptNumber,
       studentName: payment.user_name,
-      studentIc: payment.user_ic,
+      studentPhone: payment.user_telefon,
       studentEmail: payment.user_email || null,
       amount: payment.amount,
       paymentDate: payment.updated_at || payment.created_at,

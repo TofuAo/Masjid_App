@@ -139,7 +139,7 @@ export const updateSetting = async (req, res) => {
           operationLabel: 'Kemas kini tetapan',
           redirectPath: '/settings'
         },
-        actorIc: req.user.ic
+        actorPhone: req.user.telefon
       });
     }
 
@@ -169,7 +169,7 @@ export const updateSetting = async (req, res) => {
             operationLabel: 'Cipta tetapan',
             redirectPath: '/settings'
           },
-          actorIc: req.user.ic
+          actorPhone: req.user.telefon
         });
       }
     }

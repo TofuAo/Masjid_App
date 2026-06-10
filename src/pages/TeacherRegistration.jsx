@@ -12,10 +12,9 @@ const TeacherRegistration = () => {
   // All state declarations at the top
   // Note: This is now a public registration page - no authentication required
   const [formData, setFormData] = useState({
-    ic_number: '',
+    telefon: '',
     nama: '',
     email: '',
-    telefon: '',
     kepakaran: [],
     password: '',
     confirmPassword: '',
@@ -34,15 +33,9 @@ const TeacherRegistration = () => {
   const handleChange = (e) => {
     const { name, value } = e.target;
     
-    // Format IC number as user types
-    if (name === 'ic_number') {
-      const formatted = formatIC(value, true);
-      setFormData((prev) => ({
-        ...prev,
-        [name]: formatted,
-      }));
-    } else if (name === 'telefon') {
-      const formatted = formatPhone(value, true);
+    // Format telefon as user types
+    if (name === 'telefon') {
+      const formatted = value.replace(/[^0-9]/g, '');
       setFormData((prev) => ({
         ...prev,
         [name]: formatted,
@@ -67,12 +60,12 @@ const TeacherRegistration = () => {
   };
 
   const validate = () => {
-    if (!formData.ic_number || formData.ic_number.trim() === '') {
-      setError('Sila masukkan nombor IC');
+    if (!formData.telefon || formData.telefon.trim() === '') {
+      setError('Sila masukkan nombor telefon');
       return false;
     }
-    if (!isValidIC(formData.ic_number)) {
-      setError('Nombor IC mestilah 12 digit');
+    if (formData.telefon.length < 10) {
+      setError('Nombor telefon mestilah sekurang-kurangnya 10 digit');
       return false;
     }
     if (!formData.nama || formData.nama.trim() === '') {
@@ -94,14 +87,7 @@ const TeacherRegistration = () => {
         return false;
       }
     }
-    if (formData.telefon && formData.telefon.trim() !== '') {
-      const phoneRegex = /^(\+?6?01)[0-46-9]-?[0-9]{7,8}$/;
-      const cleanedPhone = formData.telefon.replace(/[-\s]/g, '');
-      if (!phoneRegex.test(cleanedPhone)) {
-        setError('Format nombor telefon tidak sah. Gunakan format: 012-3456789');
-        return false;
-      }
-    }
+
     if (!formData.password || formData.password.length < 5) {
       setError('Kata laluan mestilah sekurang-kurangnya 5 aksara');
       return false;
@@ -129,14 +115,10 @@ const TeacherRegistration = () => {
     setError('');
 
     try {
-      // Normalize IC (remove hyphens)
-      const normalizedIC = formData.ic_number.replace(/\D/g, '');
-      
       const payload = {
         nama: formData.nama.trim(),
-        ic: normalizedIC,
+        telefon: formData.telefon.trim(),
         email: formData.email && formData.email.trim() !== '' ? formData.email.trim() : undefined,
-        telefon: formData.telefon && formData.telefon.trim() !== '' ? formData.telefon.trim() : undefined,
         kepakaran: formData.kepakaran,
         password: formData.password,
       };
@@ -287,29 +269,29 @@ const TeacherRegistration = () => {
                 </div>
               </div>
 
-              {/* Nombor IC */}
+              {/* Nombor Telefon */}
               <div>
-                <label htmlFor="ic_number" className="block text-sm font-medium text-gray-700 mb-2">
-                  Nombor IC <span className="text-red-500">*</span>
+                <label htmlFor="telefon" className="block text-sm font-medium text-gray-700 mb-2">
+                  Nombor Telefon <span className="text-red-500">*</span>
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <CreditCard className="h-5 w-5 text-gray-600" />
+                    <Phone className="h-5 w-5 text-gray-600" />
                   </div>
                   <input
-                    id="ic_number"
-                    name="ic_number"
+                    id="telefon"
+                    name="telefon"
                     type="text"
                     required
-                    maxLength={14}
-                    autoComplete="off"
-                    value={formData.ic_number}
+                    maxLength={15}
+                    autoComplete="tel"
+                    value={formData.telefon}
                     onChange={handleChange}
-                    className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                    placeholder="123456-78-9012"
+                    className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:emerald-500 focus:border-emerald-500"
+                    placeholder="Contoh: 0123456789"
                   />
                 </div>
-                <p className="mt-1 text-xs text-gray-500">Format: XXXXXX-XX-XXXX (12 digit dengan sempang)</p>
+                <p className="mt-1 text-xs text-gray-500">Masukkan nombor telefon tanpa sengkang atau ruang</p>
               </div>
 
               {/* Email */}
@@ -335,28 +317,7 @@ const TeacherRegistration = () => {
                 <p className="mt-1 text-xs text-gray-500">Email adalah pilihan (tidak wajib)</p>
               </div>
 
-              {/* Telefon */}
-              <div>
-                <label htmlFor="telefon" className="block text-sm font-medium text-gray-700 mb-2">
-                  Nombor Telefon <span className="text-gray-500 text-xs">(Pilihan)</span>
-                </label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <Phone className="h-5 w-5 text-gray-600" />
-                  </div>
-                  <input
-                    id="telefon"
-                    name="telefon"
-                    type="tel"
-                    autoComplete="tel"
-                    value={formData.telefon}
-                    onChange={handleChange}
-                    className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                    placeholder="012-3456789"
-                  />
-                </div>
-                <p className="mt-1 text-xs text-gray-500">Format: 012-3456789 atau 0123456789</p>
-              </div>
+
 
               {/* Kepakaran */}
               <div className="md:col-span-2">

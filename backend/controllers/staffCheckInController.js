@@ -91,7 +91,7 @@ async function isWithinRadius(userLat, userLon, userAccuracy = 0) {
 export const checkIn = async (req, res) => {
   try {
     const { latitude, longitude, accuracy } = req.body;
-    const staffIc = req.user.ic;
+    const staffPhone = req.user.telefon;
 
     // Validate geolocation
     if (!latitude || !longitude) {
@@ -124,10 +124,10 @@ export const checkIn = async (req, res) => {
     // Check if already checked in today without checking out
     const [existingCheckIn] = await pool.execute(
       `SELECT id, check_in_time, status FROM staff_checkin 
-       WHERE staff_ic = ? 
+       WHERE staff_telefon = ? 
        AND DATE(check_in_time) = CURDATE() 
        AND status = 'checked_in'`,
-      [staffIc]
+      [staffPhone]
     );
 
     if (existingCheckIn.length > 0) {
@@ -140,15 +140,15 @@ export const checkIn = async (req, res) => {
     // Create check-in record
     const [result] = await pool.execute(
       `INSERT INTO staff_checkin 
-       (staff_ic, check_in_time, check_in_latitude, check_in_longitude, status, distance_from_masjid) 
+       (staff_telefon, check_in_time, check_in_latitude, check_in_longitude, status, distance_from_masjid) 
        VALUES (?, NOW(), ?, ?, 'checked_in', ?)`,
-      [staffIc, latitude, longitude, locationCheck.distance]
+      [staffPhone, latitude, longitude, locationCheck.distance]
     );
 
     const [checkInRecord] = await pool.execute(
       `SELECT sc.*, u.nama 
        FROM staff_checkin sc 
-       JOIN users u ON sc.staff_ic = u.ic 
+       JOIN users u ON sc.staff_telefon = u.telefon 
        WHERE sc.id = ?`,
       [result.insertId]
     );
@@ -174,7 +174,7 @@ export const checkIn = async (req, res) => {
 export const checkOut = async (req, res) => {
   try {
     const { latitude, longitude, accuracy } = req.body;
-    const staffIc = req.user.ic;
+    const staffPhone = req.user.telefon;
 
     // Validate geolocation
     if (!latitude || !longitude) {
@@ -207,10 +207,10 @@ export const checkOut = async (req, res) => {
     // Find today's check-in record
     const [existingCheckIn] = await pool.execute(
       `SELECT id, check_in_time FROM staff_checkin 
-       WHERE staff_ic = ? 
+       WHERE staff_telefon = ? 
        AND DATE(check_in_time) = CURDATE() 
        AND status = 'checked_in'`,
-      [staffIc]
+      [staffPhone]
     );
 
     if (existingCheckIn.length === 0) {
@@ -235,7 +235,7 @@ export const checkOut = async (req, res) => {
     const [checkOutRecord] = await pool.execute(
       `SELECT sc.*, u.nama 
        FROM staff_checkin sc 
-       JOIN users u ON sc.staff_ic = u.ic 
+       JOIN users u ON sc.staff_telefon = u.telefon 
        WHERE sc.id = ?`,
       [existingCheckIn[0].id]
     );
@@ -260,8 +260,8 @@ export const checkOut = async (req, res) => {
 // Get staff check-in history (for the logged-in staff or admin can see all)
 export const getCheckInHistory = async (req, res) => {
   try {
-    const staffIc = req.user.ic;
-    const { startDate, endDate, staff_ic } = req.query;
+    const staffPhone = req.user.telefon;
+    const { startDate, endDate, staff_telefon } = req.query;
 
     const defaultStartDate = getDefaultHistoryStartDate();
     const todayDate = formatDateOnly(new Date());
@@ -269,20 +269,20 @@ export const getCheckInHistory = async (req, res) => {
     let query = `
       SELECT sc.*, u.nama 
       FROM staff_checkin sc 
-      JOIN users u ON sc.staff_ic = u.ic 
+      JOIN users u ON sc.staff_telefon = u.telefon 
       WHERE 1=1
     `;
     const params = [];
 
     // Admin can see all, staff can only see their own
     if (req.user.role === 'admin') {
-      if (staff_ic) {
-        query += ' AND sc.staff_ic = ?';
-        params.push(staff_ic);
+      if (staff_telefon) {
+        query += ' AND sc.staff_telefon = ?';
+        params.push(staff_telefon);
       }
     } else {
-      query += ' AND sc.staff_ic = ?';
-      params.push(staffIc);
+      query += ' AND sc.staff_telefon = ?';
+      params.push(staffPhone);
     }
 
     // Date filtering
@@ -355,7 +355,7 @@ export const getStaffList = async (req, res) => {
 // Get today's check-in status
 export const getTodayStatus = async (req, res) => {
   try {
-    const staffIc = req.user.ic;
+    const staffPhone = req.user.telefon;
 
     // Check if user is staff or admin
     if (!isStaffRole(req.user.role)) {
@@ -368,12 +368,12 @@ export const getTodayStatus = async (req, res) => {
     const [todayRecord] = await pool.execute(
       `SELECT sc.*, u.nama 
        FROM staff_checkin sc 
-       JOIN users u ON sc.staff_ic = u.ic 
-       WHERE sc.staff_ic = ? 
+       JOIN users u ON sc.staff_telefon = u.telefon 
+       WHERE sc.staff_telefon = ? 
        AND DATE(sc.check_in_time) = CURDATE() 
        ORDER BY sc.check_in_time DESC 
        LIMIT 1`,
-      [staffIc]
+      [staffPhone]
     );
 
     if (todayRecord.length === 0) {
@@ -401,7 +401,7 @@ export const getTodayStatus = async (req, res) => {
 // Auto check-in on login (JWT required): attempt check-in with optional coords; log all attempts
 export const autoCheckIn = async (req, res) => {
   try {
-    const staffIc = req.user.ic;
+    const staffPhone = req.user.telefon;
 
     if (!isStaffRole(req.user.role)) {
       return res.status(403).json({
@@ -416,8 +416,8 @@ export const autoCheckIn = async (req, res) => {
     if (!hasCoords) {
       try {
         await pool.execute(
-          `INSERT INTO staff_checkin_attempts (staff_ic, result) VALUES (?, 'gps_unavailable')`,
-          [staffIc]
+          `INSERT INTO staff_checkin_attempts (staff_telefon, result) VALUES (?, 'gps_unavailable')`,
+          [staffPhone]
         );
       } catch (logErr) {
         console.error('Failed to log gps_unavailable attempt:', logErr);
@@ -436,18 +436,18 @@ export const autoCheckIn = async (req, res) => {
     // Already checked in today (normal shift)
     const [existingCheckIn] = await pool.execute(
       `SELECT id FROM staff_checkin 
-       WHERE staff_ic = ? 
+       WHERE staff_telefon = ? 
        AND DATE(check_in_time) = CURDATE() 
        AND status = 'checked_in'
        AND (shift_type = 'normal' OR shift_type IS NULL)`,
-      [staffIc]
+      [staffPhone]
     );
 
     if (existingCheckIn.length > 0) {
       try {
         await pool.execute(
-          `INSERT INTO staff_checkin_attempts (staff_ic, latitude, longitude, distance_from_masjid, result) VALUES (?, ?, ?, ?, 'already_checked_in')`,
-          [staffIc, lat, lon, locationCheck.distance]
+          `INSERT INTO staff_checkin_attempts (staff_telefon, latitude, longitude, distance_from_masjid, result) VALUES (?, ?, ?, ?, 'already_checked_in')`,
+          [staffPhone, lat, lon, locationCheck.distance]
         );
       } catch (logErr) {
         console.error('Failed to log already_checked_in attempt:', logErr);
@@ -462,8 +462,8 @@ export const autoCheckIn = async (req, res) => {
     if (!locationCheck.within) {
       try {
         await pool.execute(
-          `INSERT INTO staff_checkin_attempts (staff_ic, latitude, longitude, distance_from_masjid, result) VALUES (?, ?, ?, ?, 'outside_location')`,
-          [staffIc, lat, lon, locationCheck.distance]
+          `INSERT INTO staff_checkin_attempts (staff_telefon, latitude, longitude, distance_from_masjid, result) VALUES (?, ?, ?, ?, 'outside_location')`,
+          [staffPhone, lat, lon, locationCheck.distance]
         );
       } catch (logErr) {
         console.error('Failed to log outside_location attempt:', logErr);
@@ -480,15 +480,15 @@ export const autoCheckIn = async (req, res) => {
     // Within radius: create check-in record
     const [result] = await pool.execute(
       `INSERT INTO staff_checkin 
-       (staff_ic, check_in_time, check_in_latitude, check_in_longitude, status, distance_from_masjid, shift_type) 
+       (staff_telefon, check_in_time, check_in_latitude, check_in_longitude, status, distance_from_masjid, shift_type) 
        VALUES (?, NOW(), ?, ?, 'checked_in', ?, 'normal')`,
-      [staffIc, lat, lon, locationCheck.distance]
+      [staffPhone, lat, lon, locationCheck.distance]
     );
 
     const [checkInRecord] = await pool.execute(
       `SELECT sc.*, u.nama 
        FROM staff_checkin sc 
-       JOIN users u ON sc.staff_ic = u.ic 
+       JOIN users u ON sc.staff_telefon = u.telefon 
        WHERE sc.id = ?`,
       [result.insertId]
     );
@@ -505,8 +505,8 @@ export const autoCheckIn = async (req, res) => {
     console.error('Auto check-in error:', error);
     try {
       await pool.execute(
-        `INSERT INTO staff_checkin_attempts (staff_ic, result) VALUES (?, 'error')`,
-        [req.user?.ic]
+        `INSERT INTO staff_checkin_attempts (staff_telefon, result) VALUES (?, 'error')`,
+        [req.user?.telefon]
       );
     } catch (logErr) {
       console.error('Failed to log error attempt:', logErr);
@@ -550,7 +550,7 @@ export const quickCheckIn = async (req, res) => {
 
     // Verify user credentials
     const [users] = await pool.execute(
-      "SELECT * FROM users WHERE ic = ?",
+      "SELECT * FROM users WHERE telefon = ?",
       [icNumber]
     );
 
@@ -596,7 +596,7 @@ export const quickCheckIn = async (req, res) => {
     // Check if already checked in today without checking out (normal type)
     const [existingCheckIn] = await pool.execute(
       `SELECT id, check_in_time, status FROM staff_checkin 
-       WHERE staff_ic = ? 
+       WHERE staff_telefon = ? 
        AND DATE(check_in_time) = CURDATE() 
        AND status = 'checked_in'
        AND (shift_type = 'normal' OR shift_type IS NULL)`,
@@ -613,7 +613,7 @@ export const quickCheckIn = async (req, res) => {
     // Create check-in record (normal type)
     const [result] = await pool.execute(
       `INSERT INTO staff_checkin 
-       (staff_ic, check_in_time, check_in_latitude, check_in_longitude, status, distance_from_masjid, shift_type) 
+       (staff_telefon, check_in_time, check_in_latitude, check_in_longitude, status, distance_from_masjid, shift_type) 
        VALUES (?, NOW(), ?, ?, 'checked_in', ?, 'normal')`,
       [icNumber, latitude, longitude, locationCheck.distance]
     );
@@ -621,7 +621,7 @@ export const quickCheckIn = async (req, res) => {
     const [checkInRecord] = await pool.execute(
       `SELECT sc.*, u.nama 
        FROM staff_checkin sc 
-       JOIN users u ON sc.staff_ic = u.ic 
+       JOIN users u ON sc.staff_telefon = u.telefon 
        WHERE sc.id = ?`,
       [result.insertId]
     );
@@ -667,7 +667,7 @@ export const quickGetLastAction = async (req, res) => {
     }
 
     const [users] = await pool.execute(
-      'SELECT * FROM users WHERE ic = ?',
+      'SELECT * FROM users WHERE telefon = ?',
       [icNumber]
     );
 
@@ -699,8 +699,8 @@ export const quickGetLastAction = async (req, res) => {
     const [records] = await pool.execute(
       `SELECT sc.*, u.nama 
        FROM staff_checkin sc 
-       JOIN users u ON sc.staff_ic = u.ic 
-       WHERE sc.staff_ic = ? 
+       JOIN users u ON sc.staff_telefon = u.telefon 
+       WHERE sc.staff_telefon = ? 
        ORDER BY sc.check_in_time DESC 
        LIMIT 1`,
       [icNumber]
@@ -775,7 +775,7 @@ export const quickCheckInShift = async (req, res) => {
 
     // Verify user credentials
     const [users] = await pool.execute(
-      "SELECT * FROM users WHERE ic = ?",
+      "SELECT * FROM users WHERE telefon = ?",
       [icNumber]
     );
 
@@ -821,7 +821,7 @@ export const quickCheckInShift = async (req, res) => {
     // Check if already checked in today without checking out (for shift)
     const [existingCheckIn] = await pool.execute(
       `SELECT id, check_in_time, status FROM staff_checkin 
-       WHERE staff_ic = ? 
+       WHERE staff_telefon = ? 
        AND DATE(check_in_time) = CURDATE() 
        AND status = 'checked_in'
        AND shift_type = 'shift'`,
@@ -838,7 +838,7 @@ export const quickCheckInShift = async (req, res) => {
     // Create check-in record with shift type
     const [result] = await pool.execute(
       `INSERT INTO staff_checkin 
-       (staff_ic, check_in_time, check_in_latitude, check_in_longitude, status, distance_from_masjid, shift_type) 
+       (staff_telefon, check_in_time, check_in_latitude, check_in_longitude, status, distance_from_masjid, shift_type) 
        VALUES (?, NOW(), ?, ?, 'checked_in', ?, 'shift')`,
       [icNumber, latitude, longitude, locationCheck.distance]
     );
@@ -846,7 +846,7 @@ export const quickCheckInShift = async (req, res) => {
     const [checkInRecord] = await pool.execute(
       `SELECT sc.*, u.nama 
        FROM staff_checkin sc 
-       JOIN users u ON sc.staff_ic = u.ic 
+       JOIN users u ON sc.staff_telefon = u.telefon 
        WHERE sc.id = ?`,
       [result.insertId]
     );
@@ -902,7 +902,7 @@ export const quickCheckOutShift = async (req, res) => {
 
     // Verify user credentials
     const [users] = await pool.execute(
-      "SELECT * FROM users WHERE ic = ?",
+      "SELECT * FROM users WHERE telefon = ?",
       [icNumber]
     );
 
@@ -948,7 +948,7 @@ export const quickCheckOutShift = async (req, res) => {
     // Find today's shift check-in record
     const [existingCheckIn] = await pool.execute(
       `SELECT id, check_in_time FROM staff_checkin 
-       WHERE staff_ic = ? 
+       WHERE staff_telefon = ? 
        AND DATE(check_in_time) = CURDATE() 
        AND status = 'checked_in'
        AND shift_type = 'shift'`,
@@ -977,7 +977,7 @@ export const quickCheckOutShift = async (req, res) => {
     const [checkOutRecord] = await pool.execute(
       `SELECT sc.*, u.nama 
        FROM staff_checkin sc 
-       JOIN users u ON sc.staff_ic = u.ic 
+       JOIN users u ON sc.staff_telefon = u.telefon 
        WHERE sc.id = ?`,
       [existingCheckIn[0].id]
     );
@@ -1033,7 +1033,7 @@ export const quickCheckOut = async (req, res) => {
 
     // Verify user credentials
     const [users] = await pool.execute(
-      "SELECT * FROM users WHERE ic = ?",
+      "SELECT * FROM users WHERE telefon = ?",
       [icNumber]
     );
 
@@ -1079,7 +1079,7 @@ export const quickCheckOut = async (req, res) => {
     // Find today's check-in record (normal type)
     const [existingCheckIn] = await pool.execute(
       `SELECT id, check_in_time FROM staff_checkin 
-       WHERE staff_ic = ? 
+       WHERE staff_telefon = ? 
        AND DATE(check_in_time) = CURDATE() 
        AND status = 'checked_in'
        AND (shift_type = 'normal' OR shift_type IS NULL)`,
@@ -1108,7 +1108,7 @@ export const quickCheckOut = async (req, res) => {
     const [checkOutRecord] = await pool.execute(
       `SELECT sc.*, u.nama 
        FROM staff_checkin sc 
-       JOIN users u ON sc.staff_ic = u.ic 
+       JOIN users u ON sc.staff_telefon = u.telefon 
        WHERE sc.id = ?`,
       [existingCheckIn[0].id]
     );

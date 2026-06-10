@@ -52,7 +52,7 @@ const Admins = () => {
       try {
         const parsedUser = JSON.parse(storedUser);
         setUser(parsedUser);
-        setIsMasterAdmin(parsedUser.ic === MASTER_ADMIN_IC);
+        setIsMasterAdmin(parsedUser.telefon === MASTER_ADMIN_IC);
       } catch (e) {
         console.error('Error parsing user:', e);
       }
@@ -67,7 +67,7 @@ const Admins = () => {
       fetchItems({ limit: 1000 });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.ic, isMasterAdmin]); // Only re-fetch if user IC or isMasterAdmin changes
+  }, [user?.telefon, isMasterAdmin]); // Only re-fetch if user IC or isMasterAdmin changes
 
   // Extract admin limit from API response
   useEffect(() => {

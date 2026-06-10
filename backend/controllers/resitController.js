@@ -12,25 +12,25 @@ const PASSING_THRESHOLD = 40;
 
 export const getMyResitEligible = async (req, res) => {
   try {
-    const studentIc = req.user?.ic || req.user?.userId;
-    if (!studentIc) {
+    const studentPhone = req.user?.telefon || req.user?.userId;
+    if (!studentPhone) {
       return res.status(401).json({ success: false, message: 'User not authenticated' });
     }
 
     let rows;
     try {
       const [r] = await pool.execute(
-      `SELECT r.id as result_id, r.student_ic, r.exam_id, r.markah, r.gred,
+      `SELECT r.id as result_id, r.student_telefon, r.exam_id, r.markah, r.gred,
               e.subject as exam_subject, e.tarikh_exam as exam_date,
               ra.status as resit_status, ra.deadline, ra.applied_at, ra.fee_amount, ra.class_track as resit_class_track,
               s.class_track as student_class_track
        FROM results r
        JOIN exams e ON r.exam_id = e.id
-       LEFT JOIN students s ON r.student_ic = s.user_ic
-       LEFT JOIN resit_applications ra ON ra.result_id = r.id AND ra.student_ic = r.student_ic
-       WHERE r.student_ic = ? AND (r.markah IS NOT NULL AND r.markah < ?)
+       LEFT JOIN students s ON r.student_telefon = s.user_telefon
+       LEFT JOIN resit_applications ra ON ra.result_id = r.id AND ra.student_telefon = r.student_telefon
+       WHERE r.student_telefon = ? AND (r.markah IS NOT NULL AND r.markah < ?)
        ORDER BY e.tarikh_exam DESC`,
-        [studentIc, PASSING_THRESHOLD]
+        [studentPhone, PASSING_THRESHOLD]
       );
       rows = r;
     } catch (tableErr) {
@@ -90,19 +90,19 @@ export const applyResit = async (req, res) => {
       });
     }
 
-    const studentIc = req.user?.ic || req.user?.userId;
-    if (!studentIc) {
+    const studentPhone = req.user?.telefon || req.user?.userId;
+    if (!studentPhone) {
       return res.status(401).json({ success: false, message: 'User not authenticated' });
     }
 
     const { result_id } = req.body;
 
     const [results] = await pool.execute(
-      `SELECT r.id, r.student_ic, r.markah, e.tarikh_exam
+      `SELECT r.id, r.student_telefon, r.markah, e.tarikh_exam
        FROM results r
        JOIN exams e ON r.exam_id = e.id
-       WHERE r.id = ? AND r.student_ic = ?`,
-      [result_id, studentIc]
+       WHERE r.id = ? AND r.student_telefon = ?`,
+      [result_id, studentPhone]
     );
 
     if (results.length === 0) {
@@ -125,15 +125,15 @@ export const applyResit = async (req, res) => {
     }
 
     const [studentRows] = await pool.execute(
-      'SELECT class_track FROM students WHERE user_ic = ?',
-      [studentIc]
+      'SELECT class_track FROM students WHERE user_telefon = ?',
+      [studentPhone]
     );
     const track = studentRows[0]?.class_track || 'Full-Time';
     const fee = RESIT_FEES_BY_TRACK[track] ?? DEFAULT_RESIT_FEE;
 
     const [existing] = await pool.execute(
-      'SELECT id, status FROM resit_applications WHERE result_id = ? AND student_ic = ?',
-      [result_id, studentIc]
+      'SELECT id, status FROM resit_applications WHERE result_id = ? AND student_telefon = ?',
+      [result_id, studentPhone]
     );
 
     if (existing.length > 0) {
@@ -145,14 +145,14 @@ export const applyResit = async (req, res) => {
       }
       await pool.execute(
         `UPDATE resit_applications SET status = 'applied', applied_at = NOW(), deadline = ?, fee_amount = ?, class_track = ?, updated_at = NOW()
-         WHERE result_id = ? AND student_ic = ?`,
-        [deadline, fee, track, result_id, studentIc]
+         WHERE result_id = ? AND student_telefon = ?`,
+        [deadline, fee, track, result_id, studentPhone]
       );
     } else {
       await pool.execute(
-        `INSERT INTO resit_applications (result_id, student_ic, status, deadline, applied_at, fee_amount, class_track)
+        `INSERT INTO resit_applications (result_id, student_telefon, status, deadline, applied_at, fee_amount, class_track)
          VALUES (?, ?, 'applied', ?, NOW(), ?, ?)`,
-        [result_id, studentIc, deadline, fee, track]
+        [result_id, studentPhone, deadline, fee, track]
       );
     }
 

@@ -9,16 +9,16 @@ import { createSnapshot, SNAPSHOT_TTL_HOURS } from '../utils/adminActionSnapshot
 
 export const getAllResults = async (req, res) => {
   try {
-    const { search, exam_id, gred, year, semester, student_ic, page = 1, limit = 1000 } = req.query;
+    const { search, exam_id, gred, year, semester, student_telefon, page = 1, limit = 1000 } = req.query;
     const effectiveRole = req.user?.role || req.user?.activeRole;
     const isStudent = effectiveRole === 'student';
-    const studentFilterIc = isStudent ? (req.user?.ic || req.user?.userId) : student_ic;
+    const studentFilterTelefon = isStudent ? (req.user?.telefon || req.user?.userId) : student_telefon;
 
     let query = `
-      SELECT r.*, u.nama as pelajar_nama, u.ic as pelajar_ic, c.nama_kelas as kelas_nama, e.subject as exam_subject, e.tarikh_exam as exam_date
+      SELECT r.*, u.nama as pelajar_nama, u.telefon as pelajar_ic, c.nama_kelas as kelas_nama, e.subject as exam_subject, e.tarikh_exam as exam_date
       FROM results r
-      JOIN users u ON r.student_ic = u.ic
-      LEFT JOIN students s ON u.ic = s.user_ic
+      JOIN users u ON r.student_telefon = u.telefon
+      LEFT JOIN students s ON u.telefon = s.user_telefon
       LEFT JOIN classes c ON s.kelas_id = c.id
       JOIN exams e ON r.exam_id = e.id
       WHERE 1=1
@@ -26,13 +26,13 @@ export const getAllResults = async (req, res) => {
     
     const queryParams = [];
 
-    if (studentFilterIc) {
-      query += ` AND r.student_ic = ?`;
-      queryParams.push(studentFilterIc);
+    if (studentFilterTelefon) {
+      query += ` AND r.student_telefon = ?`;
+      queryParams.push(studentFilterTelefon);
     }
 
     if (search) {
-      query += ` AND (u.nama LIKE ? OR u.ic LIKE ? OR e.subject LIKE ?)`;
+      query += ` AND (u.nama LIKE ? OR u.telefon LIKE ? OR e.subject LIKE ?)`;
       const searchTerm = `%${search}%`;
       queryParams.push(searchTerm, searchTerm, searchTerm);
     }
@@ -72,20 +72,20 @@ export const getAllResults = async (req, res) => {
     let countQuery = `
       SELECT COUNT(*) as total
       FROM results r
-      JOIN users u ON r.student_ic = u.ic
-      LEFT JOIN students s ON u.ic = s.user_ic
+      JOIN users u ON r.student_telefon = u.telefon
+      LEFT JOIN students s ON u.telefon = s.user_telefon
       LEFT JOIN classes c ON s.kelas_id = c.id
       JOIN exams e ON r.exam_id = e.id
       WHERE 1=1
     `;
     const countParams = [];
 
-    if (studentFilterIc) {
-      countQuery += ` AND r.student_ic = ?`;
-      countParams.push(studentFilterIc);
+    if (studentFilterTelefon) {
+      countQuery += ` AND r.student_telefon = ?`;
+      countParams.push(studentFilterTelefon);
     }
     if (search) {
-      countQuery += ` AND (u.nama LIKE ? OR u.ic LIKE ? OR e.subject LIKE ?)`;
+      countQuery += ` AND (u.nama LIKE ? OR u.telefon LIKE ? OR e.subject LIKE ?)`;
       const searchTerm = `%${search}%`;
       countParams.push(searchTerm, searchTerm, searchTerm);
     }
@@ -142,10 +142,10 @@ export const getResultById = async (req, res) => {
     const { id } = req.params;
 
     let query = `
-      SELECT r.*, u.nama as pelajar_nama, u.ic as pelajar_ic, c.nama_kelas as kelas_nama, e.subject as exam_subject, e.tarikh_exam as exam_date
+      SELECT r.*, u.nama as pelajar_nama, u.telefon as pelajar_ic, c.nama_kelas as kelas_nama, e.subject as exam_subject, e.tarikh_exam as exam_date
       FROM results r
-      JOIN users u ON r.student_ic = u.ic
-      LEFT JOIN students s ON u.ic = s.user_ic
+      JOIN users u ON r.student_telefon = u.telefon
+      LEFT JOIN students s ON u.telefon = s.user_telefon
       LEFT JOIN classes c ON s.kelas_id = c.id
       JOIN exams e ON r.exam_id = e.id
       WHERE r.id = ?
@@ -185,15 +185,15 @@ export const createResult = async (req, res) => {
       });
     }
 
-    const { student_ic, exam_id, markah, slip_img, catatan = null } = req.body;
+    const { student_telefon, exam_id, markah, slip_img, catatan = null } = req.body;
     const gradeRanges = await getGradeRangesFromSettings();
     const sanitizedMarkah = Math.max(0, Math.min(100, parseInt(markah, 10)));
     const computedGrade = determineGradeForMark(sanitizedMarkah, gradeRanges) || 'F';
     
     // Check if student exists
     const [students] = await pool.execute(
-      "SELECT ic FROM users WHERE ic = ? AND role = 'student'",
-      [student_ic]
+      "SELECT telefon FROM users WHERE telefon = ? AND role = 'student'",
+      [student_telefon]
     );
     
     if (students.length === 0) {
@@ -218,8 +218,8 @@ export const createResult = async (req, res) => {
     
     // Check if result already exists for this student and exam
     const [existingResults] = await pool.execute(
-      'SELECT id FROM results WHERE student_ic = ? AND exam_id = ?',
-      [student_ic, exam_id]
+      'SELECT id FROM results WHERE student_telefon = ? AND exam_id = ?',
+      [student_telefon, exam_id]
     );
     
     if (existingResults.length > 0) {
@@ -230,34 +230,34 @@ export const createResult = async (req, res) => {
     }
     
     const [result] = await pool.execute(`
-      INSERT INTO results (student_ic, exam_id, markah, gred, slip_img, catatan)
+      INSERT INTO results (student_telefon, exam_id, markah, gred, slip_img, catatan)
       VALUES (?, ?, ?, ?, ?, ?)
-    `, [student_ic, exam_id, sanitizedMarkah, computedGrade, slip_img, catatan || null]);
+    `, [student_telefon, exam_id, sanitizedMarkah, computedGrade, slip_img, catatan || null]);
     
     const [newResult] = await pool.execute(`
-      SELECT r.*, u.nama as pelajar_nama, u.ic as pelajar_ic, c.nama_kelas as kelas_nama, e.subject as exam_subject, e.tarikh_exam as exam_date
+      SELECT r.*, u.nama as pelajar_nama, u.telefon as pelajar_ic, c.nama_kelas as kelas_nama, e.subject as exam_subject, e.tarikh_exam as exam_date
       FROM results r
-      JOIN users u ON r.student_ic = u.ic
-      LEFT JOIN students s ON u.ic = s.user_ic
+      JOIN users u ON r.student_telefon = u.telefon
+      LEFT JOIN students s ON u.telefon = s.user_telefon
       LEFT JOIN classes c ON s.kelas_id = c.id
       JOIN exams e ON r.exam_id = e.id
       WHERE r.id = ?
     `, [result.insertId]);
     
     // Create snapshot after create (only for admin/PIC)
-    const actorIc = req.user?.ic;
-    if (actorIc && (req.user?.role === 'admin' || req.user?.role === 'pic')) {
+    const actorPhone = req.user?.telefon;
+    if (actorPhone && (req.user?.role === 'admin' || req.user?.role === 'pic')) {
       await createSnapshot({
         entityType: 'result',
         entityId: result.insertId,
-        entityIdentifier: `${student_ic}-${exam_id}`,
+        entityIdentifier: `${student_telefon}-${exam_id}`,
         operation: 'create',
         data: newResult[0],
         metadata: {
-          title: `Keputusan - ${student_ic}`,
+          title: `Keputusan - ${student_telefon}`,
           notes: `Keputusan baru ditambah: ${sanitizedMarkah}% (${computedGrade})`
         },
-        actorIc
+        actorPhone
       });
     }
     
@@ -287,7 +287,7 @@ export const updateResult = async (req, res) => {
     }
 
     const { id } = req.params;
-    const { student_ic, exam_id, markah, slip_img, catatan = null } = req.body;
+    const { student_telefon, exam_id, markah, slip_img, catatan = null } = req.body;
     const gradeRanges = await getGradeRangesFromSettings();
     const sanitizedMarkah = Math.max(0, Math.min(100, parseInt(markah, 10)));
     const computedGrade = determineGradeForMark(sanitizedMarkah, gradeRanges) || 'F';
@@ -308,26 +308,26 @@ export const updateResult = async (req, res) => {
     const existingData = existingResults[0];
     
     // Create snapshot before update (only for admin/PIC)
-    const actorIc = req.user?.ic;
-    if (actorIc && (req.user?.role === 'admin' || req.user?.role === 'pic')) {
+    const actorPhone = req.user?.telefon;
+    if (actorPhone && (req.user?.role === 'admin' || req.user?.role === 'pic')) {
       await createSnapshot({
         entityType: 'result',
         entityId: parseInt(id),
-        entityIdentifier: `${existingData.student_ic}-${existingData.exam_id}`,
+        entityIdentifier: `${existingData.student_telefon}-${existingData.exam_id}`,
         operation: 'update',
         data: existingData,
         metadata: {
-          title: `Keputusan - ${existingData.student_ic}`,
+          title: `Keputusan - ${existingData.student_telefon}`,
           notes: `Keputusan dikemaskini: ${sanitizedMarkah}% (${computedGrade})`
         },
-        actorIc
+        actorPhone
       });
     }
     
     // Check if another result exists for this student and exam
     const [duplicateCheck] = await pool.execute(
-      'SELECT id FROM results WHERE student_ic = ? AND exam_id = ? AND id != ?',
-      [student_ic, exam_id, id]
+      'SELECT id FROM results WHERE student_telefon = ? AND exam_id = ? AND id != ?',
+      [student_telefon, exam_id, id]
     );
     
     if (duplicateCheck.length > 0) {
@@ -339,15 +339,15 @@ export const updateResult = async (req, res) => {
     
     await pool.execute(`
       UPDATE results 
-      SET student_ic = ?, exam_id = ?, markah = ?, gred = ?, slip_img = ?, catatan = ?, updated_at = CURRENT_TIMESTAMP
+      SET student_telefon = ?, exam_id = ?, markah = ?, gred = ?, slip_img = ?, catatan = ?, updated_at = CURRENT_TIMESTAMP
       WHERE id = ?
-    `, [student_ic, exam_id, sanitizedMarkah, computedGrade, slip_img, catatan || null, id]);
+    `, [student_telefon, exam_id, sanitizedMarkah, computedGrade, slip_img, catatan || null, id]);
     
     const [updatedResult] = await pool.execute(`
-      SELECT r.*, u.nama as pelajar_nama, u.ic as pelajar_ic, c.nama_kelas as kelas_nama, e.subject as exam_subject, e.tarikh_exam as exam_date
+      SELECT r.*, u.nama as pelajar_nama, u.telefon as pelajar_ic, c.nama_kelas as kelas_nama, e.subject as exam_subject, e.tarikh_exam as exam_date
       FROM results r
-      JOIN users u ON r.student_ic = u.ic
-      LEFT JOIN students s ON u.ic = s.user_ic
+      JOIN users u ON r.student_telefon = u.telefon
+      LEFT JOIN students s ON u.telefon = s.user_telefon
       LEFT JOIN classes c ON s.kelas_id = c.id
       JOIN exams e ON r.exam_id = e.id
       WHERE r.id = ?
@@ -385,21 +385,21 @@ export const deleteResult = async (req, res) => {
     }
     
     const resultData = existingResults[0];
-    const actorIc = req.user?.ic;
+    const actorPhone = req.user?.telefon;
     
     // Create snapshot before delete (only for admin/PIC)
-    if (actorIc && (req.user?.role === 'admin' || req.user?.role === 'pic')) {
+    if (actorPhone && (req.user?.role === 'admin' || req.user?.role === 'pic')) {
       await createSnapshot({
         entityType: 'result',
         entityId: parseInt(id),
-        entityIdentifier: `${resultData.student_ic}-${resultData.exam_id}`,
+        entityIdentifier: `${resultData.student_telefon}-${resultData.exam_id}`,
         operation: 'delete',
         data: resultData,
         metadata: {
-          title: `Keputusan - ${resultData.student_ic}`,
+          title: `Keputusan - ${resultData.student_telefon}`,
           notes: `Keputusan dipadam: ${resultData.markah}% (${resultData.gred})`
         },
-        actorIc
+        actorPhone
       });
     }
     
@@ -468,10 +468,10 @@ export const getTopPerformers = async (req, res) => {
     queryParams.push(parseInt(limit));
     
     const [topPerformers] = await pool.execute(`
-      SELECT r.*, u.nama as pelajar_nama, u.ic as pelajar_ic, c.nama_kelas as kelas_nama, e.subject as exam_subject
+      SELECT r.*, u.nama as pelajar_nama, u.telefon as pelajar_ic, c.nama_kelas as kelas_nama, e.subject as exam_subject
       FROM results r
-      JOIN users u ON r.student_ic = u.ic
-      LEFT JOIN students s ON u.ic = s.user_ic
+      JOIN users u ON r.student_telefon = u.telefon
+      LEFT JOIN students s ON u.telefon = s.user_telefon
       LEFT JOIN classes c ON s.kelas_id = c.id
       JOIN exams e ON r.exam_id = e.id
       ${whereClause}

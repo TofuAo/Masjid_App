@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { AlertCircle, AlertTriangle, Info, Power, Calendar, History, RefreshCw } from 'lucide-react';
+import { getAuthToken } from '../services/api';
 
 /**
  * Maintenance Control Panel
@@ -34,7 +35,7 @@ const MaintenanceControl = () => {
     try {
       const response = await axios.get('/api/maintenance/status', {
         headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`
+          Authorization: `Bearer ${getAuthToken()}`
         }
       });
 
@@ -53,7 +54,7 @@ const MaintenanceControl = () => {
     try {
       const response = await axios.get('/api/maintenance/admin/history?limit=20', {
         headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`
+          Authorization: `Bearer ${getAuthToken()}`
         }
       });
 
@@ -90,7 +91,7 @@ const MaintenanceControl = () => {
 
       const response = await axios.post('/api/maintenance/admin/activate', payload, {
         headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`
+          Authorization: `Bearer ${getAuthToken()}`
         }
       });
 
@@ -123,7 +124,7 @@ const MaintenanceControl = () => {
         reason: 'Deactivated by admin'
       }, {
         headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`
+          Authorization: `Bearer ${getAuthToken()}`
         }
       });
 
@@ -160,7 +161,7 @@ const MaintenanceControl = () => {
         reason: emergencyReason
       }, {
         headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`
+          Authorization: `Bearer ${getAuthToken()}`
         }
       });
 

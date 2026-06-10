@@ -58,17 +58,17 @@ const GuruForm = ({ guru = null, onSubmit, onCancel, user = null }) => {
         
         // Filter classes: only show classes with no teacher assigned
         // OR classes already assigned to this teacher (if editing)
-        const currentTeacherIC = guru?.ic || guru?.IC || null;
+        const currentTeacherIC = guru?.telefon || guru?.IC || null;
         const filteredClasses = classesList.filter(kelas => {
-          // Show classes with no teacher (guru_ic is null, undefined, or empty string)
-          const hasNoTeacher = !kelas.guru_ic || kelas.guru_ic === null || kelas.guru_ic === '';
+          // Show classes with no teacher (guru_telefon is null, undefined, or empty string)
+          const hasNoTeacher = !kelas.guru_telefon || kelas.guru_telefon === null || kelas.guru_telefon === '';
           
           // If editing a teacher, also show classes already assigned to this teacher
           // This allows the admin to see and manage classes already assigned to this teacher
           const isAssignedToThisTeacher = currentTeacherIC && (
-            kelas.guru_ic === currentTeacherIC || 
-            kelas.guru_ic === currentTeacherIC.replace(/-/g, '') ||
-            kelas.guru_ic?.replace(/-/g, '') === currentTeacherIC.replace(/-/g, '')
+            kelas.guru_telefon === currentTeacherIC || 
+            kelas.guru_telefon === currentTeacherIC.replace(/-/g, '') ||
+            kelas.guru_telefon?.replace(/-/g, '') === currentTeacherIC.replace(/-/g, '')
           );
           
           return hasNoTeacher || isAssignedToThisTeacher;
@@ -96,7 +96,7 @@ const GuruForm = ({ guru = null, onSubmit, onCancel, user = null }) => {
         : [];
       
       // Get IC and ensure it's valid (12 digits)
-      let teacherIC = guru.ic || guru.IC || '';
+      let teacherIC = guru.telefon || guru.IC || '';
       // Normalize IC to check if it's valid
       const normalizedIC = teacherIC.replace(/\D/g, '');
       // If normalized IC is not 12 digits, keep the original for display but it will be validated on submit
@@ -174,13 +174,13 @@ const GuruForm = ({ guru = null, onSubmit, onCancel, user = null }) => {
     }
     
     // Validate IC is required
-    if (!formData.ic || formData.ic.trim() === '') {
+    if (!formData.telefon || formData.telefon.trim() === '') {
       alert('Nombor IC diperlukan.');
       return;
     }
     
     // Normalize IC (remove hyphens for validation)
-    const normalizedIC = formData.ic.replace(/\D/g, '');
+    const normalizedIC = formData.telefon.replace(/\D/g, '');
     
     // Validate IC format (must be exactly 12 digits)
     if (normalizedIC.length !== 12) {
@@ -247,7 +247,7 @@ const GuruForm = ({ guru = null, onSubmit, onCancel, user = null }) => {
               <input
                 type="text"
                 name="ic"
-                value={formData.ic}
+                value={formData.telefon}
                 onChange={handleChange}
                 required
                 maxLength={14}
@@ -324,12 +324,12 @@ const GuruForm = ({ guru = null, onSubmit, onCancel, user = null }) => {
             
             {/* Show currently assigned classes if editing */}
             {guru && (() => {
-              const currentTeacherIC = guru?.ic || guru?.IC || null;
+              const currentTeacherIC = guru?.telefon || guru?.IC || null;
               const currentlyAssignedClasses = classes.filter(kelas => {
                 if (!currentTeacherIC) return false;
-                return kelas.guru_ic === currentTeacherIC || 
-                       kelas.guru_ic === currentTeacherIC.replace(/-/g, '') ||
-                       kelas.guru_ic?.replace(/-/g, '') === currentTeacherIC.replace(/-/g, '');
+                return kelas.guru_telefon === currentTeacherIC || 
+                       kelas.guru_telefon === currentTeacherIC.replace(/-/g, '') ||
+                       kelas.guru_telefon?.replace(/-/g, '') === currentTeacherIC.replace(/-/g, '');
               });
               
               if (currentlyAssignedClasses.length > 0) {
@@ -411,11 +411,11 @@ const GuruForm = ({ guru = null, onSubmit, onCancel, user = null }) => {
                     <div className="flex flex-wrap gap-2">
                       {formData.kelas_ids.map((classId) => {
                         const selectedClass = classes.find(c => c.id === classId);
-                        const currentTeacherIC = guru?.ic || guru?.IC || null;
+                        const currentTeacherIC = guru?.telefon || guru?.IC || null;
                         const isCurrentlyAssigned = currentTeacherIC && selectedClass && (
-                          selectedClass.guru_ic === currentTeacherIC || 
-                          selectedClass.guru_ic === currentTeacherIC.replace(/-/g, '') ||
-                          selectedClass.guru_ic?.replace(/-/g, '') === currentTeacherIC.replace(/-/g, '')
+                          selectedClass.guru_telefon === currentTeacherIC || 
+                          selectedClass.guru_telefon === currentTeacherIC.replace(/-/g, '') ||
+                          selectedClass.guru_telefon?.replace(/-/g, '') === currentTeacherIC.replace(/-/g, '')
                         );
                         return selectedClass ? (
                           <span 

@@ -23,13 +23,13 @@ export async function ensureRemakeTables() {
         tarikh DATE,
         hari VARCHAR(20),
         masa VARCHAR(50),
-        guru_ic VARCHAR(20),
+        guru_telefon VARCHAR(20),
         status ENUM('pending','confirmed','cancelled') DEFAULT 'pending',
         created_by_ic VARCHAR(20),
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
         INDEX idx_tarikh (tarikh),
-        INDEX idx_guru (guru_ic)
+        INDEX idx_guru (guru_telefon)
       )
     `);
 

@@ -154,7 +154,7 @@ const Account = () => {
               </div>
               <div>
                 <h1 className="text-xl font-semibold text-black">{displayName}</h1>
-                <p className="text-sm text-gray-500 mt-0.5">No. IC {user.ic_formatted || user.ic || '—'}</p>
+                <p className="text-sm text-gray-500 mt-0.5">No. Telefon {user.ic_formatted || user.telefon || '—'}</p>
                 {academicBio && (
                   <p className="text-sm text-gray-600 mt-1">{academicBio}</p>
                 )}

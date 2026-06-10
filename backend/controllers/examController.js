@@ -78,8 +78,8 @@ export const createExam = async (req, res) => {
     const [newExam] = await pool.execute('SELECT * FROM exams WHERE id = ?', [result.insertId]);
 
     // Create snapshot after create (only for admin/PIC)
-    const actorIc = req.user?.ic;
-    if (actorIc && (req.user?.role === 'admin' || req.user?.role === 'pic')) {
+    const actorPhone = req.user?.telefon;
+    if (actorPhone && (req.user?.role === 'admin' || req.user?.role === 'pic')) {
       await createSnapshot({
         entityType: 'exam',
         entityId: result.insertId,
@@ -90,7 +90,7 @@ export const createExam = async (req, res) => {
           title: `Peperiksaan - ${subject}`,
           notes: `Peperiksaan baru ditambah: ${subject} untuk kelas ${class_id}`
         },
-        actorIc
+        actorPhone
       });
     }
 
@@ -119,8 +119,8 @@ export const updateExam = async (req, res) => {
     const existingData = existingExam[0];
     
     // Create snapshot before update (only for admin/PIC)
-    const actorIc = req.user?.ic;
-    if (actorIc && (req.user?.role === 'admin' || req.user?.role === 'pic')) {
+    const actorPhone = req.user?.telefon;
+    if (actorPhone && (req.user?.role === 'admin' || req.user?.role === 'pic')) {
       await createSnapshot({
         entityType: 'exam',
         entityId: parseInt(id),
@@ -131,7 +131,7 @@ export const updateExam = async (req, res) => {
           title: `Peperiksaan - ${existingData.subject}`,
           notes: `Peperiksaan dikemaskini: ${subject}`
         },
-        actorIc
+        actorPhone
       });
     }
 
@@ -159,10 +159,10 @@ export const deleteExam = async (req, res) => {
     }
 
     const examData = existingExam[0];
-    const actorIc = req.user?.ic;
+    const actorPhone = req.user?.telefon;
     
     // Create snapshot before delete (only for admin/PIC)
-    if (actorIc && (req.user?.role === 'admin' || req.user?.role === 'pic')) {
+    if (actorPhone && (req.user?.role === 'admin' || req.user?.role === 'pic')) {
       await createSnapshot({
         entityType: 'exam',
         entityId: parseInt(id),
@@ -173,7 +173,7 @@ export const deleteExam = async (req, res) => {
           title: `Peperiksaan - ${examData.subject}`,
           notes: `Peperiksaan dipadam: ${examData.subject}`
         },
-        actorIc
+        actorPhone
       });
     }
 

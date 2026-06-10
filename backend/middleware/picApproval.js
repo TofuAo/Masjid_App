@@ -30,7 +30,7 @@ export const requirePicApproval = ({
       return next();
     }
 
-    console.log(`[PIC APPROVAL] ✅ PIC user detected (IC: ${req.user.ic}), creating pending request...`);
+    console.log(`[PIC APPROVAL] ✅ PIC user detected (IC: ${req.user.telefon}), creating pending request...`);
 
     try {
       let prepared = {};
@@ -52,7 +52,7 @@ export const requirePicApproval = ({
         actionKey,
         entityType,
         entityId,
-        actorIc: req.user.ic,
+        actorIc: req.user.telefon,
         requestMethod: req.method,
         requestPath: req.originalUrl || req.path
       });
@@ -63,7 +63,7 @@ export const requirePicApproval = ({
         entityId,
         payload,
         metadata,
-        actorIc: req.user.ic,
+        actorIc: req.user.telefon,
         requestMethod: req.method,
         requestPath: req.originalUrl || req.path
       });
@@ -109,7 +109,7 @@ export const requirePicApproval = ({
           operation,
           data: snapshotData,
           metadata,
-          picIc: req.user.ic,
+          picIc: req.user.telefon,
           approvedBy: null, // Will be set when admin approves
           pendingPicChangeId: pendingId
         });

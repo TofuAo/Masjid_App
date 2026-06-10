@@ -13,3 +13,4 @@ router.post('/:id/approve', campusLifeController.approve);
 router.post('/:id/reject', campusLifeController.reject);
 
 export default router;
+

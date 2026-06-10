@@ -40,7 +40,7 @@ export default function StudentList({
     ? students.filter(
         (s) =>
           (s.name || s.nama || '').toLowerCase().includes(searchStudent.trim().toLowerCase()) ||
-          (s.id || s.ic || '').toLowerCase().includes(searchStudent.trim().toLowerCase())
+          (s.id || s.telefon || '').toLowerCase().includes(searchStudent.trim().toLowerCase())
       )
     : students;
 
@@ -87,7 +87,7 @@ export default function StudentList({
               <li className="px-4 py-6 text-center text-gray-500">Tiada pelajar atau tiada padanan carian.</li>
             ) : (
               filteredStudents.map((s) => {
-                const id = s.id || s.ic;
+                const id = s.id || s.telefon;
                 return (
                   <DraggableStudentRow
                     key={id}

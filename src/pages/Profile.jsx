@@ -57,10 +57,10 @@ const Profile = ({ user }) => {
       }
     };
     fetch();
-  }, [user?.ic, user?.kelas_id]);
+  }, [user?.telefon, user?.kelas_id]);
 
   const displayName = profile?.nama || user?.nama || 'Pengguna';
-  const ic = profile?.ic_formatted || user?.ic_formatted || user?.ic || '—';
+  const ic = profile?.ic_formatted || user?.ic_formatted || user?.telefon || '—';
   const email = profile?.email || user?.email || '—';
   const telefon = profile?.telefon || user?.telefon || '—';
 
@@ -101,7 +101,7 @@ const Profile = ({ user }) => {
           </div>
           <div>
             <p className="text-xs font-medium uppercase mb-1" style={{ color: '#6b7280' }}>
-              No. IC
+              No. Telefon
             </p>
             <p className="font-medium" style={{ color: '#f9fafb' }}>
               {ic}

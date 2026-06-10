@@ -69,7 +69,7 @@ const RolesSetting = () => {
             </thead>
             <tbody>
               {users.slice(0, 20).map((u) => (
-                <tr key={u.ic} style={{ borderColor: '#1f2937' }}>
+                <tr key={u.telefon} style={{ borderColor: '#1f2937' }}>
                   <td className="py-2 px-3" style={{ color: '#f9fafb' }}>{u.nama || u.name}</td>
                   <td className="py-2 px-3" style={{ color: '#9ca3af' }}>{u.email}</td>
                   <td className="py-2 px-3" style={{ color: '#9ca3af' }}>

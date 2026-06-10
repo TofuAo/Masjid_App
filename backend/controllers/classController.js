@@ -32,14 +32,14 @@ export const getAllClasses = async (req, res) => {
         c.level, 
         c.sessions, 
         c.yuran, 
-        c.guru_ic, 
+        c.guru_telefon, 
         c.kapasiti, 
         c.status, 
         c.jadual, 
         u.nama as guru_nama,
-        COUNT(DISTINCT s.user_ic) as student_count
+        COUNT(DISTINCT s.user_telefon) as student_count
       FROM classes c
-      LEFT JOIN users u ON c.guru_ic = u.ic
+      LEFT JOIN users u ON c.guru_telefon = u.telefon
       LEFT JOIN students s ON c.id = s.kelas_id
       WHERE 1=1
     `;
@@ -50,8 +50,8 @@ export const getAllClasses = async (req, res) => {
     // Teachers can differentiate their classes visually in the frontend
     // If a teacher wants to filter to only their classes, they can use the guru_id query param
     if (req.user && req.user.role === 'teacher' && req.query.my_classes_only === 'true') {
-      query += ` AND c.guru_ic = ?`;
-      queryParams.push(req.user.ic);
+      query += ` AND c.guru_telefon = ?`;
+      queryParams.push(req.user.telefon);
     }
     
     if (search) {
@@ -61,13 +61,13 @@ export const getAllClasses = async (req, res) => {
     }
     
     if (guru_id) {
-      query += ` AND c.guru_ic = ?`;
+      query += ` AND c.guru_telefon = ?`;
       queryParams.push(guru_id);
     }
     
     // Add pagination (using safe pagination utility to prevent SQL injection)
     const { limit: safeLimit, offset } = getSafePagination(page, defaultLimit, 1, defaultLimit);
-    query += ` GROUP BY c.id, c.nama_kelas, c.level, c.sessions, c.yuran, c.guru_ic, c.kapasiti, c.status, u.nama ORDER BY c.created_at DESC LIMIT ${safeLimit} OFFSET ${offset}`;
+    query += ` GROUP BY c.id, c.nama_kelas, c.level, c.sessions, c.yuran, c.guru_telefon, c.kapasiti, c.status, u.nama ORDER BY c.created_at DESC LIMIT ${safeLimit} OFFSET ${offset}`;
     
     const [classes] = await pool.execute(query, queryParams);
 
@@ -92,8 +92,8 @@ export const getAllClasses = async (req, res) => {
     
     // Allow teachers to see all classes count, but they can filter if needed
     if (req.user && req.user.role === 'teacher' && req.query.my_classes_only === 'true') {
-      countQuery += ` AND c.guru_ic = ?`;
-      countParams.push(req.user.ic);
+      countQuery += ` AND c.guru_telefon = ?`;
+      countParams.push(req.user.telefon);
     }
     
     if (search) {
@@ -103,7 +103,7 @@ export const getAllClasses = async (req, res) => {
     }
     
     if (guru_id) {
-      countQuery += ` AND c.guru_ic = ?`;
+      countQuery += ` AND c.guru_telefon = ?`;
       countParams.push(guru_id);
     }
     
@@ -146,9 +146,9 @@ export const getClassById = async (req, res) => {
     const { id } = req.params;
     
     let query = `
-      SELECT c.id, c.nama_kelas, c.level, c.sessions, c.yuran, c.guru_ic, c.kapasiti, c.status, u.nama as guru_nama, u.telefon as guru_telefon
+      SELECT c.id, c.nama_kelas, c.level, c.sessions, c.yuran, c.guru_telefon, c.kapasiti, c.status, u.nama as guru_nama, u.telefon as guru_telefon
       FROM classes c
-      LEFT JOIN users u ON c.guru_ic = u.ic
+      LEFT JOIN users u ON c.guru_telefon = u.telefon
       WHERE c.id = ?
     `;
     const queryParams = [id];
@@ -172,9 +172,9 @@ export const getClassById = async (req, res) => {
     
     // Get students in this class
     const [students] = await pool.execute(`
-      SELECT u.ic, u.nama, u.telefon, u.status, s.tarikh_daftar
+      SELECT u.telefon, u.nama, u.telefon, u.status, s.tarikh_daftar
       FROM users u
-      JOIN students s ON u.ic = s.user_ic
+      JOIN students s ON u.telefon = s.user_telefon
       WHERE s.kelas_id = ?
       ORDER BY u.nama
     `, [id]);
@@ -208,30 +208,30 @@ export const createClass = async (req, res) => {
       });
     }
 
-    const { nama_kelas, level, sessions, yuran, guru_ic, kapasiti } = req.body;
+    const { nama_kelas, level, sessions, yuran, guru_telefon, kapasiti } = req.body;
     
     // Check if teacher exists and is active
     // Include users with teacher/staff role OR admin users with teacher entry
     // Normalize IC for comparison
-    const normalizedGuruIc = guru_ic ? guru_ic.replace(/[-\s]/g, '') : '';
+    const normalizedGuruIc = guru_telefon ? guru_telefon.replace(/[-\s]/g, '') : '';
     
     const [teachers] = await pool.execute(
-      `SELECT DISTINCT u.ic FROM users u
-       LEFT JOIN teachers t ON REPLACE(REPLACE(u.ic, '-', ''), ' ', '') = REPLACE(REPLACE(t.user_ic, '-', ''), ' ', '')
-       LEFT JOIN user_roles ur ON REPLACE(REPLACE(u.ic, '-', ''), ' ', '') = REPLACE(REPLACE(ur.user_ic, '-', ''), ' ', '') AND ur.role = 'teacher'
-       WHERE REPLACE(REPLACE(u.ic, '-', ''), ' ', '') = ?
+      `SELECT DISTINCT u.telefon FROM users u
+       LEFT JOIN teachers t ON REPLACE(REPLACE(u.telefon, '-', ''), ' ', '') = REPLACE(REPLACE(t.user_telefon, '-', ''), ' ', '')
+       LEFT JOIN user_roles ur ON REPLACE(REPLACE(u.telefon, '-', ''), ' ', '') = REPLACE(REPLACE(ur.user_telefon, '-', ''), ' ', '') AND ur.role = 'teacher'
+       WHERE REPLACE(REPLACE(u.telefon, '-', ''), ' ', '') = ?
          AND u.status = 'aktif'
          AND (
            u.role IN ('teacher', 'staff')
-           OR (u.role = 'admin' AND t.user_ic IS NOT NULL)
-           OR (u.role = 'admin' AND ur.user_ic IS NOT NULL)
+           OR (u.role = 'admin' AND t.user_telefon IS NOT NULL)
+           OR (u.role = 'admin' AND ur.user_telefon IS NOT NULL)
            OR (u.role = 'admin' AND EXISTS (
              SELECT 1 FROM teachers t2 
-             WHERE REPLACE(REPLACE(t2.user_ic, '-', ''), ' ', '') = ?
+             WHERE REPLACE(REPLACE(t2.user_telefon, '-', ''), ' ', '') = ?
            ))
            OR (u.role = 'admin' AND EXISTS (
              SELECT 1 FROM user_roles ur2 
-             WHERE REPLACE(REPLACE(ur2.user_ic, '-', ''), ' ', '') = ? AND ur2.role = 'teacher'
+             WHERE REPLACE(REPLACE(ur2.user_telefon, '-', ''), ' ', '') = ? AND ur2.role = 'teacher'
            ))
          )
        LIMIT 1`,
@@ -239,7 +239,7 @@ export const createClass = async (req, res) => {
     );
     
     if (teachers.length === 0) {
-      console.error(`[createClass] Teacher validation failed for guru_ic: ${guru_ic} (normalized: ${normalizedGuruIc})`);
+      console.error(`[createClass] Teacher validation failed for guru_telefon: ${guru_telefon} (normalized: ${normalizedGuruIc})`);
       return res.status(400).json({
         success: false,
         message: 'Teacher not found or inactive'
@@ -250,14 +250,14 @@ export const createClass = async (req, res) => {
     const sessionsJson = JSON.stringify(sessions || []);
     
     const [result] = await pool.execute(`
-      INSERT INTO classes (nama_kelas, level, sessions, yuran, guru_ic, kapasiti, status)
+      INSERT INTO classes (nama_kelas, level, sessions, yuran, guru_telefon, kapasiti, status)
       VALUES (?, ?, ?, ?, ?, ?, 'aktif')
-    `, [nama_kelas, level, sessionsJson, yuran, guru_ic, kapasiti]);
+    `, [nama_kelas, level, sessionsJson, yuran, guru_telefon, kapasiti]);
     
     const [newClass] = await pool.execute(`
-      SELECT c.id, c.nama_kelas, c.level, c.sessions, c.yuran, c.guru_ic, c.kapasiti, c.status, u.nama as guru_nama
+      SELECT c.id, c.nama_kelas, c.level, c.sessions, c.yuran, c.guru_telefon, c.kapasiti, c.status, u.nama as guru_nama
       FROM classes c
-      LEFT JOIN users u ON c.guru_ic = u.ic
+      LEFT JOIN users u ON c.guru_telefon = u.telefon
       WHERE c.id = ?
     `, [result.insertId]);
 
@@ -286,7 +286,7 @@ export const createClass = async (req, res) => {
           operationLabel: 'Cipta kelas',
           redirectPath: `/kelas?view=${result.insertId}`
         },
-        actorIc: req.user.ic
+        actorPhone: req.user.telefon
       });
     }
     
@@ -316,13 +316,13 @@ export const updateClass = async (req, res) => {
     }
 
     const { id } = req.params;
-    const { nama_kelas, level, sessions, yuran, guru_ic, kapasiti } = req.body;
+    const { nama_kelas, level, sessions, yuran, guru_telefon, kapasiti } = req.body;
     
     // Fetch existing class data before update for snapshot
     const [existingClasses] = await pool.execute(`
-      SELECT c.id, c.nama_kelas, c.level, c.sessions, c.yuran, c.guru_ic, c.kapasiti, c.status, u.nama as guru_nama
+      SELECT c.id, c.nama_kelas, c.level, c.sessions, c.yuran, c.guru_telefon, c.kapasiti, c.status, u.nama as guru_nama
       FROM classes c
-      LEFT JOIN users u ON c.guru_ic = u.ic
+      LEFT JOIN users u ON c.guru_telefon = u.telefon
       WHERE c.id = ?
     `, [id]);
     
@@ -341,20 +341,20 @@ export const updateClass = async (req, res) => {
     
     // Check both role and activeRole (for role switching)
     const userRole = req.user?.activeRole || req.user?.role;
-    const userIc = req.user?.ic || req.user?.userId;
+    const userPhone = req.user?.telefon || req.user?.userId;
     
     // Permission check: Only admin/staff can update any class, teachers can only update their own classes
     if (userRole !== 'admin' && userRole !== 'staff') {
       if (userRole === 'teacher') {
         // Teachers can only update classes where they are the assigned teacher
-        if (existingClass.guru_ic !== userIc) {
+        if (existingClass.guru_telefon !== userPhone) {
           return res.status(403).json({
             success: false,
             message: 'Insufficient permissions. You can only update classes assigned to you.'
           });
         }
         // Also check if they're trying to change the teacher assignment
-        if (guru_ic && guru_ic !== userIc) {
+        if (guru_telefon && guru_telefon !== userPhone) {
           return res.status(403).json({
             success: false,
             message: 'Insufficient permissions. Teachers cannot change class assignment.'
@@ -372,25 +372,25 @@ export const updateClass = async (req, res) => {
     // Check if teacher exists and is active
     // Include users with teacher/staff role OR admin users with teacher entry
     // Normalize IC for comparison
-    const normalizedGuruIc = guru_ic ? guru_ic.replace(/[-\s]/g, '') : '';
+    const normalizedGuruIc = guru_telefon ? guru_telefon.replace(/[-\s]/g, '') : '';
     
     const [teachers] = await pool.execute(
-      `SELECT DISTINCT u.ic FROM users u
-             LEFT JOIN teachers t ON REPLACE(REPLACE(u.ic, '-', ''), ' ', '') = REPLACE(REPLACE(t.user_ic, '-', ''), ' ', '')
-       LEFT JOIN user_roles ur ON REPLACE(REPLACE(u.ic, '-', ''), ' ', '') = REPLACE(REPLACE(ur.user_ic, '-', ''), ' ', '') AND ur.role = 'teacher'
-       WHERE REPLACE(REPLACE(u.ic, '-', ''), ' ', '') = ?
+      `SELECT DISTINCT u.telefon FROM users u
+             LEFT JOIN teachers t ON REPLACE(REPLACE(u.telefon, '-', ''), ' ', '') = REPLACE(REPLACE(t.user_telefon, '-', ''), ' ', '')
+       LEFT JOIN user_roles ur ON REPLACE(REPLACE(u.telefon, '-', ''), ' ', '') = REPLACE(REPLACE(ur.user_telefon, '-', ''), ' ', '') AND ur.role = 'teacher'
+       WHERE REPLACE(REPLACE(u.telefon, '-', ''), ' ', '') = ?
          AND u.status = 'aktif'
          AND (
            u.role IN ('teacher', 'staff')
-           OR (u.role = 'admin' AND t.user_ic IS NOT NULL)
-           OR (u.role = 'admin' AND ur.user_ic IS NOT NULL)
+           OR (u.role = 'admin' AND t.user_telefon IS NOT NULL)
+           OR (u.role = 'admin' AND ur.user_telefon IS NOT NULL)
            OR (u.role = 'admin' AND EXISTS (
              SELECT 1 FROM teachers t2 
-             WHERE REPLACE(REPLACE(t2.user_ic, '-', ''), ' ', '') = ?
+             WHERE REPLACE(REPLACE(t2.user_telefon, '-', ''), ' ', '') = ?
            ))
            OR (u.role = 'admin' AND EXISTS (
              SELECT 1 FROM user_roles ur2 
-             WHERE REPLACE(REPLACE(ur2.user_ic, '-', ''), ' ', '') = ? AND ur2.role = 'teacher'
+             WHERE REPLACE(REPLACE(ur2.user_telefon, '-', ''), ' ', '') = ? AND ur2.role = 'teacher'
            ))
          )
        LIMIT 1`,
@@ -405,16 +405,16 @@ export const updateClass = async (req, res) => {
         [normalizedGuruIc]
       );
       const [debugTeachers] = await pool.execute(
-        `SELECT user_ic FROM teachers 
-         WHERE REPLACE(REPLACE(user_ic, '-', ''), ' ', '') = ?`,
+        `SELECT user_telefon FROM teachers 
+         WHERE REPLACE(REPLACE(user_telefon, '-', ''), ' ', '') = ?`,
         [normalizedGuruIc]
       );
       const [debugRoles] = await pool.execute(
-        `SELECT user_ic, role FROM user_roles 
-         WHERE REPLACE(REPLACE(user_ic, '-', ''), ' ', '') = ?`,
+        `SELECT user_telefon, role FROM user_roles 
+         WHERE REPLACE(REPLACE(user_telefon, '-', ''), ' ', '') = ?`,
         [normalizedGuruIc]
       );
-      console.error(`[updateClass] Teacher validation failed for guru_ic: ${guru_ic} (normalized: ${normalizedGuruIc})`);
+      console.error(`[updateClass] Teacher validation failed for guru_telefon: ${guru_telefon} (normalized: ${normalizedGuruIc})`);
       console.error(`[updateClass] Debug - Users found:`, debugUsers);
       console.error(`[updateClass] Debug - Teachers table entries:`, debugTeachers);
       console.error(`[updateClass] Debug - User roles:`, debugRoles);
@@ -424,16 +424,16 @@ export const updateClass = async (req, res) => {
       });
     }
     
-    console.log(`[updateClass] Teacher validation passed for guru_ic: ${guru_ic}, found:`, teachers[0]);
+    console.log(`[updateClass] Teacher validation passed for guru_telefon: ${guru_telefon}, found:`, teachers[0]);
     
     // Convert sessions array to JSON string for storage
     const sessionsJson = JSON.stringify(sessions || []);
     
     await pool.execute(`
       UPDATE classes 
-      SET nama_kelas = ?, level = ?, sessions = ?, yuran = ?, guru_ic = ?, kapasiti = ?, updated_at = CURRENT_TIMESTAMP
+      SET nama_kelas = ?, level = ?, sessions = ?, yuran = ?, guru_telefon = ?, kapasiti = ?, updated_at = CURRENT_TIMESTAMP
       WHERE id = ?
-    `, [nama_kelas, level, sessionsJson, yuran, guru_ic, kapasiti, id]);
+    `, [nama_kelas, level, sessionsJson, yuran, guru_telefon, kapasiti, id]);
     
     // If yuran amount changed, update fees for current month and future months
     // Update fees immediately when yuran changes (for any role that can update classes)
@@ -452,12 +452,12 @@ export const updateClass = async (req, res) => {
         
         // Get all students in this class
         const [classStudents] = await pool.execute(`
-          SELECT user_ic FROM students WHERE kelas_id = ?
+          SELECT user_telefon FROM students WHERE kelas_id = ?
         `, [id]);
         
         if (classStudents.length > 0) {
-          const studentIcs = classStudents.map(s => s.user_ic);
-          const placeholders = studentIcs.map(() => '?').join(',');
+          const studentPhones = classStudents.map(s => s.user_telefon);
+          const placeholders = studentPhones.map(() => '?').join(',');
           
           let totalUpdated = 0;
           let totalCreated = 0;
@@ -467,35 +467,35 @@ export const updateClass = async (req, res) => {
           const [currentMonthUpdated] = await pool.execute(`
             UPDATE fees 
             SET jumlah = ?, updated_at = CURRENT_TIMESTAMP
-            WHERE student_ic IN (${placeholders})
+            WHERE student_telefon IN (${placeholders})
               AND bulan = ?
               AND tahun = ?
-          `, [newYuran, ...studentIcs, currentMonthName, currentYear]);
+          `, [newYuran, ...studentPhones, currentMonthName, currentYear]);
           
           const currentMonthCount = currentMonthUpdated.affectedRows || 0;
           totalUpdated += currentMonthCount;
           
           // Check which students don't have fees for current month yet
           const [existingFees] = await pool.execute(`
-            SELECT DISTINCT student_ic 
+            SELECT DISTINCT student_telefon 
             FROM fees 
-            WHERE student_ic IN (${placeholders})
+            WHERE student_telefon IN (${placeholders})
               AND bulan = ?
               AND tahun = ?
-          `, [...studentIcs, currentMonthName, currentYear]);
+          `, [...studentPhones, currentMonthName, currentYear]);
           
-          const studentsWithFees = new Set(existingFees.map(f => f.student_ic));
-          const studentsWithoutFees = studentIcs.filter(ic => !studentsWithFees.has(ic));
+          const studentsWithFees = new Set(existingFees.map(f => f.student_telefon));
+          const studentsWithoutFees = studentPhones.filter(ic => !studentsWithFees.has(ic));
           
           // Create fees for students who don't have fees for current month yet
           if (studentsWithoutFees.length > 0) {
             const feeDate = new Date(currentYear, currentMonth, 1).toISOString().split('T')[0];
             
-            for (const studentIc of studentsWithoutFees) {
+            for (const studentPhone of studentsWithoutFees) {
               try {
                 await pool.execute(`
                   INSERT INTO fees (
-                    student_ic, 
+                    student_telefon, 
                     jumlah, 
                     status, 
                     tarikh, 
@@ -507,17 +507,17 @@ export const updateClass = async (req, res) => {
                     resit_img
                   )
                   VALUES (?, ?, 'Belum Bayar', ?, ?, ?, NULL, NULL, NULL, NULL)
-                `, [studentIc, newYuran, feeDate, currentMonthName, currentYear]);
+                `, [studentPhone, newYuran, feeDate, currentMonthName, currentYear]);
                 totalCreated++;
               } catch (error) {
-                console.error(`[Class Update] Error creating fee for student ${studentIc}:`, error);
+                console.error(`[Class Update] Error creating fee for student ${studentPhone}:`, error);
               }
             }
           }
           
           // Log detailed information for debugging
           if (classStudents.length > 0) {
-            console.log(`[Class Update] Found ${classStudents.length} students in class ${id}:`, classStudents.map(s => s.user_ic).join(', '));
+            console.log(`[Class Update] Found ${classStudents.length} students in class ${id}:`, classStudents.map(s => s.user_telefon).join(', '));
             console.log(`[Class Update] Current month: ${currentMonthName} ${currentYear}`);
             console.log(`[Class Update] New yuran amount: RM ${newYuran.toFixed(2)}`);
             console.log(`[Class Update] Updated ${currentMonthCount} existing fees (all statuses), created ${totalCreated} new fees for current month`);
@@ -532,10 +532,10 @@ export const updateClass = async (req, res) => {
             const [futureCurrentYear] = await pool.execute(`
               UPDATE fees 
               SET jumlah = ?, updated_at = CURRENT_TIMESTAMP
-              WHERE student_ic IN (${placeholders})
+              WHERE student_telefon IN (${placeholders})
                 AND bulan IN (${futurePlaceholders})
                 AND tahun = ?
-            `, [newYuran, ...studentIcs, ...futureMonthNames, currentYear]);
+            `, [newYuran, ...studentPhones, ...futureMonthNames, currentYear]);
             futureCurrentYearCount = futureCurrentYear.affectedRows || 0;
             totalUpdated += futureCurrentYearCount;
           }
@@ -544,9 +544,9 @@ export const updateClass = async (req, res) => {
           const [futureYears] = await pool.execute(`
             UPDATE fees 
             SET jumlah = ?, updated_at = CURRENT_TIMESTAMP
-            WHERE student_ic IN (${placeholders})
+            WHERE student_telefon IN (${placeholders})
               AND tahun > ?
-          `, [newYuran, ...studentIcs, currentYear]);
+          `, [newYuran, ...studentPhones, currentYear]);
           const futureYearsCount = futureYears.affectedRows || 0;
           totalUpdated += futureYearsCount;
           
@@ -572,9 +572,9 @@ export const updateClass = async (req, res) => {
     }
     
     const [updatedClass] = await pool.execute(`
-      SELECT c.id, c.nama_kelas, c.level, c.sessions, c.yuran, c.guru_ic, c.kapasiti, c.status, u.nama as guru_nama
+      SELECT c.id, c.nama_kelas, c.level, c.sessions, c.yuran, c.guru_telefon, c.kapasiti, c.status, u.nama as guru_nama
       FROM classes c
-      LEFT JOIN users u ON c.guru_ic = u.ic
+      LEFT JOIN users u ON c.guru_telefon = u.telefon
       WHERE c.id = ?
     `, [id]);
 
@@ -608,7 +608,7 @@ export const updateClass = async (req, res) => {
           operationLabel: 'Kemas kini kelas',
           redirectPath: `/kelas?view=${id}`
         },
-        actorIc: req.user.ic
+        actorPhone: req.user.telefon
       });
     }
     
@@ -632,9 +632,9 @@ export const deleteClass = async (req, res) => {
     
     // Fetch existing class data before deletion for snapshot
     const [existingClasses] = await pool.execute(`
-      SELECT c.id, c.nama_kelas, c.level, c.sessions, c.yuran, c.guru_ic, c.kapasiti, c.status, u.nama as guru_nama
+      SELECT c.id, c.nama_kelas, c.level, c.sessions, c.yuran, c.guru_telefon, c.kapasiti, c.status, u.nama as guru_nama
       FROM classes c
-      LEFT JOIN users u ON c.guru_ic = u.ic
+      LEFT JOIN users u ON c.guru_telefon = u.telefon
       WHERE c.id = ?
     `, [id]);
     
@@ -647,7 +647,7 @@ export const deleteClass = async (req, res) => {
     
     // Check if class has active students
     const [activeStudents] = await pool.execute(
-      "SELECT COUNT(s.user_ic) as count FROM students s JOIN users u ON s.user_ic = u.ic WHERE s.kelas_id = ? AND u.status = 'aktif'",
+      "SELECT COUNT(s.user_telefon) as count FROM students s JOIN users u ON s.user_telefon = u.telefon WHERE s.kelas_id = ? AND u.status = 'aktif'",
       [id]
     );
     
@@ -684,7 +684,7 @@ export const deleteClass = async (req, res) => {
           operationLabel: 'Padam kelas',
           redirectPath: '/kelas'
         },
-        actorIc: req.user.ic
+        actorPhone: req.user.telefon
       });
     }
     

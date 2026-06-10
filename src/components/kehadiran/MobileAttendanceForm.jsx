@@ -31,7 +31,7 @@ const MobileAttendanceForm = ({
   useEffect(() => {
     const initialAttendance = {};
     students.forEach(student => {
-      initialAttendance[student.ic] = {
+      initialAttendance[student.telefon] = {
         status: 'hadir', // Default to present
         notes: ''
       };
@@ -49,21 +49,21 @@ const MobileAttendanceForm = ({
 
   const currentStudent = students[currentStudentIndex];
 
-  const handleStatusChange = (studentIc, status) => {
+  const handleStatusChange = (studentPhone, status) => {
     setAttendance(prev => ({
       ...prev,
-      [studentIc]: {
-        ...prev[studentIc],
+      [studentPhone]: {
+        ...prev[studentPhone],
         status
       }
     }));
   };
 
-  const handleNotesChange = (studentIc, notes) => {
+  const handleNotesChange = (studentPhone, notes) => {
     setAttendance(prev => ({
       ...prev,
-      [studentIc]: {
-        ...prev[studentIc],
+      [studentPhone]: {
+        ...prev[studentPhone],
         notes
       }
     }));
@@ -84,9 +84,9 @@ const MobileAttendanceForm = ({
   const handleQuickMarkAll = (status) => {
     const newAttendance = {};
     students.forEach(student => {
-      newAttendance[student.ic] = {
+      newAttendance[student.telefon] = {
         status,
-        notes: attendance[student.ic]?.notes || ''
+        notes: attendance[student.telefon]?.notes || ''
       };
     });
     setAttendance(newAttendance);
@@ -115,7 +115,7 @@ const MobileAttendanceForm = ({
         date,
         class_id: classInfo.id,
         attendance: Object.entries(attendance).map(([ic, data]) => ({
-          student_ic: ic,
+          student_telefon: ic,
           status: data.status,
           notes: data.notes
         })),
@@ -189,18 +189,18 @@ const MobileAttendanceForm = ({
             <h3 className="text-2xl font-bold text-gray-800 mb-1">
               {currentStudent.nama || 'Nama tidak tersedia'}
             </h3>
-            <p className="text-gray-500 text-sm">{currentStudent.ic || 'IC tidak tersedia'}</p>
+            <p className="text-gray-500 text-sm">{currentStudent.telefon || 'IC tidak tersedia'}</p>
           </div>
 
           {/* Status Selection - Large Touch Buttons */}
           <div className="grid grid-cols-2 gap-3 mb-6">
             {statusOptions.map(option => {
               const Icon = option.icon;
-              const isSelected = attendance[currentStudent.ic]?.status === option.value;
+              const isSelected = attendance[currentStudent.telefon]?.status === option.value;
               return (
                 <button
                   key={option.value}
-                  onClick={() => handleStatusChange(currentStudent.ic, option.value)}
+                  onClick={() => handleStatusChange(currentStudent.telefon, option.value)}
                   className={`
                     p-4 rounded-xl border-2 transition-all duration-200 
                     ${isSelected 
@@ -222,8 +222,8 @@ const MobileAttendanceForm = ({
               Catatan (Pilihan)
             </label>
             <textarea
-              value={attendance[currentStudent.ic]?.notes || ''}
-              onChange={(e) => handleNotesChange(currentStudent.ic, e.target.value)}
+              value={attendance[currentStudent.telefon]?.notes || ''}
+              onChange={(e) => handleNotesChange(currentStudent.telefon, e.target.value)}
               placeholder="Tambah catatan jika perlu..."
               className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none"
               rows="2"

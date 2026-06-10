@@ -11,3 +11,4 @@ router.get('/daily', authenticateToken, getDailyQuote);
 router.delete('/cache', authenticateToken, clearQuoteCache);
 
 export default router;
+

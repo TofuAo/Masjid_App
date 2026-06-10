@@ -20,7 +20,7 @@ export const ensureCheckInTable = async () => {
       await pool.execute(`
         CREATE TABLE staff_checkin (
           id INT AUTO_INCREMENT PRIMARY KEY,
-          staff_ic VARCHAR(20) NOT NULL,
+          staff_telefon VARCHAR(20) NOT NULL,
           check_in_time TIMESTAMP NULL,
           check_out_time TIMESTAMP NULL,
           check_in_latitude DECIMAL(10, 8) NULL,
@@ -32,8 +32,8 @@ export const ensureCheckInTable = async () => {
           shift_type ENUM('normal', 'shift') DEFAULT 'normal',
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
           updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-          FOREIGN KEY (staff_ic) REFERENCES users(ic) ON DELETE CASCADE,
-          INDEX idx_staff_ic (staff_ic),
+          FOREIGN KEY (staff_telefon) REFERENCES users(ic) ON DELETE CASCADE,
+          INDEX idx_staff_telefon (staff_telefon),
           INDEX idx_check_in_time (check_in_time),
           INDEX idx_status (status),
           INDEX idx_shift_type (shift_type)
@@ -64,33 +64,21 @@ export const ensureCheckInTable = async () => {
     }
 
     // Ensure masjid location settings exist
-    const [settings] = await pool.execute(`
-      SELECT setting_key FROM settings 
-      WHERE setting_key IN ('masjid_latitude', 'masjid_longitude', 'masjid_checkin_radius')
+    // Idempotent inserts to avoid duplicate-key crashes on repeated startup
+    await pool.execute(`
+      INSERT IGNORE INTO settings (setting_key, setting_value, setting_type, description)
+      VALUES ('masjid_latitude', '3.808236', 'text', 'Masjid latitude coordinate for geolocation check-in')
     `);
 
-    const existingKeys = settings.map(s => s.setting_key);
-    
-    if (!existingKeys.includes('masjid_latitude')) {
-      await pool.execute(`
-        INSERT INTO settings (setting_key, setting_value, setting_type, description)
-        VALUES ('masjid_latitude', '3.808236', 'text', 'Masjid latitude coordinate for geolocation check-in')
-      `);
-    }
-    
-    if (!existingKeys.includes('masjid_longitude')) {
-      await pool.execute(`
-        INSERT INTO settings (setting_key, setting_value, setting_type, description)
-        VALUES ('masjid_longitude', '103.328054', 'text', 'Masjid longitude coordinate for geolocation check-in')
-      `);
-    }
-    
-    if (!existingKeys.includes('masjid_checkin_radius')) {
-      await pool.execute(`
-        INSERT INTO settings (setting_key, setting_value, setting_type, description)
-        VALUES ('masjid_checkin_radius', '100', 'text', 'Maximum allowed distance from masjid for check-in (in meters)')
-      `);
-    }
+    await pool.execute(`
+      INSERT IGNORE INTO settings (setting_key, setting_value, setting_type, description)
+      VALUES ('masjid_longitude', '103.328054', 'text', 'Masjid longitude coordinate for geolocation check-in')
+    `);
+
+    await pool.execute(`
+      INSERT IGNORE INTO settings (setting_key, setting_value, setting_type, description)
+      VALUES ('masjid_checkin_radius', '100', 'text', 'Maximum allowed distance from masjid for check-in (in meters)')
+    `);
 
     // Ensure staff_checkin_attempts table exists (for auto check-in logging)
     const [attemptsTable] = await pool.execute(
@@ -103,14 +91,14 @@ export const ensureCheckInTable = async () => {
       await pool.execute(`
         CREATE TABLE staff_checkin_attempts (
           id INT AUTO_INCREMENT PRIMARY KEY,
-          staff_ic VARCHAR(20) NOT NULL,
+          staff_telefon VARCHAR(20) NOT NULL,
           attempted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
           latitude DECIMAL(10, 8) NULL,
           longitude DECIMAL(11, 8) NULL,
           distance_from_masjid DECIMAL(10, 2) NULL,
           result ENUM('outside_location', 'gps_unavailable', 'already_checked_in', 'error') NOT NULL,
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-          INDEX idx_staff_ic (staff_ic),
+          INDEX idx_staff_telefon (staff_telefon),
           INDEX idx_attempted_at (attempted_at),
           INDEX idx_result (result)
         )

@@ -156,7 +156,7 @@ const buildSlipData = ({ heroRecord, timeline, contextLine, classTeacher }) => {
   }));
   return {
     studentName: heroRecord.pelajar_nama || '-',
-    studentIc: heroRecord.pelajar_ic || heroRecord.student_ic || '-',
+    studentPhone: heroRecord.pelajar_telefon || heroRecord.student_telefon || '-',
     className: heroRecord.kelas_nama || '-',
     examName: heroRecord.exam_name || heroRecord.subject || 'Peperiksaan',
     mark: heroRecord.mark !== undefined && heroRecord.mark !== null ? heroRecord.mark.toFixed(1) : '—',
@@ -340,7 +340,7 @@ const Keputusan = () => {
 
   const handleViewStudentResults = (result) => {
     setSelectedStudent({
-      ic: result.pelajar_ic || result.student_ic,
+      ic: result.pelajar_telefon || result.student_telefon,
       name: result.pelajar_nama,
       className: result.kelas_nama
     });
@@ -528,7 +528,7 @@ const Keputusan = () => {
         const classData = classResponse?.data || classResponse;
         if (!isCancelled) {
           setClassTeacher({
-            ic: classData?.guru_ic,
+            ic: classData?.guru_telefon,
             name: classData?.guru_nama,
             phone: classData?.guru_telefon
           });
@@ -551,9 +551,9 @@ const Keputusan = () => {
   }, [heroRecord?.exam_id]);
 
   const handleAskTeacher = () => {
-    const targetTeacher = classTeacher?.ic ? classTeacher : null;
-    if (targetTeacher?.ic) {
-      navigate(`/guru?view=${encodeURIComponent(targetTeacher.ic)}`, {
+    const targetTeacher = classTeacher?.telefon ? classTeacher : null;
+    if (targetTeacher?.telefon) {
+      navigate(`/guru?view=${encodeURIComponent(targetTeacher.telefon)}`, {
         state: {
           topic: topicLabel,
           source: 'keputusan'
@@ -883,7 +883,7 @@ const Keputusan = () => {
                           <p className="font-semibold uppercase">Nama Murid</p>
                           <p>{slipData.studentName}</p>
                           <p className="font-semibold uppercase mt-1">No Kad Pengenalan</p>
-                          <p>{slipData.studentIc}</p>
+                          <p>{slipData.studentPhone}</p>
                         </div>
                         <div>
                           <p className="font-semibold uppercase">Kelas</p>
@@ -1263,7 +1263,7 @@ const Keputusan = () => {
           setIsStudentDetailModalOpen(false);
           setSelectedStudent(null);
         }}
-        studentIc={selectedStudent?.ic}
+        studentPhone={selectedStudent?.telefon}
         studentName={selectedStudent?.name}
         className={selectedStudent?.className}
       />

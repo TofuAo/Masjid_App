@@ -93,7 +93,7 @@ router.get(
   query('status').optional().isString(),
   query('method').optional().isString(),
   query('provider').optional().isString(),
-  query('user_ic').optional().isString(),
+  query('user_telefon').optional().isString(),
   query('search').optional().isString(),
   query('limit').optional().isInt({ min: 1, max: 100 }),
   query('offset').optional().isInt({ min: 0 }),
@@ -136,4 +136,5 @@ router.post(
 // Note: Webhook is handled at /api/webhook/payment (see server.js)
 
 export default router;
+
 

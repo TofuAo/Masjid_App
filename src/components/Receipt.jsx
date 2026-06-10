@@ -93,10 +93,10 @@ const Receipt = ({ payment, fee, onPrint, onDownload }) => {
                   <span className="text-sm text-gray-600">Nama Pelajar:</span>
                   <span className="text-sm font-medium text-gray-900">{fee.pelajar_nama || metadata.customerName || '-'}</span>
                 </div>
-                {fee.pelajar_ic && (
+                {fee.pelajar_telefon && (
                   <div className="flex justify-between py-2 border-b border-gray-100">
-                    <span className="text-sm text-gray-600">No. IC:</span>
-                    <span className="text-sm font-medium text-gray-900">{fee.pelajar_ic}</span>
+                    <span className="text-sm text-gray-600">No. Telefon:</span>
+                    <span className="text-sm font-medium text-gray-900">{fee.pelajar_telefon}</span>
                   </div>
                 )}
                 {fee.nama_kelas && (

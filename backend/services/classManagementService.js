@@ -1,6 +1,6 @@
 /**
  * Class Management Service — core logic for admin class change / rollback.
- * Used by admin class controller (Express). Student IDs are ICs (user_ic).
+ * Used by admin class controller (Express). Student IDs are ICs (user_telefon).
  */
 import { pool } from '../config/database.js';
 import { getSafePagination } from '../utils/pagination.js';
@@ -11,11 +11,11 @@ export async function getClasses(params = {}) {
   const { limit: safeLimit, offset } = getSafePagination(page, defaultLimit, 1, defaultLimit);
 
   let query = `
-    SELECT c.id, c.nama_kelas, c.level, c.sessions, c.yuran, c.guru_ic, c.kapasiti, c.status,
+    SELECT c.id, c.nama_kelas, c.level, c.sessions, c.yuran, c.guru_telefon, c.kapasiti, c.status,
            u.nama as guru_nama,
-           COUNT(DISTINCT s.user_ic) as student_count
+           COUNT(DISTINCT s.user_telefon) as student_count
     FROM classes c
-    LEFT JOIN users u ON c.guru_ic = u.ic
+    LEFT JOIN users u ON c.guru_telefon = u.telefon
     LEFT JOIN students s ON c.id = s.kelas_id
     WHERE 1=1
   `;
@@ -29,11 +29,11 @@ export async function getClasses(params = {}) {
     query += ` AND c.level = ?`;
     queryParams.push(level);
   }
-  query += ` GROUP BY c.id, c.nama_kelas, c.level, c.sessions, c.yuran, c.guru_ic, c.kapasiti, c.status, u.nama ORDER BY c.nama_kelas LIMIT ${safeLimit} OFFSET ${offset}`;
+  query += ` GROUP BY c.id, c.nama_kelas, c.level, c.sessions, c.yuran, c.guru_telefon, c.kapasiti, c.status, u.nama ORDER BY c.nama_kelas LIMIT ${safeLimit} OFFSET ${offset}`;
 
   const [classes] = await pool.execute(query, queryParams);
 
-  let countQuery = 'SELECT COUNT(DISTINCT c.id) as total FROM classes c LEFT JOIN users u ON c.guru_ic = u.ic WHERE 1=1';
+  let countQuery = 'SELECT COUNT(DISTINCT c.id) as total FROM classes c LEFT JOIN users u ON c.guru_telefon = u.telefon WHERE 1=1';
   const countParams = [];
   if (search) {
     countQuery += ' AND (c.nama_kelas LIKE ? OR u.nama LIKE ?)';
@@ -60,14 +60,14 @@ export async function getStudentsByClass(classId) {
   if (classes.length === 0) return null;
 
   const [students] = await pool.execute(
-    `SELECT u.ic as id, u.nama as name, u.status,
+    `SELECT u.telefon as id, u.nama as name, u.status,
             s.kelas_id, s.exam_class_id, s.exam_class_end_date,
             CASE
               WHEN s.exam_class_id IS NOT NULL AND (s.exam_class_end_date IS NULL OR s.exam_class_end_date >= CURDATE()) THEN 'exam'
               ELSE 'permanent'
             END as current_assignment_type
      FROM users u
-     JOIN students s ON u.ic = s.user_ic
+     JOIN students s ON u.telefon = s.user_telefon
      WHERE s.kelas_id = ?
      ORDER BY u.nama`,
     [id]
@@ -166,10 +166,10 @@ export async function changeClass(dto, adminIc) {
   const examSessionIdSafe = Number.isNaN(examSessionId) || examSessionId < 1 ? null : (examSessionId | 0);
 
   const [studentsInClass] = await pool.execute(
-    `SELECT user_ic FROM students WHERE REPLACE(REPLACE(user_ic, "-", ""), " ", "") IN (${inPh}) AND kelas_id = ?`,
+    `SELECT user_telefon FROM students WHERE REPLACE(REPLACE(user_telefon, "-", ""), " ", "") IN (${inPh}) AND kelas_id = ?`,
     [...normalizedIcs, fromId]
   );
-  const foundIcs = (studentsInClass || []).map((r) => r.user_ic);
+  const foundIcs = (studentsInClass || []).map((r) => r.user_telefon);
   const normalizedFound = new Set(foundIcs.map((ic) => String(ic).replace(/[-\s]/g, '')));
   const missing = studentIds.filter((id) => !normalizedFound.has(String(id).replace(/[-\s]/g, '')));
   if (missing.length > 0) {
@@ -185,13 +185,13 @@ export async function changeClass(dto, adminIc) {
       // Parameter order: SET kelas_id = ?, then IN (?,...), then AND kelas_id = ?
       updateResult = await conn.execute(
         `UPDATE students SET kelas_id = ?, exam_class_id = NULL, exam_class_end_date = NULL
-         WHERE REPLACE(REPLACE(user_ic, "-", ""), " ", "") IN (${inPh}) AND kelas_id = ?`,
+         WHERE REPLACE(REPLACE(user_telefon, "-", ""), " ", "") IN (${inPh}) AND kelas_id = ?`,
         [toId, ...normalizedIcs, fromId]
       );
     } else {
       updateResult = await conn.execute(
         `UPDATE students SET exam_class_id = ?, exam_class_end_date = ?
-         WHERE REPLACE(REPLACE(user_ic, "-", ""), " ", "") IN (${inPh}) AND kelas_id = ?`,
+         WHERE REPLACE(REPLACE(user_telefon, "-", ""), " ", "") IN (${inPh}) AND kelas_id = ?`,
         [toId, endVal, ...normalizedIcs, fromId]
       );
     }
@@ -203,16 +203,16 @@ export async function changeClass(dto, adminIc) {
       console.warn(`changeClass: expected ${foundIcs.length} rows updated, got ${affectedRows}`);
     }
 
-    for (const studentIc of foundIcs) {
+    for (const studentPhone of foundIcs) {
       await conn.execute(
-        `INSERT INTO class_assignments (student_ic, class_id, assignment_type, exam_session_id, start_date, end_date, is_active)
+        `INSERT INTO class_assignments (student_telefon, class_id, assignment_type, exam_session_id, start_date, end_date, is_active)
          VALUES (?, ?, ?, ?, ?, ?, ?)`,
-        [studentIc, toId, type, examSessionIdSafe, startVal, endVal, 1]
+        [studentPhone, toId, type, examSessionIdSafe, startVal, endVal, 1]
       );
     }
 
     await conn.execute(
-      `INSERT INTO class_change_log (admin_ic, student_ic, from_class_id, to_class_id, assignment_type, end_date)
+      `INSERT INTO class_change_log (admin_ic, student_telefon, from_class_id, to_class_id, assignment_type, end_date)
        VALUES (?, ?, ?, ?, ?, ?)`,
       [adminIc, foundIcs[0], fromId, toId, type, endVal]
     );
@@ -276,17 +276,17 @@ export async function rollbackClass(body, adminIc) {
     if (targetClassId != null) {
       await conn.execute(
         `UPDATE students SET kelas_id = ?, exam_class_id = NULL, exam_class_end_date = NULL
-         WHERE REPLACE(REPLACE(user_ic, "-", ""), " ", "") IN (${inPh})`,
+         WHERE REPLACE(REPLACE(user_telefon, "-", ""), " ", "") IN (${inPh})`,
         [...normalizedIcs, targetClassId]
       );
     } else {
       await conn.execute(
         `UPDATE students SET exam_class_id = NULL, exam_class_end_date = NULL
-         WHERE REPLACE(REPLACE(user_ic, "-", ""), " ", "") IN (${inPh})`,
+         WHERE REPLACE(REPLACE(user_telefon, "-", ""), " ", "") IN (${inPh})`,
         normalizedIcs
       );
     }
-    let rollbackQuery = `UPDATE class_assignments SET is_active = 0 WHERE REPLACE(REPLACE(student_ic, "-", ""), " ", "") IN (${inPh}) AND is_active = 1`;
+    let rollbackQuery = `UPDATE class_assignments SET is_active = 0 WHERE REPLACE(REPLACE(student_telefon, "-", ""), " ", "") IN (${inPh}) AND is_active = 1`;
     const rollbackParams = [...normalizedIcs];
     if (examSessionIdSafe != null) {
       rollbackQuery += ' AND exam_session_id = ?';
@@ -312,18 +312,18 @@ export async function getStudentHistory(studentId) {
   if (!normalizedIc) return null;
 
   const [logRows] = await pool.execute(
-    `SELECT id, admin_ic, student_ic, from_class_id, to_class_id, assignment_type, end_date, created_at
+    `SELECT id, admin_ic, student_telefon, from_class_id, to_class_id, assignment_type, end_date, created_at
      FROM class_change_log
-     WHERE REPLACE(REPLACE(student_ic, "-", ""), " ", "") = ?
+     WHERE REPLACE(REPLACE(student_telefon, "-", ""), " ", "") = ?
      ORDER BY created_at DESC LIMIT 100`,
     [normalizedIc]
   );
 
   const [assignRows] = await pool.execute(
-    `SELECT ca.id, ca.student_ic, ca.class_id, ca.assignment_type, ca.exam_session_id, ca.start_date, ca.end_date, ca.is_active, ca.created_at, c.nama_kelas
+    `SELECT ca.id, ca.student_telefon, ca.class_id, ca.assignment_type, ca.exam_session_id, ca.start_date, ca.end_date, ca.is_active, ca.created_at, c.nama_kelas
      FROM class_assignments ca
      LEFT JOIN classes c ON ca.class_id = c.id
-     WHERE REPLACE(REPLACE(ca.student_ic, "-", ""), " ", "") = ?
+     WHERE REPLACE(REPLACE(ca.student_telefon, "-", ""), " ", "") = ?
      ORDER BY ca.created_at DESC LIMIT 100`,
     [normalizedIc]
   );
@@ -342,27 +342,27 @@ export async function getChangeHistory(params = {}) {
   if (search && String(search).trim()) {
     const term = `%${String(search).trim()}%`;
     query = `
-      SELECT ccl.id, ccl.student_ic, ccl.from_class_id, ccl.to_class_id, ccl.assignment_type, ccl.created_at,
+      SELECT ccl.id, ccl.student_telefon, ccl.from_class_id, ccl.to_class_id, ccl.assignment_type, ccl.created_at,
         u.nama as student_name,
         fc.nama_kelas as from_class,
         tc.nama_kelas as to_class
       FROM class_change_log ccl
-      LEFT JOIN users u ON u.ic = ccl.student_ic
+      LEFT JOIN users u ON u.telefon = ccl.student_telefon
       LEFT JOIN classes fc ON fc.id = ccl.from_class_id
       LEFT JOIN classes tc ON tc.id = ccl.to_class_id
-      WHERE u.nama LIKE ? OR ccl.student_ic LIKE ? OR fc.nama_kelas LIKE ? OR tc.nama_kelas LIKE ?
+      WHERE u.nama LIKE ? OR ccl.student_telefon LIKE ? OR fc.nama_kelas LIKE ? OR tc.nama_kelas LIKE ?
       ORDER BY ccl.created_at DESC
       LIMIT ?
     `;
     queryParams = [term, term, term, term, limitVal];
   } else {
     query = `
-      SELECT ccl.id, ccl.student_ic, ccl.from_class_id, ccl.to_class_id, ccl.assignment_type, ccl.created_at,
+      SELECT ccl.id, ccl.student_telefon, ccl.from_class_id, ccl.to_class_id, ccl.assignment_type, ccl.created_at,
         u.nama as student_name,
         fc.nama_kelas as from_class,
         tc.nama_kelas as to_class
       FROM class_change_log ccl
-      LEFT JOIN users u ON u.ic = ccl.student_ic
+      LEFT JOIN users u ON u.telefon = ccl.student_telefon
       LEFT JOIN classes fc ON fc.id = ccl.from_class_id
       LEFT JOIN classes tc ON tc.id = ccl.to_class_id
       ORDER BY ccl.created_at DESC
@@ -373,7 +373,7 @@ export async function getChangeHistory(params = {}) {
   const [rows] = await pool.execute(query, queryParams);
   return rows.map((r) => ({
     id: r.id,
-    student_ic: r.student_ic,
+    student_telefon: r.student_telefon,
     student_name: r.student_name,
     from_class: r.from_class,
     to_class: r.to_class,

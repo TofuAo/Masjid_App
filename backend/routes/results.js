@@ -17,7 +17,7 @@ const router = express.Router();
 const allowedGrades = ['A+', 'A', 'A-', 'B+', 'B', 'B-', 'C+', 'C', 'C-', 'D', 'F'];
 
 const resultValidation = [
-  body('student_ic')
+  body('student_telefon')
     .matches(/^\d{6}-\d{2}-\d{4}$/)
     .withMessage('Student IC must be in format: 123456-78-9012'),
   body('exam_id')
@@ -55,3 +55,4 @@ router.put('/:id', requireRole(['admin', 'staff']), idValidation, resultValidati
 router.delete('/:id', requireRole(['admin']), idValidation, deleteResult);
 
 export default router;
+

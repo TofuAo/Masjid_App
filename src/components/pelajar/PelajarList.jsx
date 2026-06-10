@@ -30,7 +30,7 @@ const PelajarList = memo(function PelajarList({ pelajars = [], onEdit, onView, o
   } else {
     filteredPelajars = pelajars.filter(pelajar => {
       const matchesSearch = (pelajar.nama || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           (pelajar.IC || pelajar.ic || '').includes(searchTerm) ||
+                           (pelajar.IC || pelajar.telefon || '').includes(searchTerm) ||
                            (pelajar.telefon || '').includes(searchTerm);
       return matchesSearch;
     });
@@ -114,11 +114,11 @@ const PelajarList = memo(function PelajarList({ pelajars = [], onEdit, onView, o
             </thead>
             <tbody className="bg-white divide-y divide-gray-100">
               {filteredPelajarsList.map((pelajar, index) => {
-                const itemId = pelajar.ic || pelajar.IC;
+                const itemId = pelajar.telefon || pelajar.IC;
                 const detailPath = itemId ? `${listBasePath}/${encodeURIComponent(String(itemId))}` : null;
                 return (
                 <tr
-                  key={pelajar.ic || pelajar.IC || (pelajar._tempId ? `opt-${pelajar._tempId}` : index)}
+                  key={pelajar.telefon || pelajar.IC || (pelajar._tempId ? `opt-${pelajar._tempId}` : index)}
                   role={detailPath ? 'button' : undefined}
                   tabIndex={detailPath ? 0 : undefined}
                   onClick={detailPath ? () => navigate(detailPath, { state: { search: searchTerm } }) : undefined}
@@ -133,7 +133,7 @@ const PelajarList = memo(function PelajarList({ pelajars = [], onEdit, onView, o
                     </div>
                   </td>
                   <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-700 hidden sm:table-cell">
-                    {(pelajar.IC || pelajar.ic) ? formatIC(pelajar.IC || pelajar.ic, true) : '-'}
+                    {(pelajar.IC || pelajar.telefon) ? formatIC(pelajar.IC || pelajar.telefon, true) : '-'}
                   </td>
                   <td className="px-4 sm:px-6 py-4 text-sm text-gray-700">
                     {pelajar.umur ? `${pelajar.umur} tahun` : '-'}
@@ -154,7 +154,7 @@ const PelajarList = memo(function PelajarList({ pelajars = [], onEdit, onView, o
                               <Edit className="w-4 h-4" />
                             </button>
                             <button
-                              onClick={() => onDelete(pelajar.ic || pelajar.IC, pelajar)}
+                              onClick={() => onDelete(pelajar.telefon || pelajar.IC, pelajar)}
                               className="p-2 rounded-lg text-red-600 hover:bg-red-50 hover:text-red-700 transition-colors"
                               title="Padam"
                             >

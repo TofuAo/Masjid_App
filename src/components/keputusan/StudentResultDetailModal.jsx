@@ -4,16 +4,16 @@ import { resultsAPI } from '../../services/api';
 import Badge from '../ui/Badge';
 import LoadingSkeleton from '../ui/LoadingSkeleton';
 
-const StudentResultDetailModal = ({ isOpen, onClose, studentIc, studentName, className }) => {
+const StudentResultDetailModal = ({ isOpen, onClose, studentPhone, studentName, className }) => {
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    if (isOpen && studentIc) {
+    if (isOpen && studentPhone) {
       fetchStudentResults();
     }
-  }, [isOpen, studentIc]);
+  }, [isOpen, studentPhone]);
 
   const fetchStudentResults = async () => {
     setLoading(true);
@@ -24,7 +24,7 @@ const StudentResultDetailModal = ({ isOpen, onClose, studentIc, studentName, cla
       
       // Filter results for this student
       const studentResults = resultsArray.filter(r => 
-        (r.student_ic === studentIc || r.pelajar_ic === studentIc)
+        (r.student_telefon === studentPhone || r.pelajar_telefon === studentPhone)
       );
       
       // Separate into Menulis (Writing/Bertulis) and Menghafal (Memorizing/Lisan)

@@ -403,8 +403,8 @@ const Settings = () => {
       ]);
       
       const allUsersData = [
-        ...(Array.isArray(students) ? students.map(s => ({ ...s, user_ic: s.ic, role: 'student' })) : []),
-        ...(Array.isArray(teachers) ? teachers.map(t => ({ ...t, user_ic: t.ic, role: 'teacher' })) : [])
+        ...(Array.isArray(students) ? students.map(s => ({ ...s, user_telefon: s.telefon, role: 'student' })) : []),
+        ...(Array.isArray(teachers) ? teachers.map(t => ({ ...t, user_telefon: t.telefon, role: 'teacher' })) : [])
       ];
       
       setAllUsers(allUsersData);
@@ -628,7 +628,7 @@ const Settings = () => {
     try {
       setLoading(true);
       await authAPI.adminChangePassword({
-        user_ic: modalUser.user_ic || modalUser.ic,
+        user_telefon: modalUser.user_telefon || modalUser.telefon,
         newPassword: newPassword
       });
       
@@ -647,7 +647,7 @@ const Settings = () => {
     if (!userSearchQuery) return true;
     const query = userSearchQuery.toLowerCase();
     const nama = (user.nama || '').toLowerCase();
-    const ic = (user.user_ic || user.ic || '').toLowerCase();
+    const ic = (user.user_telefon || user.telefon || '').toLowerCase();
     const role = (user.role || '').toLowerCase();
     const email = (user.email || '').toLowerCase();
     const telefon = (user.telefon || '').toLowerCase();
@@ -1322,7 +1322,7 @@ const Settings = () => {
                     <tbody className="bg-white divide-y divide-gray-200">
                       {filteredUsers.map((user, index) => (
                         <tr 
-                          key={user.user_ic || user.ic} 
+                          key={user.user_telefon || user.telefon} 
                           className="hover:bg-gray-50 cursor-pointer fade-in" 
                           style={{ animationDelay: `${index * 0.05}s` }}
                           onClick={() => handleUserClick(user)}
@@ -1336,7 +1336,7 @@ const Settings = () => {
                             </div>
                           </td>
                           <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-sm text-gray-900 hidden sm:table-cell">
-                            {user.user_ic || user.ic ? formatIC(user.user_ic || user.ic, true) : '-'}
+                            {user.user_telefon || user.telefon ? formatIC(user.user_telefon || user.telefon, true) : '-'}
                           </td>
                           <td className="px-3 sm:px-6 py-3 sm:py-4">
                             <Badge variant="default">
@@ -1413,7 +1413,7 @@ const Settings = () => {
                   <div>
                     <p className="text-xs text-gray-500">Nombor IC</p>
                     <p className="text-sm font-medium text-gray-900">
-                      {modalUser.user_ic || modalUser.ic ? formatIC(modalUser.user_ic || modalUser.ic, true) : '-'}
+                      {modalUser.user_telefon || modalUser.telefon ? formatIC(modalUser.user_telefon || modalUser.telefon, true) : '-'}
                     </p>
                   </div>
                 </div>

@@ -29,11 +29,11 @@ const PengurusanGuru = () => {
     loadData();
   }, []);
 
-  const handleClassChange = async (guruIc, classId) => {
-    setUpdating(guruIc);
+  const handleClassChange = async (guruPhone, classId) => {
+    setUpdating(guruPhone);
     try {
       const kelas = classes.find((c) => c.id === parseInt(classId, 10));
-      await teachersAPI.update(guruIc, { kelas_id: classId });
+      await teachersAPI.update(guruPhone, { kelas_id: classId });
       toast.success('Kelas guru dikemaskini.');
       loadData();
     } catch (err) {
@@ -64,20 +64,20 @@ const PengurusanGuru = () => {
             <thead>
               <tr style={{ borderColor: '#1f2937' }}>
                 <th className="text-left py-2 px-3" style={{ color: '#9ca3af' }}>Guru</th>
-                <th className="text-left py-2 px-3" style={{ color: '#9ca3af' }}>IC</th>
+                <th className="text-left py-2 px-3" style={{ color: '#9ca3af' }}>No. Telefon</th>
                 <th className="text-left py-2 px-3" style={{ color: '#9ca3af' }}>Kelas</th>
               </tr>
             </thead>
             <tbody>
               {teachers.map((t) => (
-                <tr key={t.ic} style={{ borderColor: '#1f2937' }}>
+                <tr key={t.telefon} style={{ borderColor: '#1f2937' }}>
                   <td className="py-2 px-3" style={{ color: '#f9fafb' }}>{t.nama || t.name}</td>
-                  <td className="py-2 px-3" style={{ color: '#9ca3af' }}>{t.ic}</td>
+                  <td className="py-2 px-3" style={{ color: '#9ca3af' }}>{t.telefon}</td>
                   <td className="py-2 px-3">
                     <select
                       value={t.kelas_id || t.class_id || ''}
-                      onChange={(e) => handleClassChange(t.ic, e.target.value)}
-                      disabled={updating === t.ic}
+                      onChange={(e) => handleClassChange(t.telefon, e.target.value)}
+                      disabled={updating === t.telefon}
                       className="px-2 py-1 rounded text-sm"
                       style={{ background: '#1f2937', border: '1px solid #374151', color: '#f9fafb' }}
                     >

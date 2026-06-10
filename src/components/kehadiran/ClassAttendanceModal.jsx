@@ -106,9 +106,9 @@ const ClassAttendanceModal = ({ isOpen, onClose, className, attendanceDate, stud
                     <div className="text-sm font-medium text-black">
                       {student.pelajar_nama || student.nama || student.student_name}
                     </div>
-                    {student.pelajar_ic || student.ic ? (
+                    {student.pelajar_telefon || student.telefon ? (
                       <div className="text-xs text-gray-500 mt-1">
-                        {student.pelajar_ic || student.ic}
+                        {student.pelajar_telefon || student.telefon}
                       </div>
                     ) : null}
                   </div>

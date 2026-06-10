@@ -28,3 +28,4 @@ router.route('/:id')
   .delete(protect, authorize(['admin']), deleteExam);
 
 export default router;
+

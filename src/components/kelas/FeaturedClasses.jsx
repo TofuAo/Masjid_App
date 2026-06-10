@@ -53,7 +53,7 @@ const FeaturedClasses = () => {
   const getTeacherName = (kelas) => {
     if (kelas.guru_nama) return kelas.guru_nama;
     if (kelas.guru) return kelas.guru.nama;
-    const match = teachers.find((t) => t.ic === kelas.guru_ic || t.ic === kelas.guru_id);
+    const match = teachers.find((t) => t.telefon === kelas.guru_telefon || t.telefon === kelas.guru_id);
     return match?.nama || 'Masih dikenalpasti';
   };
 

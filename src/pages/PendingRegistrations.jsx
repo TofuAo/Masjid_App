@@ -46,23 +46,23 @@ const PendingRegistrations = () => {
     }
   };
 
-  const handleApprove = async (user_ic, nama) => {
-    setApprovalModal({ open: true, user: { ic: user_ic, nama }, type: 'approve' });
+  const handleApprove = async (user_telefon, nama) => {
+    setApprovalModal({ open: true, user: { ic: user_telefon, nama }, type: 'approve' });
   };
 
-  const handleReject = async (user_ic, nama) => {
-    setApprovalModal({ open: true, user: { ic: user_ic, nama }, type: 'reject' });
+  const handleReject = async (user_telefon, nama) => {
+    setApprovalModal({ open: true, user: { ic: user_telefon, nama }, type: 'reject' });
   };
 
   const confirmAction = async () => {
     if (!approvalModal.user) return;
 
-    const { ic: user_ic, nama } = approvalModal.user;
+    const { ic: user_telefon, nama } = approvalModal.user;
     const isApprove = approvalModal.type === 'approve';
 
-    setProcessing(prev => ({ ...prev, [user_ic]: isApprove ? 'approving' : 'rejecting' }));
+    setProcessing(prev => ({ ...prev, [user_telefon]: isApprove ? 'approving' : 'rejecting' }));
     try {
-      const payload = { user_ic };
+      const payload = { user_telefon };
       if (notes.trim()) {
         if (isApprove) {
           payload.approval_notes = notes.trim();
@@ -77,7 +77,7 @@ const PendingRegistrations = () => {
 
       if (response.success) {
         toast.success(`Pendaftaran untuk ${nama} telah ${isApprove ? 'diluluskan' : 'ditolak'}`);
-        setPendingUsers(prev => prev.filter(user => user.ic !== user_ic));
+        setPendingUsers(prev => prev.filter(user => user.telefon !== user_telefon));
         setApprovalModal({ open: false, user: null, type: null });
         setNotes('');
       } else {
@@ -87,7 +87,7 @@ const PendingRegistrations = () => {
       console.error(`Error ${isApprove ? 'approving' : 'rejecting'} registration:`, error);
       toast.error(error.response?.data?.message || `Gagal ${isApprove ? 'meluluskan' : 'menolak'} pendaftaran`);
     } finally {
-      setProcessing(prev => ({ ...prev, [user_ic]: null }));
+      setProcessing(prev => ({ ...prev, [user_telefon]: null }));
     }
   };
 
@@ -158,11 +158,11 @@ const PendingRegistrations = () => {
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {pendingUsers.map((user) => (
-                  <tr key={user.ic} className="hover:bg-gray-50">
+                  <tr key={user.telefon} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
                         <User className="h-5 w-5 text-gray-600 mr-2" />
-                        <span className="text-sm font-medium text-gray-900">{user.ic}</span>
+                        <span className="text-sm font-medium text-gray-900">{user.telefon}</span>
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
@@ -182,11 +182,11 @@ const PendingRegistrations = () => {
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                       <div className="flex items-center space-x-2">
                         <button
-                          onClick={() => handleApprove(user.ic, user.nama)}
-                          disabled={processing[user.ic]}
+                          onClick={() => handleApprove(user.telefon, user.nama)}
+                          disabled={processing[user.telefon]}
                           className="flex items-center space-x-1 px-3 py-1 bg-emerald-600 text-white rounded hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                         >
-                          {processing[user.ic] === 'approving' ? (
+                          {processing[user.telefon] === 'approving' ? (
                             <>
                               <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
                               <span>Memproses...</span>
@@ -199,11 +199,11 @@ const PendingRegistrations = () => {
                           )}
                         </button>
                         <button
-                          onClick={() => handleReject(user.ic, user.nama)}
-                          disabled={processing[user.ic]}
+                          onClick={() => handleReject(user.telefon, user.nama)}
+                          disabled={processing[user.telefon]}
                           className="flex items-center space-x-1 px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                         >
-                          {processing[user.ic] === 'rejecting' ? (
+                          {processing[user.telefon] === 'rejecting' ? (
                             <>
                               <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
                               <span>Memproses...</span>
@@ -281,14 +281,14 @@ const PendingRegistrations = () => {
               <div className="flex items-center space-x-3">
                 <button
                   onClick={confirmAction}
-                  disabled={processing[approvalModal.user?.ic]}
+                  disabled={processing[approvalModal.user?.telefon]}
                   className={`flex-1 px-4 py-2 rounded-lg text-white font-medium transition-colors ${
                     approvalModal.type === 'approve'
                       ? 'bg-emerald-600 hover:bg-emerald-700'
                       : 'bg-red-600 hover:bg-red-700'
                   } disabled:opacity-50 disabled:cursor-not-allowed`}
                 >
-                  {processing[approvalModal.user?.ic] ? 'Memproses...' : approvalModal.type === 'approve' ? 'Luluskan' : 'Tolak'}
+                  {processing[approvalModal.user?.telefon] ? 'Memproses...' : approvalModal.type === 'approve' ? 'Luluskan' : 'Tolak'}
                 </button>
                 <button
                   onClick={() => {

@@ -13,13 +13,13 @@ export const getAttendance = async (req, res) => {
     console.log('User role:', req.user?.role);
 
     let query = `
-      SELECT a.*, u.nama as pelajar_nama, u.ic as pelajar_ic, c.nama_kelas,
+      SELECT a.*, u.nama as pelajar_nama, u.telefon as pelajar_ic, c.nama_kelas,
              mu.nama as marked_by_name,
              a.document_confirmed, a.confirmed_by, a.confirmed_at, a.confirmation_notes
       FROM attendance a
-      JOIN users u ON a.student_ic = u.ic
+      JOIN users u ON a.student_telefon = u.telefon
       JOIN classes c ON a.class_id = c.id
-      LEFT JOIN users mu ON a.marked_by = mu.ic
+      LEFT JOIN users mu ON a.marked_by = mu.telefon
       WHERE 1=1
     `;
 
@@ -27,14 +27,14 @@ export const getAttendance = async (req, res) => {
 
     // If user is a student, only show their own attendance
     if (req.user && req.user.role === 'student') {
-      query += ` AND a.student_ic = ?`;
-      queryParams.push(req.user.ic);
+      query += ` AND a.student_telefon = ?`;
+      queryParams.push(req.user.telefon);
     }
 
     // If user is a teacher, only show attendance for their classes
     if (req.user && req.user.role === 'teacher') {
-      query += ` AND c.guru_ic = ?`;
-      queryParams.push(req.user.ic);
+      query += ` AND c.guru_telefon = ?`;
+      queryParams.push(req.user.telefon);
     }
 
     // Handle date range (start_date and end_date) or single date
@@ -85,7 +85,7 @@ export const getAttendance = async (req, res) => {
     }
 
     if (pelajar_id) {
-      query += ` AND a.student_ic = ?`;
+      query += ` AND a.student_telefon = ?`;
       queryParams.push(pelajar_id);
     }
 
@@ -117,7 +117,7 @@ export const getAttendance = async (req, res) => {
         console.log('Month view - First record:', {
           id: attendance[0].id,
           tarikh: attendance[0].tarikh,
-          student_ic: attendance[0].student_ic,
+          student_telefon: attendance[0].student_telefon,
           class_id: attendance[0].class_id,
           pelajar_nama: attendance[0].pelajar_nama,
           nama_kelas: attendance[0].nama_kelas
@@ -145,7 +145,7 @@ export const getAttendance = async (req, res) => {
           const [testJoinQuery] = await pool.execute(
             `SELECT COUNT(*) as count 
              FROM attendance a
-             JOIN users u ON a.student_ic = u.ic
+             JOIN users u ON a.student_telefon = u.telefon
              JOIN classes c ON a.class_id = c.id
              WHERE YEAR(a.tarikh) = ? AND MONTH(a.tarikh) = ?`,
             [yearNum, monthNum]
@@ -174,16 +174,16 @@ export const getAttendance = async (req, res) => {
 
     // If user is a student, only count their own attendance
     if (req.user && req.user.role === 'student') {
-      countQuery += ` AND a.student_ic = ?`;
-      countParams.push(req.user.ic);
+      countQuery += ` AND a.student_telefon = ?`;
+      countParams.push(req.user.telefon);
     }
 
     // If user is a teacher, only count attendance for their classes
     if (req.user && req.user.role === 'teacher') {
       countQuery += ` AND EXISTS (
-        SELECT 1 FROM classes c WHERE c.id = a.class_id AND c.guru_ic = ?
+        SELECT 1 FROM classes c WHERE c.id = a.class_id AND c.guru_telefon = ?
       )`;
-      countParams.push(req.user.ic);
+      countParams.push(req.user.telefon);
     }
 
     // Handle date range (start_date and end_date) or single date for count query
@@ -217,7 +217,7 @@ export const getAttendance = async (req, res) => {
     }
 
     if (pelajar_id) {
-      countQuery += ` AND a.student_ic = ?`;
+      countQuery += ` AND a.student_telefon = ?`;
       countParams.push(pelajar_id);
     }
 
@@ -254,10 +254,10 @@ export const getAttendance = async (req, res) => {
 
 export const getStudentAttendanceHistory = async (req, res) => {
   try {
-    const { student_ic } = req.params;
+    const { student_telefon } = req.params;
     const [attendance] = await pool.execute(`
-      SELECT * FROM attendance WHERE student_ic = ?
-    `, [student_ic]);
+      SELECT * FROM attendance WHERE student_telefon = ?
+    `, [student_telefon]);
 
     res.json({
       success: true,
@@ -330,11 +330,11 @@ export const markAttendance = async (req, res) => {
       // Check permissions - teachers can only update their own class attendance
       if (req.user && req.user.role === 'teacher') {
         const [classCheck] = await pool.execute(
-          'SELECT guru_ic FROM classes WHERE id = ?',
+          'SELECT guru_telefon FROM classes WHERE id = ?',
           [existingAttendance[0].class_id]
         );
         
-        if (classCheck.length === 0 || classCheck[0].guru_ic !== req.user.ic) {
+        if (classCheck.length === 0 || classCheck[0].guru_telefon !== req.user.telefon) {
           return res.status(403).json({
             success: false,
             message: 'You do not have permission to update this attendance record',
@@ -343,27 +343,27 @@ export const markAttendance = async (req, res) => {
       }
       
       const existingData = existingAttendance[0];
-      const actorIc = req.user?.ic;
+      const actorPhone = req.user?.telefon;
       
       // Create snapshot before update (only for admin/teacher - PIC actions go to approval, not snapshots)
-      if (actorIc && (req.user?.role === 'admin' || req.user?.role === 'teacher')) {
+      if (actorPhone && (req.user?.role === 'admin' || req.user?.role === 'teacher')) {
         // Get student and class names for better metadata
         const [studentInfo] = await pool.execute(
-          'SELECT nama FROM users WHERE ic = ?',
-          [existingData.student_ic]
+          'SELECT nama FROM users WHERE telefon = ?',
+          [existingData.student_telefon]
         );
         const [classInfo] = await pool.execute(
           'SELECT nama_kelas FROM classes WHERE id = ?',
           [existingData.class_id]
         );
         
-        const studentName = studentInfo[0]?.nama || existingData.student_ic;
+        const studentName = studentInfo[0]?.nama || existingData.student_telefon;
         const className = classInfo[0]?.nama_kelas || 'Kelas';
         
         await createSnapshot({
           entityType: 'attendance',
           entityId: attendanceId,
-          entityIdentifier: `${existingData.student_ic}-${existingData.class_id}-${existingData.tarikh}`,
+          entityIdentifier: `${existingData.student_telefon}-${existingData.class_id}-${existingData.tarikh}`,
           operation: 'update',
           data: existingData,
           metadata: {
@@ -373,7 +373,7 @@ export const markAttendance = async (req, res) => {
             redirectPath: `/kehadiran?start_date=${existingData.tarikh}&end_date=${existingData.tarikh}&class_id=${existingData.class_id}`,
             notes: `Status kehadiran diubah: ${studentName} - ${className} - dari ${existingData.status} kepada ${status} pada ${existingData.tarikh}`
           },
-          actorIc
+          actorPhone
         });
       }
       
@@ -389,7 +389,7 @@ export const markAttendance = async (req, res) => {
       });
     }
 
-    const { student_ic, class_id, tarikh, status } = req.body;
+    const { student_telefon, class_id, tarikh, status } = req.body;
     
     // Use current date if tarikh is not provided
     const attendanceDate = tarikh || new Date().toISOString().split('T')[0];
@@ -403,8 +403,8 @@ export const markAttendance = async (req, res) => {
 
     // Check if student exists and is in the class
     const [existingStudents] = await pool.execute(
-      'SELECT user_ic FROM students WHERE user_ic = ? AND kelas_id = ?',
-      [student_ic, class_id]
+      'SELECT user_telefon FROM students WHERE user_telefon = ? AND kelas_id = ?',
+      [student_telefon, class_id]
     );
 
     if (existingStudents.length === 0) {
@@ -417,11 +417,11 @@ export const markAttendance = async (req, res) => {
     // If user is a teacher, check if they are assigned to this class
     if (req.user && req.user.role === 'teacher') {
       const [classCheck] = await pool.execute(
-        'SELECT guru_ic FROM classes WHERE id = ?',
+        'SELECT guru_telefon FROM classes WHERE id = ?',
         [class_id]
       );
       
-      if (classCheck.length === 0 || classCheck[0].guru_ic !== req.user.ic) {
+      if (classCheck.length === 0 || classCheck[0].guru_telefon !== req.user.telefon) {
         return res.status(403).json({
           success: false,
           message: 'You do not have permission to mark attendance for this class',
@@ -431,8 +431,8 @@ export const markAttendance = async (req, res) => {
 
     // Check if attendance already exists for this date
     const [existingAttendance] = await pool.execute(
-      'SELECT id FROM attendance WHERE student_ic = ? AND class_id = ? AND tarikh = ?',
-      [student_ic, class_id, attendanceDate]
+      'SELECT id FROM attendance WHERE student_telefon = ? AND class_id = ? AND tarikh = ?',
+      [student_telefon, class_id, attendanceDate]
     );
 
     if (existingAttendance.length > 0) {
@@ -440,7 +440,7 @@ export const markAttendance = async (req, res) => {
       const [existingDataFull] = await pool.execute(
         `SELECT a.*, u.nama as pelajar_nama, c.nama_kelas
          FROM attendance a
-         LEFT JOIN users u ON a.student_ic = u.ic
+         LEFT JOIN users u ON a.student_telefon = u.telefon
          LEFT JOIN classes c ON a.class_id = c.id
          WHERE a.id = ?`,
         [existingAttendance[0].id]
@@ -448,19 +448,19 @@ export const markAttendance = async (req, res) => {
       const existingData = existingDataFull[0] || existingAttendance[0];
       
       // Log admin action for undo capability (only for admin/teacher - PIC actions go to approval, not snapshots)
-      const actorIc = req.user?.ic;
-      if (actorIc && (req.user?.role === 'admin' || req.user?.role === 'teacher')) {
-        const studentName = existingData.pelajar_nama || existingData.student_ic;
+      const actorPhone = req.user?.telefon;
+      if (actorPhone && (req.user?.role === 'admin' || req.user?.role === 'teacher')) {
+        const studentName = existingData.pelajar_nama || existingData.student_telefon;
         const className = existingData.nama_kelas || 'Kelas';
         
         await createSnapshot({
           entityType: 'attendance',
           entityId: existingData.id,
-          entityIdentifier: `${existingData.student_ic}-${existingData.class_id}-${attendanceDate}`,
+          entityIdentifier: `${existingData.student_telefon}-${existingData.class_id}-${attendanceDate}`,
           operation: 'update',
           data: {
             id: existingData.id,
-            student_ic: existingData.student_ic,
+            student_telefon: existingData.student_telefon,
             class_id: existingData.class_id,
             tarikh: existingData.tarikh,
             status: existingData.status,
@@ -478,7 +478,7 @@ export const markAttendance = async (req, res) => {
             redirectPath: `/kehadiran?start_date=${attendanceDate}&end_date=${attendanceDate}&class_id=${existingData.class_id}`,
             notes: `Status kehadiran diubah: ${studentName} - ${className} - dari ${existingData.status} kepada ${status} pada ${attendanceDate}`
           },
-          actorIc
+          actorPhone
         });
       }
       
@@ -487,9 +487,9 @@ export const markAttendance = async (req, res) => {
         `
         UPDATE attendance 
         SET status = ?, updated_at = CURRENT_TIMESTAMP
-        WHERE student_ic = ? AND class_id = ? AND tarikh = ?
+        WHERE student_telefon = ? AND class_id = ? AND tarikh = ?
       `,
-        [status, student_ic, class_id, attendanceDate]
+        [status, student_telefon, class_id, attendanceDate]
       );
 
       res.json({
@@ -500,19 +500,19 @@ export const markAttendance = async (req, res) => {
       // Create new attendance record
       const [result] = await pool.execute(
         `
-        INSERT INTO attendance (student_ic, class_id, tarikh, status)
+        INSERT INTO attendance (student_telefon, class_id, tarikh, status)
         VALUES (?, ?, ?, ?)
       `,
-        [student_ic, class_id, attendanceDate, status]
+        [student_telefon, class_id, attendanceDate, status]
       );
 
       // Log admin action for undo capability (only for admin/teacher - PIC actions go to approval, not snapshots)
-      const actorIc = req.user?.ic;
-      if (actorIc && (req.user?.role === 'admin' || req.user?.role === 'teacher')) {
+      const actorPhone = req.user?.telefon;
+      if (actorPhone && (req.user?.role === 'admin' || req.user?.role === 'teacher')) {
         const [newAttendance] = await pool.execute(
           `SELECT a.*, u.nama as pelajar_nama, c.nama_kelas
            FROM attendance a
-           LEFT JOIN users u ON a.student_ic = u.ic
+           LEFT JOIN users u ON a.student_telefon = u.telefon
            LEFT JOIN classes c ON a.class_id = c.id
            WHERE a.id = ?`,
           [result.insertId]
@@ -520,12 +520,12 @@ export const markAttendance = async (req, res) => {
         
         if (newAttendance.length > 0) {
           const attendanceData = newAttendance[0];
-          const studentName = attendanceData.pelajar_nama || student_ic;
+          const studentName = attendanceData.pelajar_nama || student_telefon;
           const className = attendanceData.nama_kelas || 'Kelas';
           
           const attendanceDataForSnapshot = {
             id: attendanceData.id,
-            student_ic: attendanceData.student_ic,
+            student_telefon: attendanceData.student_telefon,
             class_id: attendanceData.class_id,
             tarikh: attendanceData.tarikh,
             status: attendanceData.status,
@@ -540,11 +540,11 @@ export const markAttendance = async (req, res) => {
           await createSnapshot({
             entityType: 'attendance',
             entityId: result.insertId,
-            entityIdentifier: `${student_ic}-${class_id}-${attendanceDate}`,
+            entityIdentifier: `${student_telefon}-${class_id}-${attendanceDate}`,
             operation: 'create',
             data: {
               id: attendanceData.id,
-              student_ic: attendanceData.student_ic,
+              student_telefon: attendanceData.student_telefon,
               class_id: attendanceData.class_id,
               tarikh: attendanceData.tarikh,
               status: attendanceData.status,
@@ -562,7 +562,7 @@ export const markAttendance = async (req, res) => {
               redirectPath: `/kehadiran?start_date=${attendanceDate}&end_date=${attendanceDate}&class_id=${class_id}`,
               notes: `Kehadiran baru ditambah: ${studentName} - ${className} - ${status} pada ${attendanceDate}`
             },
-            actorIc
+            actorPhone
           });
         }
       }
@@ -600,11 +600,11 @@ export const bulkMarkAttendance = async (req, res) => {
     // If user is a teacher, check if they are assigned to this class
     if (req.user && req.user.role === 'teacher') {
       const [classCheck] = await pool.execute(
-        'SELECT guru_ic FROM classes WHERE id = ?',
+        'SELECT guru_telefon FROM classes WHERE id = ?',
         [class_id]
       );
       
-      if (classCheck.length === 0 || classCheck[0].guru_ic !== req.user.ic) {
+      if (classCheck.length === 0 || classCheck[0].guru_telefon !== req.user.telefon) {
         return res.status(403).json({
           success: false,
           message: 'You do not have permission to mark attendance for this class',
@@ -614,16 +614,16 @@ export const bulkMarkAttendance = async (req, res) => {
 
     // Get a connection from the pool for transaction
     const connection = await pool.getConnection();
-    const actorIc = req.user?.ic;
+    const actorPhone = req.user?.telefon;
     // Only create snapshots for admin/teacher - PIC actions go to approval, not snapshots
-    const shouldCreateSnapshots = actorIc && (req.user?.role === 'admin' || req.user?.role === 'teacher');
+    const shouldCreateSnapshots = actorPhone && (req.user?.role === 'admin' || req.user?.role === 'teacher');
 
     try {
       // Start transaction
       await connection.beginTransaction();
 
       for (const record of attendance_data) {
-        const { student_ic, status } = record;
+        const { student_telefon, status } = record;
 
         if (!['Hadir', 'Tidak Hadir', 'Cuti'].includes(status)) {
           await connection.rollback();
@@ -638,10 +638,10 @@ export const bulkMarkAttendance = async (req, res) => {
         const [existingAttendance] = await connection.execute(
           `SELECT a.*, u.nama as pelajar_nama, c.nama_kelas
            FROM attendance a
-           LEFT JOIN users u ON a.student_ic = u.ic
+           LEFT JOIN users u ON a.student_telefon = u.telefon
            LEFT JOIN classes c ON a.class_id = c.id
-           WHERE a.student_ic = ? AND a.class_id = ? AND a.tarikh = ?`,
-          [student_ic, class_id, attendanceDate]
+           WHERE a.student_telefon = ? AND a.class_id = ? AND a.tarikh = ?`,
+          [student_telefon, class_id, attendanceDate]
         );
 
         if (existingAttendance.length > 0) {
@@ -649,17 +649,17 @@ export const bulkMarkAttendance = async (req, res) => {
           const existingData = existingAttendance[0];
           if (shouldCreateSnapshots) {
             try {
-              const studentName = existingData.pelajar_nama || student_ic;
+              const studentName = existingData.pelajar_nama || student_telefon;
               const className = existingData.nama_kelas || 'Kelas';
               
               await createSnapshot({
                 entityType: 'attendance',
                 entityId: existingData.id,
-                entityIdentifier: `${student_ic}-${class_id}-${attendanceDate}`,
+                entityIdentifier: `${student_telefon}-${class_id}-${attendanceDate}`,
                 operation: 'update',
                 data: {
                   id: existingData.id,
-                  student_ic: existingData.student_ic,
+                  student_telefon: existingData.student_telefon,
                   class_id: existingData.class_id,
                   tarikh: existingData.tarikh,
                   status: existingData.status,
@@ -677,7 +677,7 @@ export const bulkMarkAttendance = async (req, res) => {
                   redirectPath: `/kehadiran?start_date=${attendanceDate}&end_date=${attendanceDate}&class_id=${class_id}`,
                   notes: `Status kehadiran diubah (bulk): ${studentName} - ${className} - dari ${existingData.status} kepada ${status} pada ${attendanceDate}`
                 },
-                actorIc
+                actorPhone
               });
             } catch (snapshotError) {
               console.error('[BULK ATTENDANCE] Failed to create snapshot for update:', snapshotError);
@@ -690,18 +690,18 @@ export const bulkMarkAttendance = async (req, res) => {
             `
             UPDATE attendance 
             SET status = ?, updated_at = CURRENT_TIMESTAMP
-            WHERE student_ic = ? AND class_id = ? AND tarikh = ?
+            WHERE student_telefon = ? AND class_id = ? AND tarikh = ?
           `,
-            [status, student_ic, class_id, attendanceDate]
+            [status, student_telefon, class_id, attendanceDate]
           );
         } else {
           // Insert new
           const [insertResult] = await connection.execute(
             `
-            INSERT INTO attendance (student_ic, class_id, tarikh, status)
+            INSERT INTO attendance (student_telefon, class_id, tarikh, status)
             VALUES (?, ?, ?, ?)
           `,
-            [student_ic, class_id, attendanceDate, status]
+            [student_telefon, class_id, attendanceDate, status]
           );
           
           // Create snapshot after create
@@ -710,7 +710,7 @@ export const bulkMarkAttendance = async (req, res) => {
               const [newAttendance] = await connection.execute(
                 `SELECT a.*, u.nama as pelajar_nama, c.nama_kelas
                  FROM attendance a
-                 LEFT JOIN users u ON a.student_ic = u.ic
+                 LEFT JOIN users u ON a.student_telefon = u.telefon
                  LEFT JOIN classes c ON a.class_id = c.id
                  WHERE a.id = ?`,
                 [insertResult.insertId]
@@ -718,17 +718,17 @@ export const bulkMarkAttendance = async (req, res) => {
               
               if (newAttendance.length > 0) {
                 const attendanceData = newAttendance[0];
-                const studentName = attendanceData.pelajar_nama || student_ic;
+                const studentName = attendanceData.pelajar_nama || student_telefon;
                 const className = attendanceData.nama_kelas || 'Kelas';
                 
                 await createSnapshot({
                   entityType: 'attendance',
                   entityId: insertResult.insertId,
-                  entityIdentifier: `${student_ic}-${class_id}-${attendanceDate}`,
+                  entityIdentifier: `${student_telefon}-${class_id}-${attendanceDate}`,
                   operation: 'create',
                   data: {
                     id: attendanceData.id,
-                    student_ic: attendanceData.student_ic,
+                    student_telefon: attendanceData.student_telefon,
                     class_id: attendanceData.class_id,
                     tarikh: attendanceData.tarikh,
                     status: attendanceData.status,
@@ -746,7 +746,7 @@ export const bulkMarkAttendance = async (req, res) => {
                     redirectPath: `/kehadiran?start_date=${attendanceDate}&end_date=${attendanceDate}&class_id=${class_id}`,
                     notes: `Kehadiran baru ditambah (bulk): ${studentName} - ${className} - ${status} pada ${attendanceDate}`
                   },
-                  actorIc
+                  actorPhone
                 });
               }
             } catch (snapshotError) {
@@ -815,11 +815,11 @@ export const bulkMarkAttendanceWithProof = async (req, res) => {
     // If user is a teacher, check if they are assigned to this class
     if (req.user && req.user.role === 'teacher') {
       const [classCheck] = await pool.execute(
-        'SELECT guru_ic FROM classes WHERE id = ?',
+        'SELECT guru_telefon FROM classes WHERE id = ?',
         [class_id]
       );
       
-      if (classCheck.length === 0 || classCheck[0].guru_ic !== req.user.ic) {
+      if (classCheck.length === 0 || classCheck[0].guru_telefon !== req.user.telefon) {
         return res.status(403).json({
           success: false,
           message: 'You do not have permission to mark attendance for this class',
@@ -834,20 +834,20 @@ export const bulkMarkAttendanceWithProof = async (req, res) => {
     }
 
     // Get user who marked the attendance
-    const markedBy = req.user?.ic || null;
+    const markedBy = req.user?.telefon || null;
 
     // Get a connection from the pool for transaction
     const connection = await pool.getConnection();
-    const actorIc = req.user?.ic;
+    const actorPhone = req.user?.telefon;
     // Only create snapshots for admin/teacher - PIC actions go to approval, not snapshots
-    const shouldCreateSnapshots = actorIc && (req.user?.role === 'admin' || req.user?.role === 'teacher');
+    const shouldCreateSnapshots = actorPhone && (req.user?.role === 'admin' || req.user?.role === 'teacher');
     
     try {
       // Start transaction
       await connection.beginTransaction();
 
       for (const record of parsedAttendanceData) {
-        const { student_ic, status } = record;
+        const { student_telefon, status } = record;
 
         // Allow additional statuses: Lewat, Sakit
         if (!['Hadir', 'Tidak Hadir', 'Cuti', 'Lewat', 'Sakit'].includes(status)) {
@@ -863,10 +863,10 @@ export const bulkMarkAttendanceWithProof = async (req, res) => {
         const [existingAttendance] = await connection.execute(
           `SELECT a.*, u.nama as pelajar_nama, c.nama_kelas
            FROM attendance a
-           LEFT JOIN users u ON a.student_ic = u.ic
+           LEFT JOIN users u ON a.student_telefon = u.telefon
            LEFT JOIN classes c ON a.class_id = c.id
-           WHERE a.student_ic = ? AND a.class_id = ? AND a.tarikh = ?`,
-          [student_ic, class_id, attendanceDate]
+           WHERE a.student_telefon = ? AND a.class_id = ? AND a.tarikh = ?`,
+          [student_telefon, class_id, attendanceDate]
         );
 
         if (existingAttendance.length > 0) {
@@ -874,17 +874,17 @@ export const bulkMarkAttendanceWithProof = async (req, res) => {
           const existingData = existingAttendance[0];
           if (shouldCreateSnapshots) {
             try {
-              const studentName = existingData.pelajar_nama || student_ic;
+              const studentName = existingData.pelajar_nama || student_telefon;
               const className = existingData.nama_kelas || 'Kelas';
               
               await createSnapshot({
                 entityType: 'attendance',
                 entityId: existingData.id,
-                entityIdentifier: `${student_ic}-${class_id}-${attendanceDate}`,
+                entityIdentifier: `${student_telefon}-${class_id}-${attendanceDate}`,
                 operation: 'update',
                 data: {
                   id: existingData.id,
-                  student_ic: existingData.student_ic,
+                  student_telefon: existingData.student_telefon,
                   class_id: existingData.class_id,
                   tarikh: existingData.tarikh,
                   status: existingData.status,
@@ -902,7 +902,7 @@ export const bulkMarkAttendanceWithProof = async (req, res) => {
                   redirectPath: `/kehadiran?start_date=${attendanceDate}&end_date=${attendanceDate}&class_id=${class_id}`,
                   notes: `Status kehadiran diubah (bulk dengan bukti): ${studentName} - ${className} - dari ${existingData.status} kepada ${status} pada ${attendanceDate}`
                 },
-                actorIc
+                actorPhone
               });
             } catch (snapshotError) {
               console.error('[BULK ATTENDANCE WITH PROOF] Failed to create snapshot for update:', snapshotError);
@@ -918,18 +918,18 @@ export const bulkMarkAttendanceWithProof = async (req, res) => {
                 proof_image = ?,
                 marked_by = ?,
                 updated_at = CURRENT_TIMESTAMP
-            WHERE student_ic = ? AND class_id = ? AND tarikh = ?
+            WHERE student_telefon = ? AND class_id = ? AND tarikh = ?
           `,
-            [status, proofImagePath || null, markedBy || null, student_ic, class_id, attendanceDate]
+            [status, proofImagePath || null, markedBy || null, student_telefon, class_id, attendanceDate]
           );
         } else {
           // Insert new - always include all fields (use NULL if not provided)
           const [insertResult] = await connection.execute(
             `
-            INSERT INTO attendance (student_ic, class_id, tarikh, status, proof_image, marked_by)
+            INSERT INTO attendance (student_telefon, class_id, tarikh, status, proof_image, marked_by)
             VALUES (?, ?, ?, ?, ?, ?)
           `,
-            [student_ic, class_id, attendanceDate, status, proofImagePath || null, markedBy || null]
+            [student_telefon, class_id, attendanceDate, status, proofImagePath || null, markedBy || null]
           );
           
           // Create snapshot after create
@@ -938,7 +938,7 @@ export const bulkMarkAttendanceWithProof = async (req, res) => {
               const [newAttendance] = await connection.execute(
                 `SELECT a.*, u.nama as pelajar_nama, c.nama_kelas
                  FROM attendance a
-                 LEFT JOIN users u ON a.student_ic = u.ic
+                 LEFT JOIN users u ON a.student_telefon = u.telefon
                  LEFT JOIN classes c ON a.class_id = c.id
                  WHERE a.id = ?`,
                 [insertResult.insertId]
@@ -946,17 +946,17 @@ export const bulkMarkAttendanceWithProof = async (req, res) => {
               
               if (newAttendance.length > 0) {
                 const attendanceData = newAttendance[0];
-                const studentName = attendanceData.pelajar_nama || student_ic;
+                const studentName = attendanceData.pelajar_nama || student_telefon;
                 const className = attendanceData.nama_kelas || 'Kelas';
                 
                 await createSnapshot({
                   entityType: 'attendance',
                   entityId: insertResult.insertId,
-                  entityIdentifier: `${student_ic}-${class_id}-${attendanceDate}`,
+                  entityIdentifier: `${student_telefon}-${class_id}-${attendanceDate}`,
                   operation: 'create',
                   data: {
                     id: attendanceData.id,
-                    student_ic: attendanceData.student_ic,
+                    student_telefon: attendanceData.student_telefon,
                     class_id: attendanceData.class_id,
                     tarikh: attendanceData.tarikh,
                     status: attendanceData.status,
@@ -974,7 +974,7 @@ export const bulkMarkAttendanceWithProof = async (req, res) => {
                     redirectPath: `/kehadiran?start_date=${attendanceDate}&end_date=${attendanceDate}&class_id=${class_id}`,
                     notes: `Kehadiran baru ditambah (bulk dengan bukti): ${studentName} - ${className} - ${status} pada ${attendanceDate}`
                   },
-                  actorIc
+                  actorPhone
                 });
               }
             } catch (snapshotError) {
@@ -1012,7 +1012,7 @@ export const deleteAttendance = async (req, res) => {
   console.log(`\n${'🎯'.repeat(40)}`);
   console.log('[DELETE ATTENDANCE CONTROLLER] ===== CONTROLLER CALLED =====');
   console.log('[DELETE ATTENDANCE CONTROLLER] ID:', req.params.id);
-  console.log('[DELETE ATTENDANCE CONTROLLER] User:', req.user?.ic, 'Role:', req.user?.role);
+  console.log('[DELETE ATTENDANCE CONTROLLER] User:', req.user?.telefon, 'Role:', req.user?.role);
   console.log('[DELETE ATTENDANCE CONTROLLER] Timestamp:', new Date().toISOString());
   console.log(`${'🎯'.repeat(40)}\n`);
   
@@ -1033,7 +1033,7 @@ export const deleteAttendance = async (req, res) => {
     const [existingAttendance] = await pool.execute(
       `SELECT a.*, u.nama as pelajar_nama, c.nama_kelas
        FROM attendance a
-       LEFT JOIN users u ON a.student_ic = u.ic
+       LEFT JOIN users u ON a.student_telefon = u.telefon
        LEFT JOIN classes c ON a.class_id = c.id
        WHERE a.id = ?`,
       [attendanceId]
@@ -1048,10 +1048,10 @@ export const deleteAttendance = async (req, res) => {
     }
 
     const attendanceData = existingAttendance[0];
-    const studentName = attendanceData.pelajar_nama || attendanceData.student_ic;
+    const studentName = attendanceData.pelajar_nama || attendanceData.student_telefon;
     console.log('[DELETE ATTENDANCE] ✅ STEP 1: Attendance data fetched:', {
       id: attendanceData.id,
-      student_ic: attendanceData.student_ic,
+      student_telefon: attendanceData.student_telefon,
       class_id: attendanceData.class_id,
       tarikh: attendanceData.tarikh,
       status: attendanceData.status
@@ -1059,7 +1059,7 @@ export const deleteAttendance = async (req, res) => {
 
     // STEP 2: Create snapshot for Recycle Bin BEFORE deletion (MANDATORY)
     // This must happen BEFORE the actual deletion for recovery purposes
-    if (!req.user || !req.user.ic) {
+    if (!req.user || !req.user.telefon) {
       console.error('[DELETE ATTENDANCE] ❌ No user or IC found in request');
       return res.status(401).json({
         success: false,
@@ -1078,7 +1078,7 @@ export const deleteAttendance = async (req, res) => {
     // Prepare snapshot data - ensure all required fields are present
     const attendanceDataForSnapshot = {
       id: attendanceData.id,
-      student_ic: attendanceData.student_ic,
+      student_telefon: attendanceData.student_telefon,
       class_id: attendanceData.class_id,
       tarikh: attendanceData.tarikh,
       status: attendanceData.status,
@@ -1096,9 +1096,9 @@ export const deleteAttendance = async (req, res) => {
     console.log('[DELETE ATTENDANCE] Snapshot parameters:', {
       entityType: 'attendance',
       entityId: attendanceId,
-      entityIdentifier: `${attendanceData.student_ic}-${attendanceData.class_id}-${attendanceData.tarikh}`,
+      entityIdentifier: `${attendanceData.student_telefon}-${attendanceData.class_id}-${attendanceData.tarikh}`,
       operation: 'delete',
-      actorIc: req.user.ic,
+      actorPhone: req.user.telefon,
       hasData: !!attendanceDataForSnapshot,
       dataKeys: Object.keys(attendanceDataForSnapshot)
     });
@@ -1114,7 +1114,7 @@ export const deleteAttendance = async (req, res) => {
       snapshotId = await createSnapshot({
         entityType: 'attendance',
         entityId: numericEntityId,
-        entityIdentifier: `${attendanceData.student_ic}-${attendanceData.class_id}-${attendanceData.tarikh}`,
+        entityIdentifier: `${attendanceData.student_telefon}-${attendanceData.class_id}-${attendanceData.tarikh}`,
         operation: 'delete',
         data: attendanceDataForSnapshot,
         metadata: {
@@ -1123,7 +1123,7 @@ export const deleteAttendance = async (req, res) => {
           operationLabel: 'Padam kehadiran',
           redirectPath: `/kehadiran?start_date=${attendanceData.tarikh}&end_date=${attendanceData.tarikh}&class_id=${attendanceData.class_id}`
         },
-        actorIc: req.user.ic
+        actorPhone: req.user.telefon
       });
       
       if (!snapshotId || snapshotId <= 0) {
@@ -1137,7 +1137,7 @@ export const deleteAttendance = async (req, res) => {
         message: snapshotError.message,
         stack: snapshotError.stack,
         entityId: attendanceId,
-        actorIc: req.user.ic
+        actorPhone: req.user.telefon
       });
       return res.status(500).json({
         success: false,
@@ -1260,7 +1260,7 @@ export const confirmAttendanceDocument = async (req, res) => {
   try {
     const { id } = req.params;
     const { confirmed, notes } = req.body;
-    const confirmedBy = req.user?.ic;
+    const confirmedBy = req.user?.telefon;
 
     if (!confirmedBy) {
       return res.status(401).json({
@@ -1285,9 +1285,9 @@ export const confirmAttendanceDocument = async (req, res) => {
     const isConfirmed = confirmed === true || confirmed === 1 || confirmed === '1';
 
     // Create snapshot before update (only for admin/teacher - PIC actions go to approval, not snapshots)
-    const actorIc = req.user?.ic;
+    const actorPhone = req.user?.telefon;
     const userRole = req.user?.role;
-    const shouldCreateSnapshot = actorIc && (userRole === 'admin' || userRole === 'teacher');
+    const shouldCreateSnapshot = actorPhone && (userRole === 'admin' || userRole === 'teacher');
     
     if (shouldCreateSnapshot) {
       try {
@@ -1295,7 +1295,7 @@ export const confirmAttendanceDocument = async (req, res) => {
         const [attendanceForSnapshot] = await pool.execute(
           `SELECT a.*, u.nama as pelajar_nama, c.nama_kelas
            FROM attendance a
-           LEFT JOIN users u ON a.student_ic = u.ic
+           LEFT JOIN users u ON a.student_telefon = u.telefon
            LEFT JOIN classes c ON a.class_id = c.id
            WHERE a.id = ?`,
           [id]
@@ -1303,7 +1303,7 @@ export const confirmAttendanceDocument = async (req, res) => {
         
         if (attendanceForSnapshot.length > 0) {
           const attendanceData = attendanceForSnapshot[0];
-          const studentName = attendanceData.pelajar_nama || attendanceData.student_ic;
+          const studentName = attendanceData.pelajar_nama || attendanceData.student_telefon;
           const className = attendanceData.nama_kelas || 'Kelas';
           const confirmationStatus = attendanceData.document_confirmed ? 'Disahkan' : 'Tidak disahkan';
           const newStatus = isConfirmed ? 'Disahkan' : 'Tidak disahkan';
@@ -1311,11 +1311,11 @@ export const confirmAttendanceDocument = async (req, res) => {
           await createSnapshot({
             entityType: 'attendance',
             entityId: parseInt(id),
-            entityIdentifier: `${attendanceData.student_ic}-${attendanceData.class_id}-${attendanceData.tarikh}`,
+            entityIdentifier: `${attendanceData.student_telefon}-${attendanceData.class_id}-${attendanceData.tarikh}`,
             operation: 'update',
             data: {
               id: attendanceData.id,
-              student_ic: attendanceData.student_ic,
+              student_telefon: attendanceData.student_telefon,
               class_id: attendanceData.class_id,
               tarikh: attendanceData.tarikh,
               status: attendanceData.status,
@@ -1334,7 +1334,7 @@ export const confirmAttendanceDocument = async (req, res) => {
               redirectPath: `/kehadiran?start_date=${attendanceData.tarikh}&end_date=${attendanceData.tarikh}&class_id=${attendanceData.class_id}`,
               notes: `Status pengesahan dokumen diubah: ${studentName} - ${className} - dari ${confirmationStatus} kepada ${newStatus} pada ${attendanceData.tarikh}`
             },
-            actorIc
+            actorPhone
           });
         }
       } catch (snapshotError) {
@@ -1355,12 +1355,12 @@ export const confirmAttendanceDocument = async (req, res) => {
     );
 
     const [updatedAttendance] = await pool.execute(
-      `SELECT a.*, u.nama as pelajar_nama, u.ic as pelajar_ic, c.nama_kelas,
+      `SELECT a.*, u.nama as pelajar_nama, u.telefon as pelajar_ic, c.nama_kelas,
               cu.nama as confirmed_by_name
        FROM attendance a
-       JOIN users u ON a.student_ic = u.ic
+       JOIN users u ON a.student_telefon = u.telefon
        JOIN classes c ON a.class_id = c.id
-       LEFT JOIN users cu ON a.confirmed_by = cu.ic
+       LEFT JOIN users cu ON a.confirmed_by = cu.telefon
        WHERE a.id = ?`,
       [id]
     );

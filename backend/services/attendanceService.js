@@ -4,7 +4,7 @@ import { registerPendingPicHandler } from '../utils/pendingPicChanges.js';
 /**
  * Create or update attendance record
  * @param {Object} data - Attendance data
- * @param {string} data.student_ic - Student IC
+ * @param {string} data.student_telefon - Student IC
  * @param {number} data.class_id - Class ID
  * @param {string} data.tarikh - Date (ISO format)
  * @param {string} data.status - Status (Hadir, Tidak Hadir, Cuti)
@@ -13,14 +13,14 @@ import { registerPendingPicHandler } from '../utils/pendingPicChanges.js';
  * @returns {Promise<Object>} Created/updated attendance record
  */
 export const createOrUpdateAttendanceRecord = async (data, options = {}) => {
-  const { student_ic, class_id, tarikh, status } = data;
+  const { student_telefon, class_id, tarikh, status } = data;
   const executor = options.connection || pool;
   const attendanceDate = tarikh || new Date().toISOString().split('T')[0];
 
   // Check if attendance already exists
   const [existingAttendance] = await executor.execute(
-    'SELECT id FROM attendance WHERE student_ic = ? AND class_id = ? AND tarikh = ?',
-    [student_ic, class_id, attendanceDate]
+    'SELECT id FROM attendance WHERE student_telefon = ? AND class_id = ? AND tarikh = ?',
+    [student_telefon, class_id, attendanceDate]
   );
 
   if (existingAttendance.length > 0) {
@@ -28,26 +28,26 @@ export const createOrUpdateAttendanceRecord = async (data, options = {}) => {
     await executor.execute(
       `UPDATE attendance 
        SET status = ?, updated_at = CURRENT_TIMESTAMP
-       WHERE student_ic = ? AND class_id = ? AND tarikh = ?`,
-      [status, student_ic, class_id, attendanceDate]
+       WHERE student_telefon = ? AND class_id = ? AND tarikh = ?`,
+      [status, student_telefon, class_id, attendanceDate]
     );
 
     const [updated] = await executor.execute(
-      'SELECT * FROM attendance WHERE student_ic = ? AND class_id = ? AND tarikh = ?',
-      [student_ic, class_id, attendanceDate]
+      'SELECT * FROM attendance WHERE student_telefon = ? AND class_id = ? AND tarikh = ?',
+      [student_telefon, class_id, attendanceDate]
     );
     return { attendance: updated[0], wasCreated: false };
   } else {
     // Create new attendance record
     await executor.execute(
-      `INSERT INTO attendance (student_ic, class_id, tarikh, status)
+      `INSERT INTO attendance (student_telefon, class_id, tarikh, status)
        VALUES (?, ?, ?, ?)`,
-      [student_ic, class_id, attendanceDate, status]
+      [student_telefon, class_id, attendanceDate, status]
     );
 
     const [created] = await executor.execute(
-      'SELECT * FROM attendance WHERE student_ic = ? AND class_id = ? AND tarikh = ?',
-      [student_ic, class_id, attendanceDate]
+      'SELECT * FROM attendance WHERE student_telefon = ? AND class_id = ? AND tarikh = ?',
+      [student_telefon, class_id, attendanceDate]
     );
     return { attendance: created[0], wasCreated: true };
   }
@@ -128,7 +128,7 @@ export const deleteAttendanceRecord = async (id, options = {}) => {
 };
 
 // Register approval handlers
-registerPendingPicHandler('attendance:create', async ({ payload, actorIc, adminIc, connection }) => {
+registerPendingPicHandler('attendance:create', async ({ payload, actorPhone, adminIc, connection }) => {
   const result = await createOrUpdateAttendanceRecord(
     payload,
     { connection }
@@ -136,13 +136,13 @@ registerPendingPicHandler('attendance:create', async ({ payload, actorIc, adminI
   // Return snapshot data for PIC recycle bin in proper format
   return {
     entityId: result.attendance.id,
-    entityIdentifier: `${result.attendance.student_ic}-${result.attendance.class_id}-${result.attendance.tarikh}`,
+    entityIdentifier: `${result.attendance.student_telefon}-${result.attendance.class_id}-${result.attendance.tarikh}`,
     snapshotData: result.attendance,
     ...result.attendance
   };
 });
 
-registerPendingPicHandler('attendance:update', async ({ payload, entityId, actorIc, adminIc, connection }) => {
+registerPendingPicHandler('attendance:update', async ({ payload, entityId, actorPhone, adminIc, connection }) => {
   const result = await updateAttendanceRecord(
     entityId,
     payload,
@@ -151,17 +151,17 @@ registerPendingPicHandler('attendance:update', async ({ payload, entityId, actor
   // Return snapshot data for PIC recycle bin in proper format
   return {
     entityId: result.attendance.id,
-    entityIdentifier: `${result.attendance.student_ic}-${result.attendance.class_id}-${result.attendance.tarikh}`,
+    entityIdentifier: `${result.attendance.student_telefon}-${result.attendance.class_id}-${result.attendance.tarikh}`,
     snapshotData: result.attendance,
     ...result.attendance
   };
 });
 
-registerPendingPicHandler('attendance:delete', async ({ entityId, payload, actorIc, adminIc, connection }) => {
+registerPendingPicHandler('attendance:delete', async ({ entityId, payload, actorPhone, adminIc, connection }) => {
   console.log('[ATTENDANCE SERVICE] ===== PIC APPROVED DELETION HANDLER =====');
   console.log('[ATTENDANCE SERVICE] Entity ID:', entityId);
   console.log('[ATTENDANCE SERVICE] Payload:', payload);
-  console.log('[ATTENDANCE SERVICE] Actor IC (PIC):', actorIc);
+  console.log('[ATTENDANCE SERVICE] Actor IC (PIC):', actorPhone);
   console.log('[ATTENDANCE SERVICE] Admin IC (approver):', adminIc);
   
   // Get entityId from params or payload (for undo requests, it might be in payload)
@@ -175,7 +175,7 @@ registerPendingPicHandler('attendance:delete', async ({ entityId, payload, actor
   const [existingAttendance] = await executor.execute(
     `SELECT a.*, u.nama as pelajar_nama, c.nama_kelas
      FROM attendance a
-     LEFT JOIN users u ON a.student_ic = u.ic
+     LEFT JOIN users u ON a.student_telefon = u.telefon
      LEFT JOIN classes c ON a.class_id = c.id
      WHERE a.id = ?`,
     [deleteEntityId]
@@ -199,10 +199,10 @@ registerPendingPicHandler('attendance:delete', async ({ entityId, payload, actor
   // Return snapshot data for PIC recycle bin in proper format
   return {
     entityId: attendanceData.id,
-    entityIdentifier: `${attendanceData.student_ic}-${attendanceData.class_id}-${attendanceData.tarikh}`,
+    entityIdentifier: `${attendanceData.student_telefon}-${attendanceData.class_id}-${attendanceData.tarikh}`,
     snapshotData: {
       id: attendanceData.id,
-      student_ic: attendanceData.student_ic,
+      student_telefon: attendanceData.student_telefon,
       class_id: attendanceData.class_id,
       tarikh: attendanceData.tarikh,
       status: attendanceData.status,
@@ -221,7 +221,7 @@ registerPendingPicHandler('attendance:delete', async ({ entityId, payload, actor
  * @param {Object} data - Bulk attendance data
  * @param {number} data.class_id - Class ID
  * @param {string} data.tarikh - Date (ISO format)
- * @param {Array} data.attendance_data - Array of {student_ic, status}
+ * @param {Array} data.attendance_data - Array of {student_telefon, status}
  * @param {Object} options - Options
  * @param {Object} options.connection - Database connection (for transactions)
  * @returns {Promise<Object>} Result with processed records
@@ -234,7 +234,7 @@ export const bulkMarkAttendanceRecords = async (data, options = {}) => {
   const results = [];
   
   for (const record of attendance_data) {
-    const { student_ic, status } = record;
+    const { student_telefon, status } = record;
     
     if (!['Hadir', 'Tidak Hadir', 'Cuti'].includes(status)) {
       throw new Error(`Invalid attendance status: ${status}`);
@@ -242,8 +242,8 @@ export const bulkMarkAttendanceRecords = async (data, options = {}) => {
     
     // Check if attendance already exists
     const [existingAttendance] = await executor.execute(
-      'SELECT id FROM attendance WHERE student_ic = ? AND class_id = ? AND tarikh = ?',
-      [student_ic, class_id, attendanceDate]
+      'SELECT id FROM attendance WHERE student_telefon = ? AND class_id = ? AND tarikh = ?',
+      [student_telefon, class_id, attendanceDate]
     );
     
     if (existingAttendance.length > 0) {
@@ -251,18 +251,18 @@ export const bulkMarkAttendanceRecords = async (data, options = {}) => {
       await executor.execute(
         `UPDATE attendance 
          SET status = ?, updated_at = CURRENT_TIMESTAMP
-         WHERE student_ic = ? AND class_id = ? AND tarikh = ?`,
-        [status, student_ic, class_id, attendanceDate]
+         WHERE student_telefon = ? AND class_id = ? AND tarikh = ?`,
+        [status, student_telefon, class_id, attendanceDate]
       );
-      results.push({ student_ic, status, action: 'updated' });
+      results.push({ student_telefon, status, action: 'updated' });
     } else {
       // Insert new attendance record
       await executor.execute(
-        `INSERT INTO attendance (student_ic, class_id, tarikh, status)
+        `INSERT INTO attendance (student_telefon, class_id, tarikh, status)
          VALUES (?, ?, ?, ?)`,
-        [student_ic, class_id, attendanceDate, status]
+        [student_telefon, class_id, attendanceDate, status]
       );
-      results.push({ student_ic, status, action: 'created' });
+      results.push({ student_telefon, status, action: 'created' });
     }
   }
   
@@ -274,7 +274,7 @@ export const bulkMarkAttendanceRecords = async (data, options = {}) => {
  * @param {Object} data - Bulk attendance data with proof
  * @param {number} data.class_id - Class ID
  * @param {string} data.tarikh - Date (ISO format)
- * @param {Array} data.attendance_data - Array of {student_ic, status}
+ * @param {Array} data.attendance_data - Array of {student_telefon, status}
  * @param {string} data.proof_image - Proof image path
  * @param {string} data.marked_by - IC of user who marked attendance
  * @param {Object} options - Options
@@ -289,7 +289,7 @@ export const bulkMarkAttendanceRecordsWithProof = async (data, options = {}) => 
   const results = [];
   
   for (const record of attendance_data) {
-    const { student_ic, status } = record;
+    const { student_telefon, status } = record;
     
     // Allow additional statuses: Lewat, Sakit
     if (!['Hadir', 'Tidak Hadir', 'Cuti', 'Lewat', 'Sakit'].includes(status)) {
@@ -298,8 +298,8 @@ export const bulkMarkAttendanceRecordsWithProof = async (data, options = {}) => 
     
     // Check if attendance already exists
     const [existingAttendance] = await executor.execute(
-      'SELECT id FROM attendance WHERE student_ic = ? AND class_id = ? AND tarikh = ?',
-      [student_ic, class_id, attendanceDate]
+      'SELECT id FROM attendance WHERE student_telefon = ? AND class_id = ? AND tarikh = ?',
+      [student_telefon, class_id, attendanceDate]
     );
     
     if (existingAttendance.length > 0) {
@@ -310,18 +310,18 @@ export const bulkMarkAttendanceRecordsWithProof = async (data, options = {}) => 
              proof_image = ?,
              marked_by = ?,
              updated_at = CURRENT_TIMESTAMP
-         WHERE student_ic = ? AND class_id = ? AND tarikh = ?`,
-        [status, proof_image || null, marked_by || null, student_ic, class_id, attendanceDate]
+         WHERE student_telefon = ? AND class_id = ? AND tarikh = ?`,
+        [status, proof_image || null, marked_by || null, student_telefon, class_id, attendanceDate]
       );
-      results.push({ student_ic, status, action: 'updated' });
+      results.push({ student_telefon, status, action: 'updated' });
     } else {
       // Insert new attendance record
       await executor.execute(
-        `INSERT INTO attendance (student_ic, class_id, tarikh, status, proof_image, marked_by)
+        `INSERT INTO attendance (student_telefon, class_id, tarikh, status, proof_image, marked_by)
          VALUES (?, ?, ?, ?, ?, ?)`,
-        [student_ic, class_id, attendanceDate, status, proof_image || null, marked_by || null]
+        [student_telefon, class_id, attendanceDate, status, proof_image || null, marked_by || null]
       );
-      results.push({ student_ic, status, action: 'created' });
+      results.push({ student_telefon, status, action: 'created' });
     }
   }
   
@@ -329,7 +329,7 @@ export const bulkMarkAttendanceRecordsWithProof = async (data, options = {}) => 
 };
 
 // Register bulk approval handlers
-registerPendingPicHandler('attendance:bulk-create', async ({ payload, actorIc, adminIc, connection }) => {
+registerPendingPicHandler('attendance:bulk-create', async ({ payload, actorPhone, adminIc, connection }) => {
   const result = await bulkMarkAttendanceRecords(
     payload,
     { connection }
@@ -343,7 +343,7 @@ registerPendingPicHandler('attendance:bulk-create', async ({ payload, actorIc, a
   };
 });
 
-registerPendingPicHandler('attendance:bulk-create-with-proof', async ({ payload, actorIc, adminIc, connection }) => {
+registerPendingPicHandler('attendance:bulk-create-with-proof', async ({ payload, actorPhone, adminIc, connection }) => {
   const result = await bulkMarkAttendanceRecordsWithProof(
     payload,
     { connection }

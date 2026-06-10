@@ -11,7 +11,7 @@ CREATE TABLE IF NOT EXISTS pic_action_snapshots (
     operation ENUM('create', 'update', 'delete', 'bulk-create', 'bulk-create-with-proof') NOT NULL,
     data JSON NOT NULL COMMENT 'Snapshot data of the action',
     metadata JSON COMMENT 'Additional metadata about the action',
-    pic_ic VARCHAR(20) NOT NULL COMMENT 'PIC who initiated the action',
+    pic_telefon VARCHAR(20) NOT NULL COMMENT 'PIC who initiated the action',
     approved_by VARCHAR(20) NULL COMMENT 'Admin who approved the action (NULL if pending)',
     pending_pic_change_id INT NULL COMMENT 'Reference to original pending_pic_changes.id',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -22,7 +22,7 @@ CREATE TABLE IF NOT EXISTS pic_action_snapshots (
     undo_pending_id INT NULL COMMENT 'Reference to undo request in pending_pic_changes.id',
     INDEX idx_pic_snapshots_entity (entity_type, entity_id),
     INDEX idx_pic_snapshots_expires (expires_at),
-    INDEX idx_pic_snapshots_pic (pic_ic),
+    INDEX idx_pic_snapshots_pic (pic_telefon),
     INDEX idx_pic_snapshots_pending (pending_pic_change_id),
     INDEX idx_pic_snapshots_undo (undo_pending_id),
     INDEX idx_pic_snapshots_approved_by (approved_by),
@@ -97,12 +97,12 @@ const ensureSnapshotTable = async () => {
     try {
       await pool.execute(`
         ALTER TABLE pic_action_snapshots
-        ADD CONSTRAINT fk_pic_snapshots_pic_ic 
-        FOREIGN KEY (pic_ic) REFERENCES users(ic) ON DELETE CASCADE
+        ADD CONSTRAINT fk_pic_snapshots_pic_telefon 
+        FOREIGN KEY (pic_telefon) REFERENCES users(telefon) ON DELETE CASCADE
       `);
     } catch (err) {
-      if (!err.message.includes('Duplicate foreign key') && !err.message.includes('already exists')) {
-        console.warn('Could not add foreign key fk_pic_snapshots_pic_ic:', err.message);
+      if (!err.message.includes('Duplicate foreign key') && !err.message.includes('already exists') && !err.message.includes('Duplicate key')) {
+        console.warn('Could not add foreign key fk_pic_snapshots_pic_telefon:', err.message);
       }
     }
     
@@ -110,10 +110,10 @@ const ensureSnapshotTable = async () => {
       await pool.execute(`
         ALTER TABLE pic_action_snapshots
         ADD CONSTRAINT fk_pic_snapshots_approved_by 
-        FOREIGN KEY (approved_by) REFERENCES users(ic) ON DELETE CASCADE
+        FOREIGN KEY (approved_by) REFERENCES users(telefon) ON DELETE CASCADE
       `);
     } catch (err) {
-      if (!err.message.includes('Duplicate foreign key') && !err.message.includes('already exists')) {
+      if (!err.message.includes('Duplicate foreign key') && !err.message.includes('already exists') && !err.message.includes('Duplicate key')) {
         console.warn('Could not add foreign key fk_pic_snapshots_approved_by:', err.message);
       }
     }
@@ -125,7 +125,7 @@ const ensureSnapshotTable = async () => {
         FOREIGN KEY (pending_pic_change_id) REFERENCES pending_pic_changes(id) ON DELETE SET NULL
       `);
     } catch (err) {
-      if (!err.message.includes('Duplicate foreign key') && !err.message.includes('already exists')) {
+      if (!err.message.includes('Duplicate foreign key') && !err.message.includes('already exists') && !err.message.includes('Duplicate key')) {
         console.warn('Could not add foreign key fk_pic_snapshots_pending_pic_change:', err.message);
       }
     }
@@ -137,7 +137,7 @@ const ensureSnapshotTable = async () => {
         FOREIGN KEY (undo_pending_id) REFERENCES pending_pic_changes(id) ON DELETE SET NULL
       `);
     } catch (err) {
-      if (!err.message.includes('Duplicate foreign key') && !err.message.includes('already exists')) {
+      if (!err.message.includes('Duplicate foreign key') && !err.message.includes('already exists') && !err.message.includes('Duplicate key')) {
         console.warn('Could not add foreign key fk_pic_snapshots_undo_pending:', err.message);
       }
     }
@@ -160,8 +160,8 @@ const ensureSnapshotTable = async () => {
  * @param {'create'|'update'|'delete'} params.operation
  * @param {Object} params.data - The data before/after the operation
  * @param {Object|null} params.metadata
- * @param {string} params.picIc - IC of PIC who initiated the action
- * @param {string} params.approvedBy - IC of admin who approved
+ * @param {string} params.picPhone - Phone of PIC who initiated the action
+ * @param {string} params.approvedBy - Phone of admin who approved
  * @param {number|null} params.pendingPicChangeId - ID of the original pending approval
  * @returns {Promise<number>} snapshotId
  */
@@ -172,7 +172,7 @@ export async function createPicSnapshot({
   operation,
   data,
   metadata = null,
-  picIc,
+  picPhone,
   approvedBy = null, // Can be null if pending approval
   pendingPicChangeId = null
 }) {
@@ -191,8 +191,8 @@ export async function createPicSnapshot({
   if (!data) {
     throw new Error('Missing data when creating PIC action snapshot.');
   }
-  if (!picIc) {
-    throw new Error('Missing picIc when creating PIC action snapshot.');
+  if (!picPhone) {
+    throw new Error('Missing picPhone when creating PIC action snapshot.');
   }
   // approvedBy is optional - can be null if pending approval
 
@@ -210,7 +210,7 @@ export async function createPicSnapshot({
     entityId: numericEntityId,
     entityIdentifier,
     operation,
-    picIc,
+    picPhone,
     approvedBy,
     pendingPicChangeId
   });
@@ -221,12 +221,12 @@ export async function createPicSnapshot({
     
     const [result] = await pool.execute(
       `INSERT INTO pic_action_snapshots 
-        (entity_type, entity_id, entity_identifier, operation, data, metadata, pic_ic, approved_by, pending_pic_change_id, deleted_at, expires_at) 
+        (entity_type, entity_id, entity_identifier, operation, data, metadata, pic_telefon, approved_by, pending_pic_change_id, deleted_at, expires_at) 
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, DATE_ADD(NOW(), INTERVAL ? HOUR))`,
-      [entityType, numericEntityId, entityIdentifier, operation, jsonData, metadataJson, picIc, approvedBy, pendingPicChangeId, deletedAt, PIC_SNAPSHOT_TTL_HOURS]
+      [entityType, numericEntityId, entityIdentifier, operation, jsonData, metadataJson, picPhone, approvedBy, pendingPicChangeId, deletedAt, PIC_SNAPSHOT_TTL_HOURS]
     );
 
-    console.log(`[PIC SNAPSHOT] ✅ Created snapshot ID ${result.insertId} for ${entityType}:${numericEntityId} (${entityIdentifier || 'no identifier'}) operation:${operation} by PIC ${picIc} (approved by ${approvedBy}) deleted_at:${deletedAt}`);
+    console.log(`[PIC SNAPSHOT] ✅ Created snapshot ID ${result.insertId} for ${entityType}:${numericEntityId} (${entityIdentifier || 'no identifier'}) operation:${operation} by PIC ${picPhone} (approved by ${approvedBy}) deleted_at:${deletedAt}`);
     return result.insertId;
   } catch (error) {
     console.error(`[PIC SNAPSHOT] ❌ Failed to create snapshot:`, error);
@@ -287,14 +287,14 @@ export async function getPicSnapshotById(id) {
 /**
  * List PIC snapshots (for a specific PIC user)
  */
-export async function listPicSnapshots({ picIc = null } = {}) {
+export async function listPicSnapshots({ picPhone = null } = {}) {
   await ensureSnapshotTable();
   const whereClauses = ['pas.was_undone = 0', 'pas.expires_at >= NOW()', 'pas.deleted_at IS NOT NULL'];
   const params = [];
 
-  if (picIc) {
-    whereClauses.push('pas.pic_ic = ?');
-    params.push(picIc);
+  if (picPhone) {
+    whereClauses.push('pas.pic_telefon = ?');
+    params.push(picPhone);
   }
 
   const where = whereClauses.length ? `WHERE ${whereClauses.join(' AND ')}` : '';
@@ -304,8 +304,8 @@ export async function listPicSnapshots({ picIc = null } = {}) {
             u.nama as pic_nama,
             admin.nama as approved_by_nama
      FROM pic_action_snapshots pas
-     LEFT JOIN users u ON pas.pic_ic = u.ic
-     LEFT JOIN users admin ON pas.approved_by = admin.ic
+     LEFT JOIN users u ON pas.pic_telefon = u.telefon
+     LEFT JOIN users admin ON pas.approved_by = admin.telefon
      ${where}
      ORDER BY pas.deleted_at DESC`,
     params
@@ -381,7 +381,7 @@ export async function ensurePicSnapshotTable() {
  * Create an undo request for a PIC action
  * This creates a new pending PIC change that goes to approval
  */
-export async function createUndoRequest({ snapshotId, picIc }) {
+export async function createUndoRequest({ snapshotId, picPhone }) {
   await ensureSnapshotTable();
   
   // Get the snapshot
@@ -394,7 +394,7 @@ export async function createUndoRequest({ snapshotId, picIc }) {
     throw new Error('This action has already been undone.');
   }
   
-  if (snapshot.pic_ic !== picIc) {
+  if (snapshot.pic_telefon !== picPhone) {
     throw new Error('You can only undo your own actions.');
   }
   
@@ -438,7 +438,7 @@ export async function createUndoRequest({ snapshotId, picIc }) {
       original_operation: snapshot.operation,
       undo_operation: undoOperation
     },
-    actorIc: picIc,
+    actorPhone: picPhone,
     requestMethod: undoOperation === 'delete' ? 'DELETE' : 'POST',
     requestPath: undoOperation === 'delete' 
       ? `/${snapshot.entity_type}/${snapshot.entity_id}`
@@ -460,4 +460,5 @@ export async function createUndoRequest({ snapshotId, picIc }) {
     undoPayload
   };
 }
+
 

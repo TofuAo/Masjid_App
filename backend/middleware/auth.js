@@ -7,7 +7,7 @@ const attachRolesToUser = async (user, dbPrimaryRole = null) => {
   // Use dbPrimaryRole if provided, otherwise use user.role
   // This ensures we fetch all roles based on the database primary role, not the session role
   const primaryRoleForFetch = dbPrimaryRole || user.role;
-  const roles = await fetchUserRoles(user.ic, primaryRoleForFetch);
+  const roles = await fetchUserRoles(user.telefon, primaryRoleForFetch);
   
   // Normalize all roles to lowercase
   let normalizedRoles = roles.length > 0 
@@ -114,7 +114,7 @@ export const authenticateToken = async (req, res, next) => {
     
     // Verify user still exists and is active
     const [users] = await pool.execute(
-      'SELECT ic, nama, email, role, status FROM users WHERE ic = ? AND status = "aktif"',
+      'SELECT telefon, nama, email, role, status FROM users WHERE telefon = ? AND status = "aktif"',
       [decoded.userId]
     );
 
@@ -176,7 +176,7 @@ export const authenticateToken = async (req, res, next) => {
     
     // Debug: Log roles for all requests (to help diagnose admin access issues)
     console.log('[AUTH] User authenticated:', {
-      ic: user.ic,
+      telefon: user.telefon,
       dbPrimaryRole,
       originalDbRole,
       activeRole: user.activeRole,
@@ -187,33 +187,33 @@ export const authenticateToken = async (req, res, next) => {
     // Fetch related data based on user role
     if (user.role === 'teacher') {
       const [classes] = await pool.execute(
-        'SELECT * FROM classes WHERE guru_ic = ?',
-        [user.ic]
+        'SELECT * FROM classes WHERE guru_telefon = ?',
+        [user.telefon]
       );
       user.classes = classes;
     } else if (user.role === 'student') {
       const [student] = await pool.execute(
-        'SELECT * FROM students WHERE user_ic = ?', // Corrected to match schema
-        [user.ic]
+        'SELECT * FROM students WHERE user_telefon = ?', // Corrected to match schema
+        [user.telefon]
       );
       user.student = student[0];
 
       if (user.student) { // Only fetch if student profile exists
         const [attendance] = await pool.execute(
-          'SELECT * FROM attendance WHERE student_ic = ?',
-          [user.ic]
+          'SELECT * FROM attendance WHERE student_phone = ?',
+          [user.telefon]
         );
         user.attendance = attendance;
 
         const [fees] = await pool.execute(
-          'SELECT * FROM fees WHERE student_ic = ?',
-          [user.ic]
+          'SELECT * FROM fees WHERE student_phone = ?',
+          [user.telefon]
         );
         user.fees = fees;
 
         const [results] = await pool.execute(
-          'SELECT * FROM results WHERE student_ic = ?',
-          [user.ic]
+          'SELECT * FROM results WHERE student_phone = ?',
+          [user.telefon]
         );
         user.results = results;
       }
@@ -248,7 +248,7 @@ export const optionalAuth = async (req, res, next) => {
     
     // Verify user still exists and is active
     const [users] = await pool.execute(
-      'SELECT ic, nama, email, role, status FROM users WHERE ic = ? AND status = "aktif"',
+      'SELECT telefon, nama, email, role, status FROM users WHERE telefon = ? AND status = "aktif"',
       [decoded.userId]
     );
 

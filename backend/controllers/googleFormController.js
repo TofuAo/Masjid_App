@@ -43,7 +43,7 @@ export const receiveGoogleFormData = async (req, res) => {
       const errors = [];
 
       for (const record of attendance_data) {
-        const { student_ic, student_name, status } = record;
+        const { student_telefon, student_name, status } = record;
 
         // Normalize status
         const normalizedStatus = status === 'Hadir' || status === 'hadir' || status === 'Present' ? 'Hadir' :
@@ -53,15 +53,15 @@ export const receiveGoogleFormData = async (req, res) => {
                                 status === 'Sakit' || status === 'sakit' || status === 'Sick' ? 'Sakit' :
                                 'Hadir'; // Default to 'Hadir' if status is checked
 
-        if (!student_ic) {
+        if (!student_telefon) {
           errors.push({ student_name, error: 'Student IC is missing' });
           continue;
         }
 
         // Check if student exists in the class
         const [existingStudents] = await pool.execute(
-          'SELECT user_ic FROM students WHERE user_ic = ? AND kelas_id = ?',
-          [student_ic, class_id]
+          'SELECT user_telefon FROM students WHERE user_telefon = ? AND kelas_id = ?',
+          [student_telefon, class_id]
         );
 
         if (existingStudents.length === 0) {
@@ -71,8 +71,8 @@ export const receiveGoogleFormData = async (req, res) => {
 
         // Check if attendance already exists
         const [existingAttendance] = await pool.execute(
-          'SELECT id FROM attendance WHERE student_ic = ? AND class_id = ? AND tarikh = ?',
-          [student_ic, class_id, attendanceDate]
+          'SELECT id FROM attendance WHERE student_telefon = ? AND class_id = ? AND tarikh = ?',
+          [student_telefon, class_id, attendanceDate]
         );
 
         if (existingAttendance.length > 0) {
@@ -80,18 +80,18 @@ export const receiveGoogleFormData = async (req, res) => {
           await pool.execute(
             `UPDATE attendance 
              SET status = ?, updated_at = CURRENT_TIMESTAMP
-             WHERE student_ic = ? AND class_id = ? AND tarikh = ?`,
-            [normalizedStatus, student_ic, class_id, attendanceDate]
+             WHERE student_telefon = ? AND class_id = ? AND tarikh = ?`,
+            [normalizedStatus, student_telefon, class_id, attendanceDate]
           );
-          results.push({ student_ic, student_name, status: normalizedStatus, action: 'updated' });
+          results.push({ student_telefon, student_name, status: normalizedStatus, action: 'updated' });
         } else {
           // Insert new
           await pool.execute(
-            `INSERT INTO attendance (student_ic, class_id, tarikh, status)
+            `INSERT INTO attendance (student_telefon, class_id, tarikh, status)
              VALUES (?, ?, ?, ?)`,
-            [student_ic, class_id, attendanceDate, normalizedStatus]
+            [student_telefon, class_id, attendanceDate, normalizedStatus]
           );
-          results.push({ student_ic, student_name, status: normalizedStatus, action: 'created' });
+          results.push({ student_telefon, student_name, status: normalizedStatus, action: 'created' });
         }
       }
 

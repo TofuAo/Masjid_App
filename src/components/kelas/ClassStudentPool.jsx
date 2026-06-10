@@ -53,7 +53,7 @@ const ClassStudentPool = ({
   const editModalRef = useRef(null);
 
   const displayKelas = poolClassDetails || kelass.find(k => k.id === poolClassId);
-  const teacherName = displayKelas?.guru_nama || gurus?.find(g => g.ic === displayKelas?.guru_ic)?.nama || 'Tiada Guru';
+  const teacherName = displayKelas?.guru_nama || gurus?.find(g => g.telefon === displayKelas?.guru_telefon)?.nama || 'Tiada Guru';
   const className = displayKelas?.nama_kelas || displayKelas?.class_name || '-';
   const sessionText = formatSessionDisplay(displayKelas);
   const students = displayKelas?.students || [];
@@ -61,13 +61,13 @@ const ClassStudentPool = ({
   const filteredStudents = studentSearchLower
     ? students.filter(s => {
         const nama = (s.nama || '').toLowerCase();
-        const ic = (s.ic || s.user_ic || '').toLowerCase();
+        const ic = (s.telefon || s.user_telefon || '').toLowerCase();
         const tel = (s.telefon || '').toLowerCase();
         return nama.includes(studentSearchLower) || ic.includes(studentSearchLower) || tel.includes(studentSearchLower);
       })
     : students;
 
-  const classesByTeacher = kelass.filter(k => !filterTeacher || k.guru_ic === filterTeacher);
+  const classesByTeacher = kelass.filter(k => !filterTeacher || k.guru_telefon === filterTeacher);
   const filterClassOptions = filterTeacher ? classesByTeacher : kelass;
 
   useEffect(() => {
@@ -107,7 +107,7 @@ const ClassStudentPool = ({
     setEditStudent(student);
     const currentKelas = poolClassDetails || kelass.find(k => k.id === poolClassId);
     const currentClassId = currentKelas?.id ?? poolClassId;
-    const currentGuruIc = currentKelas?.guru_ic ?? '';
+    const currentGuruIc = currentKelas?.guru_telefon ?? '';
     setEditKelasId(currentClassId ? String(currentClassId) : '');
     setEditGuruIc(currentGuruIc || '');
     setEditGuruSearch('');
@@ -119,11 +119,11 @@ const ClassStudentPool = ({
   const guruOptions = (gurus || []).filter(g =>
     !editGuruSearch.trim() || (g.nama || '').toLowerCase().includes(editGuruSearch.trim().toLowerCase())
   );
-  const kelasOptionsForEdit = (editGuruIc ? kelass.filter(k => k.guru_ic === editGuruIc) : kelass);
+  const kelasOptionsForEdit = (editGuruIc ? kelass.filter(k => k.guru_telefon === editGuruIc) : kelass);
   const kelasOptionsFiltered = kelasOptionsForEdit.filter(k =>
     !editKelasSearch.trim() || (k.nama_kelas || k.class_name || '').toLowerCase().includes(editKelasSearch.trim().toLowerCase())
   );
-  const selectedGuruName = (gurus || []).find(g => g.ic === editGuruIc)?.nama || '';
+  const selectedGuruName = (gurus || []).find(g => g.telefon === editGuruIc)?.nama || '';
   const selectedKelasName = kelass.find(k => k.id === parseInt(editKelasId, 10))?.nama_kelas || kelass.find(k => k.id === parseInt(editKelasId, 10))?.class_name || '';
 
   useEffect(() => {
@@ -141,7 +141,7 @@ const ClassStudentPool = ({
     if (!editStudent || !editKelasId) return;
     setSaving(true);
     try {
-      const ic = editStudent.ic || editStudent.user_ic;
+      const ic = editStudent.telefon || editStudent.user_telefon;
       await studentsAPI.update(ic, { kelas_id: parseInt(editKelasId, 10) });
       toast.success('Pelajar telah dipindahkan ke kelas baru.');
       setEditStudent(null);
@@ -172,7 +172,7 @@ const ClassStudentPool = ({
           >
             <option value="">— Pilih kelas —</option>
             {kelass.map(k => {
-              const gName = gurus?.find(g => g.ic === k.guru_ic)?.nama || k.guru_nama || 'Guru';
+              const gName = gurus?.find(g => g.telefon === k.guru_telefon)?.nama || k.guru_nama || 'Guru';
               const cName = k.nama_kelas || k.class_name || '-';
               const sesi = formatSessionDisplay(k);
               return (
@@ -222,7 +222,7 @@ const ClassStudentPool = ({
                       >
                         <option value="">—</option>
                         {(gurus || []).map(g => (
-                          <option key={g.ic} value={g.ic}>{g.nama}</option>
+                          <option key={g.telefon} value={g.telefon}>{g.nama}</option>
                         ))}
                       </select>
                     </div>
@@ -344,7 +344,7 @@ const ClassStudentPool = ({
             {filteredStudents.length > 0 ? (
               filteredStudents.map((student) => {
                 const name = student.nama || '-';
-                const ic = student.ic || student.user_ic;
+                const ic = student.telefon || student.user_telefon;
                 return (
                   <div
                     key={ic || name}
@@ -411,10 +411,10 @@ const ClassStudentPool = ({
                       </button>
                     </li>
                     {guruOptions.map(g => (
-                      <li key={g.ic}>
+                      <li key={g.telefon}>
                         <button type="button" onClick={() => {
-                          setEditGuruIc(g.ic);
-                          const classesForGuru = kelass.filter(k => k.guru_ic === g.ic);
+                          setEditGuruIc(g.telefon);
+                          const classesForGuru = kelass.filter(k => k.guru_telefon === g.telefon);
                           setEditKelasId(classesForGuru.length > 0 ? String(classesForGuru[0].id) : '');
                           setEditGuruSearch('');
                           setEditKelasSearch('');

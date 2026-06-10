@@ -45,8 +45,8 @@ const Kehadiran = () => {
       const allClasses = Array.isArray(classesResponse) ? classesResponse : [];
       
       // If user is a teacher, filter to only show their assigned classes
-      if (user && user.role === 'teacher' && user.ic) {
-        const teacherClasses = allClasses.filter(kls => kls.guru_ic === user.ic);
+      if (user && user.role === 'teacher' && user.telefon) {
+        const teacherClasses = allClasses.filter(kls => kls.guru_telefon === user.telefon);
         setKelass(teacherClasses);
       } else {
         // For admins and other roles, show all classes
@@ -77,7 +77,7 @@ const Kehadiran = () => {
       fetchClasses();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.ic]); // Only re-fetch if user IC changes
+  }, [user?.telefon]); // Only re-fetch if user IC changes
 
   // Debounce function for filter changes
   const debounce = useCallback((func, wait) => {
@@ -231,7 +231,7 @@ const Kehadiran = () => {
       
       // Use mark API which handles both create and update
       await attendanceAPI.mark({
-        student_ic: attendance.pelajar_ic || attendance.student_ic,
+        student_telefon: attendance.pelajar_telefon || attendance.student_telefon,
         class_id: attendance.class_id || attendance.kelas_id,
         tarikh: attendance.tarikh || startDate,
         status: newStatus // Already in backend format (Hadir, Tidak Hadir, etc.)
@@ -259,7 +259,7 @@ const Kehadiran = () => {
     }
 
     // Get student name for display
-    const studentName = attendance.nama || attendance.student_ic || 'Pelajar';
+    const studentName = attendance.nama || attendance.student_telefon || 'Pelajar';
     const className = attendance.kelas_nama || attendance.nama_kelas || 'Kelas';
     const date = attendance.tarikh ? new Date(attendance.tarikh).toLocaleDateString('ms-MY') : 'Tarikh tidak diketahui';
     
@@ -282,7 +282,7 @@ const Kehadiran = () => {
       attendanceId,
       attendanceData: attendanceData ? {
         id: attendanceData.id,
-        student_ic: attendanceData.student_ic,
+        student_telefon: attendanceData.student_telefon,
         class_id: attendanceData.class_id,
         tarikh: attendanceData.tarikh
       } : null
@@ -296,7 +296,7 @@ const Kehadiran = () => {
       console.log('[FRONTEND] Delete API response:', response);
       
       // Show success message with details
-      const studentName = attendanceData?.nama || attendanceData?.student_ic || 'Pelajar';
+      const studentName = attendanceData?.nama || attendanceData?.student_telefon || 'Pelajar';
       const date = attendanceData?.tarikh ? new Date(attendanceData.tarikh).toLocaleDateString('ms-MY') : '';
       toast.success(`Rekod kehadiran berjaya dipadam! (${studentName} - ${date})`);
       
@@ -763,10 +763,10 @@ const Kehadiran = () => {
         isOpen={deleteModal.isOpen}
         onClose={handleDeleteCancel}
         onConfirm={handleDeleteConfirm}
-        itemName={deleteModal.attendanceData?.nama || deleteModal.attendanceData?.pelajar_nama || deleteModal.attendanceData?.student_ic || 'Pelajar'}
+        itemName={deleteModal.attendanceData?.nama || deleteModal.attendanceData?.pelajar_nama || deleteModal.attendanceData?.student_telefon || 'Pelajar'}
         itemIdentifier={
           deleteModal.attendanceData
-            ? `${deleteModal.attendanceData.nama || deleteModal.attendanceData.pelajar_nama || deleteModal.attendanceData.student_ic} - ${deleteModal.attendanceData.kelas_nama || deleteModal.attendanceData.nama_kelas || 'Kelas'} - ${deleteModal.attendanceData.tarikh ? new Date(deleteModal.attendanceData.tarikh).toLocaleDateString('ms-MY') : ''}`
+            ? `${deleteModal.attendanceData.nama || deleteModal.attendanceData.pelajar_nama || deleteModal.attendanceData.student_telefon} - ${deleteModal.attendanceData.kelas_nama || deleteModal.attendanceData.nama_kelas || 'Kelas'} - ${deleteModal.attendanceData.tarikh ? new Date(deleteModal.attendanceData.tarikh).toLocaleDateString('ms-MY') : ''}`
             : ''
         }
         itemType="Rekod Kehadiran"

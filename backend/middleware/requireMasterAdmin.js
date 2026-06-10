@@ -14,7 +14,7 @@ export const requireMasterAdmin = (req, res, next) => {
   }
 
   // Normalize IC for comparison (remove hyphens, database stores without hyphens)
-  const userIC = req.user.ic ? req.user.ic.replace(/[-\s]/g, '') : '';
+  const userIC = req.user.telefon ? req.user.telefon.replace(/[-\s]/g, '') : '';
   const masterIC = MASTER_ADMIN_IC.replace(/[-\s]/g, '');
 
   // Check if user is the master admin

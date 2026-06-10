@@ -41,7 +41,7 @@ export const list = async (req, res) => {
     const [rows] = await pool.execute(
       `SELECT cli.*, u.nama as created_by_nama
        FROM campus_life_items cli
-       LEFT JOIN users u ON u.ic = cli.created_by_ic
+       LEFT JOIN users u ON u.telefon = cli.created_by_ic
        ${whereClause}
        ORDER BY cli.created_at DESC
        LIMIT ${limitVal} OFFSET ${offset}`,
@@ -136,7 +136,7 @@ export const getById = async (req, res) => {
     const [rows] = await pool.execute(
       `SELECT cli.*, u.nama as created_by_nama
        FROM campus_life_items cli
-       LEFT JOIN users u ON u.ic = cli.created_by_ic
+       LEFT JOIN users u ON u.telefon = cli.created_by_ic
        WHERE cli.id = ?`,
       [id]
     );
@@ -190,7 +190,7 @@ export const approve = async (req, res) => {
     await pool.execute(
       `UPDATE campus_life_items SET status = 'approved', reviewed_by_ic = ?, reviewed_at = NOW(), notes = ?
        WHERE id = ?`,
-      [user.ic, notes?.trim() || null, id]
+      [user.telefon, notes?.trim() || null, id]
     );
 
     const [updated] = await pool.execute('SELECT * FROM campus_life_items WHERE id = ?', [id]);
@@ -238,7 +238,7 @@ export const reject = async (req, res) => {
     await pool.execute(
       `UPDATE campus_life_items SET status = 'rejected', reviewed_by_ic = ?, reviewed_at = NOW(), notes = ?
        WHERE id = ?`,
-      [user.ic, notes?.trim() || null, id]
+      [user.telefon, notes?.trim() || null, id]
     );
 
     const [updated] = await pool.execute('SELECT * FROM campus_life_items WHERE id = ?', [id]);

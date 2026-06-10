@@ -20,7 +20,7 @@ export const createPaymentIntent = async (paymentData) => {
 
     const paymentId = generatePaymentId();
     const {
-      user_ic,
+      user_telefon,
       amount,
       currency = 'MYR',
       method,
@@ -33,11 +33,11 @@ export const createPaymentIntent = async (paymentData) => {
     // Insert payment
     await connection.execute(
       `INSERT INTO payments 
-       (id, user_ic, amount, currency, method, provider, metadata, idempotency_key, expires_at, status)
+       (id, user_telefon, amount, currency, method, provider, metadata, idempotency_key, expires_at, status)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')`,
       [
         paymentId,
-        user_ic,
+        user_telefon,
         amount,
         currency,
         method,
@@ -82,20 +82,20 @@ export const getPaymentById = async (paymentId) => {
 };
 
 // Get payments by user
-export const getPaymentsByUser = async (userIc, limit = 50, offset = 0) => {
+export const getPaymentsByUser = async (userPhone, limit = 50, offset = 0) => {
   const [payments] = await pool.execute(
     `SELECT * FROM payments 
-     WHERE user_ic = ? 
+     WHERE user_telefon = ? 
      ORDER BY created_at DESC 
      LIMIT ? OFFSET ?`,
-    [userIc, limit, offset]
+    [userPhone, limit, offset]
   );
   return payments;
 };
 
 // Get all payments (admin)
 export const getAllPayments = async (filters = {}, limit = 50, offset = 0) => {
-  let query = 'SELECT p.*, u.nama as user_name FROM payments p LEFT JOIN users u ON p.user_ic = u.ic WHERE 1=1';
+  let query = 'SELECT p.*, u.nama as user_name FROM payments p LEFT JOIN users u ON p.user_telefon = u.telefon WHERE 1=1';
   const params = [];
 
   if (filters.status) {
@@ -113,9 +113,9 @@ export const getAllPayments = async (filters = {}, limit = 50, offset = 0) => {
     params.push(filters.provider);
   }
 
-  if (filters.user_ic) {
-    query += ' AND p.user_ic = ?';
-    params.push(filters.user_ic);
+  if (filters.user_telefon) {
+    query += ' AND p.user_telefon = ?';
+    params.push(filters.user_telefon);
   }
 
   if (filters.search) {

@@ -23,7 +23,7 @@ export const logError = (error, context = {}) => {
       page: context.page || 'Unknown',
       action: context.action || 'Unknown',
       user: context.user ? {
-        ic: context.user.ic,
+        ic: context.user.telefon,
         role: context.user.role || context.user.activeRole,
         email: context.user.email,
       } : null,

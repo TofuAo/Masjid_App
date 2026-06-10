@@ -104,7 +104,7 @@ const Laporan = () => {
       classesByLevel[levelKey].classes.push({
         ...c,
         student_count: studentCount,
-        guru_nama: c.guru_nama || teachersArray.find(t => t.ic === c.guru_ic)?.nama || 'Tiada Guru'
+        guru_nama: c.guru_nama || teachersArray.find(t => t.telefon === c.guru_telefon)?.nama || 'Tiada Guru'
       });
       classesByLevel[levelKey].totalStudents += studentCount;
     });
@@ -136,7 +136,7 @@ const Laporan = () => {
     // Group teachers with their classes
     const teachersWithClasses = teachersArray.map(teacher => {
       const teacherClasses = classesArray
-        .filter(c => c.guru_ic === teacher.ic)
+        .filter(c => c.guru_telefon === teacher.telefon)
         .map(c => ({
           ...c,
           student_count: studentsArray.filter(s => s.kelas_id === c.id).length
@@ -223,7 +223,7 @@ const Laporan = () => {
       case 'pelajars': {
         const arr = Array.isArray(students) ? students : [];
         return arr.map(s => ({
-          IC: s.ic,
+          IC: s.telefon,
           Nama: s.nama,
           Telefon: s.telefon,
           Kelas: s.kelas_nama || s.nama_kelas || '',
@@ -262,7 +262,7 @@ const Laporan = () => {
           return nameA.localeCompare(nameB);
         });
         return filtered.map(a => ({
-          'No. IC': a.pelajar_ic || a.student_ic || '',
+          'No. Telefon': a.pelajar_telefon || a.student_telefon || '',
           Pelajar: a.pelajar_nama || a.nama || '',
           Kelas: a.kelas_nama || a.nama_kelas || '',
           Tarikh: a.tarikh ? new Date(a.tarikh).toLocaleDateString('ms-MY') : '',
@@ -815,7 +815,7 @@ const Laporan = () => {
     // Group attendance by student for summary
     const attendanceByStudent = {};
     filteredAttendance.forEach(a => {
-      const studentKey = a.pelajar_ic || a.student_ic || '';
+      const studentKey = a.pelajar_telefon || a.student_telefon || '';
       if (!attendanceByStudent[studentKey]) {
         attendanceByStudent[studentKey] = {
           nama: a.pelajar_nama || a.nama || '',
@@ -856,7 +856,7 @@ const Laporan = () => {
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-emerald-50">
                   <tr>
-                    <th className="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase">No. IC</th>
+                    <th className="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase">No. Telefon</th>
                     <th className="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase">Nama Pelajar</th>
                     <th className="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase">Kelas</th>
                     <th className="px-4 py-3 text-center text-xs font-bold text-gray-700 uppercase">Jumlah</th>
@@ -874,8 +874,8 @@ const Laporan = () => {
                       ? ((student.hadir + student.lewat) / student.total * 100).toFixed(1)
                       : '0.0';
                     return (
-                      <tr key={student.ic || index} className="hover:bg-gray-50">
-                        <td className="px-4 py-3 text-sm text-gray-900">{student.ic}</td>
+                      <tr key={student.telefon || index} className="hover:bg-gray-50">
+                        <td className="px-4 py-3 text-sm text-gray-900">{student.telefon}</td>
                         <td className="px-4 py-3 text-sm text-gray-900">{student.nama}</td>
                         <td className="px-4 py-3 text-sm text-gray-700">{student.kelas}</td>
                         <td className="px-4 py-3 text-sm text-center text-gray-900">{student.total}</td>
@@ -1147,7 +1147,7 @@ const Laporan = () => {
                 <tbody className="bg-white divide-y divide-gray-200">
                   {teachersWithClasses.map((teacher, index) => (
                     teacher.classes.map((kelas, kelasIndex) => (
-                      <tr key={`${teacher.ic}-${kelas.id}`} className="hover:bg-gray-50">
+                      <tr key={`${teacher.telefon}-${kelas.id}`} className="hover:bg-gray-50">
                         {kelasIndex === 0 && (
                           <>
                             <td rowSpan={teacher.classes.length} className="px-2 py-2 text-sm text-gray-900 align-top">{index + 1}</td>

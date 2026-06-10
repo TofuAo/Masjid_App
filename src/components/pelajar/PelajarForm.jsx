@@ -41,7 +41,7 @@ const PelajarForm = ({ pelajar = null, onSubmit, onCancel }) => {
   // Store original data for reset functionality
   const getInitialFormData = () => ({
     nama: pelajar?.nama || '',
-    ic: pelajar?.ic ? formatIC(pelajar.ic, true) : '',
+    ic: pelajar?.telefon ? formatIC(pelajar.telefon, true) : '',
     umur: pelajar?.umur || 5,
     alamat: pelajar?.alamat || '',
     telefon: pelajar?.telefon || '',
@@ -65,7 +65,7 @@ const PelajarForm = ({ pelajar = null, onSubmit, onCancel }) => {
     if (!pelajar) return;
     const newFormData = {
       nama: pelajar.nama || '',
-      ic: pelajar.ic ? formatIC(pelajar.ic, true) : '',
+      ic: pelajar.telefon ? formatIC(pelajar.telefon, true) : '',
       umur: pelajar.umur || 5,
       alamat: pelajar.alamat || '',
       telefon: pelajar.telefon || '',
@@ -189,10 +189,10 @@ const PelajarForm = ({ pelajar = null, onSubmit, onCancel }) => {
     
     // Normalize IC: Remove hyphens for backend consistency (backend will normalize it)
     // But we keep the formatIC utility for display - backend expects either format
-    if (submitData.ic) {
+    if (submitData.telefon) {
       // Backend accepts IC with or without hyphens, but we'll send it normalized
       // The backend normalizeICMiddleware will handle it
-      submitData.ic = submitData.ic.replace(/-/g, '');
+      submitData.telefon = submitData.telefon.replace(/-/g, '');
     }
     
     // Format tarikh_daftar to yyyy-MM-dd format (ensure it's not ISO datetime)
@@ -203,7 +203,7 @@ const PelajarForm = ({ pelajar = null, onSubmit, onCancel }) => {
     // When editing, remove IC (identifier is in URL), empty password field, empty email, and status from submitData
     if (pelajar) {
       // Remove IC - it's the identifier in the URL, not part of the update body
-      delete submitData.ic;
+      delete submitData.telefon;
       // Remove password if it's empty, null, undefined, or only whitespace
       if (!submitData.password || (typeof submitData.password === 'string' && submitData.password.trim() === '')) {
         delete submitData.password;
@@ -273,7 +273,7 @@ const PelajarForm = ({ pelajar = null, onSubmit, onCancel }) => {
               <input
                 type="text"
                 name="ic"
-                value={formData.ic}
+                value={formData.telefon}
                 onChange={handleChange}
                 required={!pelajar}
                 disabled={!!pelajar}

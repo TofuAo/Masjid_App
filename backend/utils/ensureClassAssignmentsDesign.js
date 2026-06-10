@@ -17,7 +17,7 @@ export const ensureClassAssignmentsDesign = async () => {
       await pool.execute(`
         CREATE TABLE class_assignments (
           id INT AUTO_INCREMENT PRIMARY KEY,
-          student_ic VARCHAR(20) NOT NULL,
+          student_telefon VARCHAR(20) NOT NULL,
           class_id INT NOT NULL,
           assignment_type ENUM('permanent','exam') NOT NULL DEFAULT 'permanent',
           exam_session_id INT NULL,
@@ -25,7 +25,7 @@ export const ensureClassAssignmentsDesign = async () => {
           end_date DATE NULL,
           is_active TINYINT(1) NOT NULL DEFAULT 1,
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-          INDEX idx_ca_student (student_ic),
+          INDEX idx_ca_student (student_telefon),
           INDEX idx_ca_class (class_id),
           INDEX idx_ca_active (is_active),
           INDEX idx_ca_dates (start_date, end_date),

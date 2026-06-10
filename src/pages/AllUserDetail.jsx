@@ -106,7 +106,7 @@ const AllUserDetail = ({ user }) => {
         <div>
           <p className="text-lg font-semibold text-gray-900">Maklumat Pengguna</p>
           <p className="text-sm text-gray-500">
-            IC:&nbsp;{formatIC(targetUser?.ic || targetUser?.IC || ic)}
+            IC:&nbsp;{formatIC(targetUser?.telefon || targetUser?.IC || ic)}
           </p>
         </div>
       </div>
@@ -136,7 +136,7 @@ const AllUserDetail = ({ user }) => {
                 <div className="flex items-center justify-between flex-wrap gap-2">
                   <div>
                     <h2 className="text-2xl font-semibold text-gray-900">{targetUser.nama || 'Pengguna'}</h2>
-                    <p className="text-sm text-gray-500">IC: {formatIC(targetUser.ic || targetUser.IC)}</p>
+                    <p className="text-sm text-gray-500">IC: {formatIC(targetUser.telefon || targetUser.IC)}</p>
                   </div>
                   <Badge variant={statusVariant}>
                     {targetUser.status ? targetUser.status.replace('_', ' ') : 'Status tidak diketahui'}
@@ -163,7 +163,7 @@ const AllUserDetail = ({ user }) => {
                     </div>
                     <div>
                       <p className="text-xs font-semibold text-gray-500 uppercase">Nombor IC</p>
-                      <p className="text-sm text-gray-900">{formatIC(targetUser.ic || targetUser.IC)}</p>
+                      <p className="text-sm text-gray-900">{formatIC(targetUser.telefon || targetUser.IC)}</p>
                     </div>
                     <div>
                       <p className="text-xs font-semibold text-gray-500 uppercase">Emel</p>

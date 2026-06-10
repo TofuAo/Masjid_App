@@ -50,16 +50,16 @@ const findPicUserByIc = async (ic) => {
        OR EXISTS (
          SELECT 1 FROM user_roles ur 
          WHERE (
-           REPLACE(ur.user_ic, '-', '') = REPLACE(u.ic, '-', '')
-           OR ur.user_ic = u.ic
+           REPLACE(ur.user_telefon, '-', '') = REPLACE(u.telefon, '-', '')
+           OR ur.user_telefon = u.telefon
          )
          AND ur.role = ?
        )
      )
      AND (
-       REPLACE(u.ic, '-', '') = ? 
-       OR u.ic = ? 
-       OR u.ic = ?
+       REPLACE(u.telefon, '-', '') = ? 
+       OR u.telefon = ? 
+       OR u.telefon = ?
      )
      LIMIT 1`,
     [PIC_ROLE, PIC_ROLE, normalizedIc, formattedIc, ic]
@@ -83,7 +83,7 @@ const findPicUserByIc = async (ic) => {
     // Check if this user is actually a PIC
     const [picCheck] = await pool.execute(
       `SELECT 1 FROM user_roles 
-       WHERE (REPLACE(user_ic, '-', '') = ? OR user_ic = ?) AND role = ?`,
+       WHERE (REPLACE(user_telefon, '-', '') = ? OR user_telefon = ?) AND role = ?`,
       [normalizedIc, users[0].ic, PIC_ROLE]
     );
     if (users[0].role === PIC_ROLE || picCheck.length > 0) {
@@ -94,7 +94,7 @@ const findPicUserByIc = async (ic) => {
   
   console.log('[findPicUserByIc] Trying fallback query 2: formatted IC');
   [users] = await pool.execute(
-    `SELECT * FROM users WHERE ic = ?`,
+    `SELECT * FROM users WHERE telefon = ?`,
     [formattedIc]
   );
   console.log('[findPicUserByIc] Fallback 2 result:', users.length, 'users found');
@@ -103,7 +103,7 @@ const findPicUserByIc = async (ic) => {
     // Check if this user is actually a PIC
     const [picCheck] = await pool.execute(
       `SELECT 1 FROM user_roles 
-       WHERE (REPLACE(user_ic, '-', '') = ? OR user_ic = ?) AND role = ?`,
+       WHERE (REPLACE(user_telefon, '-', '') = ? OR user_telefon = ?) AND role = ?`,
       [normalizedIc, users[0].ic, PIC_ROLE]
     );
     if (users[0].role === PIC_ROLE || picCheck.length > 0) {
@@ -114,7 +114,7 @@ const findPicUserByIc = async (ic) => {
   
   console.log('[findPicUserByIc] Trying fallback query 3: original IC');
   [users] = await pool.execute(
-    `SELECT * FROM users WHERE ic = ?`,
+    `SELECT * FROM users WHERE telefon = ?`,
     [ic]
   );
   console.log('[findPicUserByIc] Fallback 3 result:', users.length, 'users found');
@@ -123,7 +123,7 @@ const findPicUserByIc = async (ic) => {
     // Check if this user is actually a PIC
     const [picCheck] = await pool.execute(
       `SELECT 1 FROM user_roles 
-       WHERE (REPLACE(user_ic, '-', '') = ? OR user_ic = ?) AND role = ?`,
+       WHERE (REPLACE(user_telefon, '-', '') = ? OR user_telefon = ?) AND role = ?`,
       [normalizedIc, users[0].ic, PIC_ROLE]
     );
     if (users[0].role === PIC_ROLE || picCheck.length > 0) {
@@ -147,8 +147,8 @@ export const listPicUsers = async (req, res) => {
         OR EXISTS (
           SELECT 1 FROM user_roles ur 
           WHERE (
-            REPLACE(ur.user_ic, '-', '') = REPLACE(u.ic, '-', '')
-            OR ur.user_ic = u.ic
+            REPLACE(ur.user_telefon, '-', '') = REPLACE(u.telefon, '-', '')
+            OR ur.user_telefon = u.telefon
           )
           AND ur.role = ?
         )
@@ -210,7 +210,7 @@ export const createPicUser = async (req, res) => {
     if (existingUsers.length > 0) {
       const existingUser = existingUsers[0];
       const [existingPicRoles] = await pool.execute(
-        'SELECT id FROM user_roles WHERE user_ic = ? AND role = ?',
+        'SELECT id FROM user_roles WHERE user_telefon = ? AND role = ?',
         [existingUser.ic, PIC_ROLE]
       );
 
@@ -269,7 +269,7 @@ export const createPicUser = async (req, res) => {
       }
 
       await pool.execute(
-        'INSERT INTO user_roles (user_ic, role) VALUES (?, ?)',
+        'INSERT INTO user_roles (user_telefon, role) VALUES (?, ?)',
         [existingUser.ic, PIC_ROLE]
       );
 
@@ -366,7 +366,7 @@ export const updatePicUser = async (req, res) => {
     // Try both the actual IC format and normalized format for user_roles lookup
     const [picRoleRows] = await pool.execute(
       `SELECT id FROM user_roles 
-       WHERE (REPLACE(user_ic, '-', '') = ? OR user_ic = ?) AND role = ?`,
+       WHERE (REPLACE(user_telefon, '-', '') = ? OR user_telefon = ?) AND role = ?`,
       [normalizedIc, actualIc, PIC_ROLE]
     );
     
@@ -465,14 +465,14 @@ export const updatePicUser = async (req, res) => {
       // Check if PIC role already exists (in case of format mismatch)
       const [existingPicRole] = await pool.execute(
         `SELECT id FROM user_roles 
-         WHERE (REPLACE(user_ic, '-', '') = ? OR user_ic = ?) AND role = ?`,
+         WHERE (REPLACE(user_telefon, '-', '') = ? OR user_telefon = ?) AND role = ?`,
         [normalizedIc, actualIc, PIC_ROLE]
       );
       
       if (existingPicRole.length === 0) {
         // Add PIC role to user_roles table
         await pool.execute(
-          'INSERT INTO user_roles (user_ic, role) VALUES (?, ?)',
+          'INSERT INTO user_roles (user_telefon, role) VALUES (?, ?)',
           [actualIc, PIC_ROLE]
         );
         console.log('[UpdatePIC] Added PIC role to user_roles table');
@@ -524,9 +524,9 @@ export const deletePicUser = async (req, res) => {
       });
     }
     
-    const actualIc = user.ic;
+    const actualIc = user.telefon;
     const normalizedIc = ic.replace(/\D/g, '');
-    const adminIc = req.user?.ic || req.user?.userId;
+    const adminIc = req.user?.telefon || req.user?.userId;
     
     console.log('[DeletePIC] Found user:', actualIc, 'Role:', user.role);
     console.log('[DeletePIC] User verified (found by listPicUsers query logic). Proceeding with delete.');
@@ -534,7 +534,7 @@ export const deletePicUser = async (req, res) => {
     // Get all user roles for snapshot
     const [allUserRoles] = await pool.execute(
       `SELECT role FROM user_roles 
-       WHERE (REPLACE(user_ic, '-', '') = ? OR user_ic = ?)`,
+       WHERE (REPLACE(user_telefon, '-', '') = ? OR user_telefon = ?)`,
       [normalizedIc, actualIc]
     );
     const userRolesList = allUserRoles.map(r => r.role);
@@ -542,7 +542,7 @@ export const deletePicUser = async (req, res) => {
     // Prepare snapshot data
     const snapshotData = {
       user: {
-        ic: user.ic,
+        ic: user.telefon,
         nama: user.nama,
         email: user.email,
         telefon: user.telefon,
@@ -566,12 +566,12 @@ export const deletePicUser = async (req, res) => {
         operation: 'delete',
         data: snapshotData,
         metadata: { action_type: 'remove_pic_role' },
-        actorIc: adminIc
+        actorPhone: adminIc
       });
 
       await pool.execute(
         `DELETE FROM user_roles 
-         WHERE (REPLACE(user_ic, '-', '') = ? OR user_ic = ?) AND role = ?`,
+         WHERE (REPLACE(user_telefon, '-', '') = ? OR user_telefon = ?) AND role = ?`,
         [normalizedIc, actualIc, PIC_ROLE]
       );
 
@@ -583,7 +583,7 @@ export const deletePicUser = async (req, res) => {
 
     const [otherRoles] = await pool.execute(
       `SELECT role FROM user_roles 
-       WHERE (REPLACE(user_ic, '-', '') = ? OR user_ic = ?) AND role <> ?`,
+       WHERE (REPLACE(user_telefon, '-', '') = ? OR user_telefon = ?) AND role <> ?`,
       [normalizedIc, actualIc, PIC_ROLE]
     );
 
@@ -602,18 +602,18 @@ export const deletePicUser = async (req, res) => {
       metadata: { 
         action_type: willDeleteUser ? 'delete_pic_user' : 'remove_pic_role_and_update_primary'
       },
-      actorIc: adminIc
+      actorPhone: adminIc
     });
 
     // Delete PIC role using actual IC
     await pool.execute(
       `DELETE FROM user_roles 
-       WHERE (REPLACE(user_ic, '-', '') = ? OR user_ic = ?) AND role = ?`,
+       WHERE (REPLACE(user_telefon, '-', '') = ? OR user_telefon = ?) AND role = ?`,
       [normalizedIc, actualIc, PIC_ROLE]
     );
 
     if (otherRoles.length === 0) {
-      await pool.execute('DELETE FROM users WHERE ic = ?', [actualIc]);
+      await pool.execute('DELETE FROM users WHERE telefon = ?', [actualIc]);
     } else {
       await pool.execute(
         'UPDATE users SET role = ?, updated_at = CURRENT_TIMESTAMP WHERE ic = ?',
