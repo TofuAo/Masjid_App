@@ -131,7 +131,9 @@ const AllUsers = ({ user }) => {
           acc[role] = [];
         }
         // Only add if not already added to this role group
-        if (!acc[role].some(u => (u.telefon || u.IC) === (userItem.telefon || userItem.IC))) {
+        // ✅ Fix — use IC only, never telefon as identity
+        const getIc = (u) => u.ic || u.IC || u.ic_number || u.icNumber || '';
+            if (!acc[role].some(u => getIc(u) === getIc(userItem))) {
           acc[role].push(userItem);
         }
       });
@@ -328,10 +330,11 @@ const AllUsers = ({ user }) => {
                       </thead>
                       <tbody className="bg-white divide-y divide-gray-200">
                         {roleUsers.map((userItem, index) => {
-                          const userPhone = userItem.telefon || userItem.IC;
-                          const detailLink = userPhone ? `/all-users/${encodeURIComponent(userPhone)}` : null;
+                          const userIc = userItem.ic || userItem.IC || userItem.ic_number || userItem.icNumber;
+                          const userPhone = userItem.telefon;
+                          const detailLink = userIc ? `/all-users/${encodeURIComponent(userIc)}` : null;
                           return (
-                            <tr key={userPhone || userItem.nama || `user-${index}`} className="hover:bg-gray-50 transition-colors">
+                            <tr key={userIc || userItem.nama || `user-${index}`} className="hover:bg-gray-50 transition-colors">
                               <td className="px-4 py-3 whitespace-nowrap">
                                 <div className="text-sm font-medium text-gray-900">
                                   {detailLink ? (
@@ -348,7 +351,7 @@ const AllUsers = ({ user }) => {
                                 </div>
                               </td>
                               <td className="px-4 py-3 whitespace-nowrap">
-                                <div className="text-sm text-gray-600">{formatIC(userItem.telefon || userItem.IC)}</div>
+                                <div className="text-sm text-gray-600">{formatIC(userIc || userItem.IC)}</div>
                               </td>
                               <td className="px-4 py-3 whitespace-nowrap hidden md:table-cell">
                                 <div className="text-sm text-gray-600">{userItem.email || '-'}</div>

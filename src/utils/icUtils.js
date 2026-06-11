@@ -1,7 +1,7 @@
 /**
- * Formats phone number by removing all non-digits and optionally adding separators.
+ * Formats IC number: XXXXXX-XX-XXXX (6-2-4)
  */
-export const formatPhone = (value, autoFormat = false) => {
+export const formatIC = (value, autoFormat = false) => {
   if (!value) return '';
 
   // Remove all non-digit characters
@@ -11,31 +11,25 @@ export const formatPhone = (value, autoFormat = false) => {
     return digitsOnly;
   }
 
-  if (digitsOnly.length <= 3) {
+  // XXXXXX
+  if (digitsOnly.length <= 6) {
     return digitsOnly;
   }
 
-  if (digitsOnly.length <= 7) {
-    return `${digitsOnly.slice(0, 3)}-${digitsOnly.slice(3)}`;
+  // XXXXXX-XX
+  if (digitsOnly.length <= 8) {
+    return `${digitsOnly.slice(0, 6)}-${digitsOnly.slice(6)}`;
   }
 
-  // Format as 012-345 6789
-  const first = digitsOnly.slice(0, 3);
-  const middle = digitsOnly.slice(3, 7);
-  const last = digitsOnly.slice(7);
-  return `${first}-${middle} ${last}`;
+  // XXXXXX-XX-XXXX (max 12 digits)
+  return `${digitsOnly.slice(0, 6)}-${digitsOnly.slice(6, 8)}-${digitsOnly.slice(8, 12)}`;
 };
 
 /**
- * Validates if phone number is in a plausible format.
+ * Validates Malaysian IC: exactly 12 digits
  */
-export const isValidPhone = (phone) => {
-  if (!phone) return false;
-  const digitsOnly = phone.toString().replace(/\D/g, '');
-  // Phone numbers in Malaysia are typically 10 to 11 digits
-  return digitsOnly.length >= 10 && digitsOnly.length <= 15 && /^\d/.test(phone.toString().trim());
+export const isValidIC = (ic) => {
+  if (!ic) return false;
+  const digitsOnly = ic.toString().replace(/\D/g, '');
+  return digitsOnly.length === 12;
 };
-
-// Backward-compatible aliases (legacy naming in UI components)
-export const formatIC = formatPhone;
-export const isValidIC = isValidPhone;

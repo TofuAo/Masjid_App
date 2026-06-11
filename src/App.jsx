@@ -56,6 +56,8 @@ const NotificationCenter = lazy(() => import('./pages/NotificationCenter'));
 const AuditLogs = lazy(() => import('./pages/AuditLogs'));
 const SystemHealth = lazy(() => import('./pages/SystemHealth'));
 const Resit = lazy(() => import('./pages/Resit'));
+const StudentProfile = lazy(() => import('./pages/StudentProfile')); // MODIFICATION 1
+const MyProfile = lazy(() => import('./pages/MyProfile'));
 
 function RouteFallback() {
   return (
@@ -376,6 +378,7 @@ function AppContent() {
       {!user ? (
         <>
           <Routes>
+            <Route path="/my-profile" element={<Suspense fallback={<RouteFallback />}><MyProfile /></Suspense>} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/choose-reset-method" element={<ChooseResetMethod />} />
             <Route path="/reset-password" element={<ResetPassword />} />
@@ -457,7 +460,9 @@ function AppContent() {
                   path="/complete-profile" 
                   element={<CompleteProfile user={user} onComplete={handleProfileComplete} />} 
                 />
-                <Route path="/pelajar/*" element={<Pelajar user={user} />} />
+                <Route path="/pelajar" element={<Pelajar user={user} />} />
+<Route path="/pelajar/tambah" element={<Suspense fallback={<RouteFallback />}><PelajarFormPage user={user} /></Suspense>} />
+<Route path="/pelajar/:ic" element={<Suspense fallback={<RouteFallback />}><PelajarDetailPage user={user} /></Suspense>} />
                 <Route path="/guru/*" element={<Guru />} />
                 <Route path="/kelas/*" element={<Kelas />} />
                 <Route path="/kehadiran" element={<Kehadiran />} />
@@ -493,6 +498,8 @@ function AppContent() {
                 <Route path="/notifications" element={<NotificationCenter />} />
                 <Route path="/audit-logs" element={<AuditLogs />} />
                 <Route path="/system-health" element={<SystemHealth />} />
+                {/* MODIFICATION 1: Student self-profile page */}
+                <Route path="/student/profile" element={<StudentProfile user={user} />} />
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
               </Suspense>

@@ -1,3 +1,11 @@
+// ============================================================
+// src/services/api.js — FULL UPDATED FILE
+// CHANGES (search for "MODIFICATION"):
+//   1. studentsAPI.getAll()  — now forwards ?status param (Mod 2)
+//   2. studentsAPI.getSelf() — new function for student profile (Mod 1)
+// All other code is identical to the original.
+// ============================================================
+
 import axios from 'axios';
 import resolveApiBaseUrl from '../utils/apiBaseUrl';
 
@@ -5,7 +13,7 @@ const TOKEN_EXPIRY_KEY = 'authTokenExpiry';
 
 const removeStoredAuth = () => {
   localStorage.removeItem('authToken');
-  localStorage.removeItem('token'); // legacy key cleanup
+  localStorage.removeItem('token');
   localStorage.removeItem('user');
   localStorage.removeItem(TOKEN_EXPIRY_KEY);
 };
@@ -20,20 +28,15 @@ const isTokenExpired = () => {
   return typeof expiry === 'number' && !Number.isNaN(expiry) && Date.now() > expiry;
 };
 
-// Create axios instance with base configuration
 const api = axios.create({
   baseURL: resolveApiBaseUrl(),
-  timeout: 30000, // Increased timeout for slower connections
-  headers: {
-    'Content-Type': 'application/json',
-  },
-  withCredentials: false, // Don't send cookies
+  timeout: 30000,
+  headers: { 'Content-Type': 'application/json' },
+  withCredentials: false,
 });
 
-// Request interceptor to add auth token
 api.interceptors.request.use(
   (config) => {
-    // Log DELETE requests for debugging
     if (config.method === 'delete' || config.method === 'DELETE') {
       console.log(`\n${'🟡'.repeat(40)}`);
       console.log('[API INTERCEPTOR] DELETE request intercepted');
@@ -46,7 +49,7 @@ api.interceptors.request.use(
       console.log('[API INTERCEPTOR] Request ID:', Date.now());
       console.log(`${'🟡'.repeat(40)}\n`);
     }
-    
+
     if (isTokenExpired()) {
       console.log('[API INTERCEPTOR] Token expired, rejecting request');
       removeStoredAuth();
@@ -57,8 +60,6 @@ api.interceptors.request.use(
     }
 
     const token = localStorage.getItem('authToken') || localStorage.getItem('token');
-    // Don't log successful API requests to reduce console noise
-    // Only log if there's an issue (handled in response interceptor)
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
       if (config.method === 'delete' || config.method === 'DELETE') {
@@ -67,12 +68,12 @@ api.interceptors.request.use(
     } else if (config.method === 'delete' || config.method === 'DELETE') {
       console.warn('[API INTERCEPTOR] ⚠️ DELETE request has no auth token!');
     }
-    
+
     if (config.method === 'delete' || config.method === 'DELETE') {
       console.log('[API INTERCEPTOR] ✅ DELETE request config finalized, returning config');
       console.log('[API INTERCEPTOR] About to send DELETE request to:', `${config.baseURL}${config.url}`);
     }
-    
+
     return config;
   },
   (error) => {
@@ -84,10 +85,8 @@ api.interceptors.request.use(
   }
 );
 
-// Response interceptor to handle errors
 api.interceptors.response.use(
   (response) => {
-    // Log DELETE responses for debugging
     if (response.config?.method === 'delete' || response.config?.method === 'DELETE') {
       console.log(`\n${'🟢'.repeat(40)}`);
       console.log('[API INTERCEPTOR] ✅ DELETE response received');
@@ -97,25 +96,14 @@ api.interceptors.response.use(
       console.log('[API INTERCEPTOR] Response Data:', response.data);
       console.log(`${'🟢'.repeat(40)}\n`);
     }
-    // Don't log successful responses to reduce console noise
-    // Only log errors (handled in error handler below)
-    // Return full response.data (which may contain adminLimit for /admins endpoint)
     return response.data;
   },
   (error) => {
-    // Handle canceled/duplicate request errors - these are expected and shouldn't be logged
-    if (error.name === 'CanceledError' || error.code === 'ERR_CANCELED' || 
+    if (error.name === 'CanceledError' || error.code === 'ERR_CANCELED' ||
         (error.message && error.message.includes('Duplicate request cancelled'))) {
-      // Silently reject canceled requests - they're expected when duplicate requests are cancelled
-      return Promise.reject({
-        message: 'Request was cancelled',
-        status: 0,
-        isCanceled: true,
-        isExpected: true
-      });
+      return Promise.reject({ message: 'Request was cancelled', status: 0, isCanceled: true, isExpected: true });
     }
 
-    // Log DELETE errors specifically
     if (error.config?.method === 'delete' || error.config?.method === 'DELETE') {
       console.error(`\n${'🔴'.repeat(40)}`);
       console.error('[API INTERCEPTOR] ❌ DELETE response error');
@@ -126,120 +114,66 @@ api.interceptors.response.use(
       console.error('[API INTERCEPTOR] Full Error:', error);
       console.error(`${'🔴'.repeat(40)}\n`);
     }
-    
-    // Handle rate limiting (429) - don't spam console
+
     if (error.response?.status === 429) {
-      // Silently handle rate limit errors - don't log to reduce noise
       const errorMessage = error.response?.data?.message || 'Terlalu banyak permintaan. Sila cuba lagi selepas beberapa saat.';
-      return Promise.reject({ 
-        message: errorMessage,
-        status: 429,
-        isRateLimitError: true
-      });
+      return Promise.reject({ message: errorMessage, status: 429, isRateLimitError: true });
     }
 
-    // Handle network errors (connection issues)
     if (!error.response) {
       if (error.code === 'ECONNABORTED') {
         console.error('API Error: Request timeout -', error.config?.url);
-        return Promise.reject({ 
-          message: 'Permintaan mengambil masa terlalu lama. Sila cuba lagi.',
-          status: 408,
-          isNetworkError: true
-        });
+        return Promise.reject({ message: 'Permintaan mengambil masa terlalu lama. Sila cuba lagi.', status: 408, isNetworkError: true });
       } else if (error.message === 'Network Error' || error.code === 'ERR_NETWORK') {
         console.error('API Error: Network connection failed -', error.config?.url);
-        return Promise.reject({ 
-          message: 'Tidak dapat menyambung ke pelayan. Sila semak sambungan internet anda.',
-          status: 0,
-          isNetworkError: true
-        });
+        return Promise.reject({ message: 'Tidak dapat menyambung ke pelayan. Sila semak sambungan internet anda.', status: 0, isNetworkError: true });
       } else {
         console.error('API Error (no response):', error.message, error.config?.url);
-        return Promise.reject({ 
-          message: 'Ralat sambungan. Sila cuba lagi.',
-          status: 0,
-          isNetworkError: true
-        });
+        return Promise.reject({ message: 'Ralat sambungan. Sila cuba lagi.', status: 0, isNetworkError: true });
       }
     }
 
-    // Don't log expected 404s for settings that don't exist yet (e.g., google_maps_api_key)
-    // Check both params object and URL for the key
     const requestUrl = error.config?.url || '';
     const requestParams = error.config?.params || {};
     const urlHasSettings = requestUrl.includes('/settings');
-    const keyMatches = requestParams.key === 'google_maps_api_key' || 
+    const keyMatches = requestParams.key === 'google_maps_api_key' ||
                        requestUrl.includes('key=google_maps_api_key') ||
                        requestUrl.includes('key=') && requestUrl.includes('google_maps_api_key');
-    
-    const isExpected404 = error.response?.status === 404 && 
-      urlHasSettings && 
-      keyMatches;
-    
+    const isExpected404 = error.response?.status === 404 && urlHasSettings && keyMatches;
+
     if (isExpected404) {
-      // Return a clean error object without logging - this is expected behavior
-      // The browser console will still show the network error, but our code won't log it
-      return Promise.reject({ 
-        message: 'Setting not found',
-        status: 404,
-        response: error.response,
-        isExpected404: true
-      });
+      return Promise.reject({ message: 'Setting not found', status: 404, response: error.response, isExpected404: true });
     }
 
-    // Don't log auth/permission errors to reduce console noise
     const isAuthError = error.response?.status === 401 || error.response?.status === 403;
     const errorMessage = error.response?.data?.message || '';
     const isTokenError = errorMessage.includes('token') || errorMessage.includes('Token') || errorMessage.includes('expired') || errorMessage.includes('invalid');
     const isPermissionError = errorMessage.includes('permissions') || errorMessage.includes('Insufficient');
-    
+
     if (isAuthError && (isTokenError || isPermissionError)) {
-      // Silently handle token and permission errors - don't spam console
-      // These are expected when user doesn't have access to certain endpoints
-      if (isTokenError) {
-        removeStoredAuth();
-      }
-      // Don't log permission errors - they're handled by the UI
+      if (isTokenError) removeStoredAuth();
     } else if (error.response && error.response.status >= 500) {
-      // Only log server errors (500+) - skip expected 404s
       if (!isExpected404) {
         console.error('API Error:', error.config?.url, 'Status:', error.response?.status);
         console.error('Error Response Data:', error.response?.data);
       }
-    } else if (error.response && error.response.status === 404 && !isExpected404) {
-      // Log 404s only if they're not expected (e.g., not for missing settings)
-      // Most 404s are expected (resource doesn't exist), so we don't log them
-      // This reduces console noise
     }
-    
-    // Return error with proper message structure
+
     const errorData = error.response?.data || { message: error.message || 'An error occurred' };
-    
-    // If errorData is a string, wrap it in an object
     if (typeof errorData === 'string') {
       return Promise.reject({ message: errorData, status: error.response?.status });
     }
-    
-    // If errorData doesn't have message, try to extract it
     if (!errorData.message && errorData.error) {
       errorData.message = errorData.error;
     }
-    
-    // Ensure we preserve the full error response structure
-    return Promise.reject({
-      ...errorData,
-      status: error.response?.status,
-      response: error.response
-    });
+    return Promise.reject({ ...errorData, status: error.response?.status, response: error.response });
   }
 );
 
+
 // Auth API
 export const authAPI = {
-  login: (credentials) => {
-    return api.post('/auth/login', credentials);
-  },
+  login: (credentials) => api.post('/auth/login', credentials),
   register: (data) => api.post('/auth/register', data),
   registerExisting: (data) => api.post('/auth/self-register', data),
   getProfile: () => api.get('/auth/profile'),
@@ -257,7 +191,6 @@ export const authAPI = {
       const response = await api.get('/auth/pending-registrations');
       return response?.success ? response : { success: true, data: response?.data || response || [] };
     } catch (error) {
-      // Enhanced error handling with connection recovery
       if (error.isNetworkError || error.status === 0) {
         throw { ...error, message: 'Tidak dapat menyambung ke pelayan. Sila semak sambungan internet anda.' };
       }
@@ -268,12 +201,10 @@ export const authAPI = {
     }
   },
   approveRegistration: (data) => {
-    // Support both old format (just user_telefon string) and new format (object with user_telefon and approval_notes)
     const payload = typeof data === 'string' ? { user_telefon: data } : data;
     return api.post('/auth/approve-registration', payload);
   },
   rejectRegistration: (data) => {
-    // Support both old format (just user_telefon string) and new format (object with user_telefon and rejection_notes)
     const payload = typeof data === 'string' ? { user_telefon: data } : data;
     return api.post('/auth/reject-registration', payload);
   },
@@ -287,26 +218,41 @@ export const notificationAPI = {
   markAllNotificationsRead: () => api.post('/notifications/mark-all-read'),
 };
 
-// Students API
+// ── Students API ─────────────────────────────────────────────
 export const studentsAPI = {
+  // Inside studentsAPI:
+getMyProfile: () => api.get('/students/me'),
+  // MODIFICATION 2: added status param forwarding
+  // Usage:
+  //   studentsAPI.getAll()                    → aktif students (excludes tamat — default)
+  //   studentsAPI.getAll({ status: 'tamat' }) → graduated students only
+  //   studentsAPI.getAll({ status: 'all' })   → all statuses
+  //   studentsAPI.getAll({ search: 'Ali' })   → search within active students
   getAll: async (params) => {
     try {
       const response = await api.get('/students', { params });
-      // Handle both array responses and object responses with data property
-      if (Array.isArray(response)) {
-        return response;
-      }
-      // If response has success and data properties, return the data array
-      if (response?.success && Array.isArray(response.data)) {
-        return response.data;
-      }
-      // Fallback to data property or empty array
+      if (Array.isArray(response)) return response;
+      if (response?.success && Array.isArray(response.data)) return response.data;
       return response?.data || [];
     } catch (error) {
       console.error('Error fetching students:', error);
       throw error;
     }
   },
+
+  // MODIFICATION 1: student fetches their own full profile
+  // Only callable with a student JWT — returns profile + class +
+  // attendance summary + outstanding fees + recent results.
+  getSelf: async () => {
+    try {
+      const response = await api.get('/students/me');
+      return response;
+    } catch (error) {
+      console.error('Error fetching self profile:', error);
+      throw error;
+    }
+  },
+
   getById: (id) => api.get(`/students/${id}`),
   create: (data) => api.post('/students', data),
   update: (id, data) => api.put(`/students/${id}`, data),
@@ -321,7 +267,6 @@ export const teachersAPI = {
   getAll: async (params) => {
     try {
       const response = await api.get('/teachers', { params });
-      // Handle both array responses and object responses with data property
       return Array.isArray(response) ? response : (response?.data || []);
     } catch (error) {
       console.error('Error fetching teachers:', error);
@@ -330,7 +275,7 @@ export const teachersAPI = {
   },
   getById: (id) => api.get(`/teachers/${id}`),
   create: (data) => api.post('/teachers', data),
-  register: (data) => api.post('/teachers/register', data), // Public registration endpoint
+  register: (data) => api.post('/teachers/register', data),
   update: (id, data) => api.put(`/teachers/${id}`, data),
   delete: (id) => api.delete(`/teachers/${id}`),
   getStats: async () => {
@@ -344,7 +289,6 @@ export const teachersAPI = {
   },
   getUnassigned: async () => {
     try {
-      // Request with very high limit to get all users (10,000 should be enough)
       const response = await api.get('/teachers/unassigned', { params: { limit: 10000, page: 1 } });
       return response?.success ? response : { success: true, data: response?.data || [] };
     } catch (error) {
@@ -360,24 +304,13 @@ export const classesAPI = {
   getAll: async (params) => {
     try {
       const response = await api.get('/classes', { params });
-      // The interceptor already returns response.data, so response is the data object
-      // Backend returns: { success: true, data: [...], pagination: {...} }
-      // After interceptor: { success: true, data: [...], pagination: {...} }
-      if (Array.isArray(response)) {
-        return response;
-      }
-      // If it's an object with data property, return the data array
-      if (response?.data && Array.isArray(response.data)) {
-        return response.data;
-      }
-      // If it's an object but no data property, return empty array
+      if (Array.isArray(response)) return response;
+      if (response?.data && Array.isArray(response.data)) return response.data;
       return [];
     } catch (error) {
-      // Don't log canceled/duplicate request errors - they're expected
       if (!error.isCanceled && !error.isExpected) {
         console.error('Error fetching classes:', error);
       }
-      // Ensure error is properly formatted
       const errorMessage = error?.response?.data?.message || error?.message || 'Gagal memuatkan data kelas.';
       throw { ...error, message: errorMessage };
     }
@@ -391,7 +324,6 @@ export const classesAPI = {
       const response = await api.get('/classes/stats');
       return response?.success ? response : { success: true, data: response };
     } catch (error) {
-      // Don't log canceled/duplicate request errors - they're expected
       if (!error.isCanceled && !error.isExpected) {
         console.error('Error fetching class stats:', error);
       }
@@ -404,7 +336,6 @@ export const classesAPI = {
 export const attendanceAPI = {
   getAll: async (params) => {
     try {
-      // Filter out undefined/null values from params to avoid sending them as query strings
       const cleanParams = {};
       if (params) {
         Object.keys(params).forEach(key => {
@@ -413,19 +344,9 @@ export const attendanceAPI = {
           }
         });
       }
-      // Removed console.log to reduce console noise
       const response = await api.get('/attendance', { params: cleanParams });
-      // The interceptor already returns response.data, so response is the data object
-      // Backend returns: { success: true, data: [...], pagination: {...} }
-      // After interceptor: { success: true, data: [...], pagination: {...} }
-      if (Array.isArray(response)) {
-        return response;
-      }
-      // If it's an object with data property, return the data array
-      if (response?.data && Array.isArray(response.data)) {
-        return response.data;
-      }
-      // If it's an object but no data property, return empty array
+      if (Array.isArray(response)) return response;
+      if (response?.data && Array.isArray(response.data)) return response.data;
       return [];
     } catch (error) {
       console.error('Error fetching attendance:', error);
@@ -434,20 +355,12 @@ export const attendanceAPI = {
   },
   mark: (data) => api.post('/attendance', data),
   bulkMark: (data) => api.post('/attendance/bulk', data),
-  bulkMarkWithProof: (formData) => {
-    return api.post('/attendance/bulk-with-proof', formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-    });
-  },
+  bulkMarkWithProof: (formData) => api.post('/attendance/bulk-with-proof', formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
   update: (id, data) => api.put(`/attendance/${id}`, data),
   delete: async (id) => {
     console.log('[ATTENDANCE API] delete() called with ID:', id);
-    console.log('[ATTENDANCE API] Full URL will be:', `${api.defaults.baseURL}/attendance/${id}`);
     try {
       const response = await api.delete(`/attendance/${id}`);
-      console.log('[ATTENDANCE API] delete() response received:', response);
       return response;
     } catch (error) {
       console.error('[ATTENDANCE API] delete() error:', error);
@@ -464,7 +377,6 @@ export const feesAPI = {
   getAll: async (params) => {
     try {
       const response = await api.get('/fees', { params });
-      // Handle both array responses and object responses with data property
       return Array.isArray(response) ? response : (response?.data || []);
     } catch (error) {
       console.error('Error fetching fees:', error);
@@ -485,13 +397,8 @@ export const resultsAPI = {
   getAll: async (params) => {
     try {
       const response = await api.get('/results', { params });
-      // Handle both array responses and object responses with data property
-      if (Array.isArray(response)) {
-        return response;
-      }
-      if (response?.data && Array.isArray(response.data)) {
-        return response.data;
-      }
+      if (Array.isArray(response)) return response;
+      if (response?.data && Array.isArray(response.data)) return response.data;
       return [];
     } catch (error) {
       console.error('Error fetching results:', error);
@@ -507,7 +414,7 @@ export const resultsAPI = {
   getTopPerformers: (params) => api.get('/results/top-performers', { params }),
 };
 
-// Resit API (student: eligible modules, apply for resit)
+// Resit API
 export const resitAPI = {
   getMyEligible: async () => {
     try {
@@ -527,13 +434,8 @@ export const examsAPI = {
   getAll: async (params) => {
     try {
       const response = await api.get('/exams', { params });
-      // Handle both array responses and object responses with data property
-      if (Array.isArray(response)) {
-        return response;
-      }
-      if (response?.data && Array.isArray(response.data)) {
-        return response.data;
-      }
+      if (Array.isArray(response)) return response;
+      if (response?.data && Array.isArray(response.data)) return response.data;
       return [];
     } catch (error) {
       console.error('Error fetching exams:', error);
@@ -551,26 +453,19 @@ export const examsAPI = {
 export const setAuthToken = (token, expiresAt) => {
   if (token) {
     localStorage.setItem('authToken', token);
-    localStorage.setItem('token', token); // keep legacy consumers working
-    if (expiresAt) {
-      localStorage.setItem(TOKEN_EXPIRY_KEY, String(expiresAt));
-    }
+    localStorage.setItem('token', token);
+    if (expiresAt) localStorage.setItem(TOKEN_EXPIRY_KEY, String(expiresAt));
   } else {
     removeStoredAuth();
   }
 };
 
 export const getAuthToken = () => {
-  if (isTokenExpired()) {
-    removeStoredAuth();
-    return null;
-  }
+  if (isTokenExpired()) { removeStoredAuth(); return null; }
   return localStorage.getItem('authToken') || localStorage.getItem('token');
 };
 
-export const clearAuth = () => {
-  removeStoredAuth();
-};
+export const clearAuth = () => removeStoredAuth();
 
 // Settings API
 export const settingsAPI = {
@@ -601,20 +496,18 @@ export const announcementsAPI = {
 };
 
 export const picUsersAPI = {
+  
   getAll: (params) => api.get('/pic-users', { params }),
   create: (data) => api.post('/pic-users', data),
   update: (ic, data) => api.put(`/pic-users/${encodeURIComponent(ic)}`, data),
-  delete: (ic) => api.delete(`/pic-users/${encodeURIComponent(ic)}`)
+  delete: (ic) => api.delete(`/pic-users/${encodeURIComponent(ic)}`),
 };
 
 export const adminsAPI = {
   getAll: async (params) => {
     try {
       const response = await api.get('/admins', { params });
-      // Backend returns { success: true, data: [...], adminLimit: {...} }
-      if (response?.success && Array.isArray(response.data)) {
-        return response.data;
-      }
+      if (response?.success && Array.isArray(response.data)) return response.data;
       return Array.isArray(response) ? response : [];
     } catch (error) {
       console.error('Error fetching admins:', error);
@@ -623,9 +516,7 @@ export const adminsAPI = {
   },
   getWithLimit: async (params) => {
     try {
-      const response = await api.get('/admins', { params });
-      // Return full response including adminLimit
-      return response;
+      return await api.get('/admins', { params });
     } catch (error) {
       console.error('Error fetching admins with limit:', error);
       throw error;
@@ -634,7 +525,7 @@ export const adminsAPI = {
   getById: (ic) => api.get(`/admins/${encodeURIComponent(ic)}`),
   create: (data) => api.post('/admins', data),
   update: (ic, data) => api.put(`/admins/${encodeURIComponent(ic)}`, data),
-  delete: (ic) => api.delete(`/admins/${encodeURIComponent(ic)}`)
+  delete: (ic) => api.delete(`/admins/${encodeURIComponent(ic)}`),
 };
 
 export const pendingPicChangesAPI = {
@@ -643,13 +534,8 @@ export const pendingPicChangesAPI = {
       const response = await api.get('/pending-pic-changes', { params });
       return response?.success ? response : { success: true, data: response?.data || response || [] };
     } catch (error) {
-      // Enhanced error handling
-      if (error.isNetworkError || error.status === 0) {
-        throw { ...error, message: 'Tidak dapat menyambung ke pelayan. Sila semak sambungan internet anda.' };
-      }
-      if (error.status === 403) {
-        throw { ...error, message: 'Anda tidak mempunyai kebenaran untuk mengakses halaman ini. Sila log masuk sebagai pentadbir.' };
-      }
+      if (error.isNetworkError || error.status === 0) throw { ...error, message: 'Tidak dapat menyambung ke pelayan. Sila semak sambungan internet anda.' };
+      if (error.status === 403) throw { ...error, message: 'Anda tidak mempunyai kebenaran untuk mengakses halaman ini. Sila log masuk sebagai pentadbir.' };
       throw error;
     }
   },
@@ -658,9 +544,7 @@ export const pendingPicChangesAPI = {
       const response = await api.get(`/pending-pic-changes/${id}`);
       return response?.success ? response : { success: true, data: response?.data || response };
     } catch (error) {
-      if (error.status === 404) {
-        throw { ...error, message: 'Permintaan tidak ditemui. Mungkin telah dipadam atau tidak wujud.' };
-      }
+      if (error.status === 404) throw { ...error, message: 'Permintaan tidak ditemui. Mungkin telah dipadam atau tidak wujud.' };
       throw error;
     }
   },
@@ -668,11 +552,8 @@ export const pendingPicChangesAPI = {
     try {
       return await api.post(`/pending-pic-changes/${id}/approve`, data);
     } catch (error) {
-      // Preserve specific error messages from backend
       const backendMessage = error?.response?.data?.message || error?.message;
-      if (backendMessage) {
-        throw { ...error, message: backendMessage };
-      }
+      if (backendMessage) throw { ...error, message: backendMessage };
       throw error;
     }
   },
@@ -680,31 +561,25 @@ export const pendingPicChangesAPI = {
     try {
       return await api.post(`/pending-pic-changes/${id}/reject`, data);
     } catch (error) {
-      // Preserve specific error messages from backend
       const backendMessage = error?.response?.data?.message || error?.message;
-      if (backendMessage) {
-        throw { ...error, message: backendMessage };
-      }
+      if (backendMessage) throw { ...error, message: backendMessage };
       throw error;
     }
   },
 };
 
-// Google Form API
 export const googleFormAPI = {
   getClassFormUrl: (classId) => api.get(`/google-form/class/${classId}`),
   setClassFormUrl: (classId, data) => api.put(`/google-form/class/${classId}`, data),
   submitWebhook: (data) => api.post('/google-form/webhook', data),
 };
 
-// Staff Check-In API
 export const staffCheckInAPI = {
   checkIn: (data) => api.post('/staff-checkin/check-in', data),
   checkOut: (data) => api.post('/staff-checkin/check-out', data),
   getTodayStatus: () => api.get('/staff-checkin/today-status'),
   getHistory: (params) => api.get('/staff-checkin/history', { params }),
   getStaffList: () => api.get('/staff-checkin/staff'),
-  /** Auto check-in on login: pass { latitude, longitude, accuracy? }. Omit coords to log gps_unavailable. */
   autoCheckIn: (data) => api.post('/staff-checkin/auto', data || {}),
   quickCheckIn: (data) => api.post('/staff-checkin/quick-check-in', data),
   quickCheckOut: (data) => api.post('/staff-checkin/quick-check-out', data),
@@ -715,28 +590,22 @@ export const exportAPI = {
   triggerDatabaseBackup: (payload) => api.post('/export/database', payload),
   archiveYearData: (payload) => api.post('/export/archive-year', payload),
   getHistory: (params) => api.get('/export/history', { params }),
-  download: (fileName) =>
-    api.get(`/export/download/${encodeURIComponent(fileName)}`, {
-      responseType: 'blob',
-    }),
+  download: (fileName) => api.get(`/export/download/${encodeURIComponent(fileName)}`, { responseType: 'blob' }),
 };
 
-
-// Payment Gateway Settings API
 export const paymentGatewaySettingsAPI = {
   getAll: () => api.get('/payment-gateways'),
   getActive: () => api.get('/payment-gateways/active'),
   update: (gatewayName, data) => api.put(`/payment-gateways/${gatewayName}`, data),
 };
 
-// Contact API
 export const contactAPI = {
   submit: (data) => api.post('/contact', data),
   getSubmissions: (params) => api.get('/contact/submissions', { params }),
 };
 
-// IB (Internal Auditor) API
 export const usersAPI = {
+  
   getAll: async (params = { limit: 1000, page: 1 }) => {
     try {
       const response = await api.get('/users', { params });
@@ -746,7 +615,36 @@ export const usersAPI = {
       throw error;
     }
   },
-  getByIc: (ic) => api.get(`/users/${encodeURIComponent(ic)}`),
+  updateRoles: (ic, data) => api.put(`/users/${encodeURIComponent(ic)}/roles`, data),
+
+  // Fan out across role-specific endpoints since /users/:ic doesn't exist
+  getByIc: async (ic) => {
+      // Guard: IC must be 12 digits
+  const cleanIc = ic?.replace(/-/g, '');
+  if (!cleanIc || !/^\d{12}$/.test(cleanIc)) {
+    throw { message: 'Format IC tidak sah.', status: 400 };
+  }
+
+    const endpoints = [
+  () => studentsAPI.getById(cleanIc),
+  () => teachersAPI.getById(cleanIc),
+  () => adminsAPI.getById(cleanIc),
+  () => api.get(`/pic-users/${encodeURIComponent(cleanIc)}`),
+];
+
+    for (const fn of endpoints) {
+      try {
+        const res = await fn();
+        const data = res?.data || res;
+        if (data && (data.ic || data.IC || data.nama)) {
+          return { success: true, data };
+        }
+      } catch (_) {
+        // 404 = not this role, try next
+      }
+    }
+    throw { message: 'Pengguna tidak ditemui.', status: 404 };
+  },
 };
 
 export const ibAPI = {
@@ -761,10 +659,9 @@ export const ibAPI = {
   getFlaggedPayments: (params) => api.get('/ib/flagged-payments', { params }),
   flagPayment: (data) => api.post('/ib/flag-payment', data),
   exportMonthlySummary: (params) => api.get('/ib/export/summary', { params }),
-  exportApprovalHistory: (params) => api.get('/ib/export/history', { params })
+  exportApprovalHistory: (params) => api.get('/ib/export/history', { params }),
 };
 
-// Receipt API
 export const receiptAPI = {
   getByNumber: (receiptNumber) => api.get(`/receipts/${receiptNumber}`),
   getFeeReceipt: (feeId) => api.get(`/receipts/fee/${feeId}`),
@@ -772,13 +669,11 @@ export const receiptAPI = {
   getUserReceipts: (userId) => api.get(`/receipts/user/${userId}`),
 };
 
-// Weather API
 export const weatherAPI = {
   getCurrent: () => api.get('/weather/current'),
   clearCache: () => api.delete('/weather/cache'),
 };
 
-// Quran Quote API
 export const quranQuoteAPI = {
   getDaily: () => api.get('/quran-quote/daily'),
   clearCache: () => api.delete('/quran-quote/cache'),

@@ -122,19 +122,17 @@ const WelcomeModal = ({ user, onClose }) => {
   ];
 
   const handleClose = () => {
-    if (user?.telefon) {
-      if (dontShowAgain) {
-        // Permanently disable if "don't show again" is checked
-        localStorage.setItem(`onboarding_permanently_disabled_${user.telefon}`, 'true');
-        localStorage.removeItem(`onboarding_last_shown_${user.telefon}`); // Clean up old timestamp
-      } else {
-        // Store timestamp of when modal was dismissed (to show again after 24 hours)
-        localStorage.setItem(`onboarding_last_shown_${user.telefon}`, Date.now().toString());
-        localStorage.removeItem(`onboarding_permanently_disabled_${user.telefon}`); // Ensure permanent disable is cleared
-      }
+  if (user?.ic) {                                                          // ← was user?.telefon
+    if (dontShowAgain) {
+      localStorage.setItem(`onboarding_permanently_disabled_${user.ic}`, 'true');   // ← was user.telefon
+      localStorage.removeItem(`onboarding_last_shown_${user.ic}`);                  // ← was user.telefon
+    } else {
+      localStorage.setItem(`onboarding_last_shown_${user.ic}`, Date.now().toString()); // ← was user.telefon
+      localStorage.removeItem(`onboarding_permanently_disabled_${user.ic}`);           // ← was user.telefon
     }
-    onClose();
-  };
+  }
+  onClose();
+};
 
   const handleNext = () => {
     if (currentStep < steps.length - 1) {

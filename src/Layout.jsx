@@ -321,6 +321,7 @@ const LayoutContent = ({ children, user, onLogout, onRoleChange }) => {
         icon: <User className="w-5 h-5" />,
         children: [
           { icon: <User className="w-5 h-5" />, label: t('menuMyAccount'), link: '/account' },
+          { icon: <User className="w-5 h-5" />, label: 'Profil Saya', link: '/student/profile' }, // MODIFICATION 1
         ]
       });
 
@@ -597,6 +598,9 @@ const LayoutContent = ({ children, user, onLogout, onRoleChange }) => {
                 <div className="flex items-center gap-2 mb-3 px-2">
                   <Zap className="w-4 h-4 text-yellow-300" />
                   <span className="text-xs font-semibold text-white opacity-90 uppercase tracking-wider">
+
+
+                    
                     Quick Access
                   </span>
                 </div>

@@ -1,291 +1,249 @@
-import React, { useState, useEffect } from 'react';
-import { Navigate, useParams, useLocation, useNavigate } from 'react-router-dom';
-import useCrud from '../hooks/useCrud';
-import { useDelayedSkeleton } from '../hooks/useDelayedSkeleton';
+import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { studentsAPI } from '../services/api';
-import PelajarList from '../components/pelajar/PelajarList';
-import PelajarForm from '../components/pelajar/PelajarForm';
-import PelajarDetail from '../components/pelajar/PelajarDetail';
-import PelajarImport from '../components/pelajar/PelajarImport';
-import LoadingSkeleton from '../components/ui/LoadingSkeleton';
-import Spinner from '../components/ui/Spinner';
-import { Users, UserCheck, AlertCircle } from 'lucide-react';
-import { Link, Route, Routes } from 'react-router-dom';
+import { toast } from 'react-toastify';
+import { Search, UserPlus, RefreshCw, Filter, ChevronLeft, ChevronRight } from 'lucide-react';
 
-/** Detail page at /pelajar/:id – load pelajar from list or fetch by id, preserve search when back */
-function PelajarDetailRoute({ user, pelajars, onEdit }) {
-  const { id } = useParams();
-  const location = useLocation();
-  const navigate = useNavigate();
-  const fromListSearch = location.state?.search ?? '';
-  const [pelajar, setPelajar] = useState(() => {
-    const list = Array.isArray(pelajars) ? pelajars : [];
-    const ic = decodeURIComponent(id || '');
-    return list.find((p) => (p.telefon || p.IC || '') === ic || String(p.telefon || p.IC) === ic) ?? null;
-  });
-  const [loading, setLoading] = useState(!pelajar);
-  const [fetchError, setFetchError] = useState(null);
-
-  useEffect(() => {
-    if (pelajar) return;
-    let cancelled = false;
-    (async () => {
-      try {
-        setLoading(true);
-        setFetchError(null);
-        const raw = decodeURIComponent(id || '');
-        const res = await studentsAPI.getById(raw);
-        const data = res?.data ?? res;
-        if (!cancelled && data) setPelajar(Array.isArray(data) ? data[0] : data);
-        else if (!cancelled) setFetchError(new Error('Pelajar tidak dijumpai'));
-      } catch (e) {
-        if (!cancelled) setFetchError(e);
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-    return () => { cancelled = true; };
-  }, [id, pelajar]);
-
-  const backUrl = fromListSearch ? `/pelajar?q=${encodeURIComponent(fromListSearch)}` : '/pelajar';
-  const handleClose = () => navigate(backUrl);
-  const handleEdit = (p) => {
-    onEdit(p);
-    navigate(backUrl);
+// ── Status badge (same palette used throughout the app) ───────
+// MODIFICATION 2: added 'tamat' → indigo
+function StatusBadge({ status }) {
+  const map = {
+    aktif:       { bg: '#dcfce7', color: '#166534' },
+    tidak_aktif: { bg: '#fee2e2', color: '#991b1b' },
+    cuti:        { bg: '#fef9c3', color: '#854d0e' },
+    pending:     { bg: '#f3f4f6', color: '#374151' },
+    tamat:       { bg: '#ede9fe', color: '#4c1d95' },
   };
-
-  if (user?.role === 'student') return <Navigate to="/" replace />;
-  if (loading && !pelajar) {
-    return (
-      <div className="min-h-[320px] flex items-center justify-center">
-        <Spinner size="lg" />
-      </div>
-    );
-  }
-  if (fetchError || !pelajar) {
-    return (
-      <div className="text-center py-16 px-4">
-        <p className="text-gray-600 mb-4">{fetchError?.message || 'Pelajar tidak dijumpai.'}</p>
-        <Link to={backUrl} className="text-emerald-600 hover:underline font-medium">
-          Kembali ke senarai
-        </Link>
-      </div>
-    );
-  }
+  const labels = {
+    aktif: 'Aktif', tidak_aktif: 'Tidak Aktif', cuti: 'Cuti', pending: 'Pending', tamat: 'Tamat',
+  };
+  const s = map[status] ?? map.pending;
   return (
-    <PelajarDetail
-      pelajar={pelajar}
-      onEdit={handleEdit}
-      onClose={handleClose}
-    />
+    <span style={{ ...s, padding: '2px 8px', borderRadius: 9999, fontSize: 11, fontWeight: 600 }}>
+      {labels[status] ?? status}
+    </span>
   );
 }
 
+const PAGE_SIZE = 50;
+
 const Pelajar = ({ user }) => {
-  const {
-    items: pelajars,
-    currentItem: selectedPelajar,
-    view: currentView,
-    loading,
-    error,
-    handlers,
-    fetchItems,
-    DeleteModal,
-  } = useCrud(studentsAPI, 'pelajar');
+  const navigate = useNavigate();
 
-  // Prevent students from accessing this page
-  if (user?.role === 'student') {
-    return <Navigate to="/" replace />;
-  }
+  const [students,     setStudents]     = useState([]);
+  const [loading,      setLoading]      = useState(true);
+  const [search,       setSearch]       = useState('');
+  const [kelasFilter,  setKelasFilter]  = useState('');
+  const [statusFilter, setStatusFilter] = useState('');   // MODIFICATION 2
+  const [page,         setPage]         = useState(1);
+  const [pagination,   setPagination]   = useState(null);
 
-  const {
-    add: handleAdd,
-    edit: handleEdit,
-    view: handleView,
-    delete: handleDelete,
-    submit: handleSubmit,
-    cancel: handleCancel,
-  } = handlers;
+  // ── Load students ───────────────────────────────────────────
+  const loadStudents = useCallback(async () => {
+    try {
+      setLoading(true);
 
-  // Fetch all students with high limit
-  // Fetch all students with high limit - only on mount
-  useEffect(() => {
-    fetchItems({ limit: 1000 });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Only fetch once on mount
+      // Build params — only include status if explicitly set
+      // Omitting status keeps original default behaviour (excludes 'tamat')
+      const params = {
+        page,
+        limit: PAGE_SIZE,
+        ...(search       ? { search }                  : {}),
+        ...(kelasFilter  ? { kelas_id: kelasFilter }   : {}),
+        ...(statusFilter ? { status: statusFilter }    : {}),  // MODIFICATION 2
+      };
 
-  // Calculate statistics from API response
-  const pelajarsArray = Array.isArray(pelajars) ? pelajars : [];
-  // Get stats from API if available, otherwise calculate from array
-  const [stats, setStats] = useState({
-    total: pelajarsArray.length,
-    active: pelajarsArray.length
-  });
+      // studentsAPI.getAll returns the data array directly (see api.js)
+      const data = await studentsAPI.getAll(params);
 
-  // Fetch stats from API
-  useEffect(() => {
-    const fetchStats = async () => {
-      try {
-        const response = await studentsAPI.getStats();
-        if (response?.success && response?.data) {
-          setStats({
-            total: response.data.total || 0,
-            active: response.data.active || 0
-          });
-        }
-      } catch (error) {
-        console.error('Failed to fetch stats:', error);
-        // Fallback to calculated stats
-        setStats({
-          total: pelajarsArray.length,
-          active: pelajarsArray.length
-        });
+      // Handle both array and paginated object responses
+      if (Array.isArray(data)) {
+        setStudents(data);
+        setPagination(null);
+      } else if (data?.data) {
+        setStudents(data.data);
+        setPagination(data.pagination ?? null);
+      } else {
+        setStudents([]);
+        setPagination(null);
       }
-    };
-    fetchStats();
-  }, [pelajarsArray.length]);
-
-  const totalPelajars = stats.total;
-  const aktifPelajars = stats.active;
-
-  const hasCachedData = pelajarsArray.length > 0;
-  const { showSkeleton, skeletonExiting, skeletonFadeClass, isRevalidating } = useDelayedSkeleton(loading, hasCachedData);
-
-  const renderContent = () => {
-    if (error) {
-      return (
-        <div className="text-center py-16 md:py-20 px-4 sm:px-6 animate-fade-in-up max-w-xl mx-auto">
-          <div className="inline-flex justify-center mb-6 p-5 bg-red-50 rounded-xl border border-red-100 shadow-sm">
-            <AlertCircle className="w-12 h-12 text-red-500" />
-          </div>
-          <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-3">Ralat Memuatkan Data</h1>
-          <p className="text-base text-gray-600 mb-8 leading-relaxed">{error.message || 'Gagal memuatkan data pelajar.'}</p>
-          <button
-            onClick={() => window.location.reload()}
-            className="inline-flex items-center justify-center px-6 py-3 rounded-lg font-semibold text-white bg-emerald-500 hover:bg-emerald-600 shadow-sm hover:shadow-md transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2"
-          >
-            Muat Semula
-          </button>
-        </div>
-      );
+    } catch (err) {
+      if (!err?.isCanceled) {
+        toast.error(err?.message || 'Gagal memuatkan senarai pelajar.');
+      }
+    } finally {
+      setLoading(false);
     }
+  }, [page, search, kelasFilter, statusFilter]);   // MODIFICATION 2: statusFilter dependency
 
-    switch (currentView) {
-      case 'form':
-        if (user?.role === 'student') {     
-          return <Navigate to="/" replace />;
-        }
-        return (
-          <PelajarForm
-            pelajar={selectedPelajar}
-            onSubmit={handleSubmit}
-            onCancel={handleCancel}
-          />
-        );
-      case 'detail':
-        if (user?.role === 'student') {
-          return <Navigate to="/" replace />;
-        }
-        return (
-          <PelajarDetail
-            pelajar={selectedPelajar}
-            onEdit={handleEdit}
-            onClose={handleCancel}
-          />
-        );
-      default:
-        return (
-          <div className="space-y-8 md:space-y-10 relative">
-            {/* Stale-while-revalidate: small inline loader when refetching with cached data */}
-            {isRevalidating && (
-              <div className="absolute top-0 right-0 z-10 flex items-center gap-2 text-sm text-gray-500">
-                <Spinner size="sm" />
-                <span className="hidden sm:inline">Mengemas kini...</span>
-              </div>
-            )}
-            {/* Content: show when we have data (cached or load finished); never blank for stale-while-revalidate */}
-            {(hasCachedData || !loading) && (
-          <>
-            {/* Statistics Cards - Blinkist-style */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-              <div className="bg-white rounded-xl p-6 shadow-[0_2px_8px_rgba(0,0,0,0.06)] hover:shadow-[0_4px_16px_rgba(0,0,0,0.08)] transition-shadow duration-200 border border-gray-100">
-                <div className="flex items-center gap-4">
-                  <div className="flex-shrink-0 w-12 h-12 rounded-lg bg-emerald-50 flex items-center justify-center">
-                    <Users className="w-6 h-6 text-emerald-600" />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium text-gray-500">Jumlah Pelajar</p>
-                    <p className="text-2xl md:text-3xl font-bold text-gray-900 mt-0.5">{totalPelajars}</p>
-                  </div>
-                </div>
-              </div>
-              <div className="bg-white rounded-xl p-6 shadow-[0_2px_8px_rgba(0,0,0,0.06)] hover:shadow-[0_4px_16px_rgba(0,0,0,0.08)] transition-shadow duration-200 border border-gray-100">
-                <div className="flex items-center gap-4">
-                  <div className="flex-shrink-0 w-12 h-12 rounded-lg bg-emerald-50 flex items-center justify-center">
-                    <UserCheck className="w-6 h-6 text-emerald-600" />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium text-gray-500">Aktif</p>
-                    <p className="text-2xl md:text-3xl font-bold text-gray-900 mt-0.5">{aktifPelajars}</p>
-                  </div>
-                </div>
-              </div>
-            </div>
+  useEffect(() => { loadStudents(); }, [loadStudents]);
 
-            {/* Pelajar List */}
-            <PelajarList
-              pelajars={pelajars}
-              onEdit={handleEdit}
-              onView={handleView}
-              onDelete={handleDelete}
-              onAdd={handleAdd}
-              user={user}
-              listBasePath={location.pathname === '/pelajar' ? '/pelajar' : (location.pathname.replace(/\/([^/]+)$/, '') || '/pelajar')}
-            />
-          </>
-            )}
-            {/* Conditional skeleton overlay: only after 250ms when no cached data; fades out 0.15s when done */}
-            {(showSkeleton || skeletonExiting) && (
-              <div
-                className={`absolute inset-0 z-[1] bg-[#F8F8F8] min-h-[320px] ${skeletonFadeClass}`}
-                aria-hidden="true"
-              >
-                <div className="space-y-8 md:space-y-10">
-                  <LoadingSkeleton type="stat" count={2} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6" />
-                  <LoadingSkeleton type="table" />
-                </div>
-              </div>
-            )}
-          </div>
-        );
-    }
-  };
+  // Reset to page 1 when filters change
+  useEffect(() => { setPage(1); }, [search, kelasFilter, statusFilter]);  // MODIFICATION 2
 
-  const location = useLocation();
+  const effectiveRole = user?.activeRole || user?.role || 'admin';
+  const canManage = ['admin', 'staff', 'pic'].includes(effectiveRole);
 
   return (
-    <div className="min-h-screen bg-[#F8F8F8]">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
-        {/* Page header with primary CTA */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8 md:mb-10">
-          <h1 className="text-2xl md:text-3xl font-bold text-gray-900 tracking-tight">Pelajar</h1>
-          {user?.role === 'admin' && (
-            <Link
-              to={`${location.pathname}/import`}
-              className="inline-flex items-center justify-center px-6 py-3 rounded-lg font-semibold text-white bg-emerald-500 hover:bg-emerald-600 shadow-sm hover:shadow-md transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 w-full sm:w-auto"
+    <div className="space-y-4">
+
+      {/* ── Page header ──────────────────────────────────────── */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12 }}>
+        <div>
+          <h1 className="text-gray-900 font-bold text-2xl">Senarai Pelajar</h1>
+          <p className="text-gray-600 text-sm">0 pelajar</p>
+        </div>
+        {canManage && (
+          <button
+            onClick={() => navigate('/pelajar/tambah')}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 16px', background: '#16a34a', color: '#fff', borderRadius: 8, fontSize: 14, border: 'none', cursor: 'pointer' }}
+          >
+            <UserPlus style={{ width: 16, height: 16 }} />
+            Tambah Pelajar
+          </button>
+        )}
+      </div>
+
+      {/* ── Filter toolbar ────────────────────────────────────── */}
+      <div className="fm-card" style={{ padding: 12 }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center' }}>
+
+          {/* Search */}
+          <div style={{ position: 'relative', flex: '1 1 180px', minWidth: 180 }}>
+            <Search style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', width: 15, height: 15, color: '#6b7280' }} />
+            <input
+              type="text"
+              placeholder="Cari nama / no. IC…"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              style={{ width: '100%', paddingLeft: 32, paddingRight: 10, paddingTop: 8, paddingBottom: 8, background: '#111827', border: '1px solid #374151', borderRadius: 8, color: '#f9fafb', fontSize: 13, outline: 'none' }}
+            />
+          </div>
+
+          {/* ── MODIFICATION 2: Status filter dropdown ────────── */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <Filter style={{ width: 15, height: 15, color: '#6b7280' }} />
+            <select
+              value={statusFilter}
+              onChange={e => setStatusFilter(e.target.value)}
+              style={{ padding: '8px 10px', background: '#111827', border: '1px solid #374151', borderRadius: 8, color: '#f9fafb', fontSize: 13, outline: 'none', cursor: 'pointer' }}
             >
-              Import Pelajar
-            </Link>
-          )}
+              <option value="">Pelajar Aktif</option>
+              <option value="aktif">Aktif Sahaja</option>
+              <option value="cuti">Cuti</option>
+              <option value="pending">Pending</option>
+              <option value="tidak_aktif">Tidak Aktif</option>
+              <option value="tamat">Tamat / Graduated</option>
+              <option value="all">Semua Status</option>
+            </select>
+          </div>
+
+          {/* Refresh */}
+          <button
+            onClick={loadStudents}
+            disabled={loading}
+            title="Muat semula"
+            style={{ padding: 8, background: 'transparent', border: '1px solid #374151', borderRadius: 8, color: '#9ca3af', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+          >
+            <RefreshCw style={{ width: 15, height: 15, animation: loading ? 'spin 1s linear infinite' : 'none' }} />
+          </button>
         </div>
 
-        <Routes>
-          <Route path="/" element={renderContent()} />
-          <Route path="/import" element={<PelajarImport />} />
-          <Route path="/:id" element={<PelajarDetailRoute user={user} pelajars={pelajars} onEdit={handleEdit} />} />
-        </Routes>
-        <DeleteModal />
+        {/* Context banner for tamat / all filters */}
+        {statusFilter === 'tamat' && (
+          <div style={{ marginTop: 10, padding: '6px 12px', background: 'rgba(109,40,217,0.15)', border: '1px solid #7c3aed', borderRadius: 6, fontSize: 13, color: '#c4b5fd' }}>
+            Paparan: Pelajar yang telah <strong>tamat / graduated</strong> sahaja.
+          </div>
+        )}
+        {statusFilter === 'all' && (
+          <div style={{ marginTop: 10, padding: '6px 12px', background: 'rgba(55,65,81,0.5)', border: '1px solid #4b5563', borderRadius: 6, fontSize: 13, color: '#9ca3af' }}>
+            Paparan: <strong>Semua pelajar</strong> termasuk yang telah tamat.
+          </div>
+        )}
       </div>
+
+      {/* ── Table ─────────────────────────────────────────────── */}
+      <div className="fm-card" style={{ padding: 0, overflow: 'hidden' }}>
+        {loading ? (
+          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', padding: 64 }}>
+            <div style={{ width: 32, height: 32, border: '3px solid #374151', borderTopColor: '#16a34a', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+          </div>
+        ) : students.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: 64, color: '#6b7280' }}>
+            <p style={{ fontSize: 16, fontWeight: 500 }}>Tiada pelajar dijumpai.</p>
+            {statusFilter === 'tamat' && (
+              <p style={{ fontSize: 13, marginTop: 6 }}>Belum ada pelajar dengan status Tamat.</p>
+            )}
+          </div>
+        ) : (
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+              <thead>
+                <tr style={{ background: '#111827', borderBottom: '1px solid #1f2937' }}>
+                  {['Nama', 'No. IC / Telefon', 'Kelas', 'Tarikh Daftar', 'Status', ''].map(h => (
+                    <th key={h} style={{ textAlign: 'left', padding: '10px 14px', color: '#6b7280', fontWeight: 600, fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                      {h}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {students.map((s, i) => (
+                  <tr
+                    key={s.ic || s.telefon || i}
+                    style={{
+                      borderBottom: '1px solid #1f2937',
+                      opacity: s.status === 'tamat' ? 0.7 : 1,
+                      transition: 'background 0.15s',
+                    }}
+                    onMouseEnter={e => e.currentTarget.style.background = '#111827'}
+                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                  >
+                    <td style={{ padding: '10px 14px', color: '#f9fafb', fontWeight: 500 }}>{s.nama}</td>
+                    <td style={{ padding: '10px 14px', color: '#9ca3af', fontFamily: 'monospace' }}>{s.ic || s.telefon}</td>
+                    <td style={{ padding: '10px 14px', color: '#9ca3af' }}>{s.nama_kelas || 'Tiada Kelas'}</td>
+                    <td style={{ padding: '10px 14px', color: '#6b7280' }}>{s.tarikh_daftar || '—'}</td>
+                    <td style={{ padding: '10px 14px' }}><StatusBadge status={s.status} /></td>
+                    <td style={{ padding: '10px 14px' }}>
+                      <button
+                        onClick={() => navigate(`/pelajar/${s.ic || s.telefon}`)}
+                        style={{ color: '#16a34a', background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 500 }}
+                      >
+                        Lihat →
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* ── Pagination ────────────────────────────────────────── */}
+      {pagination && pagination.pages > 1 && (
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span style={{ color: '#6b7280', fontSize: 13 }}>
+            Halaman {pagination.page} daripada {pagination.pages}
+          </span>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button
+              onClick={() => setPage(p => Math.max(1, p - 1))}
+              disabled={page <= 1}
+              style={{ padding: 8, background: 'transparent', border: '1px solid #374151', borderRadius: 8, color: page <= 1 ? '#374151' : '#9ca3af', cursor: page <= 1 ? 'default' : 'pointer', display: 'flex' }}
+            >
+              <ChevronLeft style={{ width: 16, height: 16 }} />
+            </button>
+            <button
+              onClick={() => setPage(p => Math.min(pagination.pages, p + 1))}
+              disabled={page >= pagination.pages}
+              style={{ padding: 8, background: 'transparent', border: '1px solid #374151', borderRadius: 8, color: page >= pagination.pages ? '#374151' : '#9ca3af', cursor: page >= pagination.pages ? 'default' : 'pointer', display: 'flex' }}
+            >
+              <ChevronRight style={{ width: 16, height: 16 }} />
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

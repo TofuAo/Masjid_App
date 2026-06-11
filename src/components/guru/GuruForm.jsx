@@ -174,13 +174,13 @@ const GuruForm = ({ guru = null, onSubmit, onCancel, user = null }) => {
     }
     
     // Validate IC is required
-    if (!formData.telefon || formData.telefon.trim() === '') {
+    if (!formData.ic|| formData.ic.trim() === '') {
       alert('Nombor IC diperlukan.');
       return;
     }
     
     // Normalize IC (remove hyphens for validation)
-    const normalizedIC = formData.telefon.replace(/\D/g, '');
+    const normalizedIC = formData.ic.replace(/\D/g, '');
     
     // Validate IC format (must be exactly 12 digits)
     if (normalizedIC.length !== 12) {
@@ -247,7 +247,7 @@ const GuruForm = ({ guru = null, onSubmit, onCancel, user = null }) => {
               <input
                 type="text"
                 name="ic"
-                value={formData.telefon}
+                value={formData.ic}
                 onChange={handleChange}
                 required
                 maxLength={14}

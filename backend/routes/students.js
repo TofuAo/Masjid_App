@@ -1,6 +1,7 @@
 import express from 'express';
 import { body, param } from 'express-validator';
 import {
+  getSelf,           // ← MODIFICATION 1 (new)
   getAllStudents,
   getStudentById,
   createStudent,
@@ -22,13 +23,10 @@ const router = express.Router();
 // Validation rules for creating students
 const studentValidation = [
   body('nama')
-    .notEmpty()
-    .withMessage('Name is required')
-    .isLength({ min: 2, max: 100 })
-    .withMessage('Name must be between 2 and 100 characters'),
+    .notEmpty().withMessage('Name is required')
+    .isLength({ min: 2, max: 100 }).withMessage('Name must be between 2 and 100 characters'),
   body('telefon')
-    .notEmpty()
-    .withMessage('Nombor telefon diperlukan')
+    .notEmpty().withMessage('Nombor telefon diperlukan')
     .custom((value) => {
       if (!isValidPhoneFormat(value)) {
         throw new Error('IC must be 12 digits (format: 123456-78-9012 or 123456789012)');
@@ -36,27 +34,14 @@ const studentValidation = [
       return true;
     }),
   body('umur')
-    .isInt({ min: 5, max: 100 })
-    .withMessage('Age must be between 5 and 100'),
+    .isInt({ min: 5, max: 100 }).withMessage('Age must be between 5 and 100'),
   body('alamat')
     .optional({ nullable: true, checkFalsy: true })
-    .isLength({ min: 10, max: 500 })
-    .withMessage('Address must be between 10 and 500 characters'),
-  body('telefon')
-    .optional({ nullable: true, checkFalsy: true })
-    .custom((value) => {
-      if (!isValidPhoneFormat(value)) {
-        throw new Error('Phone must be a valid Malaysian mobile number (format: 012-3456789 atau 0123456789)');
-      }
-      return true;
-    }),
+    .isLength({ min: 10, max: 500 }).withMessage('Address must be between 10 and 500 characters'),
   body('kelas_id')
     .optional({ nullable: true, checkFalsy: true })
     .custom((value) => {
-      // Allow null, undefined, empty string, or valid integer
-      if (value === null || value === undefined || value === '') {
-        return true;
-      }
+      if (value === null || value === undefined || value === '') return true;
       return Number.isInteger(Number(value));
     })
     .withMessage('Class ID must be a valid integer or empty'),
@@ -65,18 +50,16 @@ const studentValidation = [
     .isIn(['aktif', 'tidak_aktif'])
     .withMessage('Status must be one of: aktif, tidak_aktif'),
   body('tarikh_daftar')
-    .isISO8601()
-    .withMessage('Registration date must be a valid date'),
+    .isISO8601().withMessage('Registration date must be a valid date'),
   body('email').isEmail().withMessage('Must be a valid email'),
   body('password').isLength({ min: 5 }).withMessage('Password must be at least 5 chars long')
 ];
 
-// Validation rules for updating students (all fields optional except password validation if provided)
+// Validation rules for updating students
 const studentUpdateValidation = [
   body('nama')
     .optional()
-    .isLength({ min: 2, max: 100 })
-    .withMessage('Name must be between 2 and 100 characters'),
+    .isLength({ min: 2, max: 100 }).withMessage('Name must be between 2 and 100 characters'),
   body('telefon')
     .optional()
     .custom((value) => {
@@ -87,51 +70,34 @@ const studentUpdateValidation = [
     }),
   body('umur')
     .optional()
-    .isInt({ min: 5, max: 100 })
-    .withMessage('Age must be between 5 and 100'),
+    .isInt({ min: 5, max: 100 }).withMessage('Age must be between 5 and 100'),
   body('alamat')
     .optional({ nullable: true, checkFalsy: true })
-    .isLength({ min: 10, max: 500 })
-    .withMessage('Address must be between 10 and 500 characters'),
-  body('telefon')
-    .optional({ nullable: true, checkFalsy: true })
-    .custom((value) => {
-      if (value && !isValidPhoneFormat(value)) {
-        throw new Error('Phone must be a valid Malaysian mobile number (format: 012-3456789 atau 0123456789)');
-      }
-      return true;
-    }),
+    .isLength({ min: 10, max: 500 }).withMessage('Address must be between 10 and 500 characters'),
   body('kelas_id')
     .optional({ nullable: true, checkFalsy: true })
     .custom((value) => {
-      if (value === null || value === undefined || value === '') {
-        return true;
-      }
+      if (value === null || value === undefined || value === '') return true;
       return Number.isInteger(Number(value));
     })
     .withMessage('Class ID must be a valid integer or empty'),
-  // Status validation removed - status field no longer in form
+  // ── MODIFICATION 2: 'tamat' added to allowed status values ──
+  body('status')
+    .optional()
+    .isIn(['aktif', 'tidak_aktif', 'cuti', 'pending', 'tamat'])
+    .withMessage('Status mesti salah satu daripada: aktif, tidak_aktif, cuti, pending, tamat'),
   body('tarikh_daftar')
     .optional()
-    .isISO8601()
-    .withMessage('Registration date must be a valid date'),
+    .isISO8601().withMessage('Registration date must be a valid date'),
   body('email')
     .optional({ nullable: true, checkFalsy: true })
     .custom((value) => {
-      // Allow empty string, null, or undefined
-      if (!value || value.trim() === '') {
-        return true;
-      }
-      // If provided, must be valid email
+      if (!value || value.trim() === '') return true;
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(value)) {
-        throw new Error('Must be a valid email');
-      }
+      if (!emailRegex.test(value)) throw new Error('Must be a valid email');
       return true;
     })
     .withMessage('Must be a valid email'),
-  // Password validation removed from update route - handled in controller
-  // Password is optional for updates and will only be validated if provided
 ];
 
 const icValidation = [
@@ -146,11 +112,47 @@ const icValidation = [
 
 // Apply authentication to all routes
 router.use(authenticateToken);
+// GET /api/students/me  — student views their own full profile
+router.get('/me', authenticateToken, requireRole(['student']), async (req, res) => {
+  try {
+    const ic = req.user.ic;
+    const [rows] = await db.query(
+      `SELECT u.IC as ic, u.nama, u.email, u.telefon, u.alamat, u.status,
+              u.created_at, u.updated_at,
+              s.kelas_id, s.tarikh_daftar, s.no_kecemasan,
+              k.nama_kelas
+       FROM users u
+       LEFT JOIN students s ON s.student_ic = u.IC
+       LEFT JOIN kelas k ON k.id = s.kelas_id
+       WHERE u.IC = ?`,
+      [ic]
+    );
 
-// Routes
+    if (!rows.length) {
+      return res.status(404).json({ success: false, message: 'Profil tidak dijumpai.' });
+    }
+
+    res.json({ success: true, data: rows[0] });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// ── MODIFICATION 1: GET /api/students/me ────────────────────
+// Student views their own full profile.
+// MUST be declared BEFORE /:ic to prevent Express treating "me" as a param.
+// requireRole(['student']) ensures only students can call this.
+router.get(
+  '/me',
+  requireRole(['student']),
+  getSelf
+);
+
+// ── Standard routes (unchanged order/logic) ─────────────────
 router.get('/', getAllStudents);
 router.get('/stats', getStudentStats);
 router.get('/:ic', icValidation, normalizePhoneMiddleware, getStudentById);
+
 router.post(
   '/',
   requireRole(['admin', 'staff', 'pic']),
@@ -171,6 +173,7 @@ router.post(
   }),
   createStudent
 );
+
 router.put(
   '/:ic',
   requireRole(['admin', 'staff', 'pic']),
@@ -184,20 +187,15 @@ router.put(
     message: 'Permintaan kemaskini pelajar dihantar untuk kelulusan admin.',
     prepare: async (req) => {
       console.log('requirePicApproval prepare: IC from params:', req.params.telefon);
-      // Use the same fetchStudentByPhone function to ensure consistency
-      // IC in params might be normalized by normalizePhoneMiddleware, but we'll handle all formats
       let student = await fetchStudentByPhone(req.params.telefon);
-      
-      // If not found, try with original IC before normalization
+
       if (!student && req.params.telefon) {
-        // Try with cleaned version
         const cleanedIc = normalizePhoneForQuery(req.params.telefon);
         if (!student && cleanedIc) {
           student = await fetchStudentByPhone(cleanedIc);
         }
       }
-      
-      // If still not found, try with normalized format
+
       if (!student && req.params.telefon) {
         const cleanedIc = normalizePhoneForQuery(req.params.telefon);
         if (cleanedIc.length === 12) {
@@ -207,17 +205,17 @@ router.put(
           }
         }
       }
-      
+
       if (!student) {
         console.error('requirePicApproval: Student not found after all attempts. IC:', req.params.telefon);
         const error = new Error('Pelajar tidak dijumpai.');
         error.status = 404;
         throw error;
       }
-      
+
       console.log('requirePicApproval: Found student:', student.telefon, student.nama);
       const cleanedIc = normalizePhoneForQuery(student.telefon || req.params.telefon);
-      
+
       return {
         entityId: cleanedIc,
         metadata: {
@@ -233,10 +231,10 @@ router.put(
   }),
   updateStudent
 );
+
 router.delete(
   '/:ic',
   requireRole(['admin', 'pic']),
-  // Store original IC before normalization middleware (for special IDs)
   (req, res, next) => {
     req.originalIc = req.params.telefon;
     next();
@@ -247,19 +245,17 @@ router.delete(
     entityType: 'student',
     message: 'Permintaan padam pelajar dihantar untuk kelulusan admin.',
     prepare: async (req) => {
-      // Use original IC if normalizePhone returned null (for special IDs like SPUTERIZULAIQHA001)
       const ic = req.params.telefon || req.originalIc;
       if (!ic) {
         const error = new Error('IC pelajar diperlukan.');
         error.status = 400;
         throw error;
       }
-      
+
       const cleanedIc = normalizePhoneForQuery(ic);
       console.log('[PIC Delete Prepare] Looking up student with IC:', ic, 'cleaned:', cleanedIc);
-      
-      // Try multiple lookup strategies to handle both standard ICs and special student IDs
-      // Strategy 1: Direct match (for special IDs like SSITIHAWA001, SPUTERIZULAIQHA001)
+
+      // Strategy 1: Direct match
       let [rows] = await pool.execute(
         `SELECT u.telefon, u.nama, u.email, u.telefon, s.kelas_id, s.tarikh_daftar
          FROM users u
@@ -267,9 +263,8 @@ router.delete(
          WHERE u.telefon = ? AND u.role = 'student'`,
         [ic]
       );
-      console.log('[PIC Delete Prepare] Strategy 1 (direct match) found:', rows.length, 'rows');
-      
-      // Strategy 2: If not found, try with cleaned IC (remove hyphens) - only for standard ICs
+
+      // Strategy 2: Cleaned IC
       if (rows.length === 0 && cleanedIc !== ic && cleanedIc.length === 12) {
         [rows] = await pool.execute(
           `SELECT u.telefon, u.nama, u.email, u.telefon, s.kelas_id, s.tarikh_daftar
@@ -278,10 +273,9 @@ router.delete(
            WHERE REPLACE(u.telefon, '-', '') = ? AND u.role = 'student'`,
           [cleanedIc]
         );
-        console.log('[PIC Delete Prepare] Strategy 2 (cleaned IC) found:', rows.length, 'rows');
       }
-      
-      // Strategy 3: Try case-insensitive match (for special IDs and case variations)
+
+      // Strategy 3: Case-insensitive
       if (rows.length === 0) {
         [rows] = await pool.execute(
           `SELECT u.telefon, u.nama, u.email, u.telefon, s.kelas_id, s.tarikh_daftar
@@ -290,10 +284,9 @@ router.delete(
            WHERE UPPER(u.telefon) = UPPER(?) AND u.role = 'student'`,
           [ic]
         );
-        console.log('[PIC Delete Prepare] Strategy 3 (case-insensitive) found:', rows.length, 'rows');
       }
-      
-      // Strategy 4: Try exact match with original IC from URL (in case of encoding issues)
+
+      // Strategy 4: Original IC from URL
       if (rows.length === 0 && req.originalIc && req.originalIc !== ic) {
         [rows] = await pool.execute(
           `SELECT u.telefon, u.nama, u.email, u.telefon, s.kelas_id, s.tarikh_daftar
@@ -302,19 +295,16 @@ router.delete(
            WHERE u.telefon = ? AND u.role = 'student'`,
           [req.originalIc]
         );
-        console.log('[PIC Delete Prepare] Strategy 4 (original IC) found:', rows.length, 'rows');
       }
-      
+
       if (rows.length === 0) {
-        console.error('[PIC Delete Prepare] Student not found after all strategies. IC:', ic, 'originalIc:', req.originalIc);
         const error = new Error('Pelajar tidak dijumpai.');
         error.status = 404;
         throw error;
       }
-      
-      console.log('[PIC Delete Prepare] Found student:', rows[0].ic, rows[0].nama);
+
       return {
-        entityId: rows[0].ic, // Use the actual IC from database
+        entityId: rows[0].ic,
         metadata: {
           summary: `Padam pelajar ${rows[0].nama}`,
           current: rows[0]
@@ -326,4 +316,3 @@ router.delete(
 );
 
 export default router;
-

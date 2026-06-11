@@ -8,6 +8,9 @@ import { usersAPI } from '../services/api';
 import { getEffectiveRole } from '../utils/userRoles';
 import { formatIC } from '../utils/icUtils';
 import { formatPhoneForDisplay } from '../utils/phoneUtils';
+import { toast } from 'react-toastify';
+
+const ASSIGNABLE_ROLES = ['admin', 'teacher', 'student', 'staff', 'pic'];
 
 const ROLE_LABELS = {
   admin: 'Admin',
@@ -27,6 +30,14 @@ const ROLE_VARIANTS = {
   ib: 'danger',
 };
 
+const ROLE_COLORS = {
+  admin:   { bg: 'bg-blue-50',   border: 'border-blue-300',   text: 'text-blue-800',   dot: 'bg-blue-500'   },
+  teacher: { bg: 'bg-green-50',  border: 'border-green-300',  text: 'text-green-800',  dot: 'bg-green-500'  },
+  student: { bg: 'bg-emerald-50',border: 'border-emerald-300',text: 'text-emerald-800',dot: 'bg-emerald-500'},
+  staff:   { bg: 'bg-gray-50',   border: 'border-gray-300',   text: 'text-gray-700',   dot: 'bg-gray-500'   },
+  pic:     { bg: 'bg-yellow-50', border: 'border-yellow-300', text: 'text-yellow-800', dot: 'bg-yellow-500' },
+};
+
 const STATUS_VARIANTS = {
   aktif: 'success',
   tidak_aktif: 'danger',
@@ -41,6 +52,164 @@ const formatDate = (value) => {
   return date.toLocaleDateString('ms-MY');
 };
 
+// ── Role Management Card ─────────────────────────────────────
+function RoleManagementCard({ targetUser, onRolesUpdated }) {
+  const userIc = targetUser?.IC || targetUser?.ic;
+  const currentRoles = useMemo(() => {
+    const roles = Array.isArray(targetUser?.roles) ? [...targetUser.roles] : [];
+    if (roles.length === 0 && targetUser?.role) roles.push(targetUser.role.toLowerCase());
+    return roles.map((r) => r.toLowerCase());
+  }, [targetUser]);
+
+  const [selectedRoles, setSelectedRoles] = useState(currentRoles);
+  const [saving, setSaving] = useState(false);
+  const isDirty = useMemo(
+    () =>
+      selectedRoles.length !== currentRoles.length ||
+      [...selectedRoles].sort().join() !== [...currentRoles].sort().join(),
+    [selectedRoles, currentRoles]
+  );
+
+  // Keep in sync if parent re-fetches
+  useEffect(() => {
+    setSelectedRoles(currentRoles);
+  }, [currentRoles.join(',')]);
+
+  const toggleRole = (role) => {
+    setSelectedRoles((prev) =>
+      prev.includes(role) ? prev.filter((r) => r !== role) : [...prev, role]
+    );
+  };
+
+  const handleSave = async () => {
+    if (selectedRoles.length === 0) {
+      toast.warning('Pengguna mesti mempunyai sekurang-kurangnya satu peranan.');
+      return;
+    }
+    setSaving(true);
+    try {
+      await usersAPI.updateRoles(userIc, { roles: selectedRoles });
+      toast.success('Peranan pengguna berjaya dikemaskini.');
+      onRolesUpdated();
+    } catch (err) {
+      toast.error(err?.message || 'Gagal mengemaskini peranan.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleReset = () => setSelectedRoles(currentRoles);
+
+  return (
+    <Card>
+      <Card.Header>
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <Card.Title>Pengurusan Peranan</Card.Title>
+          {isDirty && (
+            <span className="text-xs text-amber-600 font-medium bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full">
+              Perubahan belum disimpan
+            </span>
+          )}
+        </div>
+      </Card.Header>
+      <Card.Content>
+        <p className="text-xs text-gray-500 mb-4">
+          Pilih satu atau lebih peranan untuk pengguna ini. Perubahan berkuat kuasa serta-merta selepas disimpan.
+        </p>
+
+        {/* Role toggle grid */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-5">
+          {ASSIGNABLE_ROLES.map((role) => {
+            const active = selectedRoles.includes(role);
+            const colors = ROLE_COLORS[role] || ROLE_COLORS.staff;
+            return (
+              <button
+                key={role}
+                type="button"
+                onClick={() => toggleRole(role)}
+                className={`
+                  flex items-center gap-2 px-3 py-2.5 rounded-lg border-2 text-sm font-medium
+                  transition-all duration-150 select-none
+                  ${active
+                    ? `${colors.bg} ${colors.border} ${colors.text} shadow-sm`
+                    : 'bg-white border-gray-200 text-gray-400 hover:border-gray-300 hover:text-gray-600'
+                  }
+                `}
+              >
+                {/* Checkbox indicator */}
+                <span
+                  className={`
+                    flex-shrink-0 w-4 h-4 rounded border-2 flex items-center justify-center transition-colors
+                    ${active ? `${colors.dot} border-transparent` : 'border-gray-300 bg-white'}
+                  `}
+                >
+                  {active && (
+                    <svg className="w-2.5 h-2.5 text-white" viewBox="0 0 10 10" fill="none">
+                      <path d="M1.5 5l2.5 2.5 4.5-5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  )}
+                </span>
+                {ROLE_LABELS[role] || role}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Current roles preview */}
+        {selectedRoles.length > 0 && (
+          <div className="flex flex-wrap gap-2 mb-5 p-3 bg-gray-50 rounded-lg border border-gray-100">
+            <span className="text-xs text-gray-500 w-full mb-1">Peranan terpilih:</span>
+            {selectedRoles.map((role) => (
+              <Badge key={role} variant={ROLE_VARIANTS[role] || 'default'}>
+                {ROLE_LABELS[role] || role}
+              </Badge>
+            ))}
+          </div>
+        )}
+
+        {selectedRoles.length === 0 && (
+          <div className="mb-5 p-3 bg-red-50 rounded-lg border border-red-100">
+            <p className="text-xs text-red-600">⚠️ Sekurang-kurangnya satu peranan diperlukan.</p>
+          </div>
+        )}
+
+        {/* Action buttons */}
+        <div className="flex gap-3 justify-end">
+          {isDirty && (
+            <button
+              type="button"
+              onClick={handleReset}
+              disabled={saving}
+              className="px-4 py-2 text-sm text-gray-600 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
+            >
+              Batal
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={handleSave}
+            disabled={saving || !isDirty || selectedRoles.length === 0}
+            className="px-5 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+          >
+            {saving ? (
+              <>
+                <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+                </svg>
+                Menyimpan...
+              </>
+            ) : (
+              'Simpan Peranan'
+            )}
+          </button>
+        </div>
+      </Card.Content>
+    </Card>
+  );
+}
+
+// ── Main Component ───────────────────────────────────────────
 const AllUserDetail = ({ user }) => {
   const { ic } = useParams();
   const [targetUser, setTargetUser] = useState(null);
@@ -54,7 +223,6 @@ const AllUserDetail = ({ user }) => {
       setLoading(false);
       return;
     }
-
     setLoading(true);
     setError(null);
     try {
@@ -89,9 +257,7 @@ const AllUserDetail = ({ user }) => {
 
   const roleBadges = useMemo(() => {
     const roles = Array.isArray(targetUser?.roles) ? [...targetUser.roles] : [];
-    if (roles.length === 0 && targetUser?.role) {
-      roles.push(targetUser.role.toLowerCase());
-    }
+    if (roles.length === 0 && targetUser?.role) roles.push(targetUser.role.toLowerCase());
     return roles.map((role, index) => (
       <Badge key={`${role}-${index}`} variant={ROLE_VARIANTS[role] || 'default'}>
         {ROLE_LABELS[role] || role}
@@ -106,7 +272,7 @@ const AllUserDetail = ({ user }) => {
         <div>
           <p className="text-lg font-semibold text-gray-900">Maklumat Pengguna</p>
           <p className="text-sm text-gray-500">
-            IC:&nbsp;{formatIC(targetUser?.telefon || targetUser?.IC || ic)}
+            IC:&nbsp;{formatIC(targetUser?.IC || targetUser?.ic || ic)}
           </p>
         </div>
       </div>
@@ -130,13 +296,14 @@ const AllUserDetail = ({ user }) => {
         </Card>
       ) : (
         <>
+          {/* Profile header */}
           <Card>
             <Card.Header>
               <div className="flex flex-col gap-1 w-full">
                 <div className="flex items-center justify-between flex-wrap gap-2">
                   <div>
                     <h2 className="text-2xl font-semibold text-gray-900">{targetUser.nama || 'Pengguna'}</h2>
-                    <p className="text-sm text-gray-500">IC: {formatIC(targetUser.telefon || targetUser.IC)}</p>
+                    <p className="text-sm text-gray-500">IC: {formatIC(targetUser.IC || targetUser.ic)}</p>
                   </div>
                   <Badge variant={statusVariant}>
                     {targetUser.status ? targetUser.status.replace('_', ' ') : 'Status tidak diketahui'}
@@ -150,6 +317,7 @@ const AllUserDetail = ({ user }) => {
           </Card>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Left column */}
             <div className="lg:col-span-2 space-y-6">
               <Card>
                 <Card.Header>
@@ -163,7 +331,7 @@ const AllUserDetail = ({ user }) => {
                     </div>
                     <div>
                       <p className="text-xs font-semibold text-gray-500 uppercase">Nombor IC</p>
-                      <p className="text-sm text-gray-900">{formatIC(targetUser.telefon || targetUser.IC)}</p>
+                      <p className="text-sm text-gray-900">{formatIC(targetUser.IC || targetUser.ic)}</p>
                     </div>
                     <div>
                       <p className="text-xs font-semibold text-gray-500 uppercase">Emel</p>
@@ -195,9 +363,7 @@ const AllUserDetail = ({ user }) => {
                         {targetUser.kepakaran && targetUser.kepakaran.length > 0 ? (
                           <div className="flex flex-wrap gap-2 mt-2">
                             {targetUser.kepakaran.map((item, index) => (
-                              <Badge key={index} variant="info">
-                                {item}
-                              </Badge>
+                              <Badge key={index} variant="info">{item}</Badge>
                             ))}
                           </div>
                         ) : (
@@ -209,7 +375,7 @@ const AllUserDetail = ({ user }) => {
                         <p className="text-sm text-gray-900">{targetUser.total_classes || 0} kelas</p>
                       </div>
                     </div>
-                  </Card.Content>
+                  </Card.Content>sapi
                 </Card>
               )}
 
@@ -236,8 +402,12 @@ const AllUserDetail = ({ user }) => {
                   </Card.Content>
                 </Card>
               )}
+
+              {/* Role management — full width on mobile, in left col on desktop */}
+              <RoleManagementCard targetUser={targetUser} onRolesUpdated={fetchUser} />
             </div>
 
+            {/* Right column */}
             <div className="space-y-6">
               <Card>
                 <Card.Header>
