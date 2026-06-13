@@ -605,7 +605,6 @@ export const contactAPI = {
 };
 
 export const usersAPI = {
-  
   getAll: async (params = { limit: 1000, page: 1 }) => {
     try {
       const response = await api.get('/users', { params });
@@ -617,34 +616,27 @@ export const usersAPI = {
   },
   updateRoles: (ic, data) => api.put(`/users/${encodeURIComponent(ic)}/roles`, data),
 
-  // Fan out across role-specific endpoints since /users/:ic doesn't exist
   getByIc: async (ic) => {
-      // Guard: IC must be 12 digits
-  const cleanIc = ic?.replace(/-/g, '');
-  if (!cleanIc || !/^\d{12}$/.test(cleanIc)) {
-    throw { message: 'Format IC tidak sah.', status: 400 };
+  const cleanIc = ic?.replace(/[-\s]/g, '');
+  // Malaysian phone numbers: 9-11 digits, starting with 0
+  if (!cleanIc || !/^0\d{8,10}$/.test(cleanIc)) {
+    throw { message: 'Format nombor telefon tidak sah.', status: 400 };
   }
 
-    const endpoints = [
-  () => studentsAPI.getById(cleanIc),
-  () => teachersAPI.getById(cleanIc),
-  () => adminsAPI.getById(cleanIc),
-  () => api.get(`/pic-users/${encodeURIComponent(cleanIc)}`),
-];
-
-    for (const fn of endpoints) {
-      try {
-        const res = await fn();
-        const data = res?.data || res;
-        if (data && (data.ic || data.IC || data.nama)) {
-          return { success: true, data };
-        }
-      } catch (_) {
-        // 404 = not this role, try next
-      }
+  try {
+    const response = await api.get(`/users/${encodeURIComponent(cleanIc)}`);
+    if (response?.success && response?.data) {
+      return response;
     }
     throw { message: 'Pengguna tidak ditemui.', status: 404 };
-  },
+  } catch (error) {
+    if (error?.status === 404 || error?.response?.status === 404) {
+      throw { message: 'Pengguna tidak ditemui.', status: 404 };
+    }
+    throw error;
+  }
+},
+  
 };
 
 export const ibAPI = {

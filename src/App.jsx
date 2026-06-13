@@ -460,9 +460,7 @@ function AppContent() {
                   path="/complete-profile" 
                   element={<CompleteProfile user={user} onComplete={handleProfileComplete} />} 
                 />
-                <Route path="/pelajar" element={<Pelajar user={user} />} />
-<Route path="/pelajar/tambah" element={<Suspense fallback={<RouteFallback />}><PelajarFormPage user={user} /></Suspense>} />
-<Route path="/pelajar/:ic" element={<Suspense fallback={<RouteFallback />}><PelajarDetailPage user={user} /></Suspense>} />
+                <Route path="/pelajar/*" element={<Pelajar user={user} />} />
                 <Route path="/guru/*" element={<Guru />} />
                 <Route path="/kelas/*" element={<Kelas />} />
                 <Route path="/kehadiran" element={<Kehadiran />} />

@@ -375,7 +375,7 @@ const AllUserDetail = ({ user }) => {
                         <p className="text-sm text-gray-900">{targetUser.total_classes || 0} kelas</p>
                       </div>
                     </div>
-                  </Card.Content>sapi
+                  </Card.Content>
                 </Card>
               )}
 

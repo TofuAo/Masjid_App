@@ -142,11 +142,7 @@ router.get('/me', authenticateToken, requireRole(['student']), async (req, res) 
 // Student views their own full profile.
 // MUST be declared BEFORE /:ic to prevent Express treating "me" as a param.
 // requireRole(['student']) ensures only students can call this.
-router.get(
-  '/me',
-  requireRole(['student']),
-  getSelf
-);
+
 
 // ── Standard routes (unchanged order/logic) ─────────────────
 router.get('/', getAllStudents);

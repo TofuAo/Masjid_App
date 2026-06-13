@@ -354,7 +354,7 @@ export const getUserByIc = async (req, res) => {
       });
     }
 
-    const rawIc = String(req.params.telefon || '');
+    const rawIc = String(req.params.ic || '');
     const normalizedSearchIc = normalizePhone(rawIc);
     if (!normalizedSearchIc) {
       return res.status(400).json({
@@ -393,4 +393,99 @@ export const getUserByIc = async (req, res) => {
     });
   }
 };
+
+/**
+ * Update a user's roles (admin only)
+ * Body: { roles: ['admin', 'teacher', ...] }
+ */
+export const updateUserRoles = async (req, res) => {
+  try {
+    if (!req.user || req.user.role !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        message: 'Akses dinafikan. Hanya admin boleh mengubah peranan pengguna.'
+      });
+    }
+
+    const rawIc = String(req.params.ic || '');
+    const normalizedIc = normalizePhone(rawIc);
+    if (!normalizedIc) {
+      return res.status(400).json({ success: false, message: 'IC pengguna tidak sah.' });
+    }
+
+    const { roles } = req.body;
+    if (!Array.isArray(roles) || roles.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Sekurang-kurangnya satu peranan diperlukan.'
+      });
+    }
+
+    const cleanedRoles = Array.from(new Set(roles.map((r) => String(r).toLowerCase())));
+    const invalidRoles = cleanedRoles.filter((r) => !VALID_ROLES.includes(r));
+    if (invalidRoles.length > 0) {
+      return res.status(400).json({
+        success: false,
+        message: `Peranan tidak sah: ${invalidRoles.join(', ')}`
+      });
+    }
+
+    // Confirm the user exists
+    const [existing] = await pool.execute(
+      `SELECT telefon, role FROM users WHERE REPLACE(REPLACE(telefon, '-', ''), ' ', '') = ? LIMIT 1`,
+      [normalizedIc]
+    );
+    if (!existing || existing.length === 0) {
+      return res.status(404).json({ success: false, message: 'Pengguna tidak ditemui.' });
+    }
+
+    const userPhone = existing[0].telefon;
+
+    // Replace all rows in user_roles for this user
+    await pool.execute(
+      `DELETE FROM user_roles WHERE REPLACE(REPLACE(user_telefon, '-', ''), ' ', '') = ?`,
+      [normalizedIc]
+    );
+
+    for (const role of cleanedRoles) {
+      await pool.execute(
+        `INSERT INTO user_roles (user_telefon, role) VALUES (?, ?)`,
+        [userPhone, role]
+      );
+    }
+
+    // Update primary role on users table to the first selected role
+    await pool.execute(
+      `UPDATE users SET role = ? WHERE REPLACE(REPLACE(telefon, '-', ''), ' ', '') = ?`,
+      [cleanedRoles[0], normalizedIc]
+    );
+
+    // Return refreshed user payload
+    const query = `
+      ${USER_BASE_SELECT}
+      WHERE u.rn = 1
+        AND REPLACE(REPLACE(u.telefon, '-', ''), ' ', '') = ?
+      ${USER_GROUP_BY}
+      LIMIT 1
+    `;
+    const [users] = await pool.execute(query, [normalizedIc]);
+    const updatedUser = await buildUserPayload(users[0]);
+
+    return res.json({
+      success: true,
+      message: 'Peranan pengguna berjaya dikemaskini.',
+      data: updatedUser
+    });
+  } catch (error) {
+    console.error('Update user roles error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Gagal mengemaskini peranan pengguna.',
+      error: error.message
+    });
+  }
+
+};
+
+
 
