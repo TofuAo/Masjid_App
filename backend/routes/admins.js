@@ -3,6 +3,7 @@ import { body, param } from 'express-validator';
 import {
   getAllAdmins,
   getAdminById,
+  getAuditLogs,
   createAdmin,
   updateAdmin,
   deleteAdmin
@@ -128,6 +129,7 @@ const icValidation = [
 
 // GET routes: All admins can view admin details
 router.get('/', authenticateToken, requireRole(['admin']), getAllAdmins);
+router.get('/audit-logs', authenticateToken, requireRole(['admin']), getAuditLogs);
 router.get('/:ic', authenticateToken, requireRole(['admin']), icValidation, normalizePhoneMiddleware, getAdminById);
 
 // POST, PUT, DELETE routes: Only master admin can create/update/delete admins
